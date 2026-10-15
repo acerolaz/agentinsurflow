@@ -1,0 +1,13 @@
+# Preuves versionnées
+
+Journaux de chaîne et captures qui prouvent les critères de l'atelier n°2, à verser **après chaque démonstration
+ou répétition**. Nommage : `<sujet>-AAAA-MM-JJ.<ext>`.
+
+| Sujet | Produit par | Fichiers attendus |
+|---|---|---|
+| `livraison` | `make preuve RUN=<id du run du merge> NOM=livraison-AAAA-MM-JJ` | `.log`, `.resume.txt` |
+| `evals` | artefact `rapport-evals` du run du merge (`gh run download <id> -n rapport-evals`) | `evals-AAAA-MM-JJ.json` |
+| `blocage` | `make preuve RUN=<id du run rouge> NOM=blocage-AAAA-MM-JJ` + capture de la PR | `.log`, `.resume.txt`, `-pr.png` |
+| `rollback` | `make preuve RUN=<id du run deploy> NOM=rollback-AAAA-MM-JJ` + `/health` avant et après | `.log`, `.resume.txt`, `.md`, `.png` |
+
+Les journaux GitHub masquent les secrets (`***`). Relire tout de même chaque fichier avant de le committer.

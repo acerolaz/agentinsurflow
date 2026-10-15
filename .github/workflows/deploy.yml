@@ -1,0 +1,99 @@
+# Déploiement d'une image dans un environnement, suivi d'un test de fumée bloquant.
+# - appelé par ci-cd.yml après chaque merge (tag = SHA du commit) ;
+# - lancé à la main = ROLLBACK en une opération : `make rollback` ou Actions › deploy › Run
+#   workflow. Sans tag : redéploie l'image de la révision précédente.
+name: deploy
+
+on:
+  workflow_call:
+    inputs:
+      environnement: { type: string, required: true }
+      tag: { type: string, required: true }
+    outputs:
+      url:
+        description: URL publique de l'environnement déployé
+        value: ${{ jobs.deploy.outputs.url }}
+  workflow_dispatch:
+    inputs:
+      environnement:
+        type: choice
+        options: [production, staging]
+        default: production
+      tag:
+        description: "SHA de l'image ; vide = version précédente (rollback)"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ inputs.environnement }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deployer.outputs.url }}
+    environment:
+      name: ${{ inputs.environnement }}
+      url: ${{ steps.deployer.outputs.url }}
+    env:
+      APP: ${{ vars.CONTAINER_APP_NAME }}
+      RG: ${{ vars.AZURE_RESOURCE_GROUP }}
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Choisir l'image
+        id: image
+        env:
+          TAG: ${{ inputs.tag }}
+          ACR: ${{ vars.ACR_NAME }}
+        run: |
+          if [ -n "$TAG" ]; then
+            image="$ACR.azurecr.io/agentinsurflow:$TAG"
+          else
+            # Rollback : l'image de l'avant-dernière révision créée
+            image=$(az containerapp revision list -n "$APP" -g "$RG" --all \
+              --query "sort_by([], &properties.createdTime)[-2].properties.template.containers[0].image" -o tsv)
+          fi
+          test -n "$image" || { echo "::error::aucune image précédente"; exit 1; }
+          echo "Image retenue : $image"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Déployer (nouvelle révision Container Apps)
+        id: deployer
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+          AOAI_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+        run: |
+          az containerapp secret set -n "$APP" -g "$RG" --secrets "aoai-key=$AOAI_KEY" -o none
+          az containerapp update -n "$APP" -g "$RG" --image "$IMAGE" -o none --set-env-vars \
+            "APP_ENV=${{ inputs.environnement }}" \
+            "AZURE_OPENAI_ENDPOINT=${{ vars.AZURE_OPENAI_ENDPOINT }}" \
+            "AZURE_OPENAI_DEPLOYMENT=${{ vars.AZURE_OPENAI_DEPLOYMENT }}" \
+            "AZURE_OPENAI_API_KEY=secretref:aoai-key"
+          fqdn=$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "url=https://$fqdn" >> "$GITHUB_OUTPUT"
+
+      - name: Fumée — la bonne version répond et l'agent joint le LLM (porte bloquante)
+        env:
+          URL: ${{ steps.deployer.outputs.url }}
+          IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          attendu="${IMAGE##*:}"
+          for _ in $(seq 1 30); do   # démarrage à froid (min-replicas 0)
+            version=$(curl -fsS "$URL/health" | jq -r .version) && [ "$version" = "$attendu" ] && break
+            sleep 5
+          done
+          [ "$version" = "$attendu" ] || { echo "::error::version servie '$version' ≠ '$attendu'"; exit 1; }
+          mode=$(curl -fsS -X POST "$URL/api/agent" -H 'content-type: application/json' \
+            -d '{"texte":"Réponds simplement OK."}' | jq -r .mode)
+          [ "$mode" = "llm" ] || { echo "::error::l'agent ne joint pas le LLM (mode=$mode)"; exit 1; }
+          echo "✔ $URL sert $attendu, agent en mode llm"

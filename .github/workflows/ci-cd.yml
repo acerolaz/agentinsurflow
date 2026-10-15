@@ -1,0 +1,81 @@
+# Chaîne du socle : lint → test → build → staging (+ fumée) → evals → production (+ fumée).
+# PR : lint + test seulement (portes bloquantes, exigées par la protection de main).
+# Merge sur main : toute la chaîne, sans action manuelle.
+name: ci-cd
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "0.11.13", enable-cache: true }
+      - run: make install
+      - run: make lint
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "0.11.13", enable-cache: true }
+      - run: make install
+      - run: make test # LLM mocké : aucun secret Azure en CI
+
+  build:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2 # OIDC : aucun secret de longue durée
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Construire et publier l'image (tag = SHA, immuable)
+        env:
+          IMAGE: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow:${{ github.sha }}
+        run: |
+          az acr login -n "${{ vars.ACR_NAME }}"
+          docker build --build-arg APP_VERSION=${{ github.sha }} -t "$IMAGE" .
+          docker push "$IMAGE"
+
+  staging:
+    needs: build
+    permissions: { contents: read, id-token: write }
+    uses: ./.github/workflows/deploy.yml
+    with: { environnement: staging, tag: "${{ github.sha }}" }
+    secrets: inherit
+
+  evals:
+    needs: staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Golden set contre staging (porte bloquante, aucun secret)
+        run: python3 tools/evals.py --url "${{ needs.staging.outputs.url }}" --rapport evals.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: rapport-evals, path: evals.json }
+
+  production:
+    needs: evals
+    permissions: { contents: read, id-token: write }
+    uses: ./.github/workflows/deploy.yml
+    with: { environnement: production, tag: "${{ github.sha }}" }
+    secrets: inherit

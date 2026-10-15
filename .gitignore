@@ -1,0 +1,16 @@
+# Secrets : seul .env.example est versionné
+.env
+.env.*
+!.env.example
+
+# Python / outillage
+.venv/
+__pycache__/
+*.pyc
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+.DS_Store

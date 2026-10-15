@@ -19,7 +19,8 @@ On peut aussi passer par l'interface : Actions › **deploy** › *Run workflow*
 3. Le **test de fumée** vérifie que `/health` renvoie bien le SHA de cette image et que l'agent joint le LLM.
 4. Le run reste dans le journal Actions : c'est la trace du rollback.
 
-Aucune reconstruction : les images sont **immuables** (tag = SHA) et déjà dans l'ACR.
+Aucune reconstruction : les images sont **immuables** (tag = SHA) et déjà dans l'ACR. Le prompt et la version
+du LLM (`llm.env`) étant **dans l'image**, le rollback les restaure aussi.
 
 > 🔁 **Analogie .NET** : c'est un *swap* de slot App Service, sauf qu'on repointe une image existante au lieu
 > d'échanger deux slots.

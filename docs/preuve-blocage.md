@@ -18,14 +18,15 @@ git push -u origin demo/commit-casse
 gh pr create --fill
 ```
 
-## Résultat attendu (vérifié en local le 14/10/2026)
+## Résultat attendu (vérifié en local le 14/10/2026, revérifié le 16/10/2026)
 
 | Job | Résultat |
 |---|---|
 | `lint` | ✔ vert |
-| `test` | ✘ rouge : **2 échecs** sur 12, `test_sans_llm_configure_passe_en_mode_degrade` (unitaire) et `test_sans_llm_l_agent_repond_en_mode_degrade` (intégration) |
+| `test` | ✘ rouge : **2 échecs** sur 29, `test_sans_llm_configure_passe_en_mode_degrade` (unitaire) et `test_sans_llm_l_agent_repond_en_mode_degrade` (intégration) |
+| `evals-pr` | ⏭️ sauté (`needs: test`, et aucun déclencheur modifié) |
 | `build`, `staging`, `production` | ⏭️ jamais lancés (`needs: test`, et ces jobs ne tournent qu'après un merge) |
-| Bouton *Merge* de la PR | ⛔ bloqué par la protection de `main` (`make proteger` : `lint` et `test` exigés, y compris pour l'administrateur) |
+| Bouton *Merge* de la PR | ⛔ bloqué par la protection de `main` (`make proteger` : `lint`, `test` et `evals-pr` exigés, y compris pour l'administrateur) |
 
 ```mermaid
 flowchart LR

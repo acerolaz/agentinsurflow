@@ -21,7 +21,7 @@ Avant tout report, créer les deux environnements : Settings › Environments �
 
 | Clé du `.env` | Où dans GitHub | Nom côté GitHub | Usage dans le YAML |
 |---|---|---|---|
-| `AZURE_CLIENT_ID` | Variable de repo | `AZURE_CLIENT_ID` | `azure/login` (OIDC) : `ci-cd.yml` › build, `deploy.yml` |
+| `AZURE_CLIENT_ID` | Variable de repo | `AZURE_CLIENT_ID` | `azure/login` (OIDC) : `ci-cd.yml` › build et evals-pr, `deploy.yml` |
 | `AZURE_TENANT_ID` | Variable de repo | `AZURE_TENANT_ID` | idem |
 | `AZURE_SUBSCRIPTION_ID` | Variable de repo | `AZURE_SUBSCRIPTION_ID` | idem |
 | `AZURE_RESOURCE_GROUP` | Variable de repo | `AZURE_RESOURCE_GROUP` | `deploy.yml` : `RG` |
@@ -30,8 +30,8 @@ Avant tout report, créer les deux environnements : Settings › Environments �
 | `APP_PRODUCTION` | Variable de l'env. `production` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
 | `AZURE_OPENAI_ENDPOINT` | Variable de **repo** | `AZURE_OPENAI_ENDPOINT` | `deploy.yml` › `--set-env-vars` ; `ci-cd.yml` › `evals-pr` |
 | `AZURE_OPENAI_DEPLOYMENT` | — (**pas dans GitHub**) | — | Épinglé dans `llm.env`, versionné et copié dans l'image : le changer déclenche les evals |
-| `AZURE_OPENAI_API_KEY` 🔒 | **Secret** des **deux** env. | `AZURE_OPENAI_API_KEY` | `deploy.yml` › secret Container Apps `aoai-key` |
-| `APP_ENV`, `LLM_DELAI_S` | — (non reporté) | — | `APP_ENV` est posé par `deploy.yml` ; `LLM_DELAI_S` garde sa valeur par défaut |
+| `AZURE_OPENAI_API_KEY` 🔒 | **Secret** des **deux** env. | `AZURE_OPENAI_API_KEY` | `deploy.yml` › secret Container Apps `aoai-key` (supprimable à terme, voir §4) |
+| `APP_ENV`, `LLM_DELAI_S` | — (non reporté) | — | `APP_ENV` est posé par `deploy.yml` ; `LLM_DELAI_S` garde sa valeur par défaut (30 s) |
 | `AZURE_LOCATION`, `CONTAINERAPPS_ENV`, `GITHUB_REPO` | — (non reporté) | — | Lus seulement par `make` en local |
 
 Si tu préfères la ligne de commande à l'interface, chaque report a son équivalent `gh`, à taper toi-même :
@@ -45,9 +45,18 @@ gh secret set AZURE_OPENAI_API_KEY -R acerolaz/agentinsurflow -e production  # s
 ## 3. Pourquoi aucun secret pour se connecter à Azure
 
 La CI s'authentifie par **OIDC** : GitHub émet un jeton à courte durée de vie, et Entra ID l'accepte grâce aux
-*federated credentials* créées par `make infra`. Elles couvrent trois sujets : `main`, l'environnement `staging`
-et l'environnement `production`. `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` et `AZURE_SUBSCRIPTION_ID` sont des
-**identifiants**, pas des secrets, d'où des *variables*.
+*federated credentials* de l'application Entra `agentinsurflow`. Elles couvrent quatre sujets :
+
+| Fédération | Sujet (format immuable de GitHub) | Jobs |
+|---|---|---|
+| `ref-refs-heads-main` | `repo:acerolaz@186313822/agentinsurflow@1420380073:ref:refs/heads/main` | `build` |
+| `environment-staging` | `…:environment:staging` | déploiement staging |
+| `environment-production` | `…:environment:production` | déploiement production, rollback |
+| `pull_request` | `…:pull_request` | `evals-pr` : le jeton Entra sert aussi à **appeler le LLM, sans clé** |
+
+Le préfixe du sujet dépend du repo : `make infra` le lit sur GitHub
+(`gh api repos/<repo>/actions/oidc/customization/sub`). `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` et
+`AZURE_SUBSCRIPTION_ID` sont des **identifiants**, pas des secrets, d'où des *variables*.
 
 > 🔁 **Analogie .NET** : c'est la *Workload Identity Federation* d'une *service connection* Azure DevOps, au lieu
 > d'un Service Principal avec mot de passe.
@@ -66,6 +75,10 @@ flowchart LR
 ```
 
 La clé n'apparaît jamais dans l'image, dans le dépôt ni en clair dans les journaux (masquage GitHub).
+
+**Vers zéro secret** : le code sait se passer de clé (Entra ID). Dès que les identités managées des deux
+Container Apps auront le rôle *Cognitive Services User* sur `svespuce-971` (demandé au formateur), il suffira de
+retirer l'injection de la clé dans `deploy.yml` et de supprimer les deux secrets `AZURE_OPENAI_API_KEY`.
 
 ## 5. Vérifier
 

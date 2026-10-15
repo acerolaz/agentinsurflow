@@ -1,27 +1,32 @@
 # AgentInsurFlow — le socle et la chaîne (Sprint 2)
 
 Squelette de bout en bout : une **API REST FastAPI** qui donne accès à **un agent** dont la réponse vient
-d'**Azure OpenAI**, livrée par une **chaîne GitHub Actions bloquante** jusqu'à la production
-(Azure Container Apps). Rien de riche fonctionnellement, mais tout est branché : ce qui suivra passera par cette chaîne.
+d'un modèle **Azure AI Foundry** (`Kimi-K2.5`, appelé par l'API v1 compatible OpenAI), livrée par une
+**chaîne GitHub Actions CI/CD/Evals bloquante** jusqu'à la production (Azure Container Apps). Rien de riche
+fonctionnellement, mais tout est branché : ce qui suivra passera par cette chaîne.
 
 L'interface est **Swagger UI**, servie à la racine `/`.
 
 ```mermaid
 flowchart LR
-    PR(["👤 PR / merge main"]) --> L(["🧹 lint<br/>ruff + mypy"]) --> T{{"🛡️ test<br/>couverture ≥ 80 %"}}
-    T -- "✔ merge" --> B(["📦 build<br/>image → ACR :sha"]) --> S(["🚀 staging"]) --> FS{{"🛡️ fumée"}}
-    FS -- "✔" --> EV{{"🛡️ evals<br/>golden set ≥ 80 %"}} -- "✔" --> P(["🌐 production"]) --> FP{{"🛡️ fumée"}}
+    PR(["👤 PR"]) --> L(["🧹 lint<br/>ruff + mypy"]) --> T{{"🛡️ test<br/>couverture ≥ 80 %"}}
+    T -- "PR" --> EP{{"🛡️ evals-pr<br/>si déclencheur"}} -- "✔ merge" --> M(["👤 merge main"])
+    M --> B(["📦 build<br/>image → ACR :sha"]) --> S(["🚀 staging"]) --> FS{{"🛡️ fumée"}}
+    FS -- "✔" --> EV{{"🛡️ evals<br/>si déclencheur"}} -- "✔ ou sautées" --> P(["🌐 production"]) --> FP{{"🛡️ fumée"}}
     T -- "✘" --> X(["⛔ chaîne arrêtée<br/>merge refusé"])
     P -. "make rollback (1 opération)" .-> RB(["↩️ image précédente"])
     classDef plat fill:#1E3A8A,stroke:#1E3A8A,color:#fff
     classDef ok fill:#DCFCE7,stroke:#15803D,color:#14532D
     classDef ko fill:#FEE2E2,stroke:#B91C1C,color:#7F1D1D
     classDef gate fill:#EDE9FE,stroke:#7C3AED,color:#3B0764
-    class PR,P plat
+    class PR,M,P plat
     class L,B,S ok
     class X,RB ko
-    class T,FS,EV,FP gate
+    class T,EP,FS,EV,FP gate
 ```
+
+Un merge sur `main` relance `lint` et `test` avant `build`. Les evals (portes : réussite ≥ 80 % et latence
+p95 ≤ 30 s) ne tournent que si le prompt, le golden dataset ou la version du LLM changent (voir *Évaluer l'agent*).
 
 ## Arborescence
 
@@ -33,19 +38,19 @@ flowchart LR
 │   ├── llm.py                 #   port ClientLLM + FakeLLM (tests) + adaptateur AzureLLM + config
 │   └── prompts/systeme.md     #   prompt système (le modifier déclenche les evals)
 ├── tests/
-│   ├── unit/                  # agent et adaptateur Azure (HTTP simulé, sans réseau)
+│   ├── unit/                  # agent, adaptateur LLM (HTTP simulé, sans réseau), evals
 │   └── integration/           # requête HTTP → route → agent, LLM mocké
-├── tools/evals.py             # make eval : rejoue le golden set contre une API déployée
+├── tools/evals.py             # make eval : golden set contre une API (locale, PR ou staging) + manifeste
 ├── .github/workflows/
 │   ├── ci-cd.yml              # lint → test → [evals-pr] · build → staging → [evals] → production
 │   └── deploy.yml             # déploiement + fumée ; lancé à la main = rollback
 ├── infra/
 │   ├── bootstrap.sh           # make infra : crée l'infra Azure (idempotent)
-│   └── protection-main.json   # make proteger : main exige lint + test verts
+│   └── protection-main.json   # make proteger : main exige lint, test et evals-pr verts
 ├── docs/                      # secrets, blocage, rollback, démo d'atelier
 ├── eval/
 │   ├── golden.jsonl           # cas d'évaluation de l'agent (versionnés)
-│   ├── preuves/               # journaux de chaîne et captures versionnés
+│   ├── preuves/               # journaux de chaîne, rapports d'evals et captures versionnés
 │   └── ateliers/              # grille de l'atelier croisé n°2
 ├── llm.env                    # version du LLM épinglée (la modifier déclenche les evals)
 ├── Dockerfile · Makefile · pyproject.toml · uv.lock · .python-version
@@ -66,15 +71,19 @@ flowchart LR
 Prérequis : [uv](https://docs.astral.sh/uv/) et Docker.
 
 ```bash
-cp .env.example .env      # remplir le bloc Azure OpenAI ; sans lui, l'agent répond en mode dégradé
+cp .env.example .env      # remplir AZURE_OPENAI_ENDPOINT (+ la clé, ou az login) ; sans endpoint : mode dégradé
 make install              # dépendances figées par uv.lock
 make run                  # http://localhost:8000 → Swagger
 make docker               # la même chose, dans l'image qui part en production
 ```
 
-Exemple de réponse de `POST /api/agent` : `{"texte": "…", "mode": "llm", "modele": "<déploiement>"}`.
-Avec `"mode": "degrade"`, le LLM n'est pas joignable et la demande part en revue humaine
-(source : dossier-conception-v1.md, K5).
+Exemple de réponse de `POST /api/agent` : `{"texte": "…", "mode": "llm", "modele": "Kimi-K2.5"}`.
+Avec `"mode": "degrade"`, le LLM n'est pas joignable (ou ne répond pas en 30 s, `LLM_DELAI_S`) et la demande
+part en revue humaine (source : dossier-conception-v1.md, K5).
+
+**Authentification au LLM** : la clé `AZURE_OPENAI_API_KEY` si elle est fournie ; sinon **Entra ID**
+(`DefaultAzureCredential`) : `az login` en local, OIDC dans la CI, identité managée dans Container Apps.
+Le modèle est épinglé dans `llm.env` ; l'endpoint est accepté avec ou sans le suffixe `/openai/v1`.
 
 ## Tester
 
@@ -83,7 +92,8 @@ make lint                 # ruff (style) + mypy (typage strict)
 make test                 # pytest : unitaires + intégration, couverture ≥ 80 %
 ```
 
-En CI, le LLM est **toujours mocké** (`FakeLLM`, HTTP simulé) : aucun secret n'est nécessaire pour tester.
+Les jobs `lint` et `test` **mockent toujours le LLM** (`FakeLLM`, HTTP simulé) : aucun secret ni appel réel.
+Seules les **evals** et la **fumée** appellent le vrai modèle.
 La couverture visée est la fourchette **80–83 %** ; la porte bloquante est sa borne basse (80 %, `pyproject.toml`).
 
 ## Évaluer l'agent (evals)
@@ -141,12 +151,31 @@ Exemple réel : `eval/preuves/evals-local-2026-10-15.json`.
 
 Installation, à faire une seule fois :
 
-1. `make infra` crée le groupe de ressources, l'ACR, l'environnement Container Apps et deux apps (staging, production) ainsi que l'identité OIDC de la CI. Il affiche ensuite les valeurs à reporter.
+1. `make infra` crée le groupe de ressources, l'ACR, l'environnement Container Apps et deux apps (staging,
+   production), reprend l'application Entra `agentinsurflow` et ses 4 fédérations OIDC (`main`, `staging`,
+   `production`, `pull_request`), puis attribue les rôles. Il affiche les valeurs à reporter. Attribuer des rôles
+   exige *Owner* ou *User Access Administrator*.
 2. Reporter à la main les variables et le secret dans GitHub en suivant [docs/secrets.md](docs/secrets.md).
-3. `git push`, puis `make proteger` : `main` n'accepte plus que des commits dont `lint` et `test` sont verts.
+3. `git push`, puis `make proteger` : `main` n'accepte plus que des commits dont `lint`, `test` et `evals-pr`
+   sont verts (un `evals-pr` sauté compte comme vert).
 
 Ensuite, chaque **merge sur `main`** déclenche toute la chaîne, sans action manuelle. L'image est tagguée par
 le SHA du commit, et `/health` renvoie ce SHA : on lit ainsi quelle version tourne.
+
+### Ressources Azure actuelles
+
+| Ressource | Nom | État |
+|---|---|---|
+| Groupe de ressources | `svespuceRG` (`swedencentral`) | ✅ |
+| Registre d'images | `acerolazacr` (`acerolazacr.azurecr.io`) | ✅ créé |
+| Environnement Container Apps | `cae-insurflow` | ✅ créé |
+| Container App staging | `insurflow-staging` → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ créée (image provisoire) |
+| Container App production | `insurflow-production` → `https://insurflow-production.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ créée (image provisoire) |
+| Modèle | `Kimi-K2.5` sur la ressource Foundry `svespuce-971` | ✅ |
+| Application Entra de la CI | `agentinsurflow` + 4 fédérations OIDC | ✅ |
+| Rôles (Contributor, AcrPush, AcrPull, Cognitive Services User) | — | 🔴 demandés au formateur |
+
+Tant que les rôles manquent, `build` s'arrête sur `No subscriptions found`.
 
 ## Rollback
 

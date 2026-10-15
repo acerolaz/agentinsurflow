@@ -58,7 +58,7 @@ class ConfigLLM(BaseSettings):
     azure_openai_endpoint: str = ""
     azure_openai_api_key: SecretStr = SecretStr("")
     azure_openai_deployment: str = ""
-    llm_delai_s: float = Field(default=20, gt=0)
+    llm_delai_s: float = Field(default=30, gt=0)  # aligné sur la porte p95 ≤ 30 s (D11)
 
 
 SCOPE_ENTRA = "https://cognitiveservices.azure.com/.default"

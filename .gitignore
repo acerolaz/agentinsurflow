@@ -14,3 +14,7 @@ htmlcov/
 .ruff_cache/
 dist/
 .DS_Store
+
+# IDE et journaux locaux (infra.log contient des identifiants Azure)
+.idea/
+*.log

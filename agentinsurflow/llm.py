@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from openai import AzureOpenAI, OpenAIError
+from openai import OpenAI, OpenAIError
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -62,14 +62,11 @@ def charger_config() -> ConfigLLM:
 def fabrique_llm(cfg: ConfigLLM) -> ClientLLM | None:
     """Le ClientLLM, ou None s'il n'est pas configuré (⇒ mode dégradé)."""
     cle = cfg.azure_openai_api_key.get_secret_value()
-    if not (
-        cfg.azure_openai_endpoint
-        and cle
-        and cfg.azure_openai_deployment
-    ):
+    if not (cfg.azure_openai_endpoint and cle and cfg.azure_openai_deployment):
         return None
-    client = AzureOpenAI(
-        azure_endpoint=cfg.azure_openai_endpoint,
+    # API v1 d'Azure OpenAI : client OpenAI standard, sans version d'API à gérer
+    client = OpenAI(
+        base_url=f"{cfg.azure_openai_endpoint.rstrip('/')}/openai/v1/",
         api_key=cle,
         timeout=cfg.llm_delai_s,
         max_retries=0,
@@ -81,9 +78,9 @@ def fabrique_llm(cfg: ConfigLLM) -> ClientLLM | None:
 
 
 class AzureLLM:
-    """Azure OpenAI (SDK ``openai``) derrière le port ClientLLM."""
+    """Azure OpenAI (SDK ``openai``, API v1) derrière le port ClientLLM."""
 
-    def __init__(self, client: AzureOpenAI, deploiement: str) -> None:
+    def __init__(self, client: OpenAI, deploiement: str) -> None:
         self._client, self.modele = client, deploiement
 
     def completer(self, systeme: str, question: str) -> str:

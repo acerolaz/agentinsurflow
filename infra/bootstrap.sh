@@ -16,8 +16,14 @@ existe() { "$@" -o none 2>/dev/null; }
 echo "① Socle Azure"
 az account set -s "$AZURE_SUBSCRIPTION_ID"
 az extension add -n containerapp --upgrade -y -o none
-az provider register -n Microsoft.App --wait -o none
-az provider register -n Microsoft.OperationalInsights --wait -o none
+# Un Reader ne peut pas enregistrer de fournisseur : on vérifie seulement
+for ns in Microsoft.App Microsoft.OperationalInsights Microsoft.ContainerRegistry; do
+  etat=$(az provider show -n "$ns" --query registrationState -o tsv)
+  if [ "$etat" != "Registered" ]; then
+    echo "✘ $ns : $etat. À demander au formateur : az provider register -n $ns"
+    exit 1
+  fi
+done
 az group create -n "$RG" -l "$AZURE_LOCATION" -o none
 existe az acr show -n "$ACR_NAME" || az acr create -n "$ACR_NAME" -g "$RG" --sku Basic -o none
 existe az containerapp env show -n "$CONTAINERAPPS_ENV" -g "$RG" ||

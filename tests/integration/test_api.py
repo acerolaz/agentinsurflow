@@ -14,7 +14,9 @@ client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def _sans_override() -> Iterator[None]:
+def _sans_vrai_llm() -> Iterator[None]:
+    # jamais le vrai Azure OpenAI en test, même si un .env local est chargé
+    app.dependency_overrides[obtenir_llm] = lambda: None
     yield
     app.dependency_overrides.clear()
 

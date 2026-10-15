@@ -3,7 +3,7 @@
 On note **du démontré, jamais du déclaré** (source : grille-atelier-2-socle-chaine.pdf). Chaque minute
 montre un critère de la grille sur l'environnement déployé.
 
-Date de l'atelier : `🔴 À CONFIRMER`.
+Date de l'atelier : `🔴 15/10/2026`.
 
 ## Préparation (la veille et 10 min avant)
 

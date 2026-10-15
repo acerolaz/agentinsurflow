@@ -7,7 +7,7 @@ from collections.abc import Callable
 
 import httpx
 import pytest
-from openai import AzureOpenAI
+from openai import OpenAI
 
 from agentinsurflow.llm import AzureLLM, ConfigLLM, ErreurLLM, fabrique_llm
 
@@ -18,16 +18,15 @@ def _config(**valeurs: str) -> ConfigLLM:
     defaut = {
         "azure_openai_endpoint": ENDPOINT,
         "azure_openai_api_key": "cle-de-test",
-        "azure_openai_deployment": "chat"
+        "azure_openai_deployment": "chat",
     }
     return ConfigLLM(_env_file=None, **{**defaut, **valeurs})  # type: ignore[arg-type]
 
 
 def _azure(repondre: Callable[[httpx.Request], httpx.Response]) -> AzureLLM:
-    client = AzureOpenAI(
-        azure_endpoint=ENDPOINT,
+    client = OpenAI(
+        base_url=f"{ENDPOINT}/openai/v1/",
         api_key="cle-de-test",
-        api_version="2024-10-21",
         max_retries=0,
         http_client=httpx.Client(transport=httpx.MockTransport(repondre)),
     )
@@ -67,10 +66,11 @@ def test_appelle_le_deploiement_et_rend_le_texte() -> None:
 
     assert _azure(repondre).completer("sys", "Question") == "Bonjour."
     requete = recu[0]
-    assert requete.url.path == "/openai/deployments/chat/chat/completions"
-    assert requete.url.params["api-version"] == "2024-10-21"
-    assert requete.headers["api-key"] == "cle-de-test"
-    assert [m["role"] for m in json.loads(requete.content)["messages"]] == ["system", "user"]
+    assert requete.url.path == "/openai/v1/chat/completions"
+    assert requete.headers["authorization"] == "Bearer cle-de-test"
+    corps = json.loads(requete.content)
+    assert corps["model"] == "chat"  # le nom du déploiement Azure
+    assert [m["role"] for m in corps["messages"]] == ["system", "user"]
 
 
 def test_erreur_du_fournisseur_leve_erreur_llm() -> None:

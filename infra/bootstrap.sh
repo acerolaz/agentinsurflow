@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Reconstruit tout l'environnement depuis le repo : `make infra` (lit le .env via le Makefile).
 # Idempotent : chaque ressource est d'abord cherchée, créée seulement si elle manque.
-# Prérequis : az login (Owner ou Contributor + User Access Administrator sur la souscription),
+# Prérequis : az login (Owner ou Contributor + User Access Administrator sur la souscription), gh (lecture),
 # et Docker. Ne touche pas à GitHub : les valeurs à reporter sont affichées à la fin.
 # ponytail: CLI az au sprint 2 ; Terraform au sprint 3 (choix validé au Temps 1)
 set -euo pipefail
@@ -43,16 +43,19 @@ for app in "$APP_STAGING" "$APP_PRODUCTION"; do
 done
 
 echo "③ Identité de la CI : application Entra + fédération OIDC (aucun secret)"
-nom_ci="$(basename "$GITHUB_REPO")-ci"
+nom_ci="$(basename "$GITHUB_REPO")"   # application Entra « agentinsurflow », déjà créée et fédérée
 app_id=$(az ad app list --display-name "$nom_ci" --query "[0].appId" -o tsv)
 [ -n "$app_id" ] || app_id=$(az ad app create --display-name "$nom_ci" --query appId -o tsv)
 existe az ad sp show --id "$app_id" || az ad sp create --id "$app_id" -o none
+# Préfixe du sujet OIDC tel que GitHub l'émet : format immuable (owner@id/repo@id) ou classique
+prefixe=$(gh api "repos/$GITHUB_REPO/actions/oidc/customization/sub" --jq '.sub_claim_prefix // empty')
+[ -n "$prefixe" ] || prefixe="repo:$GITHUB_REPO"
 for sujet in ref:refs/heads/main environment:staging environment:production; do
   nom=$(echo "$sujet" | tr ':/' '--')
   existe az ad app federated-credential show --id "$app_id" --federated-credential-id "$nom" ||
     az ad app federated-credential create --id "$app_id" -o none --parameters "{
       \"name\": \"$nom\", \"issuer\": \"https://token.actions.githubusercontent.com\",
-      \"subject\": \"repo:$GITHUB_REPO:$sujet\", \"audiences\": [\"api://AzureADTokenExchange\"]}"
+      \"subject\": \"$prefixe:$sujet\", \"audiences\": [\"api://AzureADTokenExchange\"]}"
 done
 attribuer() { # rôle, portée
   [ -n "$(az role assignment list --assignee "$app_id" --role "$1" --scope "$2" --query '[0].id' -o tsv)" ] ||

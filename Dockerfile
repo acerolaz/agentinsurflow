@@ -8,6 +8,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 COPY agentinsurflow ./agentinsurflow
+COPY llm.env ./
 RUN uv sync --locked --no-dev
 
 # Version servie par /health : le SHA du commit, gravé au build

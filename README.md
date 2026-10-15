@@ -30,13 +30,14 @@ flowchart LR
 ├── agentinsurflow/            # le code (architecture hexagonale légère)
 │   ├── api.py                 #   adaptateur HTTP : /health, POST /api/agent, Swagger sur /
 │   ├── agent.py               #   domaine : l'agent, ne connaît que le port ClientLLM
-│   └── llm.py                 #   port ClientLLM + FakeLLM (tests) + adaptateur AzureLLM + config
+│   ├── llm.py                 #   port ClientLLM + FakeLLM (tests) + adaptateur AzureLLM + config
+│   └── prompts/systeme.md     #   prompt système (le modifier déclenche les evals)
 ├── tests/
 │   ├── unit/                  # agent et adaptateur Azure (HTTP simulé, sans réseau)
 │   └── integration/           # requête HTTP → route → agent, LLM mocké
 ├── tools/evals.py             # make eval : rejoue le golden set contre une API déployée
 ├── .github/workflows/
-│   ├── ci-cd.yml              # lint → test → build → staging → evals → production
+│   ├── ci-cd.yml              # lint → test → [evals-pr] · build → staging → [evals] → production
 │   └── deploy.yml             # déploiement + fumée ; lancé à la main = rollback
 ├── infra/
 │   ├── bootstrap.sh           # make infra : crée l'infra Azure (idempotent)
@@ -46,6 +47,7 @@ flowchart LR
 │   ├── golden.jsonl           # cas d'évaluation de l'agent (versionnés)
 │   ├── preuves/               # journaux de chaîne et captures versionnés
 │   └── ateliers/              # grille de l'atelier croisé n°2
+├── llm.env                    # version du LLM épinglée (la modifier déclenche les evals)
 ├── Dockerfile · Makefile · pyproject.toml · uv.lock · .python-version
 └── .env.example               # toutes les clés, sans valeurs
 ```
@@ -91,8 +93,8 @@ make eval                               # contre l'API locale (make run)
 make eval URL=https://<staging>         # contre un environnement déployé
 ```
 
-`tools/evals.py` rejoue `eval/golden.jsonl` en boîte noire : seul `POST /api/agent` est appelé, sans aucun secret.
-Chaque cas passe des contrôles déterministes :
+`tools/evals.py` rejoue `eval/golden.jsonl` en boîte noire (seul `POST /api/agent` est appelé). Chaque cas
+passe des contrôles déterministes, et la latence est mesurée :
 
 | Contrôle | Vérifie |
 |---|---|
@@ -100,10 +102,37 @@ Chaque cas passe des contrôles déterministes :
 | `non_vide` | La réponse n'est pas vide |
 | `longueur` | La réponse est bornée (600 caractères par défaut), y compris sous injection |
 | `contient_un` | La réponse contient au moins un mot attendu (sujet, réponse en français) |
+| **latence p95** | ≤ 30 s (dossier-conception-v1.md, D11) |
 
-Dans la chaîne, le job `evals` tourne **contre staging, avant la production**. Si moins de **80 %** des cas
-réussissent (seuil de départ `🔴 à calibrer`), la production n'est pas déployée. Le rapport JSON est publié comme
-artefact du run (`rapport-evals`).
+Porte : taux de réussite ≥ **80 %** (seuil de départ, `🔴 à calibrer`) **et** latence p95 ≤ 30 s.
+
+**Déclenchement** : les evals ne tournent que si un fichier susceptible de changer leur résultat est modifié
+(job `changements`) ; sinon elles sont sautées et la chaîne continue.
+
+| Déclencheur | Fichier versionné |
+|---|---|
+| Prompt | `agentinsurflow/prompts/` |
+| Golden dataset | `eval/golden.jsonl` |
+| Version du LLM | `llm.env` (`AZURE_OPENAI_DEPLOYMENT`, épinglé et copié dans l'image) |
+
+| Job | Quand | Contre quoi | Authentification au LLM |
+|---|---|---|---|
+| `evals-pr` | PR (exigé avant merge) | API lancée **dans le runner** | **OIDC, sans clé** (rôle sur la ressource Foundry) |
+| `evals` | merge, avant la production | **staging** déployé | celle de la Container App |
+
+**Artefact de chaque passage** : `evals-pr-<sha>` ou `evals-staging-<sha>` (onglet *Summary* du run). Le rapport
+JSON s'ouvre sur un **manifeste** qui dit ce qui a été évalué :
+
+| Champ du manifeste | Contenu |
+|---|---|
+| `date`, `commit`, `run`, `cible` | Quand, quel commit, lien du run GitHub, URL évaluée |
+| `modele` | Déploiement épinglé (`llm.env`) **et** modèle observé dans les réponses de l'API |
+| `prompts` | Chaque prompt : fichier, empreinte sha256, contenu |
+| `golden` | Fichier, empreinte sha256, identifiants des cas |
+| `portes` | Seuil de réussite et latence p95 maximale appliqués |
+
+Viennent ensuite le taux, la latence p95 et le détail de chaque cas (contrôles ratés, latence, réponse).
+Exemple réel : `eval/preuves/evals-local-2026-10-15.json`.
 
 > 🔁 **Analogie .NET** : une suite xUnit de non-régression, sauf qu'on mesure un **taux de réussite** au lieu
 > d'exiger 100 % de `Assert`, car la sortie d'un LLM n'est pas déterministe (source : dossier-conception-v1.md, §7.2).
@@ -137,7 +166,7 @@ Détails et scénario de répétition : [docs/rollback.md](docs/rollback.md).
 | Rollback | [docs/rollback.md](docs/rollback.md) |
 | Script de la démo (20 min) | [docs/demo-atelier.md](docs/demo-atelier.md) |
 | Journaux versionnés | `eval/preuves/` (`make preuve RUN=<id> NOM=<nom>`) |
-| Rapport d'évaluation | artefact `rapport-evals` du run, à copier dans `eval/preuves/` |
+| Rapport d'évaluation (manifeste + résultats) | artefact `evals-staging-<sha>` ou `evals-pr-<sha>` du run, à copier dans `eval/preuves/` |
 | Grille de l'atelier | [eval/ateliers/sprint-2-grille.md](eval/ateliers/sprint-2-grille.md) |
 
 ## Hors périmètre du socle

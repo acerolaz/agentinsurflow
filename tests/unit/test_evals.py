@@ -48,3 +48,53 @@ def test_la_porte_bloque_sous_le_seuil(tmp_path: Path, monkeypatch: pytest.Monke
 
     assert evals.main(["--golden", str(golden), "--seuil", "0.8", "--rapport", str(rapport)]) == 1
     assert json.loads(rapport.read_text(encoding="utf-8"))["taux"] == 0.5
+
+
+def test_p95_rang_le_plus_proche() -> None:
+    assert evals.p95([1.0, 5.0, 2.0, 4.0, 3.0]) == 5.0
+    assert evals.p95([float(i) for i in range(1, 21)]) == 19.0
+
+
+def test_la_porte_bloque_si_trop_lent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    golden = tmp_path / "golden.jsonl"
+    golden.write_text(json.dumps({"id": "a", "question": "q"}), encoding="utf-8")
+    monkeypatch.setattr(evals, "interroger", lambda url, question: OK)
+
+    assert evals.main(["--golden", str(golden)]) == 0
+    assert evals.main(["--golden", str(golden), "--latence-p95-max", "-1"]) == 1
+
+
+def test_le_rapport_s_ouvre_sur_le_manifeste(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    golden = tmp_path / "golden.jsonl"
+    golden.write_text(json.dumps({"id": "domaine", "question": "q"}) + "\n", encoding="utf-8")
+    prompts = tmp_path / "prompts"
+    prompts.mkdir()
+    (prompts / "systeme.md").write_text("Tu es l'assistant.", encoding="utf-8")
+    llm_env = tmp_path / "llm.env"
+    llm_env.write_text("# épinglé\nAZURE_OPENAI_DEPLOYMENT=Kimi-K2.5\n", encoding="utf-8")
+    monkeypatch.setattr(evals, "interroger", lambda url, question: OK)
+    monkeypatch.setenv("GITHUB_SHA", "abc123")
+    rapport = tmp_path / "rapport.json"
+
+    code = evals.main(
+        [
+            "--golden",
+            str(golden),
+            "--prompts",
+            str(prompts),
+            "--llm-env",
+            str(llm_env),
+            "--rapport",
+            str(rapport),
+        ]
+    )
+
+    m = json.loads(rapport.read_text(encoding="utf-8"))["manifeste"]
+    assert code == 0 and m["commit"] == "abc123"
+    assert m["modele"] == {"fichier": str(llm_env), "deploiement": "Kimi-K2.5", "observe": ["chat"]}
+    assert m["prompts"][0]["contenu"] == "Tu es l'assistant."
+    assert len(m["prompts"][0]["sha256"]) == 64
+    assert m["golden"]["cas"] == ["domaine"] and len(m["golden"]["sha256"]) == 64
+    assert m["portes"] == {"seuil": 0.8, "latence_p95_max_s": 30.0}

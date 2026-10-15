@@ -1,13 +1,18 @@
 """Port LLM du socle (repris de Kaldera, ``llm.py``).
 
 Le domaine ne connaît que ``ClientLLM`` ; le SDK ``openai`` n'apparaît que dans l'adaptateur
-``AzureLLM``. ``FakeLLM`` sert aux tests : la CI n'appelle jamais Azure OpenAI.
+``AzureLLM``. ``FakeLLM`` sert aux tests unitaires et d'intégration (aucun appel réel).
+
+Authentification : la clé si elle est fournie, sinon Entra ID (``DefaultAzureCredential``) :
+identité OIDC dans la CI, identité managée dans Container Apps, ``az login`` en local.
 """
 
 from __future__ import annotations
 
 from typing import Protocol
 
+from azure.core.exceptions import ClientAuthenticationError
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import OpenAI, OpenAIError
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -44,14 +49,19 @@ class FakeLLM:
 
 
 class ConfigLLM(BaseSettings):
-    """Le modèle est une configuration, pas du code : tout vient du .env ou de GitHub."""
+    """Le modèle est une configuration, pas du code : ``llm.env`` (versionné) puis ``.env``."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=("llm.env", ".env"), env_ignore_empty=True, extra="ignore"
+    )
 
     azure_openai_endpoint: str = ""
     azure_openai_api_key: SecretStr = SecretStr("")
     azure_openai_deployment: str = ""
     llm_delai_s: float = Field(default=20, gt=0)
+
+
+SCOPE_ENTRA = "https://cognitiveservices.azure.com/.default"
 
 
 def charger_config() -> ConfigLLM:
@@ -61,13 +71,13 @@ def charger_config() -> ConfigLLM:
 
 def fabrique_llm(cfg: ConfigLLM) -> ClientLLM | None:
     """Le ClientLLM, ou None s'il n'est pas configuré (⇒ mode dégradé)."""
-    cle = cfg.azure_openai_api_key.get_secret_value()
-    if not (cfg.azure_openai_endpoint and cle and cfg.azure_openai_deployment):
+    if not (cfg.azure_openai_endpoint and cfg.azure_openai_deployment):
         return None
+    cle = cfg.azure_openai_api_key.get_secret_value()
     # API v1 d'Azure OpenAI : client OpenAI standard, sans version d'API à gérer
     client = OpenAI(
-        base_url=f"{cfg.azure_openai_endpoint.rstrip('/')}/openai/v1/",
-        api_key=cle,
+        base_url=f"{cfg.azure_openai_endpoint.rstrip('/').removesuffix('/openai/v1')}/openai/v1/",
+        api_key=cle or get_bearer_token_provider(DefaultAzureCredential(), SCOPE_ENTRA),
         timeout=cfg.llm_delai_s,
         max_retries=0,
     )
@@ -93,5 +103,5 @@ class AzureLLM:
                 ],
             )
             return reponse.choices[0].message.content or ""
-        except (OpenAIError, IndexError) as exc:
+        except (OpenAIError, ClientAuthenticationError, IndexError) as exc:
             raise ErreurLLM(f"erreur du fournisseur ou réponse mal formée : {exc!r}") from exc

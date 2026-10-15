@@ -6,7 +6,7 @@ ou répétition**. Nommage : `<sujet>-AAAA-MM-JJ.<ext>`.
 | Sujet | Produit par | Fichiers attendus |
 |---|---|---|
 | `livraison` | `make preuve RUN=<id du run du merge> NOM=livraison-AAAA-MM-JJ` | `.log`, `.resume.txt` |
-| `evals` | artefact `rapport-evals` du run du merge (`gh run download <id> -n rapport-evals`) | `evals-AAAA-MM-JJ.json` |
+| `evals` | artefact `evals-staging-<sha>` ou `evals-pr-<sha>` (`gh run download <id> -n <nom>`) : manifeste + résultats | `evals-AAAA-MM-JJ.json` |
 | `blocage` | `make preuve RUN=<id du run rouge> NOM=blocage-AAAA-MM-JJ` + capture de la PR | `.log`, `.resume.txt`, `-pr.png` |
 | `rollback` | `make preuve RUN=<id du run deploy> NOM=rollback-AAAA-MM-JJ` + `/health` avant et après | `.log`, `.resume.txt`, `.md`, `.png` |
 

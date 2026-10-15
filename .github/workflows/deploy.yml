@@ -77,7 +77,6 @@ jobs:
           az containerapp update -n "$APP" -g "$RG" --image "$IMAGE" -o none --set-env-vars \
             "APP_ENV=${{ inputs.environnement }}" \
             "AZURE_OPENAI_ENDPOINT=${{ vars.AZURE_OPENAI_ENDPOINT }}" \
-            "AZURE_OPENAI_DEPLOYMENT=${{ vars.AZURE_OPENAI_DEPLOYMENT }}" \
             "AZURE_OPENAI_API_KEY=secretref:aoai-key"
           fqdn=$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
           echo "url=https://$fqdn" >> "$GITHUB_OUTPUT"

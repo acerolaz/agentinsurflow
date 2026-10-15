@@ -25,7 +25,7 @@ Date de l'atelier : `🔴 15/10/2026`.
 | **5:00 → 6:00** | **3 · Un échec bloque** (lancement) | `git push` de `demo/commit-casse` + `gh pr create --fill` | Un deuxième run démarre en parallèle |
 | **6:00 → 10:00** | **5 · Secrets et reproductibilité** (pendant que les runs tournent) | `.gitignore` · `.env.example` sans valeurs · `git ls-files \| grep .env` (vide) · Settings : variables et secrets (noms seulement) · connexion OIDC sans secret Azure · `make infra` idempotent · [secrets.md](secrets.md) | Aucun secret dans le dépôt ; l'environnement se reconstruit depuis le repo |
 | **10:00 → 12:30** | **3 · Un échec bloque** (résultat) | Ouvrir la PR cassée | `lint` ✔, `test` ✘ (2 échecs nommés), merge **bloqué** ; build et déploiement jamais lancés |
-| **12:30 → 15:00** | **2 · Livraison automatique** (résultat) | Le run du merge : lint → test → build → staging + fumée → **evals** → production + fumée ; ouvrir l'artefact `rapport-evals` | Swagger prod montre le nouvel exemple ; `/health` donne le nouveau SHA |
+| **12:30 → 15:00** | **2 · Livraison automatique** (résultat) | Le run du merge : lint → test → build → staging + fumée → **evals** → production + fumée ; ouvrir l'artefact `evals-staging-<sha>` (manifeste : modèle, prompt, golden dataset) | Swagger prod montre le nouvel exemple ; `/health` donne le nouveau SHA |
 | **15:00 → 18:30** | **4 · Rollback** | `make rollback` → run `deploy` → `/health` | Retour au SHA précédent **en une opération**, chrono à l'appui |
 | **18:30 → 20:00** | Synthèse | Les 5 critères ↔ leurs preuves (tableau ci-dessous) ; remise en avant : `make rollback` | — |
 

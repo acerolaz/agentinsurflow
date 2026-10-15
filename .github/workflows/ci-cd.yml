@@ -1,6 +1,8 @@
-# Chaîne du socle : lint → test → build → staging (+ fumée) → evals → production (+ fumée).
-# PR : lint + test seulement (portes bloquantes, exigées par la protection de main).
-# Merge sur main : toute la chaîne, sans action manuelle.
+# Chaîne du socle (CI/CD/Evals)
+#   PR    : lint → test → [evals-pr]                       (portes exigées par la protection de main)
+#   merge : lint → test → build → staging (+ fumée) → [evals] → production (+ fumée)
+# [evals…] ne tournent QUE si le prompt, le golden dataset ou la version du LLM changent
+# (job changements) ; sinon ils sont sautés et la chaîne continue.
 name: ci-cd
 
 on:
@@ -14,6 +16,10 @@ permissions:
 concurrency:
   group: ci-cd-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Fichiers qui peuvent changer le résultat des évaluations
+  DECLENCHEURS_EVALS: '^(agentinsurflow/prompts/|eval/golden\.jsonl$|llm\.env$)'
 
 jobs:
   lint:
@@ -33,7 +39,56 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with: { version: "0.11.13", enable-cache: true }
       - run: make install
-      - run: make test # LLM mocké : aucun secret Azure en CI
+      - run: make test # LLM mocké : aucun appel réel
+
+  changements:
+    runs-on: ubuntu-latest
+    outputs:
+      evals: ${{ steps.diff.outputs.evals }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Prompt, golden dataset ou version du LLM modifiés ?
+        id: diff
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # base introuvable (1er push d'une branche…) : on évalue, par prudence
+          if ! fichiers=$(git diff --name-only "$BASE" HEAD 2>/dev/null); then
+            echo "evals=true" >> "$GITHUB_OUTPUT"; echo "Base introuvable : évaluations lancées"; exit 0
+          fi
+          declencheurs=$(echo "$fichiers" | grep -E "$DECLENCHEURS_EVALS" || true)
+          echo "evals=$([ -n "$declencheurs" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "Déclencheurs modifiés : ${declencheurs:-aucun}"
+
+  evals-pr:
+    needs: [test, changements]
+    if: github.event_name == 'pull_request' && needs.changements.outputs.evals == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    env:
+      AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "0.11.13", enable-cache: true }
+      - uses: azure/login@v2 # OIDC : le jeton Entra sert aussi à appeler le LLM, sans clé
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true # seul un rôle sur la ressource Foundry est nécessaire
+      - run: make install
+      - name: Golden set contre l'API de la PR, LLM réel (porte bloquante avant merge)
+        run: |
+          uv run uvicorn agentinsurflow.api:app --port 8000 &
+          for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:8000/health > /dev/null && break; sleep 1; done
+          uv run python tools/evals.py --url http://127.0.0.1:8000 --rapport evals-pr.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evals-pr-${{ github.event.pull_request.head.sha }}
+          path: evals-pr.json
+          if-no-files-found: error
 
   build:
     needs: test
@@ -63,7 +118,8 @@ jobs:
     secrets: inherit
 
   evals:
-    needs: staging
+    needs: [staging, changements]
+    if: needs.changements.outputs.evals == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -71,10 +127,17 @@ jobs:
         run: python3 tools/evals.py --url "${{ needs.staging.outputs.url }}" --rapport evals.json
       - uses: actions/upload-artifact@v4
         if: always()
-        with: { name: rapport-evals, path: evals.json }
+        with:
+          name: evals-staging-${{ github.sha }}
+          path: evals.json
+          if-no-files-found: error
 
   production:
-    needs: evals
+    needs: [changements, staging, evals]
+    # evals sautées (rien à évaluer) = feu vert ; evals en échec = production bloquée
+    if: >-
+      ${{ !cancelled() && needs.changements.result == 'success'
+      && needs.staging.result == 'success' && needs.evals.result != 'failure' }}
     permissions: { contents: read, id-token: write }
     uses: ./.github/workflows/deploy.yml
     with: { environnement: production, tag: "${{ github.sha }}" }

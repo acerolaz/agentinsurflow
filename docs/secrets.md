@@ -28,8 +28,8 @@ Avant tout report, créer les deux environnements : Settings › Environments �
 | `ACR_NAME` | Variable de repo | `ACR_NAME` | `ci-cd.yml` › build (push), `deploy.yml` (image) |
 | `APP_STAGING` | Variable de l'env. `staging` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
 | `APP_PRODUCTION` | Variable de l'env. `production` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
-| `AZURE_OPENAI_ENDPOINT` | Variable des **deux** env. | `AZURE_OPENAI_ENDPOINT` | `deploy.yml` › `--set-env-vars` |
-| `AZURE_OPENAI_DEPLOYMENT` | Variable des **deux** env. | `AZURE_OPENAI_DEPLOYMENT` | idem |
+| `AZURE_OPENAI_ENDPOINT` | Variable de **repo** | `AZURE_OPENAI_ENDPOINT` | `deploy.yml` › `--set-env-vars` ; `ci-cd.yml` › `evals-pr` |
+| `AZURE_OPENAI_DEPLOYMENT` | — (**pas dans GitHub**) | — | Épinglé dans `llm.env`, versionné et copié dans l'image : le changer déclenche les evals |
 | `AZURE_OPENAI_API_KEY` 🔒 | **Secret** des **deux** env. | `AZURE_OPENAI_API_KEY` | `deploy.yml` › secret Container Apps `aoai-key` |
 | `APP_ENV`, `LLM_DELAI_S` | — (non reporté) | — | `APP_ENV` est posé par `deploy.yml` ; `LLM_DELAI_S` garde sa valeur par défaut |
 | `AZURE_LOCATION`, `CONTAINERAPPS_ENV`, `GITHUB_REPO` | — (non reporté) | — | Lus seulement par `make` en local |

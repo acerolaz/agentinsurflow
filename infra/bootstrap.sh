@@ -50,7 +50,7 @@ existe az ad sp show --id "$app_id" || az ad sp create --id "$app_id" -o none
 # Préfixe du sujet OIDC tel que GitHub l'émet : format immuable (owner@id/repo@id) ou classique
 prefixe=$(gh api "repos/$GITHUB_REPO/actions/oidc/customization/sub" --jq '.sub_claim_prefix // empty')
 [ -n "$prefixe" ] || prefixe="repo:$GITHUB_REPO"
-for sujet in ref:refs/heads/main environment:staging environment:production; do
+for sujet in ref:refs/heads/main environment:staging environment:production pull_request; do
   nom=$(echo "$sujet" | tr ':/' '--')
   existe az ad app federated-credential show --id "$app_id" --federated-credential-id "$nom" ||
     az ad app federated-credential create --id "$app_id" -o none --parameters "{

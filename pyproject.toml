@@ -8,6 +8,7 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "openai>=1.50",
     "pydantic-settings>=2.4",
+    "azure-identity>=1.17",
 ]
 
 [dependency-groups]

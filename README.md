@@ -81,8 +81,9 @@ Exemple de réponse de `POST /api/agent` : `{"texte": "…", "mode": "llm", "mod
 Avec `"mode": "degrade"`, le LLM n'est pas joignable (ou ne répond pas en 30 s, `LLM_DELAI_S`) et la demande
 part en revue humaine (source : dossier-conception-v1.md, K5).
 
-**Authentification au LLM** : la clé `AZURE_OPENAI_API_KEY` si elle est fournie ; sinon **Entra ID**
-(`DefaultAzureCredential`) : `az login` en local, OIDC dans la CI, identité managée dans Container Apps.
+**Authentification au LLM** : **aucune clé hors de ton poste**. Le code utilise Entra ID
+(`DefaultAzureCredential`) : OIDC dans la CI, identité managée dans Container Apps (rôle *Cognitive Services
+User* sur `svespuce-971`). En local, la clé `AZURE_OPENAI_API_KEY` du `.env` reste possible, sinon `az login`.
 Le modèle est épinglé dans `llm.env` ; l'endpoint est accepté avec ou sans le suffixe `/openai/v1`.
 
 ## Tester

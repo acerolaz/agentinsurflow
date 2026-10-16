@@ -71,13 +71,12 @@ jobs:
         id: deployer
         env:
           IMAGE: ${{ steps.image.outputs.image }}
-          AOAI_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
         run: |
-          az containerapp secret set -n "$APP" -g "$RG" --secrets "aoai-key=$AOAI_KEY" -o none
+          # Aucune clé : l'app appelle le modèle avec son identité managée
+          # (rôle Cognitive Services User sur la ressource Foundry)
           az containerapp update -n "$APP" -g "$RG" --image "$IMAGE" -o none --set-env-vars \
             "APP_ENV=${{ inputs.environnement }}" \
-            "AZURE_OPENAI_ENDPOINT=${{ vars.AZURE_OPENAI_ENDPOINT }}" \
-            "AZURE_OPENAI_API_KEY=secretref:aoai-key"
+            "AZURE_OPENAI_ENDPOINT=${{ vars.AZURE_OPENAI_ENDPOINT }}"
           fqdn=$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
           echo "url=https://$fqdn" >> "$GITHUB_OUTPUT"
 

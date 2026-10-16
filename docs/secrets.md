@@ -13,7 +13,7 @@ reportée **à la main** dans GitHub.
 |---|---|---|---|
 | **Variable de repo** | Settings › Secrets and variables › Actions › *Variables* | `${{ vars.NOM }}` | Identifiants non sensibles, communs à tous les jobs |
 | **Variable d'environnement** | Settings › Environments › `staging` ou `production` › *Environment variables* | `${{ vars.NOM }}` dans un job qui déclare `environment:` | Valeurs propres à un environnement |
-| **Secret d'environnement** | Settings › Environments › … › *Environment secrets* | `${{ secrets.NOM }}`, masqué dans les journaux | Valeurs sensibles |
+| **Secret d'environnement** | Settings › Environments › … › *Environment secrets* | `${{ secrets.NOM }}`, masqué dans les journaux | Valeurs sensibles : **aucun utilisé** aujourd'hui |
 
 Avant tout report, créer les deux environnements : Settings › Environments › *New environment* › `staging`, puis `production`.
 
@@ -30,7 +30,7 @@ Avant tout report, créer les deux environnements : Settings › Environments �
 | `APP_PRODUCTION` | Variable de l'env. `production` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
 | `AZURE_OPENAI_ENDPOINT` | Variable de **repo** | `AZURE_OPENAI_ENDPOINT` | `deploy.yml` › `--set-env-vars` ; `ci-cd.yml` › `evals-pr` |
 | `AZURE_OPENAI_DEPLOYMENT` | — (**pas dans GitHub**) | — | Épinglé dans `llm.env`, versionné et copié dans l'image : le changer déclenche les evals |
-| `AZURE_OPENAI_API_KEY` 🔒 | **Secret** des **deux** env. | `AZURE_OPENAI_API_KEY` | `deploy.yml` › secret Container Apps `aoai-key` (supprimable à terme, voir §4) |
+| `AZURE_OPENAI_API_KEY` 🔒 | — (**jamais dans GitHub**) | — | Local seulement ; la CI et les Container Apps s'authentifient sans clé (§4) |
 | `APP_ENV`, `LLM_DELAI_S` | — (non reporté) | — | `APP_ENV` est posé par `deploy.yml` ; `LLM_DELAI_S` garde sa valeur par défaut (30 s) |
 | `AZURE_LOCATION`, `CONTAINERAPPS_ENV`, `GITHUB_REPO` | — (non reporté) | — | Lus seulement par `make` en local |
 
@@ -39,7 +39,6 @@ Si tu préfères la ligne de commande à l'interface, chaque report a son équiv
 ```bash
 gh variable set ACR_NAME -R acerolaz/agentinsurflow                       # variable de repo
 gh variable set CONTAINER_APP_NAME -R acerolaz/agentinsurflow -e staging  # variable d'environnement
-gh secret set AZURE_OPENAI_API_KEY -R acerolaz/agentinsurflow -e production  # secret (valeur demandée, non affichée)
 ```
 
 ## 3. Pourquoi aucun secret pour se connecter à Azure
@@ -61,24 +60,31 @@ Le préfixe du sujet dépend du repo : `make infra` le lit sur GitHub
 > 🔁 **Analogie .NET** : c'est la *Workload Identity Federation* d'une *service connection* Azure DevOps, au lieu
 > d'un Service Principal avec mot de passe.
 
-## 4. Le trajet de la clé Azure OpenAI
+## 4. Aucune clé pour le LLM : identités Entra ID
+
+Le dépôt et GitHub ne contiennent **aucun secret** : ni pour Azure, ni pour le modèle.
 
 ```mermaid
 flowchart LR
-    E(["📄 .env local"]) -- "report manuel" --> G(["🔒 Secret GitHub<br/>env. production"])
-    G -- "deploy.yml<br/>secret set" --> C(["🔒 Secret Container App<br/>aoai-key"])
-    C -- "secretref:aoai-key" --> V(["⚙️ AZURE_OPENAI_API_KEY<br/>dans le conteneur"])
+    CI(["⚙️ Job evals-pr<br/>(runner GitHub)"]) -- "jeton OIDC<br/>app agentinsurflow" --> F(["🤖 Foundry svespuce-971<br/>Kimi-K2.5"])
+    CA(["🚀 Container Apps<br/>staging / production"]) -- "identité managée<br/>(sans secret)" --> F
+    DEV(["💻 Poste local"]) -. "clé du .env<br/>ou az login" .-> F
     classDef plat fill:#1E3A8A,stroke:#1E3A8A,color:#fff
     classDef ok fill:#DCFCE7,stroke:#15803D,color:#14532D
-    class G,C plat
-    class E,V ok
+    class CI,CA plat
+    class F,DEV ok
 ```
 
-La clé n'apparaît jamais dans l'image, dans le dépôt ni en clair dans les journaux (masquage GitHub).
+| Qui appelle le modèle | Identité | Rôle requis sur `svespuce-971` |
+|---|---|---|
+| Job `evals-pr` | application Entra `agentinsurflow` (OIDC) | *Cognitive Services User* |
+| `insurflow-staging`, `insurflow-production` | identité managée de chaque app | *Cognitive Services User* |
+| Toi, en local | clé du `.env`, ou ton compte (`az login`) | aucun avec la clé ; *Cognitive Services User* sans clé |
 
-**Vers zéro secret** : le code sait se passer de clé (Entra ID). Dès que les identités managées des deux
-Container Apps auront le rôle *Cognitive Services User* sur `svespuce-971` (demandé au formateur), il suffira de
-retirer l'injection de la clé dans `deploy.yml` et de supprimer les deux secrets `AZURE_OPENAI_API_KEY`.
+> 🔁 **Analogie .NET** : c'est `DefaultAzureCredential` d'`Azure.Identity`, comme une Web App qui lit SQL avec
+> `Authentication=Active Directory Managed Identity` au lieu d'un mot de passe.
+
+Sans ce rôle, l'app répond en mode dégradé, et la fumée bloque alors le déploiement.
 
 ## 5. Vérifier
 

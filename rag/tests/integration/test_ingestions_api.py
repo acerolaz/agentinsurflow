@@ -70,6 +70,17 @@ async def test_etat_du_corpus_dernier_instantane_et_chunks_courants(
     assert (etat.instantane_sha256, etat.chunks) == (SHA, 4)
 
 
+async def test_rejeu_instantane_ancien_201_avec_rejet(api: httpx.AsyncClient) -> None:
+    v2 = CORPUS[0] | {"version": "v2", "texte_html": "<p>Autre texte de l'article, assez long.</p>"}
+    for articles in (CORPUS[:1], [v2]):
+        await api.post("/api/ingestions", json=lot(articles), headers=INGESTION)
+    reponse = await api.post("/api/ingestions", json=lot(CORPUS[:1]), headers=INGESTION)
+    assert reponse.status_code == 201  # pas une 409 sans fin
+    assert reponse.json()["rejets"] == [
+        {"doc_id": CORPUS[0]["doc_id"], "raison": "version_anterieure"}
+    ]
+
+
 async def test_commit_en_echec_jamais_201(
     api: httpx.AsyncClient, conn_writer: AsyncConnection, monkeypatch: pytest.MonkeyPatch
 ) -> None:

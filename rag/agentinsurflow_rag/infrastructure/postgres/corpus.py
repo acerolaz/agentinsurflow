@@ -98,6 +98,10 @@ class PgDepotCorpus:
     def __init__(self, conn: AsyncConnection) -> None:
         self._conn = conn
 
+    async def version_connue(self, doc_id: str, version: str) -> bool:
+        requete = text("SELECT EXISTS (SELECT 1 FROM document WHERE doc_id = :d AND version = :v)")
+        return bool(await self._conn.scalar(requete, {"d": doc_id, "v": version}))
+
     async def version_courante(self, doc_id: str) -> tuple[int, str, str] | None:
         ligne = (
             await self._conn.execute(

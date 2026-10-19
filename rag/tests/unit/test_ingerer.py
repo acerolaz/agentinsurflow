@@ -47,6 +47,20 @@ async def test_nouvelle_version_rend_l_ancienne_obsolete() -> None:
     assert [d.article.version for d in courants] == ["v2"]
 
 
+async def test_rejeu_d_un_instantane_plus_ancien_rejete_sans_conflit() -> None:
+    depot = FakeDepotCorpus()
+    await _ingerer(depot, CORPUS[:1])  # v1
+    v2 = CORPUS[0] | {
+        "version": "v2",
+        "texte_html": "<p>Texte modifié de l'article, assez long.</p>",
+    }
+    await _ingerer(depot, [v2])
+    rapport = await _ingerer(depot, CORPUS[:1])  # l'ancien instantané rejoué (rollback)
+    assert rapport.rejets == [Rejet(CORPUS[0]["doc_id"], "version_anterieure")]
+    assert (rapport.inseres, rapport.nouvelles_versions, len(depot.documents)) == (0, 0, 2)
+    assert [d.article.version for d in depot.documents if not d.obsolete] == ["v2"]
+
+
 async def test_contenu_modifie_sous_la_meme_version_rejete() -> None:
     depot = FakeDepotCorpus()
     await _ingerer(depot, CORPUS[:1])

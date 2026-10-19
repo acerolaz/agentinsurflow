@@ -50,6 +50,9 @@ async def ingerer(
             rapport.inchanges += 1
         elif decision == "conflit_version":
             rapport.rejets.append(Rejet(art.doc_id, "conflit_version"))
+        elif await depot.version_connue(art.doc_id, art.version):
+            # rejeu d'un instantané plus ancien (rollback) : la version courante reste la bonne
+            rapport.rejets.append(Rejet(art.doc_id, "version_anterieure"))
         else:
             a_indexer.append((art, courant[0] if courant else None))
 

@@ -79,6 +79,11 @@ class FakeDepotCorpus:
             and self._doc(c.document_id).collection in collections
         ]
 
+    async def version_connue(self, doc_id: str, version: str) -> bool:
+        return any(
+            (d.article.doc_id, d.article.version) == (doc_id, version) for d in self.documents
+        )
+
     async def version_courante(self, doc_id: str) -> tuple[int, str, str] | None:
         for d in self.documents:
             if d.article.doc_id == doc_id and not d.obsolete:

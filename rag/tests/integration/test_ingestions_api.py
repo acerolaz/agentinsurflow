@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
 import pytest
+from fastapi import Request
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from agentinsurflow_rag.api import app
+from agentinsurflow_rag.api import app, dependances
 from agentinsurflow_rag.api.dependances import obtenir_embeddings
 from agentinsurflow_rag.domain.ports import ErreurEmbeddings
 from agentinsurflow_rag.infrastructure.postgres.corpus import PgDepotCorpus
@@ -64,6 +68,22 @@ async def test_etat_du_corpus_dernier_instantane_et_chunks_courants(
     await api.post("/api/ingestions", json=lot(), headers=INGESTION)
     etat = await PgDepotCorpus(conn_writer).etat()
     assert (etat.instantane_sha256, etat.chunks) == (SHA, 4)
+
+
+async def test_commit_en_echec_jamais_201(
+    api: httpx.AsyncClient, conn_writer: AsyncConnection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # le COMMIT (sortie de la dépendance) doit avoir lieu AVANT l'envoi de la réponse : sinon
+    # 201 + Location pour un lot perdu (portée « request », défaut de FastAPI pour un yield)
+    @asynccontextmanager
+    async def commit_coupe(request: Request, compte: str) -> AsyncIterator[AsyncConnection]:
+        yield conn_writer  # transaction du test, annulée par la fixture : rien n'est écrit
+        raise DBAPIError("COMMIT", None, ConnectionError("connexion coupée"))
+
+    monkeypatch.setattr(dependances, "ouvrir", commit_coupe)
+    del app.dependency_overrides[dependances.connexion_writer]  # le vrai câblage de la route
+    reponse = await api.post("/api/ingestions", json=lot(CORPUS[:1]), headers=INGESTION)
+    assert (reponse.status_code, reponse.json()["code"]) == (503, "BASE_INDISPONIBLE")
 
 
 async def test_lot_concurrent_409_sans_deuxieme_version_courante(

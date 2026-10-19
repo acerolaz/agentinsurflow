@@ -40,7 +40,8 @@ router = APIRouter(tags=["corpus"])
 
 Ingestion = Annotated[Appelant, Depends(exiger("Ingestion"))]
 Gestionnaire = Annotated[Appelant, Depends(exiger("Gestionnaire"))]
-Ecriture = Annotated[AsyncConnection, Depends(connexion_writer)]
+# portée « function » : COMMIT avant l'envoi de la 201 (un COMMIT raté ne doit pas se perdre)
+Ecriture = Annotated[AsyncConnection, Depends(connexion_writer, scope="function")]
 Lecture = Annotated[AsyncConnection, Depends(connexion_reader)]
 Embeddings = Annotated[ClientEmbeddings, Depends(obtenir_embeddings)]
 

@@ -16,11 +16,13 @@ from .llm import ClientLLM, charger_config, fabrique_llm
 
 
 class ConfigApp(BaseSettings):
-    """``APP_VERSION`` est gravée dans l'image au build (SHA du commit)."""
+    """Versions gravées dans l'image au build : SHA du commit, release vX.Y.Z, manifeste."""
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
 
     app_version: str = "dev"
+    app_release: str = "dev"
+    app_manifeste: str = "dev"
     app_env: str = "local"
 
 
@@ -30,7 +32,9 @@ class Question(BaseModel):
 
 class Sante(BaseModel):
     statut: Literal["ok"] = "ok"
-    version: str
+    version: str = Field(description="SHA du commit de l'image")
+    release: str = Field(description="vX.Y.Z ; en staging, la release candidate")
+    manifeste: str = Field(description="X.Y.Z-build.N : modèle, prompts et golden dataset évalués")
     environnement: str
 
 
@@ -48,7 +52,12 @@ app = FastAPI(title="AgentInsurFlow — socle", version="0.1.0", docs_url="/")
 
 @app.get("/health")
 def sante(cfg: Annotated[ConfigApp, Depends(charger_app)]) -> Sante:
-    return Sante(version=cfg.app_version, environnement=cfg.app_env)
+    return Sante(
+        version=cfg.app_version,
+        release=cfg.app_release,
+        manifeste=cfg.app_manifeste,
+        environnement=cfg.app_env,
+    )
 
 
 @app.post("/api/agent")

@@ -1,10 +1,10 @@
 # Chaîne du socle (CI/CD/Evals)
 #   PR    : lint → test → [evals-pr]                       (portes exigées par la protection de main)
 #   merge : lint → test → build → staging (+ fumée) → [evals] → release → production (+ fumée)
-# [evals…] ne tournent QUE si le prompt, le golden dataset ou la version du LLM changent
-# (job changements) ; sinon ils sont sautés et la chaîne continue.
-# Versions : l'image porte le SHA du commit ; la release vX.Y.Z (tag Git, tools/version.py) est
-# posée sur ce commit juste avant la production ; le manifeste des evals porte X.Y.Z-build.N.
+# [evals…] ne tournent QUE si le prompt, le golden dataset ou la version du LLM ont changé depuis le
+# dernier manifeste validé (job changements) ; sinon ils sont sautés et la chaîne continue.
+# Versions, gravées dans l'image et lues sur /health : SHA du commit ; release vX.Y.Z (tag posé
+# juste avant la production) ; manifeste X.Y.Z-build.N (tag manifeste-… posé si les evals passent).
 name: ci-cd
 
 on:
@@ -47,21 +47,33 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       evals: ${{ steps.diff.outputs.evals }}
+      manifeste: ${{ steps.diff.outputs.manifeste }}
+      release: ${{ steps.diff.outputs.release }}
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - name: Prompt, golden dataset ou version du LLM modifiés ?
+        with: { fetch-depth: 0 } # historique + tags
+      - name: Manifeste modifié depuis le dernier validé ? Versions de release et de manifeste
         id: diff
-        env:
-          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
-          # base introuvable (1er push d'une branche…) : on évalue, par prudence
-          if ! fichiers=$(git diff --name-only "$BASE" HEAD 2>/dev/null); then
-            echo "evals=true" >> "$GITHUB_OUTPUT"; echo "Base introuvable : évaluations lancées"; exit 0
+          # Dernier manifeste validé = tag manifeste-X.Y.Z-build.N, posé par release quand les evals passent
+          dernier=$(git describe --tags --match 'manifeste-*' --abbrev=0 HEAD 2>/dev/null || true)
+          if [ -z "$dernier" ]; then
+            evals=true; echo "Aucun manifeste validé : évaluations lancées"
+          else
+            declencheurs=$(git diff --name-only "$dernier" HEAD | grep -E "$DECLENCHEURS_EVALS" || true)
+            evals=$([ -n "$declencheurs" ] && echo true || echo false)
+            echo "Déclencheurs modifiés depuis $dernier : ${declencheurs:-aucun}"
           fi
-          declencheurs=$(echo "$fichiers" | grep -E "$DECLENCHEURS_EVALS" || true)
-          echo "evals=$([ -n "$declencheurs" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "Déclencheurs modifiés : ${declencheurs:-aucun}"
+          if [ "$evals" = true ]; then  # nouveau manifeste : X.Y.Z-build.<n° de ce run>
+            manifeste=$(python3 -c 'from tools.evals import version_manifeste; print(version_manifeste())')
+          else
+            manifeste=${dernier#manifeste-}
+          fi
+          release=$(python3 tools/version.py) # candidate tant que le job release ne l'a pas posée
+          printf 'evals=%s\nmanifeste=%s\nrelease=%s\n' "$evals" "$manifeste" "$release" >> "$GITHUB_OUTPUT"
+          echo "Release $release · manifeste $manifeste"
+        env:
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
 
   evals-pr:
     needs: [test, changements]
@@ -93,7 +105,7 @@ jobs:
           if-no-files-found: error
 
   build:
-    needs: test
+    needs: [test, changements]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
@@ -109,7 +121,10 @@ jobs:
           IMAGE: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow:${{ github.sha }}
         run: |
           az acr login -n "${{ vars.ACR_NAME }}"
-          docker build --build-arg APP_VERSION=${{ github.sha }} -t "$IMAGE" .
+          # /health : SHA de l'image, release vX.Y.Z et version du manifeste, gravés au build
+          docker build --build-arg APP_VERSION=${{ github.sha }} \
+            --build-arg APP_RELEASE=${{ needs.changements.outputs.release }} \
+            --build-arg APP_MANIFESTE=${{ needs.changements.outputs.manifeste }} -t "$IMAGE" .
           docker push "$IMAGE"
 
   staging:
@@ -141,20 +156,26 @@ jobs:
       ${{ !cancelled() && needs.changements.result == 'success'
       && needs.staging.result == 'success' && needs.evals.result != 'failure' }}
     runs-on: ubuntu-latest
-    permissions: { contents: write } # pousser le tag
+    permissions: { contents: write } # pousser les tags
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 } # tous les tags, pour calculer Z
-      - name: Tagger le commit vX.Y.Z (avant la production)
+        with: { fetch-depth: 0 } # tous les tags
+      - name: Tagger le commit vX.Y.Z (avant la production) et, si évalué, son manifeste
+        env:
+          RELEASE: ${{ needs.changements.outputs.release }}
+          MANIFESTE: ${{ needs.changements.outputs.manifeste }}
+          EVALUE: ${{ needs.evals.result == 'success' }}
         run: |
-          tag=$(python3 tools/version.py)
-          if ! git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a "$tag" -m "Release $tag — image agentinsurflow:${{ github.sha }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          tags=("$RELEASE")
+          [ "$EVALUE" = true ] && tags+=("manifeste-$MANIFESTE") # manifeste validé par les evals
+          for tag in "${tags[@]}"; do   # relance : tag déjà posé, on ne le refait pas
+            git rev-parse -q --verify "refs/tags/$tag" > /dev/null && continue
+            git tag -a "$tag" -m "$tag — image agentinsurflow:${{ github.sha }}, manifeste $MANIFESTE"
             git push origin "$tag"
-          fi
-          echo "✔ release $tag → image ${{ github.sha }}" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+          echo "✔ release $RELEASE · manifeste $MANIFESTE → image ${{ github.sha }}" | tee -a "$GITHUB_STEP_SUMMARY"
 
   production:
     needs: release

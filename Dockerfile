@@ -11,9 +11,10 @@ COPY agentinsurflow ./agentinsurflow
 COPY llm.env ./
 RUN uv sync --locked --no-dev
 
-# Version servie par /health : le SHA du commit, gravé au build
-ARG APP_VERSION=dev
-ENV APP_VERSION=$APP_VERSION PATH="/app/.venv/bin:$PATH"
+# Versions servies par /health, gravées au build : SHA du commit, release vX.Y.Z, manifeste
+ARG APP_VERSION=dev APP_RELEASE=dev APP_MANIFESTE=dev
+ENV APP_VERSION=$APP_VERSION APP_RELEASE=$APP_RELEASE APP_MANIFESTE=$APP_MANIFESTE \
+    PATH="/app/.venv/bin:$PATH"
 
 USER nobody
 EXPOSE 8000

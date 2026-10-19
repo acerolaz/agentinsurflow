@@ -117,8 +117,10 @@ passe des contrôles déterministes, et la latence est mesurée :
 
 Porte : taux de réussite ≥ **80 %** (seuil de départ, `🔴 à calibrer`) **et** latence p95 ≤ 30 s.
 
-**Déclenchement** : les evals ne tournent que si un fichier susceptible de changer leur résultat est modifié
-(job `changements`) ; sinon elles sont sautées et la chaîne continue.
+**Déclenchement** : les evals ne tournent que si un fichier susceptible de changer leur résultat a changé
+**depuis le dernier manifeste validé** (tag `manifeste-X.Y.Z-build.N`, job `changements`) ; sinon elles sont
+sautées et la chaîne continue. Un manifeste dont les evals ont échoué n'est jamais tagué : le commit suivant
+le réévalue, même s'il ne touche pas ces fichiers. Sans aucun tag `manifeste-*`, les evals tournent.
 
 | Déclencheur | Fichier versionné |
 |---|---|
@@ -165,13 +167,19 @@ Ensuite, chaque **merge sur `main`** déclenche toute la chaîne, sans action ma
 
 | Version | Forme | Désigne | Où la lire |
 |---|---|---|---|
-| Release | `vX.Y.Z` (ex. `v0.1.3`) | le commit livré en production, tagué juste avant | tags Git (`git tag`), résumé du run |
-| Image | SHA du commit | l'artefact déployé | tag de l'image dans l'ACR, `/health` |
-| Manifeste | `X.Y.Z-build.N` (ex. `0.1.0-build.42`) | ce qui a été évalué : modèle, prompts, golden dataset | champ `version` du rapport d'évaluation |
+| Release | `vX.Y.Z` (ex. `v0.1.3`) | le commit livré en production, tagué juste avant | `/health` → `release`, tags Git, résumé du run |
+| Image | SHA du commit | l'artefact déployé | `/health` → `version`, tag de l'image dans l'ACR |
+| Manifeste | `X.Y.Z-build.N` (ex. `0.1.0-build.42`) | ce qui a été évalué : modèle, prompts, golden dataset | `/health` → `manifeste`, rapport d'évaluation, tag `manifeste-…` |
 
-X.Y se choisissent à la main dans `pyproject.toml` (`version`). Pour la release, Z est calculé par
-`tools/version.py` d'après les tags (`v0.1.0`, puis `v0.1.1`…) ; passer le pyproject à `0.2.0` donne `v0.2.0`.
-Pour le manifeste, N est le numéro du run GitHub (`X.Y.Z-local` hors CI).
+Les trois sont calculées par le job `changements` puis **gravées dans l'image** : un rollback restaure aussi
+les versions affichées. X.Y se choisissent à la main dans `pyproject.toml` (`version`).
+
+- **Release** : Z est calculé par `tools/version.py` d'après les tags (`v0.1.0`, puis `v0.1.1`…) ; passer le
+  pyproject à `0.2.0` donne `v0.2.0`. En staging, `release` est la **candidate** : le tag n'est posé qu'après
+  staging et evals, juste avant la production.
+- **Manifeste** : si le modèle, un prompt ou le golden dataset a changé, nouvelle version `X.Y.Z-build.<n° du
+  run>` (`X.Y.Z-local` hors CI), taguée `manifeste-…` quand les evals passent ; sinon, celle du dernier manifeste
+  validé.
 
 ### Ressources Azure actuelles
 

@@ -5,8 +5,188 @@ from __future__ import annotations
 import hashlib
 import math
 import re
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 
+from agentinsurflow_rag.domain.models import (
+    ArticlePropre,
+    ChunkDocument,
+    CitationRag,
+    DocumentTrace,
+    Extrait,
+    IngestionJournalisee,
+    VersionDocument,
+)
 from agentinsurflow_rag.domain.ports import ErreurEmbeddings, ErreurLLM
+
+
+def cosinus(a: list[float], b: list[float]) -> float:
+    na, nb = math.sqrt(sum(x * x for x in a)), math.sqrt(sum(y * y for y in b))
+    return sum(x * y for x, y in zip(a, b, strict=True)) / (na * nb) if na and nb else 0.0
+
+
+def _mots(texte: str) -> set[str]:
+    return set(re.findall(r"\w+", texte.lower()))
+
+
+@dataclass
+class _Document:
+    id: int
+    article: ArticlePropre
+    collection: str
+    obsolete: bool
+    ingere_le: datetime
+
+
+@dataclass
+class _Chunk:
+    id: int
+    document_id: int
+    ordre: int
+    texte: str
+    vecteur: list[float]
+
+
+class FakeDepotCorpus:
+    """DepotCorpus en mémoire : même contrat que l'adaptateur PostgreSQL, sans base.
+
+    La partie « plein texte » est une approximation (mots communs), la fusion est le vrai RRF.
+    """
+
+    def __init__(self) -> None:
+        self.documents: list[_Document] = []
+        self.chunks: list[_Chunk] = []
+        self.journal: list[IngestionJournalisee] = []
+
+    def _doc(self, document_id: int) -> _Document:
+        return next(d for d in self.documents if d.id == document_id)
+
+    def _extrait(self, chunk: _Chunk, cos: float | None, score: float) -> Extrait:
+        doc = self._doc(chunk.document_id)
+        a = doc.article
+        citation = CitationRag(
+            a.doc_id, a.version, a.article, doc.collection, a.date_debut, a.url_source, chunk.id
+        )
+        return Extrait(citation, chunk.texte, cos, score)
+
+    def _courants(self, collections: list[str]) -> list[_Chunk]:
+        return [
+            c
+            for c in self.chunks
+            if not self._doc(c.document_id).obsolete
+            and self._doc(c.document_id).collection in collections
+        ]
+
+    async def version_courante(self, doc_id: str) -> tuple[int, str, str] | None:
+        for d in self.documents:
+            if d.article.doc_id == doc_id and not d.obsolete:
+                return d.id, d.article.version, d.article.hash_contenu
+        return None
+
+    async def inserer(
+        self,
+        article: ArticlePropre,
+        collection: str,
+        chunks: list[str],
+        vecteurs: list[list[float]],
+    ) -> None:
+        doc = _Document(len(self.documents) + 1, article, collection, False, datetime.now(UTC))
+        self.documents.append(doc)
+        for ordre, (texte, vecteur) in enumerate(zip(chunks, vecteurs, strict=True)):
+            self.chunks.append(_Chunk(len(self.chunks) + 1, doc.id, ordre, texte, vecteur))
+
+    async def marquer_obsolete(self, document_id: int) -> None:
+        self._doc(document_id).obsolete = True
+
+    async def voisins(
+        self, vecteur: list[float], doc_id: str, seuil: float
+    ) -> list[tuple[str, float]]:
+        meilleurs: dict[str, float] = {}
+        for c in self.chunks:
+            doc = self._doc(c.document_id)
+            if doc.obsolete or doc.article.doc_id == doc_id:
+                continue
+            score = cosinus(vecteur, c.vecteur)
+            if score > seuil:
+                meilleurs[doc.article.doc_id] = max(score, meilleurs.get(doc.article.doc_id, 0.0))
+        return sorted(meilleurs.items(), key=lambda kv: -kv[1])
+
+    async def journaliser(self, instantane_sha256: str, rapport: dict[str, Any]) -> int:
+        ligne = IngestionJournalisee(
+            len(self.journal) + 1, instantane_sha256, datetime.now(UTC), rapport
+        )
+        self.journal.append(ligne)
+        return ligne.id
+
+    async def rechercher_hybride(
+        self,
+        question: str,
+        vecteur: list[float],
+        collections: list[str],
+        candidats: int,
+        k: int,
+    ) -> list[Extrait]:
+        courants = self._courants(collections)
+        vect = sorted(courants, key=lambda c: -cosinus(vecteur, c.vecteur))[:candidats]
+        mots = _mots(question)
+        communs = [
+            c
+            for c in courants
+            if mots & _mots(f"{self._doc(c.document_id).article.article} {c.texte}")
+        ]
+        texte = sorted(communs, key=lambda c: -len(mots & _mots(c.texte)))[:candidats]
+        scores: dict[int, float] = {}
+        for classement in (vect, texte):
+            for rang, c in enumerate(classement, start=1):
+                scores[c.id] = scores.get(c.id, 0.0) + 1.0 / (60 + rang)
+        par_id = {c.id: c for c in courants}
+        ordre = sorted(scores, key=lambda i: -scores[i])[:k]
+        return [
+            self._extrait(par_id[i], cosinus(vecteur, par_id[i].vecteur), scores[i]) for i in ordre
+        ]
+
+    async def par_articles(self, articles: list[str], collections: list[str]) -> list[Extrait]:
+        return [
+            self._extrait(c, None, 0.0)
+            for c in self._courants(collections)
+            if self._doc(c.document_id).article.article in articles
+        ]
+
+    async def document(self, doc_id: str) -> DocumentTrace | None:
+        docs = [d for d in self.documents if d.article.doc_id == doc_id]
+        if not docs:
+            return None
+        versions = [
+            VersionDocument(
+                d.article.version,
+                d.article.etat,
+                d.article.date_debut,
+                d.article.hash_contenu,
+                d.obsolete,
+                d.ingere_le,
+                d.article.url_source,
+            )
+            for d in docs
+        ]
+        chunks = [
+            ChunkDocument(
+                c.id,
+                self._doc(c.document_id).article.version,
+                self._doc(c.document_id).article.article,
+                c.ordre,
+                c.texte,
+            )
+            for c in self.chunks
+            if self._doc(c.document_id) in docs
+        ]
+        return DocumentTrace(doc_id, docs[0].collection, versions, chunks)
+
+    async def ingestions(self, limit: int, offset: int) -> list[IngestionJournalisee]:
+        return sorted(self.journal, key=lambda i: -i.id)[offset : offset + limit]
+
+    async def ingestion(self, id_: int) -> IngestionJournalisee | None:
+        return next((i for i in self.journal if i.id == id_), None)
 
 
 class FakeLLM:

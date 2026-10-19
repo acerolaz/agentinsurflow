@@ -11,7 +11,8 @@ from typing import Annotated, Any, Literal
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jwt import PyJWKClientError
+from jwt import PyJWTError
+from pydantic import ValidationError
 
 from ..domain.models import Appelant
 from ..infrastructure.entra.jetons import ConfigAuth, ErreurAuth, verifier_jeton
@@ -25,17 +26,26 @@ Jeton = Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]
 NON_AUTHENTIFIE = {"WWW-Authenticate": "Bearer"}
 
 
+AUTH_INDISPONIBLE = ErreurApi(503, "AUTH_INDISPONIBLE", "Authentification Entra non configurée")
+
+
 def charger_auth() -> ConfigAuth:
-    return ConfigAuth()  # type: ignore[call-arg]
+    try:
+        return ConfigAuth()  # type: ignore[call-arg]
+    except ValidationError as exc:
+        raise AUTH_INDISPONIBLE from exc
 
 
 def obtenir_cle(request: Request, jeton: Jeton) -> Any:
     """Clé publique du tenant qui a signé le jeton (``app.state.jwks``, créé au démarrage)."""
     if jeton is None:
         return None
+    jwks = getattr(request.app.state, "jwks", None)
+    if jwks is None:
+        raise AUTH_INDISPONIBLE
     try:
-        return request.app.state.jwks.get_signing_key_from_jwt(jeton.credentials).key
-    except PyJWKClientError as exc:
+        return jwks.get_signing_key_from_jwt(jeton.credentials).key
+    except PyJWTError as exc:  # jeton mal formé, clé inconnue du tenant, JWKS injoignable
         raise ErreurApi(401, "JETON_INVALIDE", "Jeton invalide", NON_AUTHENTIFIE) from exc
 
 

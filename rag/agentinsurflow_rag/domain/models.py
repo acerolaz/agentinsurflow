@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date
-from typing import Literal
+from dataclasses import dataclass, field
+from datetime import date, datetime
+from typing import Any, Literal
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,97 @@ class Rejet:
 
     doc_id: str | None
     raison: str
+
+
+@dataclass(frozen=True)
+class QuasiDoublon:
+    """Deux articles distincts au contenu presque identique (cosinus > 0,95) : signalé, gardé."""
+
+    doc_id: str
+    proche_de: str
+    score: float
+
+
+@dataclass
+class RapportIngestion:
+    """Rapport d'un lot (spec §3.2 ⑩) ; ``id`` = la ligne journalisée dans ``ingestion``."""
+
+    lus: int = 0
+    inseres: int = 0
+    inchanges: int = 0
+    nouvelles_versions: int = 0
+    rejets: list[Rejet] = field(default_factory=list)
+    quasi_doublons: list[QuasiDoublon] = field(default_factory=list)
+    duree_s: float = 0.0
+    id: int | None = None
+
+
+@dataclass(frozen=True)
+class IngestionJournalisee:
+    id: int
+    instantane_sha256: str
+    recu_le: datetime
+    rapport: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class CitationRag:
+    """De quoi remonter à la source : Légifrance (``url_source``) et le chunk cité."""
+
+    doc_id: str
+    version: str
+    article: str
+    collection: str
+    date_debut: date | None
+    url_source: str
+    chunk_id: int
+
+
+@dataclass(frozen=True)
+class Extrait:
+    citation: CitationRag
+    texte: str
+    cosinus: float | None  # None pour une référence exacte (recherche directe sur l'article)
+    score_rrf: float
+
+
+@dataclass(frozen=True)
+class ResultatRecherche:
+    statut: Literal["OK", "NOT_FOUND_IN_CORPUS"]
+    seuil: float
+    resultats: list[Extrait]
+    cosinus_max: float | None = None
+    reference_exacte: bool = False
+
+
+@dataclass(frozen=True)
+class VersionDocument:
+    version: str
+    etat: str
+    date_debut: date | None
+    hash_contenu: str
+    obsolete: bool
+    ingere_le: datetime
+    url_source: str
+
+
+@dataclass(frozen=True)
+class ChunkDocument:
+    id: int
+    version: str
+    article: str
+    ordre: int
+    texte: str
+
+
+@dataclass(frozen=True)
+class DocumentTrace:
+    """Traçabilité d'un article : toutes ses versions et leurs chunks (sans les vecteurs)."""
+
+    doc_id: str
+    collection: str
+    versions: list[VersionDocument]
+    chunks: list[ChunkDocument]
 
 
 @dataclass(frozen=True)

@@ -33,6 +33,9 @@ services:
       PG_WRITER_PASSWORD: ${PG_WRITER_PASSWORD}
       PG_READER_PASSWORD: ${PG_READER_PASSWORD}
       AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      RAG_API_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
+      RAG_SEUIL: ${RAG_SEUIL:-} # à calibrer (make calibrer) ; vide → /api/extraits en 503
       APP_ENV: local
     ports: ["8001:8000"]
     depends_on:

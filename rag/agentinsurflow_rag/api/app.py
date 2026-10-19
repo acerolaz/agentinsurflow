@@ -1,18 +1,56 @@
-"""API REST de rag : ``GET /health`` et ``POST /api/reponses`` ; Swagger UI sur ``/``.
+"""API REST de rag ; Swagger UI sur ``/``.
 
-Routes minces : elles traduisent HTTP en appel de cas d'usage et rendent des DTO Pydantic.
+Ressources : ``/health``, ``/api/reponses``, ``/api/ingestions``, ``/api/extraits``,
+``/api/documents/{doc_id}``. Routes minces : HTTP → cas d'usage → DTO Pydantic.
 Derrière la gateway, le document est servi en ``/rag/openapi.json`` dans la page Swagger unique ;
 il ne déclare pas de ``servers`` : le « Try it out » vise les routes publiques de la gateway.
 """
 
 from __future__ import annotations
 
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from importlib.metadata import version
 
 from fastapi import FastAPI
+from jwt import PyJWKClient
+from pydantic import ValidationError
 
-from .routes import agent, sante
+from ..infrastructure.entra.jetons import ConfigAuth
+from ..infrastructure.postgres.connexions import ConfigBD, creer_moteurs
+from .erreurs import installer_gestionnaires
+from .routes import agent, corpus, sante
 
-app = FastAPI(title="AgentInsurFlow", version=version("agentinsurflow-rag"), docs_url="/")
+journal = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def cycle_de_vie(app: FastAPI) -> AsyncIterator[None]:
+    # ponytail: sans configuration, l'API démarre quand même (le déploiement actuel n'a pas encore
+    # de PostgreSQL ni d'inscription Entra) ; les routes concernées répondent 503
+    try:
+        app.state.moteurs = creer_moteurs(ConfigBD())  # type: ignore[call-arg]
+    except ValidationError:
+        journal.warning("PostgreSQL non configuré (PG_*) : routes du corpus en 503")
+        app.state.moteurs = None
+    try:
+        app.state.jwks = PyJWKClient(ConfigAuth().url_jwks, cache_keys=True)  # type: ignore[call-arg]
+    except ValidationError:
+        journal.warning("Entra non configuré (AZURE_TENANT_ID, RAG_API_CLIENT_ID) : jetons en 503")
+        app.state.jwks = None
+    yield
+    if app.state.moteurs is not None:
+        await app.state.moteurs.fermer()
+
+
+app = FastAPI(
+    title="AgentInsurFlow — rag",
+    version=version("agentinsurflow-rag"),
+    docs_url="/",
+    lifespan=cycle_de_vie,
+)
+installer_gestionnaires(app)
 app.include_router(sante.router)
 app.include_router(agent.router)
+app.include_router(corpus.router)

@@ -27,6 +27,15 @@ _BLOCS = {"p", "div", "br", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "tab
 
 Decision = Literal["nouveau", "inchange", "nouvelle_version", "conflit_version"]
 
+COLLECTION_S3 = "textes_reglementaires"
+# Refus par défaut : un rôle absent de la table ne lit aucune collection (spec §4.1)
+COLLECTIONS_PAR_ROLE: dict[str, tuple[str, ...]] = {"Gestionnaire": (COLLECTION_S3,)}
+
+
+def collections_pour(roles: frozenset[str]) -> list[str]:
+    """Collections lisibles par un appelant, dans un ordre stable, sans doublon."""
+    return sorted({c for role in roles for c in COLLECTIONS_PAR_ROLE.get(role, ())})
+
 
 def normaliser_numero(numero: str) -> str:
     """« L. 211-1 » → « L211-1 » : majuscules, sans espace ni point."""

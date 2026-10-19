@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Any, Protocol
+
+from .models import (
+    ArticlePropre,
+    DocumentTrace,
+    Extrait,
+    IngestionJournalisee,
+)
 
 
 class ErreurLLM(Exception):
@@ -23,3 +30,50 @@ class ClientEmbeddings(Protocol):
     modele: str
 
     def vectoriser(self, textes: list[str]) -> list[list[float]]: ...
+
+
+class DepotCorpus(Protocol):
+    """Le corpus indexé (base ``vecteurs``) ; une instance = une transaction, un compte."""
+
+    # --- ingestion (compte writer)
+    async def version_courante(self, doc_id: str) -> tuple[int, str, str] | None:
+        """(id, version, hash) de la version non obsolète de l'article, s'il est connu."""
+        ...
+
+    async def inserer(
+        self,
+        article: ArticlePropre,
+        collection: str,
+        chunks: list[str],
+        vecteurs: list[list[float]],
+    ) -> None: ...
+
+    async def marquer_obsolete(self, document_id: int) -> None: ...
+
+    async def voisins(
+        self, vecteur: list[float], doc_id: str, seuil: float
+    ) -> list[tuple[str, float]]:
+        """Autres articles courants dont un chunk a un cosinus > ``seuil`` avec ``vecteur``."""
+        ...
+
+    async def journaliser(self, instantane_sha256: str, rapport: dict[str, Any]) -> int: ...
+
+    # --- recherche et traçabilité (compte reader)
+    async def rechercher_hybride(
+        self,
+        question: str,
+        vecteur: list[float],
+        collections: list[str],
+        candidats: int,
+        k: int,
+    ) -> list[Extrait]:
+        """Cosinus (HNSW) et plein texte (GIN) fusionnés par RRF (k = 60), meilleur en tête."""
+        ...
+
+    async def par_articles(self, articles: list[str], collections: list[str]) -> list[Extrait]: ...
+
+    async def document(self, doc_id: str) -> DocumentTrace | None: ...
+
+    async def ingestions(self, limit: int, offset: int) -> list[IngestionJournalisee]: ...
+
+    async def ingestion(self, id_: int) -> IngestionJournalisee | None: ...

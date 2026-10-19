@@ -7,12 +7,25 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
+import httpx
 import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
+from agentinsurflow_rag.api import app
+from agentinsurflow_rag.api.dependances import (
+    ConfigRag,
+    charger_rag,
+    connexion_reader,
+    connexion_writer,
+    obtenir_embeddings,
+)
+from agentinsurflow_rag.api.securite import charger_auth, obtenir_cle
+from agentinsurflow_rag.infrastructure.entra.jetons import ConfigAuth
 from agentinsurflow_rag.infrastructure.postgres.connexions import ConfigBD
+from fakes import FakeEmbeddings
+from jetons_de_test import CLE_PUBLIQUE, CLIENT_ID, TENANT, creer
 
 RAG = Path(__file__).resolve().parents[2]
 
@@ -56,3 +69,48 @@ async def conn_writer(vecteurs_migree: None) -> AsyncIterator[AsyncConnection]:
 async def conn_reader(vecteurs_migree: None) -> AsyncIterator[AsyncConnection]:
     async for conn in _connexion(create_async_engine(config_bd().url("reader"))):
         yield conn
+
+
+# ---------------------------------------------------------------- l'API rag en mémoire
+
+
+def remplacer_dependances(conn: AsyncConnection) -> None:
+    """Seules les dépendances externes sont remplacées : base de test, embeddings, clé du tenant.
+
+    Une seule connexion (writer) sert aussi aux lectures : le reader ne verrait pas les lignes
+    de la transaction du test, qui n'est jamais validée.
+    """
+
+    async def _connexion() -> AsyncIterator[AsyncConnection]:
+        yield conn
+
+    app.dependency_overrides.update(
+        {
+            connexion_writer: _connexion,
+            connexion_reader: _connexion,
+            obtenir_embeddings: lambda: FakeEmbeddings(),
+            charger_rag: lambda: ConfigRag(_env_file=None, rag_seuil=0.4),  # type: ignore[call-arg]
+            obtenir_cle: lambda: CLE_PUBLIQUE,
+            charger_auth: lambda: ConfigAuth(
+                _env_file=None,  # type: ignore[call-arg]
+                azure_tenant_id=TENANT,
+                rag_api_client_id=CLIENT_ID,
+            ),
+        }
+    )
+
+
+@pytest.fixture
+async def api(conn_writer: AsyncConnection) -> AsyncIterator[httpx.AsyncClient]:
+    remplacer_dependances(conn_writer)
+    try:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://rag"
+        ) as client:
+            yield client
+    finally:
+        app.dependency_overrides.clear()
+
+
+def entetes(*roles: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {creer(list(roles))}"}

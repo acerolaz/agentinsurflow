@@ -63,10 +63,37 @@ def test_l_interface_swagger_est_servie_a_la_racine() -> None:
     assert "/api/reponses" in client.get("/openapi.json").json()["paths"]
 
 
+ROUTES_REST = {
+    "/health",
+    "/api/reponses",
+    "/api/ingestions",
+    "/api/ingestions/{ingestion_id}",
+    "/api/extraits",
+    "/api/documents/{doc_id}",
+}
+
+
 def test_contrat_rest_plus_de_route_rpc() -> None:
-    # S3-24 : ressource au pluriel ; l'ancien nom du sprint 2 n'est plus servi
+    # S3-24 : ressources au pluriel ; les anciens noms (sprint 2, brief) ne sont plus servis
     assert client.post("/api/agent", json={"texte": "Question"}).status_code == 404
-    assert set(client.get("/openapi.json").json()["paths"]) == {"/health", "/api/reponses"}
+    assert client.post("/v1/ingestion", json={}).status_code == 404
+    assert set(client.get("/openapi.json").json()["paths"]) == ROUTES_REST
+
+
+@pytest.mark.parametrize(
+    ("chemin", "methode", "codes"),
+    [
+        ("/api/ingestions", "post", {"201", "401", "403", "422", "503"}),
+        ("/api/ingestions", "get", {"200", "401", "403"}),
+        ("/api/ingestions/{ingestion_id}", "get", {"200", "401", "403", "404"}),
+        ("/api/extraits", "get", {"200", "401", "403", "422", "503"}),
+        ("/api/documents/{doc_id}", "get", {"200", "401", "403", "404"}),
+    ],
+)
+def test_chaque_route_documente_ses_erreurs(chemin: str, methode: str, codes: set[str]) -> None:
+    operation = client.get("/openapi.json").json()["paths"][chemin][methode]
+    assert codes <= set(operation["responses"])
+    assert operation["security"]
 
 
 def test_openapi_sans_servers_pour_la_page_swagger_de_la_gateway() -> None:

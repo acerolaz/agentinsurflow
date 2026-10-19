@@ -157,4 +157,10 @@ gateway/
 
 ## Déploiement
 
-La gateway sera le conteneur exposé (port 8000) de la Container App à 4 conteneurs (Task U5 du plan). D'ici là, elle est construite et testée par la CI (job `gateway`) mais **pas encore déployée** : le déploiement actuel de l'API Python est inchangé.
+La gateway devient le conteneur exposé (port 8000) de la Container App en Task G5 ; jusque-là, elle est construite et testée par la CI (job `gateway`) mais **pas encore déployée**.
+
+### Domaine personnalisé (G4, S3-28, issue #12)
+
+`make domaine DOMAINE=<domaine>` (Acerola, une fois) lie le domaine à l'entrée de la Container App de production, donc il reste valable quand la gateway devient l'entrée. Le script affiche les enregistrements DNS à créer (sous-domaine : `CNAME` vers le FQDN de l'app ; apex : `A` vers l'IP statique de l'environnement ; dans les deux cas `TXT asuid.<domaine>`), attend leur résolution, puis lie le nom avec un certificat managé. Il ne fait rien si le nom est déjà lié.
+
+Ensuite : variable GitHub `PROD_URL=https://<domaine>` ; la fumée de production passe alors par le domaine et vérifie son certificat. L'URI de redirection Swagger `https://<domaine>/oauth2-redirect.html` est ajoutée en G5 (`infra/entra.sh`).

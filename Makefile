@@ -39,6 +39,9 @@ docker: build       ## l'image telle qu'elle tournera en Azure
 infra:              ## une fois : Azure (RG, ACR, Container Apps, OIDC) + variables GitHub
 	bash infra/bootstrap.sh
 
+domaine:            ## G4 : lie DOMAINE=… à la Container App de production (certificat managé)
+	bash infra/domaine.sh "$(DOMAINE)"
+
 proteger:           ## après le 1er push : main exige lint + test verts
 	gh api -X PUT repos/$(GITHUB_REPO)/branches/main/protection --input infra/protection-main.json
 

@@ -15,6 +15,15 @@ htmlcov/
 dist/
 .DS_Store
 
+# .NET
+bin/
+obj/
+TestResults/
+
+# Worktrees et espaces de travail des agents
+.claude/worktrees/
+.superpowers/
+
 # IDE et journaux locaux (infra.log contient des identifiants Azure)
 .idea/
 *.log

@@ -10,3 +10,9 @@ tests
 docs
 eval
 infra
+.claude
+.superpowers
+**/bin
+**/obj
+**/TestResults
+**/tests

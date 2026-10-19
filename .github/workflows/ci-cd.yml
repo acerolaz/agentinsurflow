@@ -43,6 +43,17 @@ jobs:
       - run: make install
       - run: make test # LLM mocké : aucun appel réel
 
+  gateway:
+    # Gateway YARP (C#, .NET 10) : format + analyseurs, puis TI avec couverture >= 80 %.
+    # ponytail: lancé à chaque run (< 1 min) plutôt que filtré par chemin ; filtrer si la CI ralentit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { global-json-file: global.json }
+      - run: make -C gateway lint
+      - run: make -C gateway test
+
   changements:
     runs-on: ubuntu-latest
     outputs:

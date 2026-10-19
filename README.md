@@ -28,6 +28,20 @@ flowchart LR
 Un merge sur `main` relance `lint` et `test` avant `build`. Les evals (portes : réussite ≥ 80 % et latence
 p95 ≤ 30 s) ne tournent que si le prompt, le golden dataset ou la version du LLM changent (voir *Évaluer l'agent*).
 
+## Sprint 3 (v0.2.0) : vers trois projets
+
+Le sprint 3 fait évoluer ce dépôt en **monorepo à trois projets**, livrés sur trois branches dans cet ordre :
+
+| Projet | Langage | Rôle | État |
+|---|---|---|---|
+| [`gateway/`](gateway/README.md) | C# · YARP · .NET 10 | **Seule entrée publique** : routage pur vers les deux services | ✅ branche `feat/gateway` — construite et testée par la CI (job `gateway`), pas encore déployée |
+| `rag/` | Python · hexagonal | Corpus Légifrance, ingestion, recherche hybride, agent cité | ⏳ branche `feat/rag` |
+| `underwriting-admin/` | C# · Clean Architecture · .NET 10 | Dossiers (BOLA) et référentiel SQL des traces OpenTelemetry | ⏳ branche `feat/underwriting-admin` |
+
+Toutes les API sont **REST** et consultables dans **une seule page Swagger**, servie à la racine de la gateway. Le contrat (ressources, méthodes, codes) et la correspondance avec les noms d'endpoints du brief sont dans [`gateway/README.md`](gateway/README.md#contrat-rest-s3-24).
+
+Le code ci-dessous (`agentinsurflow/`) est encore celui du sprint 2 ; il rejoindra `rag/` sur la branche `feat/rag`.
+
 ## Arborescence
 
 ```text

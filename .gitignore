@@ -27,3 +27,6 @@ TestResults/
 # IDE et journaux locaux (infra.log contient des identifiants Azure)
 .idea/
 *.log
+
+# Instantanés Légifrance : seul le fichier final est versionné, jamais le temporaire
+data/raw/*.tmp

@@ -9,7 +9,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et, plus tard,
 # underwriting-admin/ (C#, leurs propres Makefile, appelés par gateway-<cible>).
-.PHONY: install fmt lint test test-integration pyramide migrate up down eval run build docker infra proteger rollback preuve
+.PHONY: install fmt lint test test-integration pyramide migrate ingest extraire up down eval run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked
@@ -32,6 +32,12 @@ test-integration:   ## porte 2 : TU + TI (PostgreSQL du compose), couverture >= 
 
 migrate:            ## migrations Alembic de la base vecteurs (compte migrateur, PG_* du .env)
 	cd rag && uv run alembic -n vecteurs upgrade head
+
+ingest:             ## make ingest [URL=<gateway>] [INSTANTANE=data/raw/…] : Légifrance ou rejeu → /api/ingestions
+	uv run python -m agentinsurflow_rag.cli.ingest --url $(URL) $(if $(INSTANTANE),--instantane $(INSTANTANE))
+
+extraire:           ## extraction Légifrance seule → data/raw/ (identifiants PISTE du .env, bac à sable)
+	uv run python -m agentinsurflow_rag.cli.ingest --sans-envoi
 
 up:                 ## la solution en local : postgres + rag (:8001) + gateway (:8000, Swagger unique)
 	docker compose up -d --build --wait

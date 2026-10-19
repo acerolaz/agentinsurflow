@@ -32,6 +32,18 @@ Refus : message unique « Je ne trouve pas la réponse dans le corpus (Code des 
 
 **Dossier (`numero_contrat`)** : rag échange le jeton du gestionnaire contre un jeton **On-Behalf-Of** pour underwriting-admin (identité managée fédérée en Azure, `RAG_CLIENT_SECRET` en local seulement), lit la **vue minimisée** (`GET {UNDERWRITING_URL}/api/contrats/{numero_contrat}`) et l'ajoute au contexte, puis cite `vue_contrat_minimisee`. Contrat absent ou d'un autre gestionnaire : même 404 (BOLA, contrôlé par underwriting-admin). OBO refusé ou underwriting-admin en panne : 503 `DOSSIERS_INDISPONIBLES`, et l'agent ne répond pas sans la vue. Les questions **sans** `numero_contrat` ne dépendent pas d'underwriting-admin.
 
+## CLI d'ingestion (spec §3.2)
+
+```bash
+make extraire                                    # Légifrance (bac à sable PISTE) → data/raw/code-assurances-<date>.json
+make ingest URL=http://localhost:8000            # extraction puis envoi par la gateway
+make ingest URL=… INSTANTANE=data/raw/code-assurances-<date>.json   # rejeu, sans PISTE (CI, Azure)
+```
+
+① jeton PISTE (identifiants du `.env` local, jamais dans GitHub ; 401 → « identifiants PISTE invalides », code de sortie 1) ; ② plan du Code des assurances, filtre du périmètre auto (`L121-*`, `A121-1`, `L211-*`, `R211-*`, `A211-*`), `getArticle` séquentiel, 3 nouvelles tentatives (1 s, 2 s, 4 s) sur 429 et 5xx ; ③ **instantané versionné** écrit dans un `.tmp` puis renommé, avec son manifeste (date, environnement, périmètre, nombre d'articles, sha256 du JSON canonique, vérifié au rejeu) ; ④ lots de 50 vers `POST /api/ingestions` avec un jeton Entra (`INGESTION_JETON` ou `az login`) et le `traceparent` ; rapport cumulé dans `eval/preuves/ingestion-<date>-<env>.json`. Traces `ingest.run` et `ingest.lot` (service `agentinsurflow-ingest`) envoyées par la gateway (`/v1/traces`, rôle `Telemetrie`) ; leur échec ne fait jamais échouer l'ingestion.
+
+> 🔴 Les noms de champs de l'API Légifrance (`cid`, `num`, `dateDebut`, `texteHtml`) et la forme du plan sont à confirmer au premier appel réel (Task G0) ; la correspondance est dans `infrastructure/legifrance/client.py` (`vers_article_entrant`).
+
 ## Traces (spec §9)
 
 OpenTelemetry, exportées en OTLP/HTTP vers le référentiel SQL d'underwriting-admin (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, défaut `http://localhost:8002/v1/traces` ; `OTEL_SDK_DISABLED=true` les coupe). Spans : serveur HTTP (sauf `/health`), `agent.repondre`, `rag.recherche`, `ingestion.lot`, `llm.completer`, `embeddings.vectoriser`. Le `traceparent` est propagé vers underwriting-admin. **RGPD** : jamais le texte de la question (seulement `question.sha256` et `question.longueur`), ni nom, ni adresse, ni `numero_contrat` (seulement `contrat.present`) — vérifié par un test.

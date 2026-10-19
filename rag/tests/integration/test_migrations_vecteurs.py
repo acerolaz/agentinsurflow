@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import pytest
 from alembic import command
-from conftest import config_alembic
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncConnection
+
+from conftest import config_alembic
 
 INSERT_DOCUMENT = text(
     "INSERT INTO document (doc_id, collection, version, etat, url_source, hash_contenu) "

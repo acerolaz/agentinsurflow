@@ -45,7 +45,7 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["agentinsurflow_rag", "tools", "fakes"]
+known-first-party = ["agentinsurflow_rag", "tools", "fakes", "jetons_de_test", "conftest"]
 
 [tool.mypy]
 python_version = "3.12"

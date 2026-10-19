@@ -8,6 +8,14 @@ from typing import Literal
 
 
 @dataclass(frozen=True)
+class Appelant:
+    """L'utilisateur ou le service authentifié : identifiant Entra (``oid``) et rôles d'app."""
+
+    oid: str
+    roles: frozenset[str]
+
+
+@dataclass(frozen=True)
 class ArticlePropre:
     """Un article nettoyé, prêt à indexer (une version d'un article du Code des assurances)."""
 

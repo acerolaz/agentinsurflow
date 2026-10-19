@@ -15,19 +15,22 @@ from ...domain.ports import ClientLLM, ErreurLLM
 from .config import SCOPE_ENTRA, ConfigLLM
 
 
-def fabrique_llm(cfg: ConfigLLM) -> ClientLLM | None:
-    """Le ClientLLM, ou None s'il n'est pas configuré (⇒ mode dégradé)."""
-    if not (cfg.azure_openai_endpoint and cfg.azure_openai_deployment):
-        return None
+def client_openai(cfg: ConfigLLM) -> OpenAI:
+    """Client de l'API v1 d'Azure OpenAI (sans version d'API), partagé par LLM et embeddings."""
     cle = cfg.azure_openai_api_key.get_secret_value()
-    # API v1 d'Azure OpenAI : client OpenAI standard, sans version d'API à gérer
-    client = OpenAI(
+    return OpenAI(
         base_url=f"{cfg.azure_openai_endpoint.rstrip('/').removesuffix('/openai/v1')}/openai/v1/",
         api_key=cle or get_bearer_token_provider(DefaultAzureCredential(), SCOPE_ENTRA),
         timeout=cfg.llm_delai_s,
         max_retries=0,
     )
-    return AzureLLM(client, cfg.azure_openai_deployment)
+
+
+def fabrique_llm(cfg: ConfigLLM) -> ClientLLM | None:
+    """Le ClientLLM, ou None s'il n'est pas configuré (⇒ mode dégradé)."""
+    if not (cfg.azure_openai_endpoint and cfg.azure_openai_deployment):
+        return None
+    return AzureLLM(client_openai(cfg), cfg.azure_openai_deployment)
 
 
 class AzureLLM:

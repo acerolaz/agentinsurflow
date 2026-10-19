@@ -1,0 +1,69 @@
+"""Intégration — exigence de rôle sur une route (refus par défaut) et erreurs ProblemDetails."""
+
+from __future__ import annotations
+
+from typing import Annotated, Any
+
+import pytest
+from fastapi import Depends, FastAPI
+from fastapi.testclient import TestClient
+
+from agentinsurflow_rag.api.erreurs import installer_gestionnaires
+from agentinsurflow_rag.api.securite import charger_auth, exiger, obtenir_cle
+from agentinsurflow_rag.domain.models import Appelant
+from agentinsurflow_rag.infrastructure.entra.jetons import ConfigAuth
+from jetons_de_test import CLE_PUBLIQUE, CLIENT_ID, TENANT, creer
+
+app = FastAPI()
+installer_gestionnaires(app)
+
+
+@app.get("/protegee")
+def protegee(appelant: Annotated[Appelant, Depends(exiger("Gestionnaire"))]) -> dict[str, str]:
+    return {"oid": appelant.oid}
+
+
+app.dependency_overrides[obtenir_cle] = lambda: CLE_PUBLIQUE
+app.dependency_overrides[charger_auth] = lambda: ConfigAuth(
+    _env_file=None,  # type: ignore[call-arg]
+    azure_tenant_id=TENANT,
+    rag_api_client_id=CLIENT_ID,
+)
+client = TestClient(app)
+
+
+def _code(reponse: Any) -> str:
+    assert reponse.headers["content-type"].startswith("application/problem+json")
+    return str(reponse.json()["code"])
+
+
+def test_sans_jeton_401_jeton_absent() -> None:
+    reponse = client.get("/protegee")
+    assert reponse.status_code == 401
+    assert _code(reponse) == "JETON_ABSENT"
+    assert reponse.headers["www-authenticate"] == "Bearer"
+
+
+@pytest.mark.parametrize("jeton", ["pas-un-jwt", creer(expire_dans=-120)])
+def test_jeton_invalide_401(jeton: str) -> None:
+    reponse = client.get("/protegee", headers={"Authorization": f"Bearer {jeton}"})
+    assert reponse.status_code == 401
+    assert _code(reponse) == "JETON_INVALIDE"
+
+
+def test_role_manquant_403() -> None:
+    reponse = client.get("/protegee", headers={"Authorization": f"Bearer {creer(['Ingestion'])}"})
+    assert reponse.status_code == 403
+    assert _code(reponse) == "ROLE_MANQUANT"
+
+
+def test_bon_role_passe() -> None:
+    reponse = client.get("/protegee", headers={"Authorization": f"Bearer {creer(oid='oid-z')}"})
+    assert reponse.status_code == 200
+    assert reponse.json() == {"oid": "oid-z"}
+
+
+def test_schema_de_securite_dans_l_openapi() -> None:
+    document = client.get("/openapi.json").json()
+    assert document["components"]["securitySchemes"]
+    assert document["paths"]["/protegee"]["get"]["security"]

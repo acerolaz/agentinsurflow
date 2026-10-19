@@ -15,9 +15,11 @@ from importlib.metadata import version
 
 from fastapi import FastAPI
 from jwt import PyJWKClient
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic import ValidationError
 
 from ..infrastructure.entra.jetons import ConfigAuth
+from ..infrastructure.otel.telemetrie import configurer_telemetrie
 from ..infrastructure.postgres.connexions import ConfigBD, creer_moteurs
 from .erreurs import installer_gestionnaires
 from .routes import agent, corpus, sante
@@ -25,8 +27,12 @@ from .routes import agent, corpus, sante
 journal = logging.getLogger(__name__)
 
 
+VERSION = version("agentinsurflow-rag")
+
+
 @asynccontextmanager
 async def cycle_de_vie(app: FastAPI) -> AsyncIterator[None]:
+    configurer_telemetrie(VERSION)
     # ponytail: sans configuration, l'API démarre quand même (le déploiement actuel n'a pas encore
     # de PostgreSQL ni d'inscription Entra) ; les routes concernées répondent 503
     try:
@@ -46,7 +52,7 @@ async def cycle_de_vie(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="AgentInsurFlow — rag",
-    version=version("agentinsurflow-rag"),
+    version=VERSION,
     docs_url="/",
     lifespan=cycle_de_vie,
 )
@@ -54,3 +60,5 @@ installer_gestionnaires(app)
 app.include_router(sante.router)
 app.include_router(agent.router)
 app.include_router(corpus.router)
+# span serveur par requête (méthode, route, statut) ; /health n'est pas tracé (sondes)
+FastAPIInstrumentor.instrument_app(app, excluded_urls="health")

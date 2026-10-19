@@ -129,7 +129,43 @@ class DocumentTrace:
 
 
 @dataclass(frozen=True)
+class VueContrat:
+    """Vue minimisée d'un contrat (D39), lue chez underwriting-admin après son contrôle BOLA.
+
+    Aucun nom, aucune adresse, aucun numéro de permis (RGPD, minimisation).
+    """
+
+    numero_contrat: str
+    tranche_age: str
+    anciennete_permis_ans: int
+    departement: str
+    crm_bonus_malus: float
+    nb_sinistres: int
+    suspensions: int
+    resiliations: int
+    formule: str
+    mis_a_jour: datetime
+
+
+@dataclass(frozen=True)
+class CitationSql:
+    """La réponse s'appuie sur le dossier : quelle vue, quel contrat, à quelle date."""
+
+    table: Literal["vue_contrat_minimisee"]
+    identifiant: str
+    date: datetime
+
+
+@dataclass(frozen=True)
 class Reponse:
+    """Réponse de l'agent : citée (OK), refusée (NOT_FOUND_IN_CORPUS) ou en revue humaine.
+
+    ``verrou`` dit lequel des trois verrous a refusé (1 porte, 2 abstention, 3 citation).
+    """
+
     texte: str
-    mode: Literal["llm", "degrade"]
+    mode: Literal["llm", "degrade", "refus"]
     modele: str | None = None
+    statut: Literal["OK", "NOT_FOUND_IN_CORPUS", "REVUE_HUMAINE"] = "OK"
+    citations: list[CitationRag | CitationSql] = field(default_factory=list)
+    verrou: int | None = None

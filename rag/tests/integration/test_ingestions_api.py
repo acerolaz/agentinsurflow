@@ -6,7 +6,6 @@ from typing import Any
 
 import httpx
 import pytest
-from corpus_de_test import CORPUS, SHA
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -14,6 +13,7 @@ from agentinsurflow_rag.api import app
 from agentinsurflow_rag.api.dependances import obtenir_embeddings
 from agentinsurflow_rag.domain.ports import ErreurEmbeddings
 from conftest import entetes
+from corpus_de_test import CORPUS, SHA
 from fakes import FakeEmbeddings
 
 INGESTION = entetes("Ingestion")

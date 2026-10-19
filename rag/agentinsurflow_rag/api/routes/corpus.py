@@ -12,10 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from ...application.use_cases.consulter import lire_document, lire_ingestion, lister_ingestions
 from ...application.use_cases.ingerer import ingerer
-from ...application.use_cases.rechercher import rechercher
 from ...domain.corpus import collections_pour
 from ...domain.models import Appelant
 from ...domain.ports import ClientEmbeddings
+from ...infrastructure.otel.telemetrie import tracer
 from ...infrastructure.postgres.corpus import PgDepotCorpus
 from ..dependances import (
     ConfigRag,
@@ -25,6 +25,7 @@ from ..dependances import (
     obtenir_embeddings,
 )
 from ..erreurs import ErreurApi, reponses
+from ..recherche import chercher
 from ..schemas.corpus import (
     DocumentDTO,
     IngestionDTO,
@@ -56,13 +57,23 @@ async def creer_ingestion(
     conn: Ecriture,
     emb: Embeddings,
 ) -> RapportIngestionDTO:
-    rapport = await ingerer(
-        PgDepotCorpus(conn),
-        emb,
-        collection=lot.collection,
-        instantane_sha256=lot.instantane_sha256,
-        articles=[a.model_dump() for a in lot.articles],
-    )
+    with tracer.start_as_current_span("ingestion.lot") as span:
+        rapport = await ingerer(
+            PgDepotCorpus(conn),
+            emb,
+            collection=lot.collection,
+            instantane_sha256=lot.instantane_sha256,
+            articles=[a.model_dump() for a in lot.articles],
+        )
+        span.set_attributes(
+            {
+                "rag.collection": lot.collection,
+                "rag.inseres": rapport.inseres,
+                "rag.inchanges": rapport.inchanges,
+                "rag.rejets": len(rapport.rejets),
+                "rag.quasi_doublons": len(rapport.quasi_doublons),
+            }
+        )
     response.headers["Location"] = f"/api/ingestions/{rapport.id}"
     return RapportIngestionDTO.model_validate(rapport)
 
@@ -109,15 +120,7 @@ async def lister_les_extraits(
     cfg: Annotated[ConfigRag, Depends(charger_rag)],
     top_k: Annotated[int | None, Query(ge=1, le=20)] = None,
 ) -> ResultatRechercheDTO:
-    resultat = await rechercher(
-        PgDepotCorpus(conn),
-        emb,
-        question,
-        seuil=cfg.rag_seuil,
-        top_k=top_k or cfg.rag_top_k,
-        candidats=cfg.rag_candidats,
-        collections=collections_pour(appelant.roles),
-    )
+    resultat = await chercher(conn, emb, cfg, appelant, question, top_k)
     return ResultatRechercheDTO.model_validate(resultat)
 
 

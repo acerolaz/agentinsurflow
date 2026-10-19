@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from corpus_de_test import CORPUS, SHA, article
 
 from agentinsurflow_rag.application.use_cases.ingerer import ingerer
 from agentinsurflow_rag.domain.models import QuasiDoublon, RapportIngestion, Rejet
 from agentinsurflow_rag.domain.ports import ErreurEmbeddings
+from corpus_de_test import CORPUS, SHA, article
 from fakes import FakeDepotCorpus, FakeEmbeddings
 
 

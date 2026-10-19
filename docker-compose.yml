@@ -36,6 +36,11 @@ services:
       AZURE_TENANT_ID: ${AZURE_TENANT_ID}
       RAG_API_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
       RAG_SEUIL: ${RAG_SEUIL:-} # à calibrer (make calibrer) ; vide → /api/extraits en 503
+      # dossiers en On-Behalf-Of (underwriting-admin arrive en Task U1) ; secret : .env local seulement
+      UNDERWRITING_API_CLIENT_ID: ${UNDERWRITING_API_CLIENT_ID:-}
+      UNDERWRITING_URL: http://underwriting-admin:8002
+      RAG_CLIENT_SECRET: ${RAG_CLIENT_SECRET:-}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
       APP_ENV: local
     ports: ["8001:8000"]
     depends_on:

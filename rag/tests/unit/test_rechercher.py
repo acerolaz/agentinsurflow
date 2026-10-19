@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import pytest
-from corpus_de_test import CORPUS, SHA
 
 from agentinsurflow_rag.application.use_cases.ingerer import ingerer
 from agentinsurflow_rag.application.use_cases.rechercher import rechercher
 from agentinsurflow_rag.domain.models import ResultatRecherche
+from corpus_de_test import CORPUS, SHA
 from fakes import FakeDepotCorpus, FakeEmbeddings
 
 COLLECTIONS = ["textes_reglementaires"]

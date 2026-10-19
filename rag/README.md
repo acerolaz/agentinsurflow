@@ -13,7 +13,7 @@ Service Python (FastAPI) du **corpus réglementaire** : il portera l'ingestion d
 | `GET /api/ingestions/{ingestion_id}` | `Ingestion` | 200 · 404 | Un rapport (`INGESTION_INTROUVABLE`) |
 | `GET /api/extraits?question=…&top_k=…` | `Gestionnaire` | 200 | Extraits qui passent la porte de pertinence ; sinon `statut = NOT_FOUND_IN_CORPUS`, `resultats = []` |
 | `GET /api/documents/{doc_id}` | `Gestionnaire` | 200 · 404 | Traçabilité : versions et chunks d'un article, sans les vecteurs (`DOCUMENT_INTROUVABLE`) |
-| `POST /api/reponses` | — (jeton exigé par la gateway ; vérifié par rag en R6) | 200 | Réponse de l'agent (calculée, non conservée) — remplace `POST /api/agent` du sprint 2 |
+| `POST /api/reponses` | `Gestionnaire` | 200 · 404 | Réponse citée de l'agent, ou refus (`NOT_FOUND_IN_CORPUS`) ; `numero_contrat` facultatif (vue minimisée, `CONTRAT_INTROUVABLE` sinon) ; `trace_id` rendu — remplace `POST /api/agent` du sprint 2 |
 | `GET /health` | — | 200 | Santé et versions servies |
 
 - **Erreurs** en ProblemDetails (RFC 9457) avec un `code` : 401 `JETON_ABSENT` / `JETON_INVALIDE`, 403 `ROLE_MANQUANT`, 404, 503 `EMBEDDINGS_INDISPONIBLES` / `BASE_INDISPONIBLE` / `AUTH_INDISPONIBLE` / `CONFIGURATION_INCOMPLETE` (`RAG_SEUIL` absent) ; 422 = validation (format FastAPI).
@@ -21,6 +21,20 @@ Service Python (FastAPI) du **corpus réglementaire** : il portera l'ingestion d
 - **Swagger** : derrière la gateway, le document est servi en `GET /rag/openapi.json` dans la **page Swagger unique** (`http://localhost:8000/`). Il ne déclare pas de `servers` : le « Try it out » appelle les routes publiques de la gateway (jeton, rôle et limite de débit). Sans gateway, rag sert aussi son propre Swagger sur `/` (`http://localhost:8001/` dans le compose).
 - Un test de contrat vérifie que seules ces routes sont publiées (les anciens noms RPC répondent 404) et que chacune documente ses réponses d'erreur et son schéma de sécurité.
 - Sans PostgreSQL, sans Entra ou sans `RAG_SEUIL` configurés, l'API **démarre quand même** ; les routes concernées répondent 503 (le déploiement actuel n'a pas encore la base annexe).
+
+## Agent à trois verrous (spec §4.2)
+
+1. **Porte** : sous la porte de pertinence, refus immédiat, **sans appel au LLM**.
+2. **Abstention** : le prompt (`prompts/systeme.md`) impose de répondre exactement `NOT_FOUND_IN_CORPUS` si les extraits ne suffisent pas.
+3. **Citation** : la réponse doit citer au moins un article des extraits (`[L211-1]`) ; une réponse sans citation ou avec un article inventé est refusée.
+
+Refus : message unique « Je ne trouve pas la réponse dans le corpus (Code des assurances, assurance auto) : je ne réponds pas sans source. » LLM injoignable : `statut = REVUE_HUMAINE`, mode dégradé du sprint 2, avec les citations trouvées.
+
+**Dossier (`numero_contrat`)** : rag échange le jeton du gestionnaire contre un jeton **On-Behalf-Of** pour underwriting-admin (identité managée fédérée en Azure, `RAG_CLIENT_SECRET` en local seulement), lit la **vue minimisée** (`GET {UNDERWRITING_URL}/api/contrats/{numero_contrat}`) et l'ajoute au contexte, puis cite `vue_contrat_minimisee`. Contrat absent ou d'un autre gestionnaire : même 404 (BOLA, contrôlé par underwriting-admin). OBO refusé ou underwriting-admin en panne : 503 `DOSSIERS_INDISPONIBLES`, et l'agent ne répond pas sans la vue. Les questions **sans** `numero_contrat` ne dépendent pas d'underwriting-admin.
+
+## Traces (spec §9)
+
+OpenTelemetry, exportées en OTLP/HTTP vers le référentiel SQL d'underwriting-admin (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, défaut `http://localhost:8002/v1/traces` ; `OTEL_SDK_DISABLED=true` les coupe). Spans : serveur HTTP (sauf `/health`), `agent.repondre`, `rag.recherche`, `ingestion.lot`, `llm.completer`, `embeddings.vectoriser`. Le `traceparent` est propagé vers underwriting-admin. **RGPD** : jamais le texte de la question (seulement `question.sha256` et `question.longueur`), ni nom, ni adresse, ni `numero_contrat` (seulement `contrat.present`) — vérifié par un test.
 
 ## Recherche hybride (spec §4.1)
 

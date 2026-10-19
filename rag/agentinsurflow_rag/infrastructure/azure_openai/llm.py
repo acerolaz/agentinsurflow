@@ -12,6 +12,7 @@ from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import OpenAI, OpenAIError
 
 from ...domain.ports import ClientLLM, ErreurLLM
+from ..otel.telemetrie import empreinte, tracer
 from .config import SCOPE_ENTRA, ConfigLLM
 
 
@@ -40,14 +41,25 @@ class AzureLLM:
         self._client, self.modele = client, deploiement
 
     def completer(self, systeme: str, question: str) -> str:
-        try:
-            reponse = self._client.chat.completions.create(
-                model=self.modele,
-                messages=[
-                    {"role": "system", "content": systeme},
-                    {"role": "user", "content": question},
-                ],
+        with tracer.start_as_current_span("llm.completer") as span:
+            span.set_attributes(
+                {"gen_ai.request.model": self.modele, "version_prompt": empreinte(systeme)[:12]}
             )
-            return reponse.choices[0].message.content or ""
-        except (OpenAIError, ClientAuthenticationError, IndexError) as exc:
-            raise ErreurLLM(f"erreur du fournisseur ou réponse mal formée : {exc!r}") from exc
+            try:
+                reponse = self._client.chat.completions.create(
+                    model=self.modele,
+                    messages=[
+                        {"role": "system", "content": systeme},
+                        {"role": "user", "content": question},
+                    ],
+                )
+                if reponse.usage is not None:
+                    span.set_attributes(
+                        {
+                            "gen_ai.usage.input_tokens": reponse.usage.prompt_tokens,
+                            "gen_ai.usage.output_tokens": reponse.usage.completion_tokens,
+                        }
+                    )
+                return reponse.choices[0].message.content or ""
+            except (OpenAIError, ClientAuthenticationError, IndexError) as exc:
+                raise ErreurLLM(f"erreur du fournisseur ou réponse mal formée : {exc!r}") from exc

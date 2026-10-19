@@ -9,23 +9,14 @@ from typing import Any
 
 import httpx
 import pytest
-from corpus_de_test import CORPUS, SHA
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from agentinsurflow_rag.api import app
 from agentinsurflow_rag.api.dependances import ConfigRag, charger_rag, connexion_reader
 from conftest import entetes
+from corpus_de_test import CORPUS, SHA
 
 GESTIONNAIRE = entetes("Gestionnaire")
-
-
-@pytest.fixture
-async def corpus(api: httpx.AsyncClient) -> httpx.AsyncClient:
-    corps = {"collection": "textes_reglementaires", "instantane_sha256": SHA, "articles": CORPUS}
-    assert (
-        await api.post("/api/ingestions", json=corps, headers=entetes("Ingestion"))
-    ).status_code == 201
-    return api
 
 
 async def _extraits(api: httpx.AsyncClient, question: str, **parametres: Any) -> dict[str, Any]:

@@ -11,6 +11,11 @@ import httpx
 import pytest
 from alembic import command
 from alembic.config import Config
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 from agentinsurflow_rag.api import app
@@ -24,6 +29,7 @@ from agentinsurflow_rag.api.dependances import (
 from agentinsurflow_rag.api.securite import charger_auth, obtenir_cle
 from agentinsurflow_rag.infrastructure.entra.jetons import ConfigAuth
 from agentinsurflow_rag.infrastructure.postgres.connexions import ConfigBD
+from corpus_de_test import CORPUS, SHA
 from fakes import FakeEmbeddings
 from jetons_de_test import CLE_PUBLIQUE, CLIENT_ID, TENANT, creer
 
@@ -114,3 +120,32 @@ async def api(conn_writer: AsyncConnection) -> AsyncIterator[httpx.AsyncClient]:
 
 def entetes(*roles: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {creer(list(roles))}"}
+
+
+@pytest.fixture
+async def corpus(api: httpx.AsyncClient) -> httpx.AsyncClient:
+    """L'API, avec le corpus de fixture (4 articles) ingéré par la vraie route."""
+    corps = {"collection": "textes_reglementaires", "instantane_sha256": SHA, "articles": CORPUS}
+    reponse = await api.post("/api/ingestions", json=corps, headers=entetes("Ingestion"))
+    assert reponse.status_code == 201
+    return api
+
+
+# ---------------------------------------------------------------- traces en mémoire
+
+_EXPORTATEUR = InMemorySpanExporter()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _fournisseur_de_traces() -> None:
+    """Le SDK OTel, une fois par processus (convention du SDK), avec un exportateur en mémoire."""
+    fournisseur = TracerProvider(resource=Resource.create({"service.name": "agentinsurflow-rag"}))
+    fournisseur.add_span_processor(SimpleSpanProcessor(_EXPORTATEUR))
+    trace.set_tracer_provider(fournisseur)
+
+
+@pytest.fixture
+def spans() -> Iterator[InMemorySpanExporter]:
+    _EXPORTATEUR.clear()
+    yield _EXPORTATEUR
+    _EXPORTATEUR.clear()

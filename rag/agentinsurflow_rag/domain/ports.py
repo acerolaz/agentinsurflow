@@ -9,7 +9,22 @@ from .models import (
     DocumentTrace,
     Extrait,
     IngestionJournalisee,
+    VueContrat,
 )
+
+
+class ErreurDossiers(Exception):
+    """underwriting-admin injoignable ou en erreur, ou jeton On-Behalf-Of refusé."""
+
+
+class ContratIntrouvable(Exception):
+    """Contrat absent ou hors du portefeuille du gestionnaire : même erreur (BOLA, OWASP API1)."""
+
+
+class DepotDossiers(Protocol):
+    """Les dossiers, chez underwriting-admin (seul accès à la base ``dossiers``)."""
+
+    async def lire_contrat(self, numero_contrat: str) -> VueContrat | None: ...
 
 
 class ErreurLLM(Exception):

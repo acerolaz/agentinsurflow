@@ -6,6 +6,7 @@ from azure.core.exceptions import ClientAuthenticationError
 from openai import OpenAI, OpenAIError
 
 from ...domain.ports import ClientEmbeddings, ErreurEmbeddings
+from ..otel.telemetrie import tracer
 from .config import ConfigLLM
 from .llm import client_openai
 
@@ -24,8 +25,14 @@ class AzureEmbeddings:
         self._client, self.modele = client, deploiement
 
     def vectoriser(self, textes: list[str]) -> list[list[float]]:
-        try:
-            reponse = self._client.embeddings.create(model=self.modele, input=textes)
-        except (OpenAIError, ClientAuthenticationError) as exc:
-            raise ErreurEmbeddings(f"erreur du fournisseur d'embeddings : {exc!r}") from exc
-        return [d.embedding for d in sorted(reponse.data, key=lambda d: d.index)]
+        with tracer.start_as_current_span("embeddings.vectoriser") as span:
+            span.set_attributes(
+                {"gen_ai.request.model": self.modele, "embeddings.textes": len(textes)}
+            )
+            try:
+                reponse = self._client.embeddings.create(model=self.modele, input=textes)
+            except (OpenAIError, ClientAuthenticationError) as exc:
+                raise ErreurEmbeddings(f"erreur du fournisseur d'embeddings : {exc!r}") from exc
+            if reponse.usage is not None:
+                span.set_attribute("gen_ai.usage.input_tokens", reponse.usage.prompt_tokens)
+            return [d.embedding for d in sorted(reponse.data, key=lambda d: d.index)]

@@ -8,23 +8,15 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Literal
 
-from pydantic import BaseModel
-
-from .llm import ClientLLM, ErreurLLM
+from ...domain.models import Reponse
+from ...domain.ports import ClientLLM, ErreurLLM
 
 # Prompt versionné à part : le modifier déclenche les évaluations (ci-cd.yml, job changements)
-SYSTEME = (Path(__file__).parent / "prompts" / "systeme.md").read_text(encoding="utf-8").strip()
+SYSTEME = (Path(__file__).parents[2] / "prompts" / "systeme.md").read_text(encoding="utf-8").strip()
 REPLI = "LLM indisponible : la demande passe en revue humaine."
 
 journal = logging.getLogger(__name__)
-
-
-class Reponse(BaseModel):
-    texte: str
-    mode: Literal["llm", "degrade"]
-    modele: str | None = None
 
 
 def repondre(question: str, llm: ClientLLM | None) -> Reponse:

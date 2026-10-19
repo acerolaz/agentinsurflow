@@ -21,7 +21,7 @@ concurrency:
 
 env:
   # Fichiers qui peuvent changer le résultat des évaluations
-  DECLENCHEURS_EVALS: '^(agentinsurflow/prompts/|eval/golden\.jsonl$|llm\.env$)'
+  DECLENCHEURS_EVALS: '^(rag/agentinsurflow_rag/prompts/|eval/golden\.jsonl$|eval/questions-demo\.yaml$|data/raw/|rag/llm\.env$)'
 
 jobs:
   lint:
@@ -105,7 +105,7 @@ jobs:
       - run: make install
       - name: Golden set contre l'API de la PR, LLM réel (porte bloquante avant merge)
         run: |
-          uv run uvicorn agentinsurflow.api:app --port 8000 &
+          (cd rag && uv run uvicorn agentinsurflow_rag.api:app --port 8000) & # llm.env lu dans rag/
           for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:8000/health > /dev/null && break; sleep 1; done
           uv run python tools/evals.py --url http://127.0.0.1:8000 --rapport evals-pr.json
       - uses: actions/upload-artifact@v4
@@ -133,7 +133,7 @@ jobs:
         run: |
           az acr login -n "${{ vars.ACR_NAME }}"
           # /health : SHA de l'image, release vX.Y.Z et version du manifeste, gravés au build
-          docker build --build-arg APP_VERSION=${{ github.sha }} \
+          docker build -f rag/Dockerfile --build-arg APP_VERSION=${{ github.sha }} \
             --build-arg APP_RELEASE=${{ needs.changements.outputs.release }} \
             --build-arg APP_MANIFESTE=${{ needs.changements.outputs.manifeste }} -t "$IMAGE" .
           docker push "$IMAGE"

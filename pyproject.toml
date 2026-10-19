@@ -1,15 +1,18 @@
 [project]
 name = "agentinsurflow"
-version = "0.2.0"
-description = "Socle AgentInsurFlow : API FastAPI + interface minimale + un appel LLM, livré par la chaîne."
+version = "0.2.0" # version de la solution (tools/version.py → tag de release vX.Y.Z)
+description = "AgentInsurFlow (monorepo) : gateway, rag, underwriting-admin, et leur chaîne."
 requires-python = ">=3.12,<3.13"
-dependencies = [
-    "fastapi>=0.115",
-    "uvicorn[standard]>=0.30",
-    "openai>=1.50",
-    "pydantic-settings>=2.4",
-    "azure-identity>=1.17",
-]
+dependencies = ["agentinsurflow-rag"]
+
+[tool.uv]
+package = false # racine de l'espace de travail : outillage commun (tools/, e2e/), pas de paquet
+
+[tool.uv.workspace]
+members = ["rag"]
+
+[tool.uv.sources]
+agentinsurflow-rag = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -20,17 +23,11 @@ dev = [
     "mypy>=1.10",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["agentinsurflow"]
-
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
-addopts = "--cov=agentinsurflow --cov-report=term-missing"
+# tests/ : outillage de la racine (tools/) ; rag/tests : le service rag (unit = TU, integration = TI)
+testpaths = ["tests", "rag/tests"]
+pythonpath = [".", "rag/tests"]
+addopts = "--cov=agentinsurflow_rag --cov-report=term-missing"
 
 [tool.coverage.report]
 # Porte bloquante = borne basse de la fourchette 80–83 % (dossier-conception-v1.md, P4)
@@ -42,6 +39,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["agentinsurflow_rag", "tools", "fakes"]
 
 [tool.mypy]
 python_version = "3.12"

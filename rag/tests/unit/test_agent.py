@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from agentinsurflow.agent import REPLI, SYSTEME, repondre
-from agentinsurflow.llm import ErreurLLM, FakeLLM
+from agentinsurflow_rag.application.use_cases.repondre import REPLI, SYSTEME, repondre
+from agentinsurflow_rag.domain.ports import ErreurLLM
+from fakes import FakeLLM
 
 
 def test_repond_via_le_llm_avec_le_prompt_systeme() -> None:

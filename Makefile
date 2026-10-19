@@ -7,7 +7,9 @@ URL ?= http://localhost:8000
 IMAGE ?= agentinsurflow:local
 VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
-.PHONY: install fmt lint test eval run build docker infra proteger rollback preuve
+# Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et, plus tard,
+# underwriting-admin/ (C#, leurs propres Makefile, appelés par gateway-<cible>).
+.PHONY: install fmt lint test pyramide eval run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked
@@ -19,19 +21,25 @@ fmt:
 lint:               ## porte 1 : style + typage
 	uv run ruff check .
 	uv run ruff format --check .
-	uv run mypy agentinsurflow tools
+	uv run mypy rag/agentinsurflow_rag tools
 
 test:               ## porte 2 : unitaires + intégration, couverture >= 80 %
 	uv run pytest
+
+pyramide:           ## porte S3-22 : TU >= 65 %, TI <= 25 %, E2E <= 15 % (rag + underwriting-admin + e2e)
+	uv run python tools/pyramide.py
+
+gateway-%:          ## cibles de gateway/Makefile : make gateway-test, gateway-lint, gateway-docker-build
+	$(MAKE) -C gateway $*
 
 eval:               ## porte 3 : make eval [URL=https://<staging>] — golden set contre l'API
 	uv run python tools/evals.py --url $(URL)
 
 run:                ## http://localhost:8000
-	uv run uvicorn agentinsurflow.api:app --reload --port 8000
+	cd rag && uv run uvicorn agentinsurflow_rag.api:app --reload --port 8000
 
-build:              ## image locale, version = commit courant
-	docker build --build-arg APP_VERSION=$(VERSION) -t $(IMAGE) .
+build:              ## image locale de rag, version = commit courant (contexte = racine, uv.lock)
+	docker build -f rag/Dockerfile --build-arg APP_VERSION=$(VERSION) -t $(IMAGE) .
 
 docker: build       ## l'image telle qu'elle tournera en Azure
 	docker run --rm --env-file .env -p 8000:8000 $(IMAGE)

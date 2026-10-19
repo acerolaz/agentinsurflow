@@ -128,8 +128,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seuil", type=float, default=0.8)
     # latence de l'évaluation p95 ≤ 30 s (dossier-conception-v1.md, D11)
     parser.add_argument("--latence-p95-max", type=float, default=30.0)
-    parser.add_argument("--prompts", type=Path, default=Path("agentinsurflow/prompts"))
-    parser.add_argument("--llm-env", type=Path, default=Path("llm.env"))
+    parser.add_argument("--prompts", type=Path, default=Path("rag/agentinsurflow_rag/prompts"))
+    parser.add_argument("--llm-env", type=Path, default=Path("rag/llm.env"))
     parser.add_argument("--rapport", type=Path)
     args = parser.parse_args(argv)
 

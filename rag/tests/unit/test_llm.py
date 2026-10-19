@@ -10,7 +10,9 @@ import pytest
 from azure.core.exceptions import ClientAuthenticationError
 from openai import OpenAI
 
-from agentinsurflow.llm import AzureLLM, ConfigLLM, ErreurLLM, fabrique_llm
+from agentinsurflow_rag.domain.ports import ErreurLLM
+from agentinsurflow_rag.infrastructure.azure_openai.config import ConfigLLM
+from agentinsurflow_rag.infrastructure.azure_openai.llm import AzureLLM, fabrique_llm
 
 ENDPOINT = "https://exemple.openai.azure.com"
 

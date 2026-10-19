@@ -7,8 +7,10 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from agentinsurflow.api import app, obtenir_llm
-from agentinsurflow.llm import ClientLLM, FakeLLM
+from agentinsurflow_rag.api import app
+from agentinsurflow_rag.api.routes.agent import obtenir_llm
+from agentinsurflow_rag.domain.ports import ClientLLM
+from fakes import FakeLLM
 
 client = TestClient(app)
 

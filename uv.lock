@@ -2,16 +2,18 @@ version = 1
 revision = 3
 requires-python = "==3.12.*"
 
+[manifest]
+members = [
+    "agentinsurflow",
+    "agentinsurflow-rag",
+]
+
 [[package]]
 name = "agentinsurflow"
 version = "0.2.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
-    { name = "azure-identity" },
-    { name = "fastapi" },
-    { name = "openai" },
-    { name = "pydantic-settings" },
-    { name = "uvicorn", extra = ["standard"] },
+    { name = "agentinsurflow-rag" },
 ]
 
 [package.dev-dependencies]
@@ -24,13 +26,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "azure-identity", specifier = ">=1.17" },
-    { name = "fastapi", specifier = ">=0.115" },
-    { name = "openai", specifier = ">=1.50" },
-    { name = "pydantic-settings", specifier = ">=2.4" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
-]
+requires-dist = [{ name = "agentinsurflow-rag", editable = "rag" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -39,6 +35,27 @@ dev = [
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-cov", specifier = ">=5" },
     { name = "ruff", specifier = ">=0.6" },
+]
+
+[[package]]
+name = "agentinsurflow-rag"
+version = "0.2.0"
+source = { editable = "rag" }
+dependencies = [
+    { name = "azure-identity" },
+    { name = "fastapi" },
+    { name = "openai" },
+    { name = "pydantic-settings" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "azure-identity", specifier = ">=1.17" },
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "openai", specifier = ">=1.50" },
+    { name = "pydantic-settings", specifier = ">=2.4" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
 
 [[package]]

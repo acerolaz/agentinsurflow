@@ -34,27 +34,26 @@ Le sprint 3 fait évoluer ce dépôt en **monorepo à trois projets**, livrés s
 
 | Projet | Langage | Rôle | État |
 |---|---|---|---|
-| [`gateway/`](gateway/README.md) | C# · YARP · .NET 10 | **Seule entrée publique** : routage pur vers les deux services | ✅ branche `feat/gateway` — construite et testée par la CI (job `gateway`), pas encore déployée |
-| `rag/` | Python · hexagonal | Corpus Légifrance, ingestion, recherche hybride, agent cité | ⏳ branche `feat/rag` |
+| [`gateway/`](gateway/README.md) | C# · YARP · .NET 10 | **Seule entrée publique** : routage, jeton Entra + RBAC par route, limitation de débit | ✅ branche `feat/gateway` — construite et testée par la CI (job `gateway`), pas encore déployée |
+| [`rag/`](rag/README.md) | Python · hexagonal | Corpus Légifrance, ingestion, recherche hybride, agent cité | 🚧 branche `feat/rag` — socle hexagonal en place (agent du sprint 2) ; le corpus arrive |
 | `underwriting-admin/` | C# · Clean Architecture · .NET 10 | Dossiers (BOLA) et référentiel SQL des traces OpenTelemetry | ⏳ branche `feat/underwriting-admin` |
 
 Toutes les API sont **REST** et consultables dans **une seule page Swagger**, servie à la racine de la gateway. Le contrat (ressources, méthodes, codes) et la correspondance avec les noms d'endpoints du brief sont dans [`gateway/README.md`](gateway/README.md#contrat-rest-s3-24).
 
-Le code ci-dessous (`agentinsurflow/`) est encore celui du sprint 2 ; il rejoindra `rag/` sur la branche `feat/rag`.
+Le code Python du sprint 2 vit désormais dans [`rag/`](rag/README.md), en architecture hexagonale ; son comportement est inchangé (`POST /api/agent`, `/health`). Tests : pyramide **70 % TU / 20 % TI / 10 % E2E** (règle [`.claude/rules/testing-pyramid.md`](.claude/rules/testing-pyramid.md), porte `make pyramide`).
 
 ## Arborescence
 
 ```text
 .
-├── agentinsurflow/            # le code (architecture hexagonale légère)
-│   ├── api.py                 #   adaptateur HTTP : /health, POST /api/agent, Swagger sur /
-│   ├── agent.py               #   domaine : l'agent, ne connaît que le port ClientLLM
-│   ├── llm.py                 #   port ClientLLM + FakeLLM (tests) + adaptateur AzureLLM + config
-│   └── prompts/systeme.md     #   prompt système (le modifier déclenche les evals)
-├── tests/
-│   ├── unit/                  # agent, adaptateur LLM (HTTP simulé, sans réseau), evals
-│   └── integration/           # requête HTTP → route → agent, LLM mocké
+├── rag/                       # 🐍 service rag (Python, hexagonal) — README, pyproject, Dockerfile, llm.env
+│   ├── agentinsurflow_rag/    #   domain/ · application/ · infrastructure/ · api/ · prompts/systeme.md
+│   └── tests/                 #   unit/ (TU, sans I/O) · integration/ (TI) · fakes.py (doublures des ports)
+├── gateway/                   # 🚪 gateway YARP (C#, .NET 10) — README, Makefile, Dockerfile
+├── tests/unit/                # tests de l'outillage de la racine (tools/)
 ├── tools/evals.py             # make eval : golden set contre une API (locale, PR ou staging) + manifeste
+├── tools/pyramide.py          # make pyramide : porte 70 / 20 / 10
+├── CLAUDE.md                  # contrat transverse du monorepo (non-négociables, pyramide)
 ├── .github/workflows/
 │   ├── ci-cd.yml              # lint → test → [evals-pr] · build → staging → [evals] → production
 │   └── deploy.yml             # déploiement + fumée ; lancé à la main = rollback
@@ -66,8 +65,10 @@ Le code ci-dessous (`agentinsurflow/`) est encore celui du sprint 2 ; il rejoind
 │   ├── golden.jsonl           # cas d'évaluation de l'agent (versionnés)
 │   ├── preuves/               # journaux de chaîne, rapports d'evals et captures versionnés
 │   └── ateliers/              # grille de l'atelier croisé n°2
-├── llm.env                    # version du LLM épinglée (la modifier déclenche les evals)
-├── Dockerfile · Makefile · pyproject.toml · uv.lock · .python-version
+├── Makefile                   # orchestre : lint, test, pyramide, eval, build ; gateway-<cible> → gateway/
+├── pyproject.toml · uv.lock   # espace de travail uv (membre : rag) ; version de la solution (0.2.0)
+├── global.json · Directory.Build.props  # SDK .NET 10 et règles communes des projets C#
+├── .python-version
 └── .env.example               # toutes les clés, sans valeurs
 ```
 
@@ -98,7 +99,7 @@ part en revue humaine (source : dossier-conception-v1.md, K5).
 **Authentification au LLM** : **aucune clé hors de ton poste**. Le code utilise Entra ID
 (`DefaultAzureCredential`) : OIDC dans la CI, identité managée dans Container Apps (rôle *Cognitive Services
 User* sur `svespuce-971`). En local, la clé `AZURE_OPENAI_API_KEY` du `.env` reste possible, sinon `az login`.
-Le modèle est épinglé dans `llm.env` ; l'endpoint est accepté avec ou sans le suffixe `/openai/v1`.
+Le modèle est épinglé dans `rag/llm.env` ; l'endpoint est accepté avec ou sans le suffixe `/openai/v1`.
 
 ## Tester
 
@@ -138,9 +139,9 @@ le réévalue, même s'il ne touche pas ces fichiers. Sans aucun tag `manifeste-
 
 | Déclencheur | Fichier versionné |
 |---|---|
-| Prompt | `agentinsurflow/prompts/` |
+| Prompt | `rag/agentinsurflow_rag/prompts/` |
 | Golden dataset | `eval/golden.jsonl` |
-| Version du LLM | `llm.env` (`AZURE_OPENAI_DEPLOYMENT`, épinglé et copié dans l'image) |
+| Version du LLM | `rag/llm.env` (`AZURE_OPENAI_DEPLOYMENT`, épinglé et copié dans l'image) |
 
 | Job | Quand | Contre quoi | Authentification au LLM |
 |---|---|---|---|
@@ -154,7 +155,7 @@ JSON s'ouvre sur un **manifeste** qui dit ce qui a été évalué :
 |---|---|
 | `version` | Version du manifeste : `X.Y.Z-build.N` (pyproject + n° de run GitHub) |
 | `date`, `commit`, `run`, `cible` | Quand, quel commit, lien du run GitHub, URL évaluée |
-| `modele` | Déploiement épinglé (`llm.env`) **et** modèle observé dans les réponses de l'API |
+| `modele` | Déploiement épinglé (`rag/llm.env`) **et** modèle observé dans les réponses de l'API |
 | `prompts` | Chaque prompt : fichier, empreinte sha256, contenu |
 | `golden` | Fichier, empreinte sha256, identifiants des cas |
 | `portes` | Seuil de réussite et latence p95 maximale appliqués |

@@ -180,6 +180,21 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
     }
 
+    [Fact]
+    public async Task Audiences_en_liste_separee_par_des_virgules()
+    {
+        // RAG_API_AUDIENCES : la même liste que celle lue par rag (ID client et api://<ID client>)
+        using var usine = _backends.Gateway(("Entra:Audiences:rag:0", "id-client-rag, api://id-client-rag"));
+        using var client = usine.CreateClient();
+
+        foreach (var audience in new[] { "id-client-rag", "api://id-client-rag" })
+        {
+            using var requete = Requete("POST", "/api/reponses", Creer(audience, ["Gestionnaire"]));
+            var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
+            Assert.True(reponse.StatusCode == HttpStatusCode.OK, $"{audience} → {reponse.StatusCode}");
+        }
+    }
+
     [Theory]
     [InlineData("/")]
     [InlineData("/index.html")]

@@ -96,8 +96,8 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 | `ReverseProxy__Clusters__rag__Destinations__d1__Address` | `http://localhost:8001` | Adresse de `rag` (compose : `http://rag:8001`) |
 | `ReverseProxy__Clusters__underwriting__Destinations__d1__Address` | `http://localhost:8002` | Adresse d'`underwriting-admin` |
 | `Entra__TenantId` | **obligatoire** | Tenant Entra (émetteurs v1 et v2 acceptés) |
-| `Entra__Audiences__rag__0`, `__1` | **obligatoire** | Audiences de `rag` : `api://agentinsurflow-rag` et l'ID client |
-| `Entra__Audiences__underwriting__0`, `__1` | **obligatoire** | Audiences d'`underwriting-admin` |
+| `Entra__Audiences__rag__0` | **obligatoire** | Audiences de `rag`, en liste « a, b » : la même valeur que `RAG_API_AUDIENCES`, lue par `rag` (`<ID client>,api://<ID client>`) |
+| `Entra__Audiences__underwriting__0` | **obligatoire** | Audiences d'`underwriting-admin`, en liste « a, b » (`UNDERWRITING_API_AUDIENCES`) |
 | `Proxy__EnvoyDevant` | `false` | `true` en Azure : IP réelle reprise de l'envoy |
 | `RateLimit__Global__PermitLimit`, `RateLimit__Reponses__PermitLimit`, `RateLimit__FenetreSecondes` | `120`, `10`, `60` | Limitation de débit |
 | `SWAGGER_CLIENT_ID` | vide | Client Entra public de la page Swagger |

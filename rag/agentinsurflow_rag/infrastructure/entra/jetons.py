@@ -20,10 +20,13 @@ class ConfigAuth(BaseSettings):
 
     azure_tenant_id: str
     rag_api_client_id: str
+    # « a, b » : la même variable que la gateway (Entra__Audiences__rag__0), une seule liste
+    rag_api_audiences: str = ""
 
     @property
     def audiences(self) -> list[str]:
-        return [self.rag_api_client_id, f"api://{self.rag_api_client_id}"]
+        liste = [a.strip() for a in self.rag_api_audiences.split(",") if a.strip()]
+        return liste or [self.rag_api_client_id, f"api://{self.rag_api_client_id}"]
 
     @property
     def emetteurs(self) -> list[str]:

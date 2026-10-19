@@ -35,6 +35,8 @@ services:
       AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
       AZURE_TENANT_ID: ${AZURE_TENANT_ID}
       RAG_API_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
+      # même liste que la gateway (Entra__Audiences__rag__0), même défaut
+      RAG_API_AUDIENCES: ${RAG_API_AUDIENCES:-api://agentinsurflow-rag}
       RAG_SEUIL: ${RAG_SEUIL:-} # à calibrer (make calibrer) ; vide → /api/extraits en 503
       # dossiers en On-Behalf-Of (underwriting-admin arrive en Task U1) ; secret : .env local seulement
       UNDERWRITING_API_CLIENT_ID: ${UNDERWRITING_API_CLIENT_ID:-}
@@ -53,10 +55,9 @@ services:
       ReverseProxy__Clusters__underwriting__Destinations__d1__Address: http://underwriting-admin:8002
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
       Entra__TenantId: ${AZURE_TENANT_ID:?AZURE_TENANT_ID manquant (.env)}
-      Entra__Audiences__rag__0: api://agentinsurflow-rag
-      Entra__Audiences__rag__1: ${RAG_API_CLIENT_ID:-api://agentinsurflow-rag}
-      Entra__Audiences__underwriting__0: api://agentinsurflow-underwriting
-      Entra__Audiences__underwriting__1: ${UNDERWRITING_API_CLIENT_ID:-api://agentinsurflow-underwriting}
+      # une liste « a, b » par service, la même que celle lue par le service lui-même
+      Entra__Audiences__rag__0: ${RAG_API_AUDIENCES:-api://agentinsurflow-rag}
+      Entra__Audiences__underwriting__0: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
       SWAGGER_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
     ports: ["8000:8000"]
     depends_on: [rag]

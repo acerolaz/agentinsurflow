@@ -48,6 +48,18 @@ def test_jeton_v1_accepte_avec_audience_api() -> None:
     assert appelant.oid == "oid-gestionnaire-a"
 
 
+def test_audiences_partagees_avec_la_gateway() -> None:
+    # RAG_API_AUDIENCES : une seule liste, lue par rag et par la gateway (I5)
+    cfg = ConfigAuth(
+        _env_file=None,  # type: ignore[call-arg]
+        azure_tenant_id=TENANT,
+        rag_api_client_id=CLIENT_ID,
+        rag_api_audiences=f" {CLIENT_ID}, api://agentinsurflow-rag ",
+    )
+    assert cfg.audiences == [CLIENT_ID, "api://agentinsurflow-rag"]
+    assert verifier_jeton(creer(aud="api://agentinsurflow-rag"), CLE_PUBLIQUE, cfg).oid
+
+
 def test_appelant_porte_oid_et_roles() -> None:
     appelant = verifier_jeton(creer(["Gestionnaire", "Ingestion"], oid="oid-x"), CLE_PUBLIQUE, CFG)
     assert appelant == Appelant(oid="oid-x", roles=frozenset({"Gestionnaire", "Ingestion"}))

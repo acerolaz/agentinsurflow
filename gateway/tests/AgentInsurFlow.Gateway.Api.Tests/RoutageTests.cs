@@ -5,12 +5,14 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using WireMock.RequestBuilders;
 using WireMock.ResponseBuilders;
 using WireMock.Server;
+using static AgentInsurFlow.Gateway.Api.Tests.JetonsDeTest;
 
 namespace AgentInsurFlow.Gateway.Api.Tests;
 
 /// <summary>
 /// Tests d'intégration (TI) : la vraie gateway en mémoire, devant deux backends WireMock.
 /// Forme « diamant » assumée : un proxy pur n'a pas de règle métier à tester unitairement.
+/// Les routes protégées reçoivent un jeton valide ; la sécurité est testée dans <see cref="AutorisationTests"/>.
 /// </summary>
 public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
 {
@@ -27,7 +29,8 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
             .UseSetting("ReverseProxy:Clusters:rag:Destinations:d1:Address", backends.Rag.Url)
             .UseSetting("ReverseProxy:Clusters:underwriting:Destinations:d1:Address", backends.Underwriting.Url)
             .UseSetting("APP_VERSION", "abc123")
-            .UseSetting("APP_RELEASE", "v0.2.0"));
+            .UseSetting("APP_RELEASE", "v0.2.0")
+            .AvecEntraDeTest());
         _client = _usine.CreateClient();
     }
 
@@ -36,6 +39,11 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
         _client.Dispose();
         _usine.Dispose();
     }
+
+    private Task<HttpResponseMessage> Envoyer(HttpRequestMessage requete) =>
+        _client.SendAsync(requete, TestContext.Current.CancellationToken);
+
+    private static string JetonComplet(string backend) => Creer(Audience(backend), TousLesRoles);
 
     // Contrat REST (S3-24) : une route par ressource, au pluriel
     [Theory]
@@ -52,7 +60,8 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     [InlineData("/underwriting/openapi/v1.json", "underwriting", "/openapi/v1.json")]
     public async Task Route_vers_le_bon_backend(string chemin, string backend, string cheminRecu)
     {
-        var reponse = await _client.GetAsync(new Uri(chemin, UriKind.Relative), TestContext.Current.CancellationToken);
+        using var requete = Requete("GET", chemin, JetonComplet(backend));
+        var reponse = await Envoyer(requete);
 
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
         var (vise, autre) = backend == "rag"
@@ -72,7 +81,8 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     [InlineData("/internal/sql/contrats")]
     public async Task Chemin_non_route_404_sans_appel_backend(string chemin)
     {
-        var reponse = await _client.GetAsync(new Uri(chemin, UriKind.Relative), TestContext.Current.CancellationToken);
+        using var requete = Requete("GET", chemin, JetonComplet("rag"));
+        var reponse = await Envoyer(requete);
 
         Assert.Equal(HttpStatusCode.NotFound, reponse.StatusCode);
         Assert.Empty(_backends.Rag.LogEntries);
@@ -94,10 +104,10 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     [Fact]
     public async Task XForwardedPrefix_du_client_ne_passe_pas()
     {
-        using var requete = new HttpRequestMessage(HttpMethod.Get, "/api/contrats");
+        using var requete = Requete("GET", "/api/contrats", JetonComplet("underwriting"));
         requete.Headers.Add("X-Forwarded-Prefix", "/pirate");
 
-        await _client.SendAsync(requete, TestContext.Current.CancellationToken);
+        await Envoyer(requete);
 
         var entetes = Assert.Single(_backends.Underwriting.LogEntries).RequestMessage!.Headers!;
         var prefixe = entetes.TryGetValue("X-Forwarded-Prefix", out var valeurs) ? string.Join(",", valeurs) : "";
@@ -107,10 +117,10 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     [Fact]
     public async Task Transmet_XForwardedFor_reecrit()
     {
-        using var requete = new HttpRequestMessage(HttpMethod.Post, "/v1/traces");
+        using var requete = Requete("POST", "/v1/traces", JetonComplet("underwriting"));
         requete.Headers.Add("X-Forwarded-For", "10.0.0.1");
 
-        await _client.SendAsync(requete, TestContext.Current.CancellationToken);
+        await Envoyer(requete);
 
         var entetes = Assert.Single(_backends.Underwriting.LogEntries).RequestMessage!.Headers!;
         var xff = entetes.TryGetValue("X-Forwarded-For", out var valeurs) ? string.Join(",", valeurs) : "";
@@ -118,28 +128,18 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     }
 
     [Fact]
-    public async Task Transmet_Authorization_et_traceparent_sans_les_lire()
+    public async Task Transmet_Authorization_et_traceparent_sans_les_modifier()
     {
         const string traceparent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
-        using var requete = new HttpRequestMessage(HttpMethod.Get, "/api/contrats");
-        requete.Headers.Add("Authorization", "Bearer jeton-opaque");
+        var jeton = Creer(AudienceUnderwriting, ["Gestionnaire"]);
+        using var requete = Requete("GET", "/api/contrats", jeton);
         requete.Headers.Add("traceparent", traceparent);
 
-        await _client.SendAsync(requete, TestContext.Current.CancellationToken);
+        await Envoyer(requete);
 
         var entetes = Assert.Single(_backends.Underwriting.LogEntries).RequestMessage!.Headers!;
-        Assert.Equal("Bearer jeton-opaque", Assert.Single(entetes["Authorization"]));
+        Assert.Equal($"Bearer {jeton}", Assert.Single(entetes["Authorization"]));
         Assert.Contains("0af7651916cd43dd8448eb211c80319c", Assert.Single(entetes["traceparent"]), StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task Ne_controle_aucun_jeton()
-    {
-        var reponse = await _client.PostAsync(new Uri("/api/reponses", UriKind.Relative), content: null, TestContext.Current.CancellationToken);
-
-        Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
-        var entetes = Assert.Single(_backends.Rag.LogEntries).RequestMessage!.Headers!;
-        Assert.False(entetes.ContainsKey("Authorization"));
     }
 
     [Fact]

@@ -2,20 +2,38 @@
 
 **Seule entrée publique** de la solution (décision S3-18) : un reverse proxy **YARP** sur ASP.NET Core 10 qui répartit les appels entre `rag` (Python) et `underwriting-admin` (C#), et qui sert la **page Swagger unique** des trois API. C'est la forme minimale de la gateway prévue par le dossier de conception (topologie en étoile D22, YARP D40).
 
-> 🔁 **Analogie .NET** : un `YARP`/`Ocelot` classique, routes déclarées dans `appsettings`, pas dans le code.
+> 🔁 **Analogie .NET** : un `YARP`/`Ocelot` classique, routes **et politiques d'autorisation** déclarées dans `appsettings`, pas dans le code.
 
 ## Ce qu'elle fait — et ne fait pas
 
 | ✅ Elle fait | ⛔ Elle ne fait pas |
 |---|---|
-| Router **par ressource REST** (table ci-dessous) | Valider un jeton, lire un rôle, décider d'un accès |
+| Router **par ressource REST** (table ci-dessous) | Remplacer la validation des services (BOLA, règles fines) |
+| **Valider le jeton Entra et exiger un rôle par route** (S3-25, issue #9) | Avoir sa propre inscription d'application |
 | **Réécrire** `X-Forwarded-For`/`-Proto`/`-Host`/`-Prefix` (mode `Set`) : un client ne peut pas se faire passer pour un appel interne | Contenir une règle métier |
 | Transmettre tels quels `Authorization` et `traceparent` | Modifier un corps de requête |
 | Servir la **page Swagger** des 3 API, à la racine `/` | — |
 | Exposer sa santé (`/health`) et celle des services (`/health/rag`, `/health/underwriting`) | — |
 | Émettre ses spans OpenTelemetry vers le référentiel SQL d'`underwriting-admin` | — |
 
-Chaque service valide lui-même les jetons qu'il reçoit : la gateway n'a **aucune** logique d'autorisation.
+La gateway est la **première barrière** ; chaque service revalide le jeton qu'il reçoit (défense en profondeur).
+
+## Sécurité (S3-25)
+
+Jeton **Entra ID** (Bearer) validé à l'entrée : signature (clés publiées par le tenant), émetteur v1 ou v2 du tenant, expiration, audience de l'un des deux services. Puis **une politique par route**, déclarée dans `appsettings.Routes.json` (`AuthorizationPolicy`) ; chaque politique exige un rôle d'app **et** l'audience du service visé : un jeton émis pour `rag` n'ouvre pas `underwriting-admin`.
+
+| Route | Politique | Rôle d'app | Audience |
+|---|---|---|---|
+| `POST /api/reponses`, `GET /api/extraits`, `GET /api/documents/{doc_id}` | `rag-gestionnaire` | `Gestionnaire` | `agentinsurflow-rag` |
+| `POST`/`GET /api/ingestions[/{id}]` | `rag-ingestion` | `Ingestion` | `agentinsurflow-rag` |
+| `GET /api/contrats[/{numero_contrat}]`, `GET /api/traces/{trace_id}` | `underwriting-gestionnaire` | `Gestionnaire` | `agentinsurflow-underwriting` |
+| `POST /v1/traces` | `underwriting-telemetrie` | `Telemetrie` | `agentinsurflow-underwriting` |
+| `/`, `/openapi/v1.json`, `/rag/**`, `/underwriting/**`, `/health*` | `anonymous` | — | — |
+
+- **Refus par défaut** : tout le reste exige au moins un jeton valide (un chemin inconnu répond 401 sans jeton, 404 avec).
+- Erreurs en ProblemDetails : **401** `NON_AUTHENTIFIE` (+ `WWW-Authenticate: Bearer`), **403** `ACCES_REFUSE` ; aucun appel n'est transmis.
+- Appelants : les humains (Swagger en PKCE, `az login`), la CI (identité fédérée OIDC de GitHub Actions). `rag` appelle `underwriting-admin` en On-Behalf-Of **sur localhost**, sans passer par la gateway.
+- Sans `Entra__TenantId` ou sans audiences, la gateway **refuse de démarrer** plutôt que de s'ouvrir.
 
 ## Contrat REST (S3-24)
 
@@ -31,7 +49,7 @@ Chaque service valide lui-même les jetons qu'il reçoit : la gateway n'a **aucu
 | `POST /v1/traces` | `underwriting-admin` | 200 | **Exception** : chemin imposé par la norme OTLP (récepteur de spans), pas une API métier |
 | `GET /health`, `/health/rag`, `/health/underwriting` | gateway, services | 200 | Santé et versions |
 
-Règles communes : ressources au pluriel ; `GET` sans effet de bord ; `POST` pour créer ou calculer ; `201` + `Location` à la création ; erreurs au format **ProblemDetails** (RFC 9457) avec un champ `code` (`CONTRAT_INTROUVABLE`…) ; pagination `limit`/`offset`. Tout chemin non listé : **404**, sans appel transmis.
+Règles communes : ressources au pluriel ; `GET` sans effet de bord ; `POST` pour créer ou calculer ; `201` + `Location` à la création ; erreurs au format **ProblemDetails** (RFC 9457) avec un champ `code` (`CONTRAT_INTROUVABLE`…) ; pagination `limit`/`offset`. Tout chemin non listé : **404** (401 sans jeton, refus par défaut), sans appel transmis.
 
 ### Correspondance avec les noms du brief (livrable L9)
 
@@ -58,6 +76,9 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 |---|---|---|
 | `ReverseProxy__Clusters__rag__Destinations__d1__Address` | `http://localhost:8001` | Adresse de `rag` (compose : `http://rag:8001`) |
 | `ReverseProxy__Clusters__underwriting__Destinations__d1__Address` | `http://localhost:8002` | Adresse d'`underwriting-admin` |
+| `Entra__TenantId` | **obligatoire** | Tenant Entra (émetteurs v1 et v2 acceptés) |
+| `Entra__Audiences__rag__0`, `__1` | **obligatoire** | Audiences de `rag` : `api://agentinsurflow-rag` et l'ID client |
+| `Entra__Audiences__underwriting__0`, `__1` | **obligatoire** | Audiences d'`underwriting-admin` |
 | `SWAGGER_CLIENT_ID` | vide | Client Entra public de la page Swagger |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | `http://localhost:8002/v1/traces` | Récepteur OTLP des traces |
 | `APP_VERSION`, `APP_RELEASE` | `dev` | Versions servies par `/health` (gravées au build) |
@@ -74,13 +95,16 @@ make -C gateway build          # compilation (avertissements = erreurs)
 make -C gateway lint           # dotnet format --verify-no-changes
 make -C gateway test           # tests + couverture de lignes >= 80 %
 make -C gateway docker-build   # image (contexte = racine du monorepo)
-docker run --rm -p 8000:8000 agentinsurflow-gateway:local
+docker run --rm -p 8000:8000 -e Entra__TenantId=<tenant> \
+  -e Entra__Audiences__rag__0=api://agentinsurflow-rag \
+  -e Entra__Audiences__underwriting__0=api://agentinsurflow-underwriting \
+  agentinsurflow-gateway:local
 open http://localhost:8000/    # page Swagger
 ```
 
 ## Tests — forme « diamant »
 
-Un proxy pur n'a presque aucune logique isolable : ses tests sont des **tests d'intégration** (`WebApplicationFactory` devant deux backends **WireMock.Net**), pas des tests unitaires de configuration. C'est l'exception prévue par la pyramide de la solution (70 % TU / 20 % TI / 10 % E2E sur `rag` et `underwriting-admin`) ; les tests de la gateway sont comptés à part.
+La gateway n'a presque aucune logique isolable (routes et politiques sont déclaratives) : ses tests sont des **tests d'intégration** (`WebApplicationFactory` devant deux backends **WireMock.Net**, jetons signés par une clé RSA de test à la place des métadonnées du tenant, sans appel réseau à Entra), pas des tests unitaires de configuration. C'est l'exception prévue par la pyramide de la solution (70 % TU / 20 % TI / 10 % E2E sur `rag` et `underwriting-admin`) ; les tests de la gateway sont comptés à part.
 
 | Test | Ce qu'il prouve |
 |---|---|
@@ -88,7 +112,11 @@ Un proxy pur n'a presque aucune logique isolable : ses tests sont des **tests d'
 | `Chemin_non_route_404_sans_appel_backend` (6 cas) | Ni route fourre-tout, ni anciennes routes RPC (`/api/agent`, `/v1/ingestion`, `/internal/…`) |
 | `Transmet_XForwardedFor_reecrit`, `XForwardedPrefix_du_client_ne_passe_pas` | Les en-têtes `X-Forwarded-*` du client n'atteignent pas les services (règle S3-21) |
 | `Documentation_recoit_son_prefixe_public` | `/rag` et `/underwriting` transmis en `X-Forwarded-Prefix` |
-| `Transmet_Authorization_et_traceparent_sans_les_lire`, `Ne_controle_aucun_jeton` | Jeton et contexte de trace intacts ; aucune décision d'accès |
+| `Transmet_Authorization_et_traceparent_sans_les_modifier` | Jeton et contexte de trace transmis intacts |
+| `Sans_jeton_401_…` (9 cas), `Jeton_signe_par_une_autre_cle_401`, `Jeton_expire_401`, `Emetteur_d_un_autre_tenant_401` | Jeton absent ou invalide : 401 `NON_AUTHENTIFIE`, rien n'est transmis |
+| `Role_manquant_403`, `Audience_d_un_autre_service_403`, `Role_Telemetrie_ne_donne_pas_les_contrats_403` | Rôle ou audience insuffisant : 403 `ACCES_REFUSE` |
+| `Bon_role_et_bonne_audience_transmis` (9 cas), `Jetons_v1_et_v2_acceptes` | Le bon jeton passe, sur chaque route |
+| `Documentation_et_sante_sans_jeton`, `Chemin_inconnu_401_sans_jeton_404_avec_jeton`, `Toutes_les_routes_declarent_une_politique` | Exceptions publiques et refus par défaut |
 | `Racine_redirige_vers_la_page_swagger`, `Page_swagger_liste_les_trois_documents`, `Page_swagger_se_connecte_a_Entra_en_PKCE` | La page Swagger unique et sa connexion |
 | `OpenApi_de_la_gateway_documente_health`, `Health_*` | Document OpenAPI et santé |
 
@@ -100,7 +128,7 @@ Clean Architecture **sans couche artificielle** (`~/.claude/rules/csharp-clean-a
 gateway/
 ├── AgentInsurFlow.Gateway.slnx
 ├── src/AgentInsurFlow.Gateway.Api/      Program.cs · appsettings.json · appsettings.Routes.json
-├── tests/AgentInsurFlow.Gateway.Api.Tests/   RoutageTests.cs · SwaggerTests.cs
+├── tests/AgentInsurFlow.Gateway.Api.Tests/   RoutageTests.cs · AutorisationTests.cs · SwaggerTests.cs · JetonsDeTest.cs
 ├── Dockerfile · Makefile · README.md
 ```
 

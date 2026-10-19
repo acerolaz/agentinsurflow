@@ -12,7 +12,7 @@ namespace AgentInsurFlow.Gateway.Api.Tests;
 public sealed class SwaggerTests : IDisposable
 {
     private readonly WebApplicationFactory<Program> _usine = new WebApplicationFactory<Program>()
-        .WithWebHostBuilder(b => b.UseSetting("SWAGGER_CLIENT_ID", "client-swagger-test"));
+        .WithWebHostBuilder(b => b.UseSetting("SWAGGER_CLIENT_ID", "client-swagger-test").AvecEntraDeTest());
     private readonly HttpClient _client;
 
     public SwaggerTests() => _client = _usine.CreateClient();

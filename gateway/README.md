@@ -29,7 +29,9 @@ Jeton **Entra ID** (Bearer) validé à l'entrée : signature (clés publiées pa
 | `POST`/`GET /api/ingestions[/{id}]` | `rag-ingestion` | `Ingestion` | `agentinsurflow-rag` |
 | `GET /api/contrats[/{numero_contrat}]`, `GET /api/traces/{trace_id}` | `underwriting-gestionnaire` | `Gestionnaire` | `agentinsurflow-underwriting` |
 | `POST /v1/traces` | `underwriting-telemetrie` | `Telemetrie` | `agentinsurflow-underwriting` |
-| `/`, `/openapi/v1.json`, `/rag/**`, `/underwriting/**`, `/health*` | `anonymous` | — | — |
+| `/`, `/openapi/v1.json`, `GET /rag/openapi.json`, `GET /underwriting/openapi/v1.json`, `/health*` | `anonymous` | — | — |
+
+Les routes de documentation n'ouvrent **que** le document OpenAPI de chaque service : tout autre chemin sous `/rag/` ou `/underwriting/` tombe dans le refus par défaut (sinon `/rag/api/reponses` atteindrait `rag` sans jeton ni limite de débit). Le « Try it out » de la page Swagger appelle les routes REST publiques (`/api/…`), donc avec leur politique.
 
 - **Refus par défaut** : tout le reste exige au moins un jeton valide (un chemin inconnu répond 401 sans jeton, 404 avec).
 - Erreurs en ProblemDetails : **401** `NON_AUTHENTIFIE` (+ `WWW-Authenticate: Bearer`), **403** `ACCES_REFUSE` ; aucun appel n'est transmis.
@@ -84,7 +86,7 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 ## Swagger
 
 - **Une seule page**, à la racine de la gateway (`/` → `/index.html`), avec un menu qui donne accès aux **3 documents OpenAPI** : `rag` (`/rag/openapi.json`), `underwriting-admin` (`/underwriting/openapi/v1.json`) et la gateway (`/openapi/v1.json`).
-- **Préfixe public transmis** : pour `/rag/**` et `/underwriting/**`, la gateway retire le préfixe et l'envoie dans `X-Forwarded-Prefix` ; chaque service l'utilise pour que ses liens Swagger restent justes derrière la gateway. Un `X-Forwarded-Prefix` fourni par le client est ignoré.
+- **Préfixe public transmis** : pour `GET /rag/openapi.json` et `GET /underwriting/openapi/v1.json`, la gateway retire le préfixe et l'envoie dans `X-Forwarded-Prefix`. Un `X-Forwarded-Prefix` fourni par le client est ignoré. Les documents des services ne déclarent **pas** de `servers` : le « Try it out » vise la gateway elle-même.
 - **Connexion Entra** (« Authorize ») en code d'autorisation + **PKCE**, avec un seul client public : `SWAGGER_CLIENT_ID` (l'application `agentinsurflow-rag`, qui a déjà la permission vers `underwriting` pour l'On-Behalf-Of).
 
 ## Configuration

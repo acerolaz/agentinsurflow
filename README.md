@@ -137,6 +137,7 @@ JSON s'ouvre sur un **manifeste** qui dit ce qui a été évalué :
 | Champ du manifeste | Contenu |
 |---|---|
 | `date`, `commit`, `run`, `cible` | Quand, quel commit, lien du run GitHub, URL évaluée |
+| `image` | Version de l'image évaluée (`X.Y.Z-build.N`, lue sur `/health` de la cible ; `dev` en PR) |
 | `modele` | Déploiement épinglé (`llm.env`) **et** modèle observé dans les réponses de l'API |
 | `prompts` | Chaque prompt : fichier, empreinte sha256, contenu |
 | `golden` | Fichier, empreinte sha256, identifiants des cas |

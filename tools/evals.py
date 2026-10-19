@@ -74,7 +74,7 @@ def _commit() -> str:
 def manifeste(
     url: str, golden: Path, prompts: Path, llm_env: Path, portes: dict[str, float]
 ) -> dict[str, Any]:
-    """Ce qui est évalué : commit, modèle épinglé, prompts et golden dataset (empreintes)."""
+    """Ce qui est évalué : commit, image, modèle épinglé, prompts et golden dataset (empreintes)."""
     run = os.environ.get("GITHUB_RUN_ID")
     depot = os.environ.get("GITHUB_REPOSITORY")
     cas = [json.loads(ligne) for ligne in golden.read_text(encoding="utf-8").splitlines() if ligne]
@@ -83,6 +83,7 @@ def manifeste(
         "commit": _commit(),
         "run": f"https://github.com/{depot}/actions/runs/{run}" if run and depot else None,
         "cible": url,
+        "image": version_image(url),
         "modele": {
             "fichier": str(llm_env),
             "deploiement": _lire_env(llm_env).get("AZURE_OPENAI_DEPLOYMENT"),
@@ -98,6 +99,15 @@ def manifeste(
         },
         "portes": portes,
     }
+
+
+def version_image(url: str) -> str:
+    """Version de l'image servie par la cible (``/health``, X.Y.Z-build.N) ; « dev » en local."""
+    try:
+        with urllib.request.urlopen(f"{url.rstrip('/')}/health", timeout=10) as reponse:
+            return str(json.load(reponse).get("version", "inconnue"))
+    except (OSError, ValueError):  # cible injoignable : le rapport reste produit
+        return "inconnue"
 
 
 def interroger(url: str, question: str) -> dict[str, Any]:

@@ -75,6 +75,7 @@ def test_le_rapport_s_ouvre_sur_le_manifeste(
     llm_env = tmp_path / "llm.env"
     llm_env.write_text("# épinglé\nAZURE_OPENAI_DEPLOYMENT=Kimi-K2.5\n", encoding="utf-8")
     monkeypatch.setattr(evals, "interroger", lambda url, question: OK)
+    monkeypatch.setattr(evals, "version_image", lambda url: "0.1.0-build.42")
     monkeypatch.setenv("GITHUB_SHA", "abc123")
     rapport = tmp_path / "rapport.json"
 
@@ -92,9 +93,13 @@ def test_le_rapport_s_ouvre_sur_le_manifeste(
     )
 
     m = json.loads(rapport.read_text(encoding="utf-8"))["manifeste"]
-    assert code == 0 and m["commit"] == "abc123"
+    assert code == 0 and m["commit"] == "abc123" and m["image"] == "0.1.0-build.42"
     assert m["modele"] == {"fichier": str(llm_env), "deploiement": "Kimi-K2.5", "observe": ["chat"]}
     assert m["prompts"][0]["contenu"] == "Tu es l'assistant."
     assert len(m["prompts"][0]["sha256"]) == 64
     assert m["golden"]["cas"] == ["domaine"] and len(m["golden"]["sha256"]) == 64
     assert m["portes"] == {"seuil": 0.8, "latence_p95_max_s": 30.0}
+
+
+def test_version_image_inconnue_si_cible_injoignable() -> None:
+    assert evals.version_image("http://127.0.0.1:9") == "inconnue"

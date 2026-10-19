@@ -1,16 +1,13 @@
-"""Versions de l'artefact (l'image) et de la release (tag Git posé avant la production).
+"""Tag de release ``vX.Y.Z``, posé sur le commit juste avant la production (job release).
 
-- artefact : ``X.Y.Z-build.N``, version du ``pyproject.toml`` + numéro de run, à chaque build ;
-- release : ``vX.Y.Z``, X.Y choisis à la main dans ``pyproject.toml``, Z calculé d'après les tags
-  existants (``v0.1.0``, puis ``v0.1.1``…). Passer le pyproject à 0.2.0 donne ``v0.2.0``.
-
-``python3 tools/version.py`` affiche la version du projet ; ``--release``, le tag à poser sur
-``HEAD`` (celui qu'il porte déjà s'il en a un : une relance ne crée pas de second tag).
+X.Y se choisissent à la main dans ``pyproject.toml`` ; Z est calculé d'après les tags existants
+(``v0.1.0``, puis ``v0.1.1``…). Passer le pyproject à 0.2.0 donne ``v0.2.0``.
+``python3 tools/version.py`` affiche le tag à poser sur ``HEAD`` : celui qu'il porte déjà s'il en a
+un, pour qu'une relance ne crée pas de second tag.
 """
 
 from __future__ import annotations
 
-import argparse
 import subprocess
 import tomllib
 from pathlib import Path
@@ -32,11 +29,6 @@ def _git(*args: str) -> list[str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--release", action="store_true", help="tag vX.Y.Z à poser sur HEAD")
-    if not parser.parse_args().release:
-        print(version_projet())
-        return
     deja = _git("tag", "--points-at", "HEAD", "--list", "v*")
     print(deja[0] if deja else prochaine_release(version_projet(), _git("tag", "--list", "v*")))
 

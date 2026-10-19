@@ -42,7 +42,7 @@ infra:              ## une fois : Azure (RG, ACR, Container Apps, OIDC) + variab
 proteger:           ## après le 1er push : main exige lint + test verts
 	gh api -X PUT repos/$(GITHUB_REPO)/branches/main/protection --input infra/protection-main.json
 
-rollback:           ## une opération : make rollback [ENV=staging] [TAG=<X.Y.Z-build.N>] ; sans TAG = version précédente
+rollback:           ## une opération : make rollback [ENV=staging] [TAG=<sha>] ; sans TAG = version précédente
 	gh workflow run deploy.yml -R $(GITHUB_REPO) -f environnement=$(ENV) -f tag=$(TAG)
 
 preuve:             ## make preuve RUN=<id> NOM=blocage-2026-10-20 → journal versionné

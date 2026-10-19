@@ -11,7 +11,7 @@ L'interface est **Swagger UI**, servie à la racine `/`.
 flowchart LR
     PR(["👤 PR"]) --> L(["🧹 lint<br/>ruff + mypy"]) --> T{{"🛡️ test<br/>couverture ≥ 80 %"}}
     T -- "PR" --> EP{{"🛡️ evals-pr<br/>si déclencheur"}} -- "✔ merge" --> M(["👤 merge main"])
-    M --> B(["📦 build<br/>image → ACR :X.Y.Z-build.N"]) --> S(["🚀 staging"]) --> FS{{"🛡️ fumée"}}
+    M --> B(["📦 build<br/>image → ACR :sha"]) --> S(["🚀 staging"]) --> FS{{"🛡️ fumée"}}
     FS -- "✔" --> EV{{"🛡️ evals<br/>si déclencheur"}} -- "✔ ou sautées" --> R(["🏷️ release<br/>tag vX.Y.Z"]) --> P(["🌐 production"]) --> FP{{"🛡️ fumée"}}
     T -- "✘" --> X(["⛔ chaîne arrêtée<br/>merge refusé"])
     P -. "make rollback (1 opération)" .-> RB(["↩️ image précédente"])
@@ -136,8 +136,8 @@ JSON s'ouvre sur un **manifeste** qui dit ce qui a été évalué :
 
 | Champ du manifeste | Contenu |
 |---|---|
+| `version` | Version du manifeste : `X.Y.Z-build.N` (pyproject + n° de run GitHub) |
 | `date`, `commit`, `run`, `cible` | Quand, quel commit, lien du run GitHub, URL évaluée |
-| `image` | Version de l'image évaluée (`X.Y.Z-build.N`, lue sur `/health` de la cible ; `dev` en PR) |
 | `modele` | Déploiement épinglé (`llm.env`) **et** modèle observé dans les réponses de l'API |
 | `prompts` | Chaque prompt : fichier, empreinte sha256, contenu |
 | `golden` | Fichier, empreinte sha256, identifiants des cas |
@@ -161,16 +161,17 @@ Installation, à faire une seule fois :
 3. `git push`, puis `make proteger` : `main` n'accepte plus que des commits dont `lint`, `test` et `evals-pr`
    sont verts (un `evals-pr` sauté compte comme vert).
 
-Ensuite, chaque **merge sur `main`** déclenche toute la chaîne, sans action manuelle. Deux versions, calculées
-par `tools/version.py` :
+Ensuite, chaque **merge sur `main`** déclenche toute la chaîne, sans action manuelle. Trois versions :
 
-| Version | Forme | Quand | Où la lire |
+| Version | Forme | Désigne | Où la lire |
 |---|---|---|---|
-| Artefact (l'image) | `X.Y.Z-build.N` (ex. `0.1.0-build.42`) | à chaque build | tag de l'image dans l'ACR, `/health` |
-| Release | `vX.Y.Z` (ex. `v0.1.3`) | sur le commit, juste avant la production | tags Git (`git tag`), résumé du run |
+| Release | `vX.Y.Z` (ex. `v0.1.3`) | le commit livré en production, tagué juste avant | tags Git (`git tag`), résumé du run |
+| Image | SHA du commit | l'artefact déployé | tag de l'image dans l'ACR, `/health` |
+| Manifeste | `X.Y.Z-build.N` (ex. `0.1.0-build.42`) | ce qui a été évalué : modèle, prompts, golden dataset | champ `version` du rapport d'évaluation |
 
-X.Y se choisissent à la main dans `pyproject.toml` (`version`) ; Z est calculé : `v0.1.0`, puis `v0.1.1`…
-Passer le pyproject à `0.2.0` donne `v0.2.0`. Le tag de release est annoté avec la version de l'image livrée.
+X.Y se choisissent à la main dans `pyproject.toml` (`version`). Pour la release, Z est calculé par
+`tools/version.py` d'après les tags (`v0.1.0`, puis `v0.1.1`…) ; passer le pyproject à `0.2.0` donne `v0.2.0`.
+Pour le manifeste, N est le numéro du run GitHub (`X.Y.Z-local` hors CI).
 
 ### Ressources Azure actuelles
 
@@ -189,7 +190,7 @@ Passer le pyproject à `0.2.0` donne `v0.2.0`. Le tag de release est annoté ave
 
 ```bash
 make rollback             # production → image précédente, en une opération
-make rollback ENV=staging TAG=0.1.0-build.42   # ou une version précise de l'image
+make rollback ENV=staging TAG=<sha>   # ou une version précise
 ```
 
 Détails et scénario de répétition : [docs/rollback.md](docs/rollback.md).

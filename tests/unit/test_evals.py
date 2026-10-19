@@ -75,8 +75,8 @@ def test_le_rapport_s_ouvre_sur_le_manifeste(
     llm_env = tmp_path / "llm.env"
     llm_env.write_text("# épinglé\nAZURE_OPENAI_DEPLOYMENT=Kimi-K2.5\n", encoding="utf-8")
     monkeypatch.setattr(evals, "interroger", lambda url, question: OK)
-    monkeypatch.setattr(evals, "version_image", lambda url: "0.1.0-build.42")
     monkeypatch.setenv("GITHUB_SHA", "abc123")
+    monkeypatch.setenv("GITHUB_RUN_NUMBER", "42")
     rapport = tmp_path / "rapport.json"
 
     code = evals.main(
@@ -93,7 +93,7 @@ def test_le_rapport_s_ouvre_sur_le_manifeste(
     )
 
     m = json.loads(rapport.read_text(encoding="utf-8"))["manifeste"]
-    assert code == 0 and m["commit"] == "abc123" and m["image"] == "0.1.0-build.42"
+    assert code == 0 and m["commit"] == "abc123" and m["version"].endswith("-build.42")
     assert m["modele"] == {"fichier": str(llm_env), "deploiement": "Kimi-K2.5", "observe": ["chat"]}
     assert m["prompts"][0]["contenu"] == "Tu es l'assistant."
     assert len(m["prompts"][0]["sha256"]) == 64
@@ -101,5 +101,14 @@ def test_le_rapport_s_ouvre_sur_le_manifeste(
     assert m["portes"] == {"seuil": 0.8, "latence_p95_max_s": 30.0}
 
 
-def test_version_image_inconnue_si_cible_injoignable() -> None:
-    assert evals.version_image("http://127.0.0.1:9") == "inconnue"
+@pytest.mark.parametrize(("run", "attendu"), [("42", "1.2.3-build.42"), (None, "1.2.3-local")])
+def test_version_manifeste(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, run: str | None, attendu: str
+) -> None:
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text('[project]\nversion = "1.2.3"\n', encoding="utf-8")
+    if run:
+        monkeypatch.setenv("GITHUB_RUN_NUMBER", run)
+    else:
+        monkeypatch.delenv("GITHUB_RUN_NUMBER", raising=False)
+    assert evals.version_manifeste(pyproject) == attendu

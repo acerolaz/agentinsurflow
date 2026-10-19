@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 import time
+import tomllib
 import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
@@ -71,19 +72,26 @@ def _commit() -> str:
     return sortie.stdout.strip() or "inconnu"
 
 
+def version_manifeste(pyproject: Path = Path("pyproject.toml")) -> str:
+    """``X.Y.Z-build.N`` : version du pyproject + n° de run GitHub ; ``X.Y.Z-local`` hors CI."""
+    base = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+    run = os.environ.get("GITHUB_RUN_NUMBER")
+    return f"{base}-build.{run}" if run else f"{base}-local"
+
+
 def manifeste(
     url: str, golden: Path, prompts: Path, llm_env: Path, portes: dict[str, float]
 ) -> dict[str, Any]:
-    """Ce qui est évalué : commit, image, modèle épinglé, prompts et golden dataset (empreintes)."""
+    """Ce qui est évalué : commit, modèle épinglé, prompts et golden dataset (empreintes)."""
     run = os.environ.get("GITHUB_RUN_ID")
     depot = os.environ.get("GITHUB_REPOSITORY")
     cas = [json.loads(ligne) for ligne in golden.read_text(encoding="utf-8").splitlines() if ligne]
     return {
+        "version": version_manifeste(),
         "date": datetime.now(UTC).isoformat(timespec="seconds"),
         "commit": _commit(),
         "run": f"https://github.com/{depot}/actions/runs/{run}" if run and depot else None,
         "cible": url,
-        "image": version_image(url),
         "modele": {
             "fichier": str(llm_env),
             "deploiement": _lire_env(llm_env).get("AZURE_OPENAI_DEPLOYMENT"),
@@ -99,15 +107,6 @@ def manifeste(
         },
         "portes": portes,
     }
-
-
-def version_image(url: str) -> str:
-    """Version de l'image servie par la cible (``/health``, X.Y.Z-build.N) ; « dev » en local."""
-    try:
-        with urllib.request.urlopen(f"{url.rstrip('/')}/health", timeout=10) as reponse:
-            return str(json.load(reponse).get("version", "inconnue"))
-    except (OSError, ValueError):  # cible injoignable : le rapport reste produit
-        return "inconnue"
 
 
 def interroger(url: str, question: str) -> dict[str, Any]:

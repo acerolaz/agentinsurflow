@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from tools import version
@@ -21,5 +23,7 @@ def test_prochaine_release(base: str, tags: list[str], attendu: str) -> None:
     assert version.prochaine_release(base, tags) == attendu
 
 
-def test_version_projet() -> None:
-    assert version.version_projet() == "0.1.0"
+def test_version_projet(tmp_path: Path) -> None:
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text('[project]\nversion = "1.2.3"\n', encoding="utf-8")
+    assert version.version_projet(pyproject) == "1.2.3"

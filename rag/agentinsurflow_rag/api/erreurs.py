@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from sqlalchemy.exc import DBAPIError
 
 from ..domain.ports import ContratIntrouvable, ErreurDossiers, ErreurEmbeddings
 
@@ -63,19 +64,21 @@ async def _gerer(request: Request, exc: Exception) -> JSONResponse:
     return probleme(exc.statut, exc.code, exc.titre, exc.entetes)
 
 
-ERREURS_DU_DOMAINE: dict[type[Exception], tuple[int, str, str]] = {
+ERREURS_CONNUES: dict[type[Exception], tuple[int, str, str]] = {
     ErreurEmbeddings: (503, "EMBEDDINGS_INDISPONIBLES", "Le modèle d'embeddings ne répond pas"),
     ErreurDossiers: (503, "DOSSIERS_INDISPONIBLES", "Les dossiers ne sont pas joignables"),
     # même réponse pour un contrat absent et un contrat d'un autre gestionnaire (BOLA)
     ContratIntrouvable: (404, "CONTRAT_INTROUVABLE", "Contrat introuvable"),
+    # base coupée, délai dépassé ou pas encore migrée pendant la requête (jamais une 500)
+    DBAPIError: (503, "BASE_INDISPONIBLE", "Base de données indisponible"),
 }
 
 
-async def _domaine(request: Request, exc: Exception) -> JSONResponse:
-    return probleme(*next(v for t, v in ERREURS_DU_DOMAINE.items() if isinstance(exc, t)))
+async def _connue(request: Request, exc: Exception) -> JSONResponse:
+    return probleme(*next(v for t, v in ERREURS_CONNUES.items() if isinstance(exc, t)))
 
 
 def installer_gestionnaires(app: FastAPI) -> None:
     app.add_exception_handler(ErreurApi, _gerer)
-    for type_ in ERREURS_DU_DOMAINE:
-        app.add_exception_handler(type_, _domaine)
+    for type_ in ERREURS_CONNUES:
+        app.add_exception_handler(type_, _connue)

@@ -59,8 +59,12 @@ class Moteurs:
 
 
 def creer_moteurs(cfg: ConfigBD) -> Moteurs:
-    """Aucune connexion n'est ouverte ici : le pool se remplit au premier usage."""
+    """Aucune connexion n'est ouverte ici : le pool se remplit au premier usage.
+
+    ``hide_parameters`` : une erreur SQL ne porte jamais les paramètres (la question, RGPD G-02)
+    dans son message, donc ni dans les événements des spans ni dans les journaux.
+    """
     return Moteurs(
-        writer=create_async_engine(cfg.url("writer"), pool_pre_ping=True),
-        reader=create_async_engine(cfg.url("reader"), pool_pre_ping=True),
+        writer=create_async_engine(cfg.url("writer"), pool_pre_ping=True, hide_parameters=True),
+        reader=create_async_engine(cfg.url("reader"), pool_pre_ping=True, hide_parameters=True),
     )

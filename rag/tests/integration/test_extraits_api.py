@@ -9,12 +9,15 @@ from typing import Any
 
 import httpx
 import pytest
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from agentinsurflow_rag.api import app
 from agentinsurflow_rag.api.dependances import ConfigRag, charger_rag, connexion_reader
+from agentinsurflow_rag.infrastructure.postgres import corpus as pg_corpus
 from agentinsurflow_rag.infrastructure.postgres.connexions import ConfigBD, creer_moteurs
-from conftest import entetes
+from conftest import config_bd, entetes
 from corpus_de_test import CORPUS, SHA
 
 GESTIONNAIRE = entetes("Gestionnaire")
@@ -141,3 +144,29 @@ async def test_base_injoignable_503_problem_details(api: httpx.AsyncClient) -> N
     assert reponse.status_code == 503
     assert reponse.headers["content-type"] == "application/problem+json"
     assert reponse.json()["code"] == "BASE_INDISPONIBLE"
+
+
+async def test_erreur_sql_503_sans_la_question_dans_les_traces(
+    api: httpx.AsyncClient, spans: InMemorySpanExporter, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # une vraie erreur PostgreSQL pendant la requête (ici : base non migrée, table absente) ;
+    # sans hide_parameters, son message porterait « [parameters: ('Jean Dupont …', …)] »
+    monkeypatch.setattr(pg_corpus, "SQL_HYBRIDE", text("SELECT :question AS q FROM table_absente"))
+    del app.dependency_overrides[connexion_reader]  # le vrai câblage (creer_moteurs)
+    app.state.moteurs = creer_moteurs(config_bd())
+    try:
+        reponse = await api.get(
+            "/api/extraits", params={"question": "Jean Dupont bonus malus"}, headers=GESTIONNAIRE
+        )
+    finally:
+        await app.state.moteurs.fermer()
+        app.state.moteurs = None
+    assert (reponse.status_code, reponse.json()["code"]) == (503, "BASE_INDISPONIBLE")
+    textes = [
+        str(v)
+        for s in spans.get_finished_spans()
+        for attributs in [s.attributes, *(e.attributes for e in s.events)]
+        for v in (attributs or {}).values()
+    ]
+    assert any("table_absente" in t for t in textes)  # l'exception est bien enregistrée…
+    assert not any("Dupont" in t for t in textes)  # … sans la question

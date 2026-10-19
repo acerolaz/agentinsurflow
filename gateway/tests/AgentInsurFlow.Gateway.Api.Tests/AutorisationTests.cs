@@ -48,7 +48,8 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
         Assert.Empty(_backends.Underwriting.LogEntries);
     }
 
-    private static async Task<string> Code(HttpResponseMessage reponse)
+    /// <summary>Le champ <c>code</c> d'une réponse ProblemDetails (partagé avec <see cref="DebitTests"/>).</summary>
+    internal static async Task<string> Code(HttpResponseMessage reponse)
     {
         Assert.Equal("application/problem+json", reponse.Content.Headers.ContentType?.MediaType);
         using var json = JsonDocument.Parse(await reponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));

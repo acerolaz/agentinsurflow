@@ -10,6 +10,7 @@
 |---|---|
 | Router **par ressource REST** (table ci-dessous) | Remplacer la validation des services (BOLA, règles fines) |
 | **Valider le jeton Entra et exiger un rôle par route** (S3-25, issue #9) | Avoir sa propre inscription d'application |
+| **Limiter le débit** par utilisateur ou par IP, 429 (S3-27, issue #13) | Partager ses compteurs entre répliques |
 | **Réécrire** `X-Forwarded-For`/`-Proto`/`-Host`/`-Prefix` (mode `Set`) : un client ne peut pas se faire passer pour un appel interne | Contenir une règle métier |
 | Transmettre tels quels `Authorization` et `traceparent` | Modifier un corps de requête |
 | Servir la **page Swagger** des 3 API, à la racine `/` | — |
@@ -34,6 +35,22 @@ Jeton **Entra ID** (Bearer) validé à l'entrée : signature (clés publiées pa
 - Erreurs en ProblemDetails : **401** `NON_AUTHENTIFIE` (+ `WWW-Authenticate: Bearer`), **403** `ACCES_REFUSE` ; aucun appel n'est transmis.
 - Appelants : les humains (Swagger en PKCE, `az login`), la CI (identité fédérée OIDC de GitHub Actions). `rag` appelle `underwriting-admin` en On-Behalf-Of **sur localhost**, sans passer par la gateway.
 - Sans `Entra__TenantId` ou sans audiences, la gateway **refuse de démarrer** plutôt que de s'ouvrir.
+
+## Limitation de débit (S3-27, issue #13)
+
+Limiteur **natif** d'ASP.NET Core (aucun paquet), en fenêtre fixe de 60 s, par **utilisateur** (`oid` du jeton) ou, sans jeton, par **IP** :
+
+| Portée | Limite par défaut | Réglage |
+|---|---|---|
+| Toutes les routes | 120 requêtes/min | `RateLimit__Global__PermitLimit` |
+| `POST /api/reponses` (coût LLM), en plus de la limite globale | 10 requêtes/min | `RateLimit__Reponses__PermitLimit` |
+| `/health`, `/health/rag`, `/health/underwriting` (sondes) | jamais limitées | — |
+
+Au-delà : **429** `TROP_DE_REQUETES` en ProblemDetails, avec `Retry-After` (secondes). Le débit est compté après l'authentification et avant l'autorisation : les requêtes refusées comptent aussi. Les compteurs sont en mémoire, par réplique (la Container App n'a qu'une réplique).
+
+## IP réelle du client (S3-26, issue #10)
+
+En Azure, la gateway est derrière l'**envoy** de Container Apps, qui ajoute l'IP du client à la fin de `X-Forwarded-For`. Avec `Proxy__EnvoyDevant=true`, la gateway reprend **cette dernière entrée seulement** (`ForwardedHeaders`, `ForwardLimit = 1`) : elle sert au débit par IP, aux spans (`client.address`) et à l'`X-Forwarded-For` transmis aux services. Le drapeau est **éteint par défaut** : en local, la gateway est joignable directement et cet en-tête viendrait du client lui-même ; il est alors ignoré.
 
 ## Contrat REST (S3-24)
 
@@ -79,6 +96,8 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 | `Entra__TenantId` | **obligatoire** | Tenant Entra (émetteurs v1 et v2 acceptés) |
 | `Entra__Audiences__rag__0`, `__1` | **obligatoire** | Audiences de `rag` : `api://agentinsurflow-rag` et l'ID client |
 | `Entra__Audiences__underwriting__0`, `__1` | **obligatoire** | Audiences d'`underwriting-admin` |
+| `Proxy__EnvoyDevant` | `false` | `true` en Azure : IP réelle reprise de l'envoy |
+| `RateLimit__Global__PermitLimit`, `RateLimit__Reponses__PermitLimit`, `RateLimit__FenetreSecondes` | `120`, `10`, `60` | Limitation de débit |
 | `SWAGGER_CLIENT_ID` | vide | Client Entra public de la page Swagger |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | `http://localhost:8002/v1/traces` | Récepteur OTLP des traces |
 | `APP_VERSION`, `APP_RELEASE` | `dev` | Versions servies par `/health` (gravées au build) |
@@ -117,6 +136,8 @@ La gateway n'a presque aucune logique isolable (routes et politiques sont décla
 | `Role_manquant_403`, `Audience_d_un_autre_service_403`, `Role_Telemetrie_ne_donne_pas_les_contrats_403` | Rôle ou audience insuffisant : 403 `ACCES_REFUSE` |
 | `Bon_role_et_bonne_audience_transmis` (9 cas), `Jetons_v1_et_v2_acceptes` | Le bon jeton passe, sur chaque route |
 | `Documentation_et_sante_sans_jeton`, `Chemin_inconnu_401_sans_jeton_404_avec_jeton`, `Toutes_les_routes_declarent_une_politique` | Exceptions publiques et refus par défaut |
+| `Au_dela_de_la_limite_globale_429_RetryAfter_ProblemDetails`, `Limite_par_utilisateur`, `Reponses_limite_plus_stricte`, `Sans_jeton_partition_par_ip`, `Sante_jamais_limitee` | Débit : 429 propre, budgets séparés, sondes épargnées |
+| `EnvoyDevant_IP_reelle_transmise`, `EnvoyDevant_partitionne_par_IP_reelle` | Derrière l'envoy, seule la dernière entrée de `X-Forwarded-For` compte |
 | `Racine_redirige_vers_la_page_swagger`, `Page_swagger_liste_les_trois_documents`, `Page_swagger_se_connecte_a_Entra_en_PKCE` | La page Swagger unique et sa connexion |
 | `OpenApi_de_la_gateway_documente_health`, `Health_*` | Document OpenAPI et santé |
 
@@ -128,7 +149,7 @@ Clean Architecture **sans couche artificielle** (`~/.claude/rules/csharp-clean-a
 gateway/
 ├── AgentInsurFlow.Gateway.slnx
 ├── src/AgentInsurFlow.Gateway.Api/      Program.cs · appsettings.json · appsettings.Routes.json
-├── tests/AgentInsurFlow.Gateway.Api.Tests/   RoutageTests.cs · AutorisationTests.cs · SwaggerTests.cs · JetonsDeTest.cs
+├── tests/AgentInsurFlow.Gateway.Api.Tests/   RoutageTests.cs · AutorisationTests.cs · DebitTests.cs · IpClientTests.cs · SwaggerTests.cs · JetonsDeTest.cs
 ├── Dockerfile · Makefile · README.md
 ```
 

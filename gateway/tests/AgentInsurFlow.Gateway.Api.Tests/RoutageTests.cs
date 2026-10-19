@@ -174,6 +174,23 @@ public sealed class Backends : IDisposable
     public WireMockServer Rag { get; } = Demarrer();
     public WireMockServer Underwriting { get; } = Demarrer();
 
+    /// <summary>Une gateway devant ces backends, avec Entra de test et des réglages propres au test.</summary>
+    public WebApplicationFactory<Program> Gateway(params (string Cle, string Valeur)[] reglages)
+    {
+        Rag.ResetLogEntries();
+        Underwriting.ResetLogEntries();
+        return new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        {
+            b.UseSetting("ReverseProxy:Clusters:rag:Destinations:d1:Address", Rag.Url)
+                .UseSetting("ReverseProxy:Clusters:underwriting:Destinations:d1:Address", Underwriting.Url)
+                .AvecEntraDeTest();
+            foreach (var (cle, valeur) in reglages)
+            {
+                b.UseSetting(cle, valeur);
+            }
+        });
+    }
+
     private static WireMockServer Demarrer()
     {
         var serveur = WireMockServer.Start();

@@ -21,4 +21,4 @@ Trois projets, chacun avec son README : [`gateway/`](gateway/README.md) (C#, YAR
 
 `make install` · `make lint` · `make test` (TU) · `make test-integration` (TU + TI, PostgreSQL du compose) · `make pyramide` · `make up` / `make down` (solution en local, Swagger unique sur `http://localhost:8000/`) · `make run` · `make build` · `make gateway-test` (et toute cible de `gateway/Makefile` en `gateway-<cible>`).
 
-Chaque tâche du plan relève la version de la solution (`pyproject.toml` racine et `rag/pyproject.toml`) : R0 → 0.3.0, R1 → 0.4.0…
+**Versions** (`pyproject.toml` racine et `rag/pyproject.toml`) : fixées par Acerola, jamais relevées d'office. R0 → 0.3.0, R1 → 0.4.0 ; **R2 → R8 restent en 0.4.0**.

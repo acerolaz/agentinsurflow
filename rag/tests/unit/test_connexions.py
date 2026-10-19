@@ -31,6 +31,16 @@ def test_mot_de_passe_a_caracteres_speciaux_encode() -> None:
     assert (url.password, url.host, url.database) == ("p@ss:/w#rd", "localhost", "vecteurs")
 
 
+def test_migrateur_facultatif_pour_les_routes_mais_exige_pour_migrer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("PG_MIGRATEUR_PASSWORD", raising=False)
+    cfg = _config()  # l'API démarre sans le mot de passe du propriétaire
+    with pytest.raises(ValueError, match="PG_MIGRATEUR_PASSWORD"):
+        cfg.url("migrateur")
+    assert make_url(_config(pg_migrateur_password="m").url("migrateur")).username == "migrateur"
+
+
 def test_mots_de_passe_obligatoires(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("PG_WRITER_PASSWORD", raising=False)
     monkeypatch.delenv("PG_READER_PASSWORD", raising=False)

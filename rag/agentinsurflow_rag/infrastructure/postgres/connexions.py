@@ -1,7 +1,8 @@
 """Connexions de rag à PostgreSQL : rag ne connaît que la base ``vecteurs``.
 
-Deux comptes, ``writer`` (ingestion) et ``reader`` (recherche). Les bases ``dossiers`` et
-``traces`` appartiennent à underwriting-admin (S3-17).
+Deux comptes pour les routes, ``writer`` (ingestion) et ``reader`` (recherche) ; ``migrateur``
+(propriétaire) ne sert qu'aux migrations Alembic. Les bases ``dossiers`` et ``traces``
+appartiennent à underwriting-admin (S3-17).
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-Compte = Literal["writer", "reader"]
+Compte = Literal["writer", "reader", "migrateur"]
 
 
 class ConfigBD(BaseSettings):
@@ -27,13 +28,20 @@ class ConfigBD(BaseSettings):
     pg_suffixe_bases: str = ""  # "_test" pour les tests d'intégration
     pg_writer_password: SecretStr
     pg_reader_password: SecretStr
+    pg_migrateur_password: SecretStr | None = None  # migrations seulement
 
     def url(self, compte: Compte) -> str:
-        mot_de_passe = {"writer": self.pg_writer_password, "reader": self.pg_reader_password}
+        mot_de_passe = {
+            "writer": self.pg_writer_password,
+            "reader": self.pg_reader_password,
+            "migrateur": self.pg_migrateur_password,
+        }[compte]
+        if mot_de_passe is None:
+            raise ValueError(f"PG_{compte.upper()}_PASSWORD manquant")
         return URL.create(
             "postgresql+asyncpg",
             username=compte,
-            password=mot_de_passe[compte].get_secret_value(),
+            password=mot_de_passe.get_secret_value(),
             host=self.pg_host,
             port=self.pg_port,
             database=f"vecteurs{self.pg_suffixe_bases}",

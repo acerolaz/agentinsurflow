@@ -18,6 +18,16 @@ Service Python (FastAPI) du **corpus réglementaire** : il portera l'ingestion d
 
 rag ne connaît que la base **`vecteurs`**, avec deux comptes : `writer` (ingestion) et `reader` (recherche) — `infrastructure/postgres/connexions.py` (`ConfigBD`, `creer_moteurs`). Les bases `dossiers` et `traces` appartiennent à underwriting-admin. L'image annexe (`infra/postgres/`) crée les 3 bases, leurs versions `_test`, les 6 comptes, et l'extension `vector` dans `vecteurs` ; chaque compte n'a `CONNECT` que sur sa base. Les mots de passe viennent de l'environnement (`PG_*_PASSWORD`, `.env` en local, générés à chaque run en CI).
 
+**Schéma** (Alembic, `rag/alembic.ini`, section `vecteurs`, migrations écrites à la main en SQL ; `make migrate`, compte `migrateur`) :
+
+| Table | Rôle | Index |
+|---|---|---|
+| `document` | une **version** d'un article (`doc_id`, `version`, `etat`, `date_debut`, `url_source`, `hash_contenu`, `obsolete`) ; UNIQUE (`doc_id`, `version`), `collection` limitée à 4 valeurs | B-tree partiel (`collection`) WHERE NOT `obsolete` |
+| `chunk` | unité de recherche et de citation (`article`, `texte`, `embedding vector(1536)`, `tsv` **généré** en français) | **HNSW** cosinus · **GIN** (`tsv`) · B-tree (`article`) |
+| `ingestion` | rapports d'ingestion (`instantane_sha256`, `rapport` jsonb) | — |
+
+Droits : `writer` → SELECT, INSERT, UPDATE (+ séquences) ; `reader` → SELECT seul (vérifié par un test).
+
 ## Architecture hexagonale
 
 `~/.claude/rules/python-hexagonal.md` : le domaine ne dépend d'aucun framework ; la règle est **vérifiée par un test** (`tests/unit/test_architecture.py`).
@@ -57,6 +67,7 @@ make test               # TU, sans Docker
 make test-integration   # TU + TI (PostgreSQL du compose), couverture >= 80 %
 make pyramide           # porte 70 / 20 / 10 (S3-22)
 make up                 # postgres + rag (:8001) + gateway (:8000, Swagger unique)
+make migrate            # schéma de la base vecteurs (Alembic, compte migrateur)
 make run                # rag seul : http://localhost:8000 (lancé depuis rag/ : llm.env y est lu)
 make build              # docker build -f rag/Dockerfile .
 ```
@@ -66,6 +77,6 @@ make build              # docker build -f rag/Dockerfile .
 | Niveau | Dossier | Exemples |
 |---|---|---|
 | TU | `tests/unit` | `test_agent.py` (agent, ports simulés), `test_llm.py` (adaptateur, HTTP simulé par `httpx.MockTransport`), `test_connexions.py` (URL des comptes, sans connexion), `test_architecture.py` (règle de dépendance) |
-| TI | `tests/integration` | `test_api.py` (requête HTTP → route → cas d'usage, LLM simulé ; contrat REST, document OpenAPI sans `servers`), `test_bd.py` (image annexe : 6 comptes, cloisonnement des bases, pgvector) |
+| TI | `tests/integration` | `test_api.py` (requête HTTP → route → cas d'usage, LLM simulé ; contrat REST, document OpenAPI sans `servers`), `test_bd.py` (image annexe : 6 comptes, cloisonnement des bases, pgvector), `test_migrations_vecteurs.py` (tables, index, droits, unicité, `tsv`, downgrade/upgrade) |
 
 ⚠️ `test_llm.py` utilise `httpx.MockTransport` sans réseau ni socket : il reste en TU selon la règle de la pyramide (aucune I/O réelle).

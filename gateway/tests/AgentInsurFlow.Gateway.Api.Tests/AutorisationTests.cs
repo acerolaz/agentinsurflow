@@ -196,6 +196,22 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
         Assert.True(reponse.IsSuccessStatusCode || reponse.StatusCode == HttpStatusCode.MovedPermanently, $"{chemin} → {reponse.StatusCode}");
     }
 
+    // Les routes de documentation sont anonymes : elles ne doivent ouvrir QUE le document OpenAPI,
+    // sinon /rag/api/reponses atteindrait rag sans jeton ni limite de débit.
+    [Theory]
+    [InlineData("POST", "/rag/api/reponses")]
+    [InlineData("GET", "/rag/api/documents/LEGIARTI000006800836")]
+    [InlineData("GET", "/rag/")]
+    [InlineData("GET", "/underwriting/api/contrats")]
+    [InlineData("POST", "/underwriting/v1/traces")]
+    public async Task Documentation_n_ouvre_que_le_document_OpenAPI(string verbe, string chemin)
+    {
+        var reponse = await Envoyer(verbe, chemin);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, reponse.StatusCode);
+        AucunAppelTransmis();
+    }
+
     [Fact]
     public async Task Chemin_inconnu_401_sans_jeton_404_avec_jeton()
     {

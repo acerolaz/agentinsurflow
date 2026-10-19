@@ -22,4 +22,5 @@ ENV APP_VERSION=$APP_VERSION APP_RELEASE=$APP_RELEASE APP_MANIFESTE=$APP_MANIFES
 WORKDIR /app/rag
 USER nobody
 EXPOSE 8000
-CMD ["uvicorn", "agentinsurflow_rag.api:app", "--host", "0.0.0.0", "--port", "8000"]
+# pas de journal d'accès : il écrirait la query string (/api/extraits?question=…, RGPD)
+CMD ["uvicorn", "agentinsurflow_rag.api:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

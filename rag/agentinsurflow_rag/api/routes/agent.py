@@ -18,12 +18,13 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from ...application.use_cases.consulter_contrat import consulter_contrat
 from ...application.use_cases.repondre import repondre
+from ...domain.corpus import hash_contenu
 from ...domain.models import Appelant, CitationRag
 from ...domain.ports import ClientEmbeddings, ClientLLM, DepotDossiers
 from ...infrastructure.azure_openai.config import charger_config
 from ...infrastructure.azure_openai.llm import fabrique_llm
 from ...infrastructure.entra.obo import ConfigObo, jeton_obo
-from ...infrastructure.otel.telemetrie import empreinte, trace_id_courant, tracer
+from ...infrastructure.otel.telemetrie import trace_id_courant, tracer
 from ...infrastructure.underwriting.client import ClientUnderwriting
 from ..dependances import ConfigRag, charger_rag, connexion_reader, obtenir_embeddings
 from ..erreurs import reponses
@@ -77,7 +78,7 @@ async def creer_reponse(
     with tracer.start_as_current_span("agent.repondre") as span:
         span.set_attributes(
             {
-                "question.sha256": empreinte(q.texte),
+                "question.sha256": hash_contenu(q.texte),
                 "question.longueur": len(q.texte),
                 "contrat.present": q.numero_contrat is not None,
             }

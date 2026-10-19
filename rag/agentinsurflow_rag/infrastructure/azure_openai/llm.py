@@ -11,8 +11,9 @@ from azure.core.exceptions import ClientAuthenticationError
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import OpenAI, OpenAIError
 
+from ...domain.corpus import hash_contenu
 from ...domain.ports import ClientLLM, ErreurLLM
-from ..otel.telemetrie import empreinte, tracer
+from ..otel.telemetrie import tracer
 from .config import SCOPE_ENTRA, ConfigLLM
 
 
@@ -43,7 +44,7 @@ class AzureLLM:
     def completer(self, systeme: str, question: str) -> str:
         with tracer.start_as_current_span("llm.completer") as span:
             span.set_attributes(
-                {"gen_ai.request.model": self.modele, "version_prompt": empreinte(systeme)[:12]}
+                {"gen_ai.request.model": self.modele, "version_prompt": hash_contenu(systeme)[:12]}
             )
             try:
                 reponse = self._client.chat.completions.create(

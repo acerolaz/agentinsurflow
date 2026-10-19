@@ -19,7 +19,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic import ValidationError
 
 from ..infrastructure.entra.jetons import ConfigAuth
-from ..infrastructure.otel.telemetrie import configurer_telemetrie
+from ..infrastructure.otel.telemetrie import configurer_telemetrie, url_sans_parametres
 from ..infrastructure.postgres.connexions import ConfigBD, creer_moteurs
 from .erreurs import installer_gestionnaires
 from .routes import agent, corpus, sante
@@ -61,4 +61,6 @@ app.include_router(sante.router)
 app.include_router(agent.router)
 app.include_router(corpus.router)
 # span serveur par requête (méthode, route, statut) ; /health n'est pas tracé (sondes)
-FastAPIInstrumentor.instrument_app(app, excluded_urls="health")
+FastAPIInstrumentor.instrument_app(
+    app, excluded_urls="health", server_request_hook=url_sans_parametres
+)

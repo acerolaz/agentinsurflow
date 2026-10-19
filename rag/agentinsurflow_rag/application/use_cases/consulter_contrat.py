@@ -15,5 +15,5 @@ async def consulter_contrat(dossiers: DepotDossiers | None, numero_contrat: str)
         raise ErreurDossiers("accès aux dossiers non configuré")
     contrat = await dossiers.lire_contrat(numero_contrat)
     if contrat is None:
-        raise ContratIntrouvable(numero_contrat)
+        raise ContratIntrouvable()  # sans le numéro : il finirait dans les traces
     return contrat

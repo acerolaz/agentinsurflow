@@ -2,20 +2,22 @@
 d'underwriting-admin (``POST /v1/traces``, localhost dans la réplique : sans jeton, S3-21).
 
 RGPD (G-02) : jamais le texte d'une question, un nom, une adresse ni un ``numero_contrat`` dans
-un attribut ; la question n'apparaît que par son sha256 et sa longueur.
+un attribut ni un événement ; la question n'apparaît que par son sha256 et sa longueur. Les
+clients httpx ne sont pas instrumentés (leur URL porterait le numéro de contrat) : le
+``traceparent`` est injecté à la main. ``OTEL_SDK_DISABLED=true`` coupe tout (géré par le SDK).
 """
 
 from __future__ import annotations
 
-import hashlib
 import os
+from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.trace import Span
 
 SERVICE = "agentinsurflow-rag"
 POINT_OTLP = "http://localhost:8002/v1/traces"
@@ -23,10 +25,8 @@ POINT_OTLP = "http://localhost:8002/v1/traces"
 tracer = trace.get_tracer("agentinsurflow")
 
 
-def configurer_telemetrie(version: str) -> TracerProvider | None:
-    """Une fois par processus (convention du SDK) ; ``OTEL_SDK_DISABLED=true`` la coupe."""
-    if os.environ.get("OTEL_SDK_DISABLED", "").lower() == "true":
-        return None
+def configurer_telemetrie(version: str) -> None:
+    """Une fois par processus (convention du SDK)."""
     fournisseur = TracerProvider(
         resource=Resource.create(
             {
@@ -40,12 +40,12 @@ def configurer_telemetrie(version: str) -> TracerProvider | None:
     # ponytail: une perte des spans (underwriting-admin en panne) ne bloque jamais une réponse
     fournisseur.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=point)))
     trace.set_tracer_provider(fournisseur)
-    HTTPXClientInstrumentor().instrument()
-    return fournisseur
 
 
-def empreinte(texte: str) -> str:
-    return hashlib.sha256(texte.encode("utf-8")).hexdigest()
+def url_sans_parametres(span: Span, scope: dict[str, Any]) -> None:
+    """Crochet du span serveur : ``http.url`` sans la query string (``?question=…``)."""
+    if span.is_recording():
+        span.set_attribute("http.url", str(scope.get("path", "")))
 
 
 def trace_id_courant() -> str | None:

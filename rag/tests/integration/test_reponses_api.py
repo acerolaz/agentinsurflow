@@ -170,7 +170,33 @@ async def test_spans_exportes_sans_la_question(
     assert agent["contrat.present"] is True and "agent.verrou" in agent
     recherche = dict(par_nom["rag.recherche"].attributes or {})
     assert recherche["rag.statut"] == agent["agent.statut"] and "rag.seuil" in recherche
-    valeurs = " ".join(
-        str(v) for s in spans.get_finished_spans() for v in (s.attributes or {}).values()
-    )
+    valeurs = _texte_des_spans(spans)
     assert "Dupont" not in valeurs and "Lilas" not in valeurs and "AIF-2026-0001" not in valeurs
+
+
+def _texte_des_spans(spans: InMemorySpanExporter) -> str:
+    """Tout ce qui part en OTLP : attributs des spans **et** de leurs événements (exceptions)."""
+    return " ".join(
+        str(v)
+        for s in spans.get_finished_spans()
+        for attributs in [s.attributes, *(e.attributes for e in s.events)]
+        for v in (attributs or {}).values()
+    )
+
+
+async def test_contrat_introuvable_sans_numero_dans_les_traces(
+    corpus: httpx.AsyncClient, spans: InMemorySpanExporter
+) -> None:
+    brancher(underwriting=lambda r: httpx.Response(404))
+    assert (await _poser(corpus, numero_contrat="AIF-2026-0099")).status_code == 404
+    assert "AIF-2026-0099" not in _texte_des_spans(spans)
+
+
+async def test_extraits_sans_la_question_dans_les_traces(
+    corpus: httpx.AsyncClient, spans: InMemorySpanExporter
+) -> None:
+    reponse = await corpus.get(
+        "/api/extraits", params={"question": "Jean Dupont bonus malus"}, headers=GESTIONNAIRE
+    )
+    assert reponse.status_code == 200
+    assert "Dupont" not in _texte_des_spans(spans)

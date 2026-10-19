@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Response
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from ...application.use_cases.consulter import lire_document, lire_ingestion, lister_ingestions
@@ -48,7 +49,7 @@ Embeddings = Annotated[ClientEmbeddings, Depends(obtenir_embeddings)]
     "/api/ingestions",
     status_code=201,
     summary="Ingérer un lot d'articles (au plus 50) ; rapport journalisé",
-    responses=reponses(401, 403, 503),
+    responses=reponses(401, 403, 409, 503),
 )
 async def creer_ingestion(
     lot: LotIngestion,
@@ -58,13 +59,18 @@ async def creer_ingestion(
     emb: Embeddings,
 ) -> RapportIngestionDTO:
     with tracer.start_as_current_span("ingestion.lot") as span:
-        rapport = await ingerer(
-            PgDepotCorpus(conn),
-            emb,
-            collection=lot.collection,
-            instantane_sha256=lot.instantane_sha256,
-            articles=[a.model_dump() for a in lot.articles],
-        )
+        try:
+            rapport = await ingerer(
+                PgDepotCorpus(conn),
+                emb,
+                collection=lot.collection,
+                instantane_sha256=lot.instantane_sha256,
+                articles=[a.model_dump() for a in lot.articles],
+            )
+        except IntegrityError as exc:  # un lot concurrent a écrit le même article ; lot annulé
+            raise ErreurApi(
+                409, "CONFLIT_INGESTION", "Lot concurrent sur les mêmes articles : rejouer le lot"
+            ) from exc
         span.set_attributes(
             {
                 "rag.collection": lot.collection,

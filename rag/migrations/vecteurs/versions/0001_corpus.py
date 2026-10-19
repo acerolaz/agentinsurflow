@@ -40,13 +40,16 @@ def upgrade() -> None:
     op.execute(
         "CREATE INDEX document_collection_courante ON document (collection) WHERE NOT obsolete"
     )
+    # une seule version courante par article : deux lots concurrents ne peuvent pas en créer deux
+    op.execute(
+        "CREATE UNIQUE INDEX document_une_version_courante ON document (doc_id) WHERE NOT obsolete"
+    )
     op.execute(
         """
         CREATE TABLE chunk (
             id bigserial PRIMARY KEY,
             document_id bigint NOT NULL REFERENCES document (id) ON DELETE CASCADE,
             article text NOT NULL,
-            regle_id text,
             ordre int NOT NULL,
             texte text NOT NULL,
             embedding vector(1536) NOT NULL,

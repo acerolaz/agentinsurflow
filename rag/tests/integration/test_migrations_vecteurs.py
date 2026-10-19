@@ -69,6 +69,21 @@ async def test_doc_id_version_unique(conn_writer: AsyncConnection) -> None:
         await _document(conn_writer)
 
 
+async def test_une_seule_version_courante_par_doc_id(conn_writer: AsyncConnection) -> None:
+    await _document(conn_writer, version="v1")
+    with pytest.raises(IntegrityError):
+        await _document(conn_writer, version="v2")  # v1 n'est pas marquée obsolète
+
+
+async def test_pas_de_colonne_regle_id(conn_reader: AsyncConnection) -> None:
+    colonnes = (
+        await conn_reader.scalars(
+            text("SELECT column_name FROM information_schema.columns WHERE table_name = 'chunk'")
+        )
+    ).all()
+    assert "regle_id" not in colonnes
+
+
 async def test_collection_hors_liste_refusee(conn_writer: AsyncConnection) -> None:
     with pytest.raises(IntegrityError):
         await conn_writer.execute(

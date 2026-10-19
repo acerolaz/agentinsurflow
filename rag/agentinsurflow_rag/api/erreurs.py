@@ -45,6 +45,7 @@ def reponses(*statuts: int) -> dict[int | str, dict[str, Any]]:
         401: "Jeton absent ou invalide (JETON_ABSENT, JETON_INVALIDE)",
         403: "Rôle d'app manquant (ROLE_MANQUANT)",
         404: "Ressource introuvable (CONTRAT_INTROUVABLE, DOCUMENT_INTROUVABLE…)",
+        409: "Conflit avec un lot concurrent (CONFLIT_INGESTION) : rejouer le lot",
         503: "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
     }
     return {

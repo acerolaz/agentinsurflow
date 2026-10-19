@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from agentinsurflow_rag.api import app
 from agentinsurflow_rag.api.dependances import obtenir_embeddings
 from agentinsurflow_rag.domain.ports import ErreurEmbeddings
+from agentinsurflow_rag.infrastructure.postgres.corpus import PgDepotCorpus
 from conftest import entetes
 from corpus_de_test import CORPUS, SHA
 from fakes import FakeEmbeddings
@@ -55,6 +56,20 @@ async def test_nouvelle_version_rend_l_ancienne_obsolete(
     assert rapport["nouvelles_versions"] == 1
     courantes = await conn_writer.scalar(text("SELECT count(*) FROM document WHERE NOT obsolete"))
     assert (courantes, await _documents(conn_writer)) == (1, 2)
+
+
+async def test_lot_concurrent_409_sans_deuxieme_version_courante(
+    api: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await api.post("/api/ingestions", json=lot(CORPUS[:1]), headers=INGESTION)
+
+    async def aucune(self: PgDepotCorpus, doc_id: str) -> None:
+        return None  # l'autre lot a écrit après notre lecture (course entre deux transactions)
+
+    monkeypatch.setattr(PgDepotCorpus, "version_courante", aucune)
+    v2 = CORPUS[0] | {"version": "v2", "texte_html": "<p>Autre texte de l'article, assez long.</p>"}
+    reponse = await api.post("/api/ingestions", json=lot([v2]), headers=INGESTION)
+    assert (reponse.status_code, reponse.json()["code"]) == (409, "CONFLIT_INGESTION")
 
 
 async def test_article_partiel_rejete_sans_bloquer_le_lot(api: httpx.AsyncClient) -> None:

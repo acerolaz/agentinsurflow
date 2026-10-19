@@ -24,18 +24,21 @@ async def ingerer(
     collection: str,
     instantane_sha256: str,
     articles: Sequence[Mapping[str, object]],
-    seuil_quasi_doublon: float = SEUIL_QUASI_DOUBLON,
 ) -> RapportIngestion:
     debut = time.perf_counter()
     rapport = RapportIngestion(lus=len(articles))
 
-    # ⑤ ⑥ validation et nettoyage, article par article
+    # ⑤ ⑥ validation et nettoyage, article par article ; un doc_id ne compte qu'une fois par lot
     propres: list[ArticlePropre] = []
+    vus: set[str] = set()
     for brut in articles:
         resultat = nettoyer(brut)
         if isinstance(resultat, Rejet):
             rapport.rejets.append(resultat)
+        elif resultat.doc_id in vus:
+            rapport.rejets.append(Rejet(resultat.doc_id, "doublon_dans_le_lot"))
         else:
+            vus.add(resultat.doc_id)
             propres.append(resultat)
 
     # ⑦ dédup : que faut-il (ré)indexer ?
@@ -60,7 +63,7 @@ async def ingerer(
     for (art, perime), chunks in zip(a_indexer, decoupes, strict=True):
         vecteurs_art = vecteurs[position : position + len(chunks)]
         position += len(chunks)
-        for proche, score in await depot.voisins(vecteurs_art[0], art.doc_id, seuil_quasi_doublon):
+        for proche, score in await depot.voisins(vecteurs_art[0], art.doc_id, SEUIL_QUASI_DOUBLON):
             rapport.quasi_doublons.append(QuasiDoublon(art.doc_id, proche, round(score, 4)))
         if perime is not None:
             await depot.marquer_obsolete(perime)

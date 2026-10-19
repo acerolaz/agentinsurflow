@@ -112,3 +112,11 @@ async def test_rapport_journalise_avec_son_id() -> None:
     assert ligne.instantane_sha256 == SHA
     assert ligne.rapport["inseres"] == 2 and ligne.rapport["lus"] == 2
     assert rapport.duree_s >= 0
+
+
+async def test_doc_id_deux_fois_dans_le_lot_rejete() -> None:
+    depot = FakeDepotCorpus()
+    v2 = CORPUS[0] | {"version": "v2", "texte_html": "<p>Autre texte de l'article, assez long.</p>"}
+    rapport = await _ingerer(depot, [CORPUS[0], v2])
+    assert rapport.inseres == 1 and rapport.nouvelles_versions == 0
+    assert rapport.rejets == [Rejet(CORPUS[0]["doc_id"], "doublon_dans_le_lot")]

@@ -2,7 +2,7 @@
 
 Service Python (FastAPI) du **corpus réglementaire** : il portera l'ingestion des textes Légifrance (Code des assurances, périmètre auto), la recherche hybride (cosinus pgvector + plein texte + numéro d'article, fusion RRF) et l'**agent** à réponses citées, qui refuse hors corpus (spec du sprint 3, décision S3-16).
 
-> **État (v0.4.0, Tasks R0 → R5)** : socle hexagonal ; PostgreSQL annexe et migrations de la base `vecteurs` ; domaine du corpus (nettoyage, dédup, découpage, porte) ; embeddings et jetons Entra ; **ingestion et recherche hybride en REST**. L'agent à 3 verrous (R6), la CLI Légifrance (R7) et le jeu de démo (R8) arrivent ensuite.
+> **État (v0.4.0, Tasks R0 → R8)** : socle hexagonal ; PostgreSQL annexe et migrations de la base `vecteurs` ; domaine du corpus (nettoyage, dédup, découpage, porte) ; embeddings et jetons Entra ; ingestion et recherche hybride en REST ; agent à 3 verrous, dossiers en On-Behalf-Of, traces OTLP ; CLI Légifrance ; jeu de démo, evals et calibrage. 🔴 Le premier instantané réel (`data/raw/`) attend les identifiants PISTE (Task G0).
 
 ## API (REST, S3-24)
 
@@ -14,13 +14,13 @@ Service Python (FastAPI) du **corpus réglementaire** : il portera l'ingestion d
 | `GET /api/extraits?question=…&top_k=…` | `Gestionnaire` | 200 | Extraits qui passent la porte de pertinence ; sinon `statut = NOT_FOUND_IN_CORPUS`, `resultats = []` |
 | `GET /api/documents/{doc_id}` | `Gestionnaire` | 200 · 404 | Traçabilité : versions et chunks d'un article, sans les vecteurs (`DOCUMENT_INTROUVABLE`) |
 | `POST /api/reponses` | `Gestionnaire` | 200 · 404 | Réponse citée de l'agent, ou refus (`NOT_FOUND_IN_CORPUS`) ; `numero_contrat` facultatif (vue minimisée, `CONTRAT_INTROUVABLE` sinon) ; `trace_id` rendu — remplace `POST /api/agent` du sprint 2 |
-| `GET /health` | — | 200 | Santé et versions servies |
+| `GET /health` | — | 200 | Santé, versions servies et `corpus` (dernier instantané, chunks courants ; `null` sans base) |
 
-- **Erreurs** en ProblemDetails (RFC 9457) avec un `code` : 401 `JETON_ABSENT` / `JETON_INVALIDE`, 403 `ROLE_MANQUANT`, 404, 503 `EMBEDDINGS_INDISPONIBLES` / `BASE_INDISPONIBLE` / `AUTH_INDISPONIBLE` / `CONFIGURATION_INCOMPLETE` (`RAG_SEUIL` absent) ; 422 = validation (format FastAPI).
+- **Erreurs** en ProblemDetails (RFC 9457) avec un `code` : 401 `JETON_ABSENT` / `JETON_INVALIDE`, 403 `ROLE_MANQUANT`, 404, 409 `CONFLIT_INGESTION` (lot concurrent : le rejouer), 503 `EMBEDDINGS_INDISPONIBLES` / `BASE_INDISPONIBLE` / `AUTH_INDISPONIBLE` / `CONFIGURATION_INCOMPLETE` (`RAG_SEUIL` absent) ; 422 = validation (format FastAPI).
 - **Refus par défaut** : chaque route du corpus exige son rôle ; les collections lisibles viennent du rôle (`Gestionnaire` → `textes_reglementaires`), aucune sinon.
 - **Swagger** : derrière la gateway, le document est servi en `GET /rag/openapi.json` dans la **page Swagger unique** (`http://localhost:8000/`). Il ne déclare pas de `servers` : le « Try it out » appelle les routes publiques de la gateway (jeton, rôle et limite de débit). Sans gateway, rag sert aussi son propre Swagger sur `/` (`http://localhost:8001/` dans le compose).
 - Un test de contrat vérifie que seules ces routes sont publiées (les anciens noms RPC répondent 404) et que chacune documente ses réponses d'erreur et son schéma de sécurité.
-- Sans PostgreSQL, sans Entra ou sans `RAG_SEUIL` configurés, l'API **démarre quand même** ; les routes concernées répondent 503 (le déploiement actuel n'a pas encore la base annexe).
+- Sans PostgreSQL, sans Entra ou sans `RAG_SEUIL` configurés, l'API **démarre quand même** ; les routes concernées répondent 503 (le déploiement actuel n'a pas encore la base annexe), et un `RAG_SEUIL` absent ou invalide est signalé dès le démarrage (refus de démarrer en U5). Audiences des jetons : `RAG_API_AUDIENCES` (« a, b »), la même liste que la gateway (`Entra__Audiences__rag__0`) ; défaut `<ID client>,api://<ID client>`.
 
 ## Agent à trois verrous (spec §4.2)
 
@@ -44,9 +44,20 @@ make ingest URL=… INSTANTANE=data/raw/code-assurances-<date>.json   # rejeu, s
 
 > 🔴 Les noms de champs de l'API Légifrance (`cid`, `num`, `dateDebut`, `texteHtml`) et la forme du plan sont à confirmer au premier appel réel (Task G0) ; la correspondance est dans `infrastructure/legifrance/client.py` (`vers_article_entrant`).
 
+## Évaluations et calibrage (`tools/evals.py`)
+
+```bash
+EVALS_JETON=<jeton rôle Gestionnaire> make eval URL=…   # golden set + eval/questions-demo.yaml
+EVALS_JETON=… make calibrer URL=…                        # cosinus max par question → RAG_SEUIL
+```
+
+- **Contrat vérifié par cas** (`attendu`) : `statut` (`OK` ou `NOT_FOUND_IN_CORPUS`), `articles` (au moins un cité), `http` (404 pour le cas BOLA) ; plus les contrôles du sprint 2 (`contient_un`, longueur). Le rapport s'ouvre sur un manifeste (commit, modèle, prompts, golden, questions, `corpus` de `/health`).
+- **Jeu de démo** (`eval/questions-demo.yaml`) : 5 questions couvertes, 3 refus (hors corpus, hors périmètre, BOLA). Les cas `ci: true` (références exactes, hors corpus, BOLA) sont aussi rejoués en CI sur l'instantané réel, modèles simulés (`tests/integration/test_questions_demo.py`, sauté tant que `data/raw/` est vide).
+- **Calibrage** : choisir `RAG_SEUIL` dans l'intervalle affiché, entre le plus grand cosinus des questions hors corpus et le plus petit des questions couvertes ; les questions qui citent un article passent la porte par la référence et ne comptent pas. Reporter la valeur dans `.env` et dans la variable GitHub `RAG_SEUIL`.
+
 ## Traces (spec §9)
 
-OpenTelemetry, exportées en OTLP/HTTP vers le référentiel SQL d'underwriting-admin (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, défaut `http://localhost:8002/v1/traces` ; `OTEL_SDK_DISABLED=true` les coupe). Spans : serveur HTTP (sauf `/health`), `agent.repondre`, `rag.recherche`, `ingestion.lot`, `llm.completer`, `embeddings.vectoriser`. Le `traceparent` est propagé vers underwriting-admin. **RGPD** : jamais le texte de la question (seulement `question.sha256` et `question.longueur`), ni nom, ni adresse, ni `numero_contrat` (seulement `contrat.present`) — vérifié par un test.
+OpenTelemetry, exportées en OTLP/HTTP vers le référentiel SQL d'underwriting-admin (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, défaut `http://localhost:8002/v1/traces` ; `OTEL_SDK_DISABLED=true` les coupe). Spans : serveur HTTP (sauf `/health`), `agent.repondre`, `rag.recherche`, `ingestion.lot`, `llm.completer`, `embeddings.vectoriser`. Le `traceparent` est propagé vers underwriting-admin. **RGPD** : jamais le texte de la question (seulement `question.sha256` et `question.longueur`), ni nom, ni adresse, ni `numero_contrat` (seulement `contrat.present`), ni dans un attribut ni dans un événement d'exception ; `http.url` sans la query string ; clients httpx non instrumentés (le `traceparent` est injecté à la main) ; image lancée sans journal d'accès — vérifié par des tests (`test_reponses_api.py`).
 
 ## Recherche hybride (spec §4.1)
 

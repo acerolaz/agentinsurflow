@@ -80,7 +80,7 @@ jobs:
           fqdn=$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
           echo "url=https://$fqdn" >> "$GITHUB_OUTPUT"
 
-      - name: Fumée — la bonne version répond et l'agent joint le LLM (porte bloquante)
+      - name: Fumée — la bonne version répond et l'agent exige un jeton (porte bloquante)
         env:
           URL: ${{ steps.deployer.outputs.url }}
           IMAGE: ${{ steps.image.outputs.image }}
@@ -91,10 +91,17 @@ jobs:
             sleep 5
           done
           [ "$version" = "$attendu" ] || { echo "::error::version servie '$version' ≠ '$attendu'"; exit 1; }
-          # ponytail: repli sur /api/agent pour un rollback vers une image < 0.4.0 ; à retirer ensuite
+          # Depuis R6, sans jeton : 401 JETON_ABSENT (le LLM est vérifié par les evals, avec jeton)
+          code=$(curl -sS -o reponse.json -w '%{http_code}' -X POST "$URL/api/reponses" \
+            -H 'content-type: application/json' -d '{"texte":"Réponds simplement OK."}')
+          if [ "$code" = 401 ] && [ "$(jq -r .code reponse.json)" = JETON_ABSENT ]; then
+            echo "✔ $URL sert $attendu, /api/reponses exige un jeton"; exit 0
+          fi
+          # ponytail: repli pour un rollback vers une image antérieure à R6 (agent sans jeton) ;
+          # à retirer quand plus aucune révision antérieure ne peut être réactivée
           mode=$(for chemin in /api/reponses /api/agent; do
             curl -fsS -X POST "$URL$chemin" -H 'content-type: application/json' \
               -d '{"texte":"Réponds simplement OK."}' && break
           done | jq -r .mode)
-          [ "$mode" = "llm" ] || { echo "::error::l'agent ne joint pas le LLM (mode=$mode)"; exit 1; }
-          echo "✔ $URL sert $attendu, agent en mode llm"
+          [ "$mode" = "llm" ] || { echo "::error::/api/reponses a répondu $code (attendu : 401)"; exit 1; }
+          echo "✔ $URL sert $attendu (image antérieure à R6), agent en mode llm"

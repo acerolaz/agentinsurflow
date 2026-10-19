@@ -22,6 +22,7 @@ dev = [
     "httpx>=0.28",
     "ruff>=0.6",
     "mypy>=1.10",
+    "pyyaml>=6",  # tools/evals.py : eval/questions-demo.yaml
 ]
 
 [tool.pytest.ini_options]

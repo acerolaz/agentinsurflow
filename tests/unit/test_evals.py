@@ -13,6 +13,12 @@ from tools import evals
 OK = {"texte": "Je vous assiste en assurance auto.", "mode": "llm", "modele": "chat"}
 
 
+@pytest.fixture(autouse=True)
+def _sans_reseau(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``/health`` simulé : le manifeste lit l'état du corpus de l'API évaluée."""
+    monkeypatch.setattr(evals, "corpus", lambda url: {"instantane_sha256": "f" * 64, "chunks": 4})
+
+
 def test_reponse_conforme() -> None:
     assert evals.verifier({"contient_un": ["Assurance"]}, OK) == []
 
@@ -43,7 +49,7 @@ def test_la_porte_bloque_sous_le_seuil(tmp_path: Path, monkeypatch: pytest.Monke
         encoding="utf-8",
     )
     reponses = iter([OK, {**OK, "texte": "hors sujet"}])
-    monkeypatch.setattr(evals, "interroger", lambda url, question: next(reponses))
+    monkeypatch.setattr(evals, "interroger", lambda url, cas, jeton: (200, next(reponses)))
     rapport = tmp_path / "rapport.json"
 
     assert evals.main(["--golden", str(golden), "--seuil", "0.8", "--rapport", str(rapport)]) == 1
@@ -58,7 +64,7 @@ def test_p95_rang_le_plus_proche() -> None:
 def test_la_porte_bloque_si_trop_lent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     golden = tmp_path / "golden.jsonl"
     golden.write_text(json.dumps({"id": "a", "question": "q"}), encoding="utf-8")
-    monkeypatch.setattr(evals, "interroger", lambda url, question: OK)
+    monkeypatch.setattr(evals, "interroger", lambda url, cas, jeton: (200, OK))
 
     assert evals.main(["--golden", str(golden)]) == 0
     assert evals.main(["--golden", str(golden), "--latence-p95-max", "-1"]) == 1
@@ -74,7 +80,7 @@ def test_le_rapport_s_ouvre_sur_le_manifeste(
     (prompts / "systeme.md").write_text("Tu es l'assistant.", encoding="utf-8")
     llm_env = tmp_path / "llm.env"
     llm_env.write_text("# épinglé\nAZURE_OPENAI_DEPLOYMENT=Kimi-K2.5\n", encoding="utf-8")
-    monkeypatch.setattr(evals, "interroger", lambda url, question: OK)
+    monkeypatch.setattr(evals, "interroger", lambda url, cas, jeton: (200, OK))
     monkeypatch.setenv("GITHUB_SHA", "abc123")
     monkeypatch.setenv("GITHUB_RUN_NUMBER", "42")
     rapport = tmp_path / "rapport.json"
@@ -112,3 +118,97 @@ def test_version_manifeste(
     else:
         monkeypatch.delenv("GITHUB_RUN_NUMBER", raising=False)
     assert evals.version_manifeste(pyproject) == attendu
+
+
+# ---------------------------------------------------------------- contrat RAG (Task R8)
+
+CITEE = {**OK, "statut": "OK", "citations": [{"article": "L211-1"}, {"table": "vue"}]}
+REFUS = {"texte": "NOT_FOUND_IN_CORPUS", "mode": "refus", "statut": "NOT_FOUND_IN_CORPUS"}
+
+
+@pytest.mark.parametrize(
+    ("attendu", "reponse", "http", "echecs"),
+    [
+        ({"statut": "OK", "articles": ["L. 211-1"]}, CITEE, 200, []),
+        ({"statut": "OK", "articles": ["A121-1"]}, CITEE, 200, ["articles"]),
+        ({"statut": "OK"}, REFUS, 200, ["mode_llm", "statut"]),
+        ({"statut": "NOT_FOUND_IN_CORPUS"}, REFUS, 200, []),  # un refus n'a pas à joindre le LLM
+        ({"http": 404}, {"code": "CONTRAT_INTROUVABLE"}, 404, []),  # BOLA
+        ({"http": 404}, CITEE, 200, ["http"]),
+        ({"statut": "OK"}, {"code": "DOSSIERS_INDISPONIBLES"}, 503, ["http"]),
+    ],
+)
+def test_verifier_statut_articles_http(
+    attendu: dict[str, Any], reponse: dict[str, Any], http: int, echecs: list[str]
+) -> None:
+    assert evals.verifier({"attendu": attendu}, reponse, http) == echecs
+
+
+def _questions(tmp_path: Path) -> Path:
+    questions = tmp_path / "questions.yaml"
+    questions.write_text(
+        "- id: couverte\n  question: L'assurance auto est-elle obligatoire ?\n"
+        "  attendu: {statut: OK}\n"
+        "- id: bola\n  question: Mon bonus ?\n  numero_contrat: AIF-1\n  attendu: {http: 404}\n",
+        encoding="utf-8",
+    )
+    return questions
+
+
+def test_questions_lues_en_plus_du_golden_avec_le_jeton(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    golden = tmp_path / "golden.jsonl"
+    golden.write_text(json.dumps({"id": "g", "question": "q"}) + "\n", encoding="utf-8")
+    recus: list[tuple[str, str | None]] = []
+
+    def interroger(url: str, cas: dict[str, Any], jeton: str | None) -> tuple[int, dict[str, Any]]:
+        recus.append((cas["id"], jeton))
+        return (404, {}) if cas.get("numero_contrat") else (200, CITEE)
+
+    monkeypatch.setattr(evals, "interroger", interroger)
+    monkeypatch.setenv("EVALS_JETON", "jeton-evals")
+    rapport = tmp_path / "rapport.json"
+    argv = ["--golden", str(golden), "--questions", str(_questions(tmp_path))]
+
+    assert evals.main([*argv, "--rapport", str(rapport)]) == 0
+    assert recus == [("g", "jeton-evals"), ("couverte", "jeton-evals"), ("bola", "jeton-evals")]
+    m = json.loads(rapport.read_text(encoding="utf-8"))["manifeste"]
+    assert m["questions"]["cas"] == ["couverte", "bola"] and len(m["questions"]["sha256"]) == 64
+    assert m["corpus"] == {"instantane_sha256": "f" * 64, "chunks": 4}
+
+
+def test_calibrer_trie_par_cosinus_et_propose_un_seuil(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    golden = tmp_path / "golden.jsonl"
+    golden.write_text(
+        "\n".join(
+            json.dumps({"id": i, "question": q, "attendu": {"statut": s}})
+            for i, q, s in [
+                ("hors", "points de permis", "NOT_FOUND_IN_CORPUS"),
+                ("rc", "assurance obligatoire", "OK"),
+                ("ref", "article L211-1", "OK"),
+                ("bm", "bonus malus", "OK"),
+            ]
+        ),
+        encoding="utf-8",
+    )
+    mesures = {
+        "points de permis": (0.31, False),
+        "assurance obligatoire": (0.72, False),
+        "article L211-1": (0.12, True),  # passe la porte par référence exacte : hors calcul
+        "bonus malus": (0.55, False),
+    }
+    monkeypatch.setattr(
+        evals,
+        "extraits",
+        lambda url, question, jeton: dict(
+            zip(("cosinus_max", "reference_exacte"), mesures[question], strict=True)
+        ),
+    )
+
+    assert evals.main(["--golden", str(golden), "--calibrer"]) == 0
+    sortie = capsys.readouterr().out
+    assert [ligne.split()[0] for ligne in sortie.splitlines()[:4]] == ["rc", "bm", "hors", "ref"]
+    assert "RAG_SEUIL entre 0.310 et 0.550" in sortie

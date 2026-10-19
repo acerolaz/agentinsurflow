@@ -9,7 +9,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et, plus tard,
 # underwriting-admin/ (C#, leurs propres Makefile, appelés par gateway-<cible>).
-.PHONY: install fmt lint test test-integration pyramide migrate ingest extraire up down eval run build docker infra proteger rollback preuve
+.PHONY: install fmt lint test test-integration pyramide migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked
@@ -51,8 +51,11 @@ pyramide:           ## porte S3-22 : TU >= 65 %, TI <= 25 %, E2E <= 15 % (rag + 
 gateway-%:          ## cibles de gateway/Makefile : make gateway-test, gateway-lint, gateway-docker-build
 	$(MAKE) -C gateway $*
 
-eval:               ## porte 3 : make eval [URL=https://<staging>] — golden set contre l'API
-	uv run python tools/evals.py --url $(URL)
+eval:               ## porte 3 : make eval [URL=…] — golden set + jeu de démo (jeton : EVALS_JETON)
+	uv run python tools/evals.py --url $(URL) --questions eval/questions-demo.yaml
+
+calibrer:           ## make calibrer URL=… — cosinus max par question, intervalle pour RAG_SEUIL
+	uv run python tools/evals.py --calibrer --url $(URL) --questions eval/questions-demo.yaml
 
 run:                ## http://localhost:8000
 	cd rag && uv run uvicorn agentinsurflow_rag.api:app --reload --port 8000

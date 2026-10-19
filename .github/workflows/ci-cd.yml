@@ -97,7 +97,10 @@ jobs:
 
   evals-pr:
     needs: [test, changements]
-    if: github.event_name == 'pull_request' && needs.changements.outputs.evals == 'true'
+    # ponytail: désactivé jusqu'à U5. Depuis R6, /api/reponses exige un jeton Entra (rôle
+    # Gestionnaire), PostgreSQL et RAG_SEUIL : ce job n'a encore ni identité de CI (A4) ni base
+    # annexe. Un job sauté satisfait la protection de main ; les evals de staging restent bloquantes.
+    if: false && github.event_name == 'pull_request' && needs.changements.outputs.evals == 'true'
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
     env:
@@ -158,10 +161,25 @@ jobs:
     needs: [staging, changements]
     if: needs.changements.outputs.evals == 'true'
     runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
     steps:
       - uses: actions/checkout@v4
-      - name: Golden set contre staging (porte bloquante, aucun secret)
-        run: python3 tools/evals.py --url "${{ needs.staging.outputs.url }}" --rapport evals.json
+      - uses: astral-sh/setup-uv@v6 # PyYAML pour eval/questions-demo.yaml
+        with: { version: "0.11.13", enable-cache: true }
+      - uses: azure/login@v2 # OIDC : le jeton d'évaluation est demandé à Entra, aucun secret
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+      - name: Golden set + jeu de démo contre staging (porte bloquante)
+        run: |
+          # 🔴 A4 : l'identité de CI doit porter le rôle Gestionnaire sur agentinsurflow-rag
+          EVALS_JETON=$(az account get-access-token --scope "api://${{ vars.RAG_API_CLIENT_ID }}/.default" \
+            --query accessToken -o tsv)
+          echo "::add-mask::$EVALS_JETON"
+          export EVALS_JETON
+          uv run python tools/evals.py --url "${{ needs.staging.outputs.url }}" \
+            --questions eval/questions-demo.yaml --rapport evals.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

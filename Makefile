@@ -52,10 +52,10 @@ gateway-%:          ## cibles de gateway/Makefile : make gateway-test, gateway-l
 	$(MAKE) -C gateway $*
 
 eval:               ## porte 3 : make eval [URL=…] — golden set + jeu de démo (jeton : EVALS_JETON)
-	uv run python tools/evals.py --url $(URL) --questions eval/questions-demo.yaml
+	uv run python tools/evals.py --url $(URL) --questions eval/questions-demo.jsonl
 
 calibrer:           ## make calibrer URL=… — cosinus max par question, intervalle pour RAG_SEUIL
-	uv run python tools/evals.py --calibrer --url $(URL) --questions eval/questions-demo.yaml
+	uv run python tools/evals.py --calibrer --url $(URL) --questions eval/questions-demo.jsonl
 
 run:                ## http://localhost:8000
 	cd rag && uv run uvicorn agentinsurflow_rag.api:app --reload --port 8000

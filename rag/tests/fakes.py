@@ -11,13 +11,9 @@ from typing import Any
 
 from agentinsurflow_rag.domain.models import (
     ArticlePropre,
-    ChunkDocument,
     CitationRag,
-    DocumentTrace,
-    EtatCorpus,
     Extrait,
     IngestionJournalisee,
-    VersionDocument,
 )
 from agentinsurflow_rag.domain.ports import ErreurEmbeddings, ErreurLLM
 
@@ -158,48 +154,6 @@ class FakeDepotCorpus:
             for c in self._courants(collections)
             if self._doc(c.document_id).article.article in articles
         ]
-
-    async def document(self, doc_id: str) -> DocumentTrace | None:
-        docs = [d for d in self.documents if d.article.doc_id == doc_id]
-        if not docs:
-            return None
-        versions = [
-            VersionDocument(
-                d.article.version,
-                d.article.etat,
-                d.article.date_debut,
-                d.article.hash_contenu,
-                d.obsolete,
-                d.ingere_le,
-                d.article.url_source,
-            )
-            for d in docs
-        ]
-        chunks = [
-            ChunkDocument(
-                c.id,
-                self._doc(c.document_id).article.version,
-                self._doc(c.document_id).article.article,
-                c.ordre,
-                c.texte,
-            )
-            for c in self.chunks
-            if self._doc(c.document_id) in docs
-        ]
-        return DocumentTrace(doc_id, docs[0].collection, versions, chunks)
-
-    async def ingestions(self, limit: int, offset: int) -> list[IngestionJournalisee]:
-        return sorted(self.journal, key=lambda i: -i.id)[offset : offset + limit]
-
-    async def ingestion(self, id_: int) -> IngestionJournalisee | None:
-        return next((i for i in self.journal if i.id == id_), None)
-
-    async def etat(self) -> EtatCorpus:
-        courants = {d.id for d in self.documents if not d.obsolete}
-        return EtatCorpus(
-            self.journal[-1].instantane_sha256 if self.journal else None,
-            sum(c.document_id in courants for c in self.chunks),
-        )
 
 
 class FakeLLM:

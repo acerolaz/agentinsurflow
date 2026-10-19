@@ -47,12 +47,12 @@ make ingest URL=… INSTANTANE=data/raw/code-assurances-<date>.json   # rejeu, s
 ## Évaluations et calibrage (`tools/evals.py`)
 
 ```bash
-EVALS_JETON=<jeton rôle Gestionnaire> make eval URL=…   # golden set + eval/questions-demo.yaml
+EVALS_JETON=<jeton rôle Gestionnaire> make eval URL=…   # golden set + eval/questions-demo.jsonl
 EVALS_JETON=… make calibrer URL=…                        # cosinus max par question → RAG_SEUIL
 ```
 
 - **Contrat vérifié par cas** (`attendu`) : `statut` (`OK` ou `NOT_FOUND_IN_CORPUS`), `articles` (au moins un cité), `http` (404 pour le cas BOLA) ; plus les contrôles du sprint 2 (`contient_un`, longueur). Le rapport s'ouvre sur un manifeste (commit, modèle, prompts, golden, questions, `corpus` de `/health`).
-- **Jeu de démo** (`eval/questions-demo.yaml`) : 5 questions couvertes, 3 refus (hors corpus, hors périmètre, BOLA). Les cas `ci: true` (références exactes, hors corpus, BOLA) sont aussi rejoués en CI sur l'instantané réel, modèles simulés (`tests/integration/test_questions_demo.py`, sauté tant que `data/raw/` est vide).
+- **Jeu de démo** (`eval/questions-demo.jsonl`) : 5 questions couvertes, 3 refus (hors corpus, hors périmètre, BOLA). Les cas `ci: true` (références exactes, hors corpus, BOLA) sont aussi rejoués en CI sur l'instantané réel, modèles simulés (`tests/integration/test_questions_demo.py`, sauté tant que `data/raw/` est vide). 🔴 Numéros d'articles (L211-1, A121-1, L121-1) à confirmer sur le premier instantané réel (Task G0) ; l'annexe d'A121-1 (règles du bonus-malus) est peut-être hors du filtre de périmètre. 🔴 Les cas avec `numero_contrat` demandent underwriting-admin (U2) et un jeton délégué pour l'On-Behalf-Of.
 - **Calibrage** : choisir `RAG_SEUIL` dans l'intervalle affiché, entre le plus grand cosinus des questions hors corpus et le plus petit des questions couvertes ; les questions qui citent un article passent la porte par la référence et ne comptent pas. Reporter la valeur dans `.env` et dans la variable GitHub `RAG_SEUIL`.
 
 ## Traces (spec §9)

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
+
+from .corpus import DTO
 
 
-class CorpusSante(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class CorpusSante(DTO):
     instantane_sha256: str | None = Field(description="dernier instantané ingéré")
     chunks: int = Field(description="chunks des versions courantes ; 0 avant la 1re ingestion")
 

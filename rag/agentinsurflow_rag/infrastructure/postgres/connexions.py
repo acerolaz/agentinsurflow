@@ -31,11 +31,7 @@ class ConfigBD(BaseSettings):
     pg_migrateur_password: SecretStr | None = None  # migrations seulement
 
     def url(self, compte: Compte) -> str:
-        mot_de_passe = {
-            "writer": self.pg_writer_password,
-            "reader": self.pg_reader_password,
-            "migrateur": self.pg_migrateur_password,
-        }[compte]
+        mot_de_passe: SecretStr | None = getattr(self, f"pg_{compte}_password")
         if mot_de_passe is None:
             raise ValueError(f"PG_{compte.upper()}_PASSWORD manquant")
         return URL.create(

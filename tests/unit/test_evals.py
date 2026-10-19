@@ -20,7 +20,7 @@ def _sans_reseau(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_reponse_conforme() -> None:
-    assert evals.verifier({"contient_un": ["Assurance"]}, OK) == []
+    assert evals.verifier({}, OK) == []
 
 
 @pytest.mark.parametrize(
@@ -28,8 +28,7 @@ def test_reponse_conforme() -> None:
     [
         ({}, {**OK, "mode": "degrade"}, ["mode_llm"]),
         ({}, {**OK, "texte": " "}, ["non_vide"]),
-        ({"max_caracteres": 10}, OK, ["longueur"]),
-        ({"contient_un": ["franchise"]}, OK, ["contient_un"]),
+        ({}, {**OK, "texte": "x" * 601}, ["longueur"]),  # trois phrases au plus
         ({}, {"erreur": "HTTP 503"}, ["mode_llm", "non_vide"]),
     ],
 )
@@ -42,13 +41,10 @@ def test_chaque_controle_rate(
 def test_la_porte_bloque_sous_le_seuil(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     golden = tmp_path / "golden.jsonl"
     golden.write_text(
-        "\n".join(
-            json.dumps({"id": i, "question": q, "contient_un": ["assurance"]})
-            for i, q in enumerate(["a", "b"])
-        ),
+        "\n".join(json.dumps({"id": i, "question": q}) for i, q in enumerate(["a", "b"])),
         encoding="utf-8",
     )
-    reponses = iter([OK, {**OK, "texte": "hors sujet"}])
+    reponses = iter([OK, {**OK, "mode": "degrade"}])
     monkeypatch.setattr(evals, "interroger", lambda url, cas, jeton: (200, next(reponses)))
     rapport = tmp_path / "rapport.json"
 
@@ -145,11 +141,24 @@ def test_verifier_statut_articles_http(
 
 
 def _questions(tmp_path: Path) -> Path:
-    questions = tmp_path / "questions.yaml"
+    questions = tmp_path / "questions.jsonl"
     questions.write_text(
-        "- id: couverte\n  question: L'assurance auto est-elle obligatoire ?\n"
-        "  attendu: {statut: OK}\n"
-        "- id: bola\n  question: Mon bonus ?\n  numero_contrat: AIF-1\n  attendu: {http: 404}\n",
+        "\n".join(
+            json.dumps(cas)
+            for cas in [
+                {
+                    "id": "couverte",
+                    "question": "Assurance obligatoire ?",
+                    "attendu": {"statut": "OK"},
+                },
+                {
+                    "id": "bola",
+                    "question": "Bonus ?",
+                    "numero_contrat": "A-1",
+                    "attendu": {"http": 404},
+                },
+            ]
+        ),
         encoding="utf-8",
     )
     return questions

@@ -21,7 +21,7 @@ concurrency:
 
 env:
   # Fichiers qui peuvent changer le résultat des évaluations
-  DECLENCHEURS_EVALS: '^(rag/agentinsurflow_rag/prompts/|eval/golden\.jsonl$|eval/questions-demo\.yaml$|data/raw/|rag/llm\.env$)'
+  DECLENCHEURS_EVALS: '^(rag/agentinsurflow_rag/prompts/|eval/golden\.jsonl$|eval/questions-demo\.jsonl$|data/raw/|rag/llm\.env$)'
 
 jobs:
   lint:
@@ -164,8 +164,6 @@ jobs:
     permissions: { contents: read, id-token: write }
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6 # PyYAML pour eval/questions-demo.yaml
-        with: { version: "0.11.13", enable-cache: true }
       - uses: azure/login@v2 # OIDC : le jeton d'évaluation est demandé à Entra, aucun secret
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
@@ -178,8 +176,8 @@ jobs:
             --query accessToken -o tsv)
           echo "::add-mask::$EVALS_JETON"
           export EVALS_JETON
-          uv run python tools/evals.py --url "${{ needs.staging.outputs.url }}" \
-            --questions eval/questions-demo.yaml --rapport evals.json
+          python3 tools/evals.py --url "${{ needs.staging.outputs.url }}" \
+            --questions eval/questions-demo.jsonl --rapport evals.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

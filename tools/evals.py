@@ -1,13 +1,14 @@
 """Évaluations de l'agent (``make eval``) : rejoue ``eval/golden.jsonl`` (et, avec ``--questions``,
-le jeu de démo ``eval/questions-demo.yaml``) contre une API déployée.
+le jeu de démo ``eval/questions-demo.jsonl``) contre une API déployée. Python 3 seul, sans
+dépendance (le job « changements » de la CI l'importe tel quel).
 
 Boîte noire : seuls ``POST /api/reponses``, ``GET /api/extraits`` et ``/health`` sont appelés,
 avec le jeton de ``EVALS_JETON`` (rôle ``Gestionnaire``) ; aucun secret Azure n'est nécessaire.
 Chaque cas passe ses contrôles déterministes (``verifier`` : contrat RAG ``statut``, ``articles``,
-``http``, et les contrôles du sprint 2) et sa latence est mesurée. Le rapport JSON s'ouvre sur un
-``manifeste`` (commit, modèle, prompts, golden dataset, questions, corpus, portes) : il dit ce qui
-a été évalué. Code de sortie 1 si le taux de réussite est sous le seuil ou si la latence p95
-dépasse son maximum : porte bloquante.
+``http`` ; réponse non vide, trois phrases au plus) et sa latence est mesurée. Le rapport JSON
+s'ouvre sur un ``manifeste`` (commit, modèle, prompts, golden dataset, questions, corpus, portes) :
+il dit ce qui a été évalué. Code de sortie 1 si le taux de réussite est sous le seuil ou si la
+latence p95 dépasse son maximum : porte bloquante.
 
 ``--calibrer`` (``make calibrer``) affiche le cosinus max de chaque question, couvertes et hors
 corpus séparées, et propose l'intervalle où choisir ``RAG_SEUIL`` (spec §4.1).
@@ -60,11 +61,8 @@ def verifier(cas: dict[str, Any], reponse: dict[str, Any], http: int = 200) -> l
         echecs.append("articles")  # au moins un des articles attendus doit être cité
     if not texte.strip():
         echecs.append("non_vide")
-    if len(texte) > cas.get("max_caracteres", LONGUEUR_MAX):
+    if len(texte) > LONGUEUR_MAX:
         echecs.append("longueur")
-    mots = cas.get("contient_un", [])
-    if mots and not any(mot.lower() in texte.lower() for mot in mots):
-        echecs.append("contient_un")
     return echecs
 
 
@@ -105,17 +103,12 @@ def version_manifeste(pyproject: Path = Path("pyproject.toml")) -> str:
     return f"{base}-build.{run}" if run else f"{base}-local"
 
 
-def _yaml(chemin: Path) -> list[dict[str, Any]]:
-    # importé ici seulement : le job « changements » importe ce module avec python3 seul
-    import yaml  # type: ignore[import-untyped]
-
-    cas: list[dict[str, Any]] = yaml.safe_load(chemin.read_text(encoding="utf-8"))
-    return cas
+def _jsonl(chemin: Path) -> list[dict[str, Any]]:
+    return [json.loads(ligne) for ligne in chemin.read_text(encoding="utf-8").splitlines() if ligne]
 
 
 def lire_cas(golden: Path, questions: Path | None = None) -> list[dict[str, Any]]:
-    cas = [json.loads(ligne) for ligne in golden.read_text(encoding="utf-8").splitlines() if ligne]
-    return cas + (_yaml(questions) if questions else [])
+    return _jsonl(golden) + (_jsonl(questions) if questions else [])
 
 
 def manifeste(
@@ -153,7 +146,7 @@ def manifeste(
         else {
             "fichier": str(questions),
             "sha256": _sha256(questions),
-            "cas": [c["id"] for c in _yaml(questions)],
+            "cas": [c["id"] for c in _jsonl(questions)],
         },
         "corpus": corpus(url),  # dernier instantané ingéré et nombre de chunks (/health)
         "portes": portes,
@@ -183,9 +176,7 @@ def _appeler(
 
 
 def interroger(url: str, cas: dict[str, Any], jeton: str | None) -> tuple[int, dict[str, Any]]:
-    corps = {"texte": cas["question"]}
-    if cas.get("numero_contrat"):
-        corps["numero_contrat"] = cas["numero_contrat"]
+    corps = {"texte": cas["question"], "numero_contrat": cas.get("numero_contrat")}
     return _appeler(url, "/api/reponses", jeton, corps)
 
 

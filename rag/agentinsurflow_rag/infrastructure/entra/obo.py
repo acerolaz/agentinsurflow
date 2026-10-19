@@ -7,6 +7,8 @@ par l'utilisateur, déclarée comme identifiant fédéré. En local seulement : 
 
 from __future__ import annotations
 
+from typing import Any
+
 from azure.core.exceptions import AzureError
 from azure.identity import ManagedIdentityCredential, OnBehalfOfCredential
 from pydantic import SecretStr
@@ -33,23 +35,17 @@ class ConfigObo(BaseSettings):
 def jeton_obo(cfg: ConfigObo, jeton_utilisateur: str) -> str:
     """Synchrone (SDK azure-identity) : l'appelant le lance hors de la boucle d'événements."""
     secret = cfg.rag_client_secret.get_secret_value() if cfg.rag_client_secret else ""
+    assertion: dict[str, Any]
     if secret:
-        credential = OnBehalfOfCredential(
-            cfg.azure_tenant_id,
-            cfg.rag_api_client_id,
-            client_secret=secret,
-            user_assertion=jeton_utilisateur,
-        )
+        assertion = {"client_secret": secret}
     elif cfg.azure_uami_client_id:
         identite = ManagedIdentityCredential(client_id=cfg.azure_uami_client_id)
-        credential = OnBehalfOfCredential(
-            cfg.azure_tenant_id,
-            cfg.rag_api_client_id,
-            client_assertion_func=lambda: identite.get_token(PORTEE_FEDERATION).token,
-            user_assertion=jeton_utilisateur,
-        )
+        assertion = {"client_assertion_func": lambda: identite.get_token(PORTEE_FEDERATION).token}
     else:
         raise ErreurDossiers("ni RAG_CLIENT_SECRET (local) ni AZURE_UAMI_CLIENT_ID (Azure)")
+    credential = OnBehalfOfCredential(
+        cfg.azure_tenant_id, cfg.rag_api_client_id, user_assertion=jeton_utilisateur, **assertion
+    )
     try:
         return credential.get_token(f"api://{cfg.underwriting_api_client_id}/access_as_user").token
     except AzureError as exc:

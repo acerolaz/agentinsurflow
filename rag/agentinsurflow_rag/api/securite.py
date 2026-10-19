@@ -49,14 +49,19 @@ def obtenir_cle(request: Request, jeton: Jeton) -> Any:
         raise ErreurApi(401, "JETON_INVALIDE", "Jeton invalide", NON_AUTHENTIFIE) from exc
 
 
+def jeton_present(jeton: Jeton) -> HTTPAuthorizationCredentials:
+    """Résolue en premier : sans jeton, 401 avant de lire la clé ou la configuration (pas 503)."""
+    if jeton is None:
+        raise ErreurApi(401, "JETON_ABSENT", "Jeton absent", NON_AUTHENTIFIE)
+    return jeton
+
+
 def exiger(role: Role) -> Callable[..., Appelant]:
     def dependance(
-        jeton: Jeton,
+        jeton: Annotated[HTTPAuthorizationCredentials, Depends(jeton_present)],
         cle: Annotated[Any, Depends(obtenir_cle)],
         cfg: Annotated[ConfigAuth, Depends(charger_auth)],
     ) -> Appelant:
-        if jeton is None:
-            raise ErreurApi(401, "JETON_ABSENT", "Jeton absent", NON_AUTHENTIFIE)
         try:
             appelant = verifier_jeton(jeton.credentials, cle, cfg)
         except ErreurAuth as exc:

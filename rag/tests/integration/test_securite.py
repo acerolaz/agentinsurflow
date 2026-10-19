@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated, Any
 
 import pytest
@@ -62,3 +63,17 @@ def test_schema_de_securite_dans_l_openapi() -> None:
     document = client.get("/openapi.json").json()
     assert document["components"]["securitySchemes"]
     assert document["paths"]["/protegee"]["get"]["security"]
+
+
+def test_sans_jeton_401_meme_sans_configuration_entra(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # refus par défaut : l'absence de jeton se juge avant de lire la configuration (sinon 503)
+    monkeypatch.chdir(tmp_path)  # aucun .env lu
+    monkeypatch.delenv("AZURE_TENANT_ID", raising=False)
+    monkeypatch.delenv("RAG_API_CLIENT_ID", raising=False)
+    sans_config = FastAPI()
+    installer_gestionnaires(sans_config)
+    sans_config.get("/protegee")(protegee)
+    reponse = TestClient(sans_config).get("/protegee")
+    assert (reponse.status_code, _code(reponse)) == (401, "JETON_ABSENT")

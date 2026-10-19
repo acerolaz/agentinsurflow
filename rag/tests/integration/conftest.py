@@ -27,11 +27,10 @@ from agentinsurflow_rag.api.dependances import (
     obtenir_embeddings,
 )
 from agentinsurflow_rag.api.securite import charger_auth, obtenir_cle
-from agentinsurflow_rag.infrastructure.entra.jetons import ConfigAuth
 from agentinsurflow_rag.infrastructure.postgres.connexions import ConfigBD
 from corpus_de_test import CORPUS, SHA
 from fakes import FakeEmbeddings
-from jetons_de_test import CLE_PUBLIQUE, CLIENT_ID, TENANT, creer
+from jetons_de_test import CLE_PUBLIQUE, config_auth, creer
 
 RAG = Path(__file__).resolve().parents[2]
 
@@ -97,11 +96,7 @@ def remplacer_dependances(conn: AsyncConnection) -> None:
             obtenir_embeddings: lambda: FakeEmbeddings(),
             charger_rag: lambda: ConfigRag(_env_file=None, rag_seuil=0.4),  # type: ignore[call-arg]
             obtenir_cle: lambda: CLE_PUBLIQUE,
-            charger_auth: lambda: ConfigAuth(
-                _env_file=None,  # type: ignore[call-arg]
-                azure_tenant_id=TENANT,
-                rag_api_client_id=CLIENT_ID,
-            ),
+            charger_auth: config_auth,
         }
     )
 

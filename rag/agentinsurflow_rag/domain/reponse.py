@@ -38,10 +38,9 @@ def est_abstention(texte: str) -> bool:
 
 def articles_cites(texte: str) -> list[str]:
     """Numéros cités entre crochets (« [L211-1] »), normalisés, sans doublon, dans l'ordre."""
-    vus: dict[str, None] = {}
-    for lettre, numero in _CITATION.findall(texte):
-        vus.setdefault(normaliser_numero(lettre + numero), None)
-    return list(vus)
+    return list(
+        dict.fromkeys(normaliser_numero(lettre + num) for lettre, num in _CITATION.findall(texte))
+    )
 
 
 def contexte(question: str, extraits: Sequence[Extrait], contrat: VueContrat | None) -> str:

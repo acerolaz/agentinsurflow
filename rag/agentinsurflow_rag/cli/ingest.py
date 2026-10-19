@@ -117,11 +117,10 @@ def envoyer(
     articles: Sequence[dict[str, Any]],
     sha: str,
     tracer: Tracer,
-    taille_lot: int = TAILLE_LOT,
 ) -> dict[str, Any]:
     rapports = []
-    for debut in range(0, len(articles), taille_lot):
-        lot = list(articles[debut : debut + taille_lot])
+    for debut in range(0, len(articles), TAILLE_LOT):
+        lot = list(articles[debut : debut + TAILLE_LOT])
         with tracer.start_as_current_span("ingest.lot") as span:
             span.set_attribute("ingest.articles", len(lot))
             entetes = {"Authorization": f"Bearer {jeton}"}
@@ -139,7 +138,7 @@ def envoyer(
                 raise ErreurEnvoi(f"API injoignable : {exc!r}") from exc
             if reponse.status_code != 201:
                 raise ErreurEnvoi(
-                    f"lot {debut // taille_lot + 1} refusé : HTTP {reponse.status_code} "
+                    f"lot {debut // TAILLE_LOT + 1} refusé : HTTP {reponse.status_code} "
                     f"{reponse.text[:300]}"
                 )
             rapports.append(reponse.json())
@@ -253,8 +252,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
     finally:
         if fournisseur is not None:
-            fournisseur.force_flush()  # un échec d'export ne lève pas : simple avertissement
-            fournisseur.shutdown()
+            fournisseur.shutdown()  # vide le lot de spans ; un échec d'export ne lève pas
 
 
 if __name__ == "__main__":

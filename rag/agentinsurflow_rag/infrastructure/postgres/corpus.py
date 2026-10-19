@@ -6,6 +6,7 @@ Une instance enveloppe la connexion de la requête : sa transaction est celle de
 from __future__ import annotations
 
 import json
+from dataclasses import fields
 from typing import Any
 
 from sqlalchemy import text
@@ -73,15 +74,7 @@ def vecteur_sql(vecteur: list[float]) -> str:
 
 
 def _extrait(ligne: RowMapping) -> Extrait:
-    citation = CitationRag(
-        doc_id=ligne["doc_id"],
-        version=ligne["version"],
-        article=ligne["article"],
-        collection=ligne["collection"],
-        date_debut=ligne["date_debut"],
-        url_source=ligne["url_source"],
-        chunk_id=ligne["chunk_id"],
-    )
+    citation = CitationRag(**{f.name: ligne[f.name] for f in fields(CitationRag)})
     cosinus = ligne["cosinus"]
     return Extrait(
         citation,
@@ -244,15 +237,7 @@ class PgDepotCorpus:
             doc_id=doc_id,
             collection=versions[-1]["collection"],
             versions=[
-                VersionDocument(
-                    v["version"],
-                    v["etat"],
-                    v["date_debut"],
-                    v["hash_contenu"],
-                    v["obsolete"],
-                    v["ingere_le"],
-                    v["url_source"],
-                )
+                VersionDocument(**{f.name: v[f.name] for f in fields(VersionDocument)})
                 for v in versions
             ],
             chunks=[ChunkDocument(c.id, c.version, c.article, c.ordre, c.texte) for c in chunks],

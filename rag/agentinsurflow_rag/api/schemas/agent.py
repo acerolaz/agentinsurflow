@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from ...domain.models import CitationRag, CitationSql, Reponse
+from ...domain.models import Reponse
 from .corpus import DTO, CitationRagDTO
 
 
@@ -39,18 +40,5 @@ class ReponseDTO(BaseModel):
 
     @classmethod
     def depuis(cls, reponse: Reponse, trace_id: str | None) -> ReponseDTO:
-        citations: list[CitationRagDTO | CitationSqlDTO] = [
-            CitationRagDTO.model_validate(c)
-            if isinstance(c, CitationRag)
-            else CitationSqlDTO.model_validate(c)
-            for c in reponse.citations
-            if isinstance(c, CitationRag | CitationSql)
-        ]
-        return cls(
-            texte=reponse.texte,
-            mode=reponse.mode,
-            modele=reponse.modele,
-            statut=reponse.statut,
-            citations=citations,
-            trace_id=trace_id,
-        )
+        # l'union reconnaît seule une citation RAG ou SQL ; ``verrou`` (interne) est ignoré
+        return cls.model_validate({**asdict(reponse), "trace_id": trace_id})

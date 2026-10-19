@@ -8,6 +8,8 @@ from typing import Any
 import jwt
 from cryptography.hazmat.primitives.asymmetric import rsa
 
+from agentinsurflow_rag.infrastructure.entra.jetons import ConfigAuth
+
 TENANT = "00000000-0000-0000-0000-000000000001"
 CLIENT_ID = "11111111-1111-1111-1111-111111111111"
 EMETTEUR_V2 = f"https://login.microsoftonline.com/{TENANT}/v2.0"
@@ -39,3 +41,8 @@ def creer(
         "exp": maintenant + expire_dans,
     } | autres
     return jwt.encode(revendications, cle, algorithm="RS256")
+
+
+def config_auth() -> ConfigAuth:
+    """La configuration Entra du faux tenant (aucun ``.env`` lu)."""
+    return ConfigAuth(_env_file=None, azure_tenant_id=TENANT, rag_api_client_id=CLIENT_ID)  # type: ignore[call-arg]

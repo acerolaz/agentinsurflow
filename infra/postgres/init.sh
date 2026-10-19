@@ -30,20 +30,16 @@ if [ "${PG_BASES_TEST:-0}" = 1 ]; then
 fi
 
 for base in $bases; do
-  psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres \
-    -c "CREATE DATABASE $base OWNER migrateur"
+  case "$base" in
+    vecteurs*) comptes="writer, reader" ;;
+    dossiers*) comptes="dossiers" ;;
+    traces*) comptes="traces_writer, traces_reader" ;;
+  esac
   # personne d'autre que les comptes prévus ne s'y connecte
   psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres \
-    -c "REVOKE ALL ON DATABASE $base FROM PUBLIC"
-  case "$base" in
-    vecteurs*) comptes="writer reader" ;;
-    dossiers*) comptes="dossiers" ;;
-    traces*) comptes="traces_writer traces_reader" ;;
-  esac
-  for compte in $comptes; do
-    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres \
-      -c "GRANT CONNECT ON DATABASE $base TO $compte"
-  done
+    -c "CREATE DATABASE $base OWNER migrateur" \
+    -c "REVOKE ALL ON DATABASE $base FROM PUBLIC" \
+    -c "GRANT CONNECT ON DATABASE $base TO $comptes"
   if [[ "$base" == vecteurs* ]]; then
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$base" \
       -c "CREATE EXTENSION IF NOT EXISTS vector"

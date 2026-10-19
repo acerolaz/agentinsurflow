@@ -44,10 +44,11 @@ def normaliser_numero(numero: str) -> str:
 
 def references_articles(question: str) -> list[str]:
     """Numéros d'articles cités dans la question, normalisés, sans doublon, dans l'ordre."""
-    vus: dict[str, None] = {}
-    for lettre, numero in _REFERENCE.findall(question):
-        vus.setdefault(normaliser_numero(lettre + numero), None)
-    return list(vus)
+    return list(
+        dict.fromkeys(
+            normaliser_numero(lettre + num) for lettre, num in _REFERENCE.findall(question)
+        )
+    )
 
 
 class _Texte(HTMLParser):

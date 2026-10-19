@@ -11,8 +11,7 @@ from fastapi.testclient import TestClient
 from agentinsurflow_rag.api.erreurs import installer_gestionnaires
 from agentinsurflow_rag.api.securite import charger_auth, exiger, obtenir_cle
 from agentinsurflow_rag.domain.models import Appelant
-from agentinsurflow_rag.infrastructure.entra.jetons import ConfigAuth
-from jetons_de_test import CLE_PUBLIQUE, CLIENT_ID, TENANT, creer
+from jetons_de_test import CLE_PUBLIQUE, config_auth, creer
 
 app = FastAPI()
 installer_gestionnaires(app)
@@ -24,11 +23,7 @@ def protegee(appelant: Annotated[Appelant, Depends(exiger("Gestionnaire"))]) -> 
 
 
 app.dependency_overrides[obtenir_cle] = lambda: CLE_PUBLIQUE
-app.dependency_overrides[charger_auth] = lambda: ConfigAuth(
-    _env_file=None,  # type: ignore[call-arg]
-    azure_tenant_id=TENANT,
-    rag_api_client_id=CLIENT_ID,
-)
+app.dependency_overrides[charger_auth] = config_auth
 client = TestClient(app)
 
 

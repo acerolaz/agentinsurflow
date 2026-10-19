@@ -6,23 +6,13 @@
 from __future__ import annotations
 
 import ast
+import sys
 from pathlib import Path
 
 import pytest
 
 PAQUET = Path(__file__).resolve().parents[2] / "agentinsurflow_rag"
-EXTERNES_INTERDITS = {
-    "fastapi",
-    "pydantic",
-    "pydantic_settings",
-    "sqlalchemy",
-    "asyncpg",
-    "openai",
-    "azure",
-    "opentelemetry",
-    "httpx",
-    "jwt",
-}
+AUTORISES = sys.stdlib_module_names | {"agentinsurflow_rag"}  # stdlib + couches du paquet
 
 
 def _imports(couche: str) -> set[str]:
@@ -44,8 +34,7 @@ def _imports(couche: str) -> set[str]:
 
 @pytest.mark.parametrize("couche", ["domain", "application"])
 def test_couche_sans_dependance_externe(couche: str) -> None:
-    externes = {m for m in _imports(couche) if m.split(".")[0] in EXTERNES_INTERDITS}
-    assert externes == set()
+    assert {m for m in _imports(couche) if m.split(".")[0] not in AUTORISES} == set()
 
 
 def test_domain_n_importe_ni_application_ni_infrastructure_ni_api() -> None:

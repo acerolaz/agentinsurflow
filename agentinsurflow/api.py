@@ -5,6 +5,7 @@ Routes minces : elles délèguent à l'agent et rendent des schémas Pydantic.
 
 from __future__ import annotations
 
+from importlib.metadata import version
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI
@@ -47,7 +48,7 @@ def obtenir_llm() -> ClientLLM | None:
     return fabrique_llm(charger_config())
 
 
-app = FastAPI(title="AgentInsurFlow — socle", version="0.1.0", docs_url="/")
+app = FastAPI(title="AgentInsurFlow", version=version("agentinsurflow"), docs_url="/")
 
 
 @app.get("/health")

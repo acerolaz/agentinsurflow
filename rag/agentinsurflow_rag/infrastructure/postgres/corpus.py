@@ -17,6 +17,7 @@ from ...domain.models import (
     ChunkDocument,
     CitationRag,
     DocumentTrace,
+    EtatCorpus,
     Extrait,
     IngestionJournalisee,
     VersionDocument,
@@ -282,3 +283,15 @@ class PgDepotCorpus:
             .first()
         )
         return None if ligne is None else _ingestion(ligne)
+
+    async def etat(self) -> EtatCorpus:
+        ligne = (
+            await self._conn.execute(
+                text(
+                    "SELECT (SELECT instantane_sha256 FROM ingestion ORDER BY id DESC LIMIT 1) "
+                    "AS sha, (SELECT count(*) FROM chunk c JOIN document d ON d.id = c.document_id "
+                    "WHERE NOT d.obsolete) AS chunks"
+                )
+            )
+        ).one()
+        return EtatCorpus(ligne.sha, int(ligne.chunks))

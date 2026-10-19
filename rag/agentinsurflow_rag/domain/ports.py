@@ -7,6 +7,7 @@ from typing import Any, Protocol
 from .models import (
     ArticlePropre,
     DocumentTrace,
+    EtatCorpus,
     Extrait,
     IngestionJournalisee,
     VueContrat,
@@ -92,3 +93,5 @@ class DepotCorpus(Protocol):
     async def ingestions(self, limit: int, offset: int) -> list[IngestionJournalisee]: ...
 
     async def ingestion(self, id_: int) -> IngestionJournalisee | None: ...
+
+    async def etat(self) -> EtatCorpus: ...

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ...domain.models import DocumentTrace, IngestionJournalisee
+from ...domain.models import DocumentTrace, EtatCorpus, IngestionJournalisee
 from ...domain.ports import DepotCorpus
 
 
@@ -22,3 +22,7 @@ async def lister_ingestions(
 
 async def lire_ingestion(depot: DepotCorpus, ingestion_id: int) -> IngestionJournalisee | None:
     return await depot.ingestion(ingestion_id)
+
+
+async def etat_du_corpus(depot: DepotCorpus) -> EtatCorpus:
+    return await depot.etat()

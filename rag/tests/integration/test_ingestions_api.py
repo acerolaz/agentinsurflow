@@ -58,6 +58,14 @@ async def test_nouvelle_version_rend_l_ancienne_obsolete(
     assert (courantes, await _documents(conn_writer)) == (1, 2)
 
 
+async def test_etat_du_corpus_dernier_instantane_et_chunks_courants(
+    api: httpx.AsyncClient, conn_writer: AsyncConnection
+) -> None:
+    await api.post("/api/ingestions", json=lot(), headers=INGESTION)
+    etat = await PgDepotCorpus(conn_writer).etat()
+    assert (etat.instantane_sha256, etat.chunks) == (SHA, 4)
+
+
 async def test_lot_concurrent_409_sans_deuxieme_version_courante(
     api: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -14,6 +14,7 @@ from agentinsurflow_rag.domain.models import (
     ChunkDocument,
     CitationRag,
     DocumentTrace,
+    EtatCorpus,
     Extrait,
     IngestionJournalisee,
     VersionDocument,
@@ -187,6 +188,13 @@ class FakeDepotCorpus:
 
     async def ingestion(self, id_: int) -> IngestionJournalisee | None:
         return next((i for i in self.journal if i.id == id_), None)
+
+    async def etat(self) -> EtatCorpus:
+        courants = {d.id for d in self.documents if not d.obsolete}
+        return EtatCorpus(
+            self.journal[-1].instantane_sha256 if self.journal else None,
+            sum(c.document_id in courants for c in self.chunks),
+        )
 
 
 class FakeLLM:

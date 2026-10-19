@@ -6,6 +6,7 @@ ou au démarrage dans ``app.state``.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import Request
 from pydantic import Field, ValidationError
@@ -36,7 +37,8 @@ def charger_rag() -> ConfigRag:
         raise ErreurApi(503, "CONFIGURATION_INCOMPLETE", "RAG_SEUIL manquant ou invalide") from exc
 
 
-async def _connexion(request: Request, compte: str) -> AsyncIterator[AsyncConnection]:
+@asynccontextmanager
+async def ouvrir(request: Request, compte: str) -> AsyncIterator[AsyncConnection]:
     """Une transaction par requête : validée en fin de requête, annulée sur exception.
     Base non configurée ou injoignable → 503 ``BASE_INDISPONIBLE`` (jamais une 500)."""
     moteurs = getattr(request.app.state, "moteurs", None)
@@ -47,19 +49,22 @@ async def _connexion(request: Request, compte: str) -> AsyncIterator[AsyncConnec
         conn = await moteur.connect()
     except (OSError, DBAPIError) as exc:
         raise ErreurApi(503, "BASE_INDISPONIBLE", "Base de données injoignable") from exc
-    async with conn, conn.begin():
-        yield conn
+    try:
+        async with conn.begin():
+            yield conn
+    finally:
+        await conn.close()
 
 
 async def connexion_writer(request: Request) -> AsyncIterator[AsyncConnection]:
     """Compte ``writer`` (ingestion)."""
-    async for conn in _connexion(request, "writer"):
+    async with ouvrir(request, "writer") as conn:
         yield conn
 
 
 async def connexion_reader(request: Request) -> AsyncIterator[AsyncConnection]:
     """Compte ``reader`` (recherche, consultation) : lecture seule."""
-    async for conn in _connexion(request, "reader"):
+    async with ouvrir(request, "reader") as conn:
         yield conn
 
 

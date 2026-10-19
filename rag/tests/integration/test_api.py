@@ -5,10 +5,13 @@ Le parcours de l'agent (``POST /api/reponses``) est dans ``test_reponses_api.py`
 
 from __future__ import annotations
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from agentinsurflow_rag.api import app
+from agentinsurflow_rag.infrastructure.postgres.connexions import ConfigBD, Moteurs, creer_moteurs
+from conftest import config_bd
 
 client = TestClient(app)
 
@@ -25,7 +28,31 @@ def test_health_donne_les_versions_deployees(monkeypatch: pytest.MonkeyPatch) ->
         "release": "v0.1.1",
         "manifeste": "0.1.0-build.42",
         "environnement": None,
+        "corpus": None,  # base non configurée : /health reste 200
     }
+
+
+async def _sante_avec(moteurs: Moteurs) -> httpx.Response:
+    app.state.moteurs = moteurs
+    try:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://rag"
+        ) as api:
+            return await api.get("/health")
+    finally:
+        await moteurs.fermer()
+        app.state.moteurs = None
+
+
+async def test_health_corpus_vide(vecteurs_migree: None) -> None:
+    reponse = await _sante_avec(creer_moteurs(config_bd()))
+    assert reponse.json()["corpus"] == {"instantane_sha256": None, "chunks": 0}
+
+
+async def test_health_base_injoignable_corpus_null() -> None:
+    cfg = ConfigBD(_env_file=None, pg_port=1, pg_writer_password="x", pg_reader_password="x")  # type: ignore[call-arg, arg-type]
+    reponse = await _sante_avec(creer_moteurs(cfg))
+    assert (reponse.status_code, reponse.json()["corpus"]) == (200, None)
 
 
 def test_l_interface_swagger_est_servie_a_la_racine() -> None:

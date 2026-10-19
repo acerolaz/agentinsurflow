@@ -69,6 +69,14 @@ class IngestionJournalisee:
 
 
 @dataclass(frozen=True)
+class EtatCorpus:
+    """Pour ``/health`` : dernier instantané ingéré et nombre de chunks des versions courantes."""
+
+    instantane_sha256: str | None
+    chunks: int
+
+
+@dataclass(frozen=True)
 class CitationRag:
     """De quoi remonter à la source : Légifrance (``url_source``) et le chunk cité."""
 

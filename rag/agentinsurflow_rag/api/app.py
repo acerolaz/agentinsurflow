@@ -21,6 +21,7 @@ from pydantic import ValidationError
 from ..infrastructure.entra.jetons import ConfigAuth
 from ..infrastructure.otel.telemetrie import configurer_telemetrie, url_sans_parametres
 from ..infrastructure.postgres.connexions import ConfigBD, creer_moteurs
+from .dependances import ConfigRag
 from .erreurs import installer_gestionnaires
 from .routes import agent, corpus, sante
 
@@ -45,6 +46,11 @@ async def cycle_de_vie(app: FastAPI) -> AsyncIterator[None]:
     except ValidationError:
         journal.warning("Entra non configuré (AZURE_TENANT_ID, RAG_API_CLIENT_ID) : jetons en 503")
         app.state.jwks = None
+    # ponytail: avertissement seulement ; refus de démarrer quand U5 imposera PostgreSQL (Acerola)
+    try:
+        ConfigRag()  # type: ignore[call-arg]
+    except ValidationError:
+        journal.warning("RAG_SEUIL manquant ou invalide (nombre entre 0 et 1) : recherche en 503")
     yield
     if app.state.moteurs is not None:
         await app.state.moteurs.fermer()

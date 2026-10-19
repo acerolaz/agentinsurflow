@@ -5,11 +5,14 @@ Le parcours de l'agent (``POST /api/reponses``) est dans ``test_reponses_api.py`
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from agentinsurflow_rag.api import app
+from agentinsurflow_rag.api.app import cycle_de_vie
 from agentinsurflow_rag.infrastructure.postgres.connexions import ConfigBD, Moteurs, creer_moteurs
 from conftest import config_bd
 
@@ -53,6 +56,24 @@ async def test_health_base_injoignable_corpus_null() -> None:
     cfg = ConfigBD(_env_file=None, pg_port=1, pg_writer_password="x", pg_reader_password="x")  # type: ignore[call-arg, arg-type]
     reponse = await _sante_avec(creer_moteurs(cfg))
     assert (reponse.status_code, reponse.json()["corpus"]) == (200, None)
+
+
+@pytest.mark.parametrize("valeur", [None, "0,4", "2"])
+async def test_rag_seuil_absent_ou_invalide_signale_au_demarrage(
+    valeur: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Décision d'Acerola : avertir dès le démarrage ; le refus de démarrer viendra avec U5
+    monkeypatch.chdir(tmp_path)  # aucun .env lu
+    if valeur is None:
+        monkeypatch.delenv("RAG_SEUIL", raising=False)
+    else:
+        monkeypatch.setenv("RAG_SEUIL", valeur)
+    async with cycle_de_vie(app):
+        pass
+    assert any("RAG_SEUIL" in r.getMessage() for r in caplog.records if r.levelname == "WARNING")
 
 
 def test_l_interface_swagger_est_servie_a_la_racine() -> None:

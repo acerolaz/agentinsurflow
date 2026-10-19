@@ -1,6 +1,6 @@
 [project]
 name = "agentinsurflow-rag"
-version = "0.2.0"
+version = "0.3.0"
 description = "AgentInsurFlow — rag : corpus Légifrance, recherche hybride et agent à réponses citées."
 requires-python = ">=3.12,<3.13"
 dependencies = [

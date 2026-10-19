@@ -66,7 +66,7 @@ Le code Python du sprint 2 vit désormais dans [`rag/`](rag/README.md), en archi
 │   ├── preuves/               # journaux de chaîne, rapports d'evals et captures versionnés
 │   └── ateliers/              # grille de l'atelier croisé n°2
 ├── Makefile                   # orchestre : lint, test, pyramide, eval, build ; gateway-<cible> → gateway/
-├── pyproject.toml · uv.lock   # espace de travail uv (membre : rag) ; version de la solution (0.2.0)
+├── pyproject.toml · uv.lock   # espace de travail uv (membre : rag) ; version de la solution (0.3.0)
 ├── global.json · Directory.Build.props  # SDK .NET 10 et règles communes des projets C#
 ├── .python-version
 └── .env.example               # toutes les clés, sans valeurs

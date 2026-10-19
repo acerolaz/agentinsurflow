@@ -17,6 +17,7 @@ builder.Configuration.Sources.Insert(0, new JsonConfigurationSource
 });
 
 builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+builder.Services.AddOpenApi();
 
 // Traces OTLP vers le référentiel SQL d'underwriting-admin (même réplique, localhost : S3-21)
 var otlp = builder.Configuration["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] ?? "http://localhost:8002/v1/traces";
@@ -35,7 +36,24 @@ builder.Services.AddOpenTelemetry()
 var app = builder.Build();
 
 app.MapGet("/health", (IConfiguration cfg) =>
-    new Sante("ok", cfg["APP_VERSION"] ?? "dev", cfg["APP_RELEASE"] ?? "dev"));
+        new Sante("ok", cfg["APP_VERSION"] ?? "dev", cfg["APP_RELEASE"] ?? "dev"))
+    .WithName("SanteGateway")
+    .WithSummary("Santé de la gateway (versions servies)");
+app.MapOpenApi(); // /openapi/v1.json
+
+// Page Swagger unique, à la racine : les 3 documents OpenAPI de la solution (S3-24).
+// Connexion Entra en PKCE avec un seul client public (l'application agentinsurflow-rag).
+app.UseSwaggerUI(ui =>
+{
+    ui.RoutePrefix = "";
+    ui.DocumentTitle = "AgentInsurFlow — API";
+    ui.SwaggerEndpoint("/rag/openapi.json", "rag");
+    ui.SwaggerEndpoint("/underwriting/openapi/v1.json", "underwriting-admin");
+    ui.SwaggerEndpoint("/openapi/v1.json", "gateway");
+    ui.OAuthClientId(app.Configuration["SWAGGER_CLIENT_ID"] ?? "");
+    ui.OAuthUsePkce();
+});
+
 app.MapReverseProxy();
 
 await app.RunAsync();

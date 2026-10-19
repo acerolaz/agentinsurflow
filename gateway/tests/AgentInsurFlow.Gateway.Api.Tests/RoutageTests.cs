@@ -37,13 +37,17 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
         _usine.Dispose();
     }
 
+    // Contrat REST (S3-24) : une route par ressource, au pluriel
     [Theory]
-    [InlineData("/api/agent", "rag", "/api/agent")]
-    [InlineData("/v1/ingestion", "rag", "/v1/ingestion")]
-    [InlineData("/internal/rag/search", "rag", "/internal/rag/search")]
+    [InlineData("/api/reponses", "rag", "/api/reponses")]
+    [InlineData("/api/ingestions", "rag", "/api/ingestions")]
+    [InlineData("/api/ingestions/42", "rag", "/api/ingestions/42")]
+    [InlineData("/api/extraits?question=bonus", "rag", "/api/extraits")]
+    [InlineData("/api/documents/LEGIARTI000006800836", "rag", "/api/documents/LEGIARTI000006800836")]
     [InlineData("/rag/openapi.json", "rag", "/openapi.json")]
-    [InlineData("/internal/sql/contrats", "underwriting", "/internal/sql/contrats")]
-    [InlineData("/internal/traces/0af7651916cd43dd8448eb211c80319c", "underwriting", "/internal/traces/0af7651916cd43dd8448eb211c80319c")]
+    [InlineData("/api/contrats", "underwriting", "/api/contrats")]
+    [InlineData("/api/contrats/AIF-2026-0001", "underwriting", "/api/contrats/AIF-2026-0001")]
+    [InlineData("/api/traces/0af7651916cd43dd8448eb211c80319c", "underwriting", "/api/traces/0af7651916cd43dd8448eb211c80319c")]
     [InlineData("/v1/traces", "underwriting", "/v1/traces")]
     [InlineData("/underwriting/openapi/v1.json", "underwriting", "/openapi/v1.json")]
     public async Task Route_vers_le_bon_backend(string chemin, string backend, string cheminRecu)
@@ -58,14 +62,46 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
         Assert.Empty(autre.LogEntries);
     }
 
-    [Fact]
-    public async Task Chemin_inconnu_404_sans_appel_backend()
+    // Chemin inconnu, et anciennes routes de style RPC du plan v1 : plus routées
+    [Theory]
+    [InlineData("/inconnu")]
+    [InlineData("/api/agent")]
+    [InlineData("/api/inconnue")]
+    [InlineData("/v1/ingestion")]
+    [InlineData("/internal/rag/search")]
+    [InlineData("/internal/sql/contrats")]
+    public async Task Chemin_non_route_404_sans_appel_backend(string chemin)
     {
-        var reponse = await _client.GetAsync(new Uri("/inconnu", UriKind.Relative), TestContext.Current.CancellationToken);
+        var reponse = await _client.GetAsync(new Uri(chemin, UriKind.Relative), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, reponse.StatusCode);
         Assert.Empty(_backends.Rag.LogEntries);
         Assert.Empty(_backends.Underwriting.LogEntries);
+    }
+
+    [Theory]
+    [InlineData("/rag/openapi.json", "rag", "/rag")]
+    [InlineData("/underwriting/openapi/v1.json", "underwriting", "/underwriting")]
+    public async Task Documentation_recoit_son_prefixe_public(string chemin, string backend, string prefixe)
+    {
+        await _client.GetAsync(new Uri(chemin, UriKind.Relative), TestContext.Current.CancellationToken);
+
+        var vise = backend == "rag" ? _backends.Rag : _backends.Underwriting;
+        var entetes = Assert.Single(vise.LogEntries).RequestMessage!.Headers!;
+        Assert.Equal(prefixe, Assert.Single(entetes["X-Forwarded-Prefix"]));
+    }
+
+    [Fact]
+    public async Task XForwardedPrefix_du_client_ne_passe_pas()
+    {
+        using var requete = new HttpRequestMessage(HttpMethod.Get, "/api/contrats");
+        requete.Headers.Add("X-Forwarded-Prefix", "/pirate");
+
+        await _client.SendAsync(requete, TestContext.Current.CancellationToken);
+
+        var entetes = Assert.Single(_backends.Underwriting.LogEntries).RequestMessage!.Headers!;
+        var prefixe = entetes.TryGetValue("X-Forwarded-Prefix", out var valeurs) ? string.Join(",", valeurs) : "";
+        Assert.DoesNotContain("/pirate", prefixe, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -85,7 +121,7 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     public async Task Transmet_Authorization_et_traceparent_sans_les_lire()
     {
         const string traceparent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
-        using var requete = new HttpRequestMessage(HttpMethod.Get, "/internal/sql/contrats");
+        using var requete = new HttpRequestMessage(HttpMethod.Get, "/api/contrats");
         requete.Headers.Add("Authorization", "Bearer jeton-opaque");
         requete.Headers.Add("traceparent", traceparent);
 
@@ -99,7 +135,7 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     [Fact]
     public async Task Ne_controle_aucun_jeton()
     {
-        var reponse = await _client.PostAsync(new Uri("/api/agent", UriKind.Relative), content: null, TestContext.Current.CancellationToken);
+        var reponse = await _client.PostAsync(new Uri("/api/reponses", UriKind.Relative), content: null, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
         var entetes = Assert.Single(_backends.Rag.LogEntries).RequestMessage!.Headers!;

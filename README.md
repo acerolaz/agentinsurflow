@@ -38,6 +38,8 @@ Le sprint 3 fait évoluer ce dépôt en **monorepo à trois projets**, livrés s
 | `rag/` | Python · hexagonal | Corpus Légifrance, ingestion, recherche hybride, agent cité | ⏳ branche `feat/rag` |
 | `underwriting-admin/` | C# · Clean Architecture · .NET 10 | Dossiers (BOLA) et référentiel SQL des traces OpenTelemetry | ⏳ branche `feat/underwriting-admin` |
 
+Toutes les API sont **REST** et consultables dans **une seule page Swagger**, servie à la racine de la gateway. Le contrat (ressources, méthodes, codes) et la correspondance avec les noms d'endpoints du brief sont dans [`gateway/README.md`](gateway/README.md#contrat-rest-s3-24).
+
 Le code ci-dessous (`agentinsurflow/`) est encore celui du sprint 2 ; il rejoindra `rag/` sur la branche `feat/rag`.
 
 ## Arborescence

@@ -10,6 +10,7 @@ from collections.abc import AsyncIterator
 from fastapi import Request
 from pydantic import Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from ..domain.ports import ClientEmbeddings
@@ -35,23 +36,30 @@ def charger_rag() -> ConfigRag:
         raise ErreurApi(503, "CONFIGURATION_INCOMPLETE", "RAG_SEUIL manquant ou invalide") from exc
 
 
-def _moteur(request: Request, compte: str) -> AsyncEngine:
+async def _connexion(request: Request, compte: str) -> AsyncIterator[AsyncConnection]:
+    """Une transaction par requête : validée en fin de requête, annulée sur exception.
+    Base non configurée ou injoignable → 503 ``BASE_INDISPONIBLE`` (jamais une 500)."""
     moteurs = getattr(request.app.state, "moteurs", None)
     if moteurs is None:
         raise ErreurApi(503, "BASE_INDISPONIBLE", "Base de données non configurée")
     moteur: AsyncEngine = getattr(moteurs, compte)
-    return moteur
+    try:
+        conn = await moteur.connect()
+    except (OSError, DBAPIError) as exc:
+        raise ErreurApi(503, "BASE_INDISPONIBLE", "Base de données injoignable") from exc
+    async with conn, conn.begin():
+        yield conn
 
 
 async def connexion_writer(request: Request) -> AsyncIterator[AsyncConnection]:
-    """Compte ``writer`` (ingestion) ; validée en fin de requête, annulée sur exception."""
-    async with _moteur(request, "writer").begin() as conn:
+    """Compte ``writer`` (ingestion)."""
+    async for conn in _connexion(request, "writer"):
         yield conn
 
 
 async def connexion_reader(request: Request) -> AsyncIterator[AsyncConnection]:
     """Compte ``reader`` (recherche, consultation) : lecture seule."""
-    async with _moteur(request, "reader").begin() as conn:
+    async for conn in _connexion(request, "reader"):
         yield conn
 
 

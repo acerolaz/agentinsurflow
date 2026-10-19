@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from agentinsurflow_rag.api import app
 from agentinsurflow_rag.api.dependances import ConfigRag, charger_rag, connexion_reader
+from agentinsurflow_rag.infrastructure.postgres.connexions import ConfigBD, creer_moteurs
 from conftest import entetes
 from corpus_de_test import CORPUS, SHA
 
@@ -123,3 +124,20 @@ async def test_document_inconnu_404(api: httpx.AsyncClient) -> None:
     reponse = await api.get("/api/documents/LEGIARTI_INCONNU", headers=GESTIONNAIRE)
     assert reponse.status_code == 404
     assert reponse.json()["code"] == "DOCUMENT_INTROUVABLE"
+
+
+async def test_base_injoignable_503_problem_details(api: httpx.AsyncClient) -> None:
+    del app.dependency_overrides[connexion_reader]  # le vrai câblage, vers un port fermé
+    app.state.moteurs = creer_moteurs(
+        ConfigBD(_env_file=None, pg_port=1, pg_writer_password="x", pg_reader_password="x")  # type: ignore[call-arg, arg-type]
+    )
+    try:
+        reponse = await api.get(
+            "/api/extraits", params={"question": "bonus malus"}, headers=GESTIONNAIRE
+        )
+    finally:
+        await app.state.moteurs.fermer()
+        app.state.moteurs = None
+    assert reponse.status_code == 503
+    assert reponse.headers["content-type"] == "application/problem+json"
+    assert reponse.json()["code"] == "BASE_INDISPONIBLE"

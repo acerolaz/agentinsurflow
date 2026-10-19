@@ -62,21 +62,19 @@ async def _gerer(request: Request, exc: Exception) -> JSONResponse:
     return probleme(exc.statut, exc.code, exc.titre, exc.entetes)
 
 
-async def _embeddings(request: Request, exc: Exception) -> JSONResponse:
-    return probleme(503, "EMBEDDINGS_INDISPONIBLES", "Le modèle d'embeddings ne répond pas")
-
-
-async def _dossiers(request: Request, exc: Exception) -> JSONResponse:
-    return probleme(503, "DOSSIERS_INDISPONIBLES", "Les dossiers ne sont pas joignables")
-
-
-async def _contrat(request: Request, exc: Exception) -> JSONResponse:
+ERREURS_DU_DOMAINE: dict[type[Exception], tuple[int, str, str]] = {
+    ErreurEmbeddings: (503, "EMBEDDINGS_INDISPONIBLES", "Le modèle d'embeddings ne répond pas"),
+    ErreurDossiers: (503, "DOSSIERS_INDISPONIBLES", "Les dossiers ne sont pas joignables"),
     # même réponse pour un contrat absent et un contrat d'un autre gestionnaire (BOLA)
-    return probleme(404, "CONTRAT_INTROUVABLE", "Contrat introuvable")
+    ContratIntrouvable: (404, "CONTRAT_INTROUVABLE", "Contrat introuvable"),
+}
+
+
+async def _domaine(request: Request, exc: Exception) -> JSONResponse:
+    return probleme(*next(v for t, v in ERREURS_DU_DOMAINE.items() if isinstance(exc, t)))
 
 
 def installer_gestionnaires(app: FastAPI) -> None:
     app.add_exception_handler(ErreurApi, _gerer)
-    app.add_exception_handler(ErreurEmbeddings, _embeddings)
-    app.add_exception_handler(ErreurDossiers, _dossiers)
-    app.add_exception_handler(ContratIntrouvable, _contrat)
+    for type_ in ERREURS_DU_DOMAINE:
+        app.add_exception_handler(type_, _domaine)

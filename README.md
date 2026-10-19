@@ -12,7 +12,7 @@ flowchart LR
     PR(["👤 PR"]) --> L(["🧹 lint<br/>ruff + mypy"]) --> T{{"🛡️ test<br/>couverture ≥ 80 %"}}
     T -- "PR" --> EP{{"🛡️ evals-pr<br/>si déclencheur"}} -- "✔ merge" --> M(["👤 merge main"])
     M --> B(["📦 build<br/>image → ACR :sha"]) --> S(["🚀 staging"]) --> FS{{"🛡️ fumée"}}
-    FS -- "✔" --> EV{{"🛡️ evals<br/>si déclencheur"}} -- "✔ ou sautées" --> P(["🌐 production"]) --> FP{{"🛡️ fumée"}}
+    FS -- "✔" --> EV{{"🛡️ evals<br/>si déclencheur"}} -- "✔ ou sautées" --> R(["🏷️ release<br/>tag vX.Y.Z"]) --> P(["🌐 production"]) --> FP{{"🛡️ fumée"}}
     T -- "✘" --> X(["⛔ chaîne arrêtée<br/>merge refusé"])
     P -. "make rollback (1 opération)" .-> RB(["↩️ image précédente"])
     classDef plat fill:#1E3A8A,stroke:#1E3A8A,color:#fff
@@ -20,7 +20,7 @@ flowchart LR
     classDef ko fill:#FEE2E2,stroke:#B91C1C,color:#7F1D1D
     classDef gate fill:#EDE9FE,stroke:#7C3AED,color:#3B0764
     class PR,M,P plat
-    class L,B,S ok
+    class L,B,S,R ok
     class X,RB ko
     class T,EP,FS,EV,FP gate
 ```
@@ -136,6 +136,7 @@ JSON s'ouvre sur un **manifeste** qui dit ce qui a été évalué :
 
 | Champ du manifeste | Contenu |
 |---|---|
+| `version` | Version du manifeste : `X.Y.Z-build.N` (pyproject + n° de run GitHub) |
 | `date`, `commit`, `run`, `cible` | Quand, quel commit, lien du run GitHub, URL évaluée |
 | `modele` | Déploiement épinglé (`llm.env`) **et** modèle observé dans les réponses de l'API |
 | `prompts` | Chaque prompt : fichier, empreinte sha256, contenu |
@@ -160,8 +161,17 @@ Installation, à faire une seule fois :
 3. `git push`, puis `make proteger` : `main` n'accepte plus que des commits dont `lint`, `test` et `evals-pr`
    sont verts (un `evals-pr` sauté compte comme vert).
 
-Ensuite, chaque **merge sur `main`** déclenche toute la chaîne, sans action manuelle. L'image est tagguée par
-le SHA du commit, et `/health` renvoie ce SHA : on lit ainsi quelle version tourne.
+Ensuite, chaque **merge sur `main`** déclenche toute la chaîne, sans action manuelle. Trois versions :
+
+| Version | Forme | Désigne | Où la lire |
+|---|---|---|---|
+| Release | `vX.Y.Z` (ex. `v0.1.3`) | le commit livré en production, tagué juste avant | tags Git (`git tag`), résumé du run |
+| Image | SHA du commit | l'artefact déployé | tag de l'image dans l'ACR, `/health` |
+| Manifeste | `X.Y.Z-build.N` (ex. `0.1.0-build.42`) | ce qui a été évalué : modèle, prompts, golden dataset | champ `version` du rapport d'évaluation |
+
+X.Y se choisissent à la main dans `pyproject.toml` (`version`). Pour la release, Z est calculé par
+`tools/version.py` d'après les tags (`v0.1.0`, puis `v0.1.1`…) ; passer le pyproject à `0.2.0` donne `v0.2.0`.
+Pour le manifeste, N est le numéro du run GitHub (`X.Y.Z-local` hors CI).
 
 ### Ressources Azure actuelles
 
@@ -170,13 +180,11 @@ le SHA du commit, et `/health` renvoie ce SHA : on lit ainsi quelle version tour
 | Groupe de ressources | `svespuceRG` (`swedencentral`) | ✅ |
 | Registre d'images | `acerolazacr` (`acerolazacr.azurecr.io`) | ✅ créé |
 | Environnement Container Apps | `cae-insurflow` | ✅ créé |
-| Container App staging | `insurflow-staging` → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ créée (image provisoire) |
-| Container App production | `insurflow-production` → `https://insurflow-production.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ créée (image provisoire) |
+| Container App staging | `insurflow-staging` → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ déployée |
+| Container App production | `insurflow-production` → `https://insurflow-production.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ déployée |
 | Modèle | `Kimi-K2.5` sur la ressource Foundry `svespuce-971` | ✅ |
 | Application Entra de la CI | `agentinsurflow` + 4 fédérations OIDC | ✅ |
-| Rôles (Contributor, AcrPush, AcrPull, Cognitive Services User) | — | 🔴 demandés au formateur |
-
-Tant que les rôles manquent, `build` s'arrête sur `No subscriptions found`.
+| Rôles (Contributor, AcrPush, AcrPull, Cognitive Services User) | — | ✅ attribués |
 
 ## Rollback
 

@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 import time
+import tomllib
 import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
@@ -71,6 +72,13 @@ def _commit() -> str:
     return sortie.stdout.strip() or "inconnu"
 
 
+def version_manifeste(pyproject: Path = Path("pyproject.toml")) -> str:
+    """``X.Y.Z-build.N`` : version du pyproject + n° de run GitHub ; ``X.Y.Z-local`` hors CI."""
+    base = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+    run = os.environ.get("GITHUB_RUN_NUMBER")
+    return f"{base}-build.{run}" if run else f"{base}-local"
+
+
 def manifeste(
     url: str, golden: Path, prompts: Path, llm_env: Path, portes: dict[str, float]
 ) -> dict[str, Any]:
@@ -79,6 +87,7 @@ def manifeste(
     depot = os.environ.get("GITHUB_REPOSITORY")
     cas = [json.loads(ligne) for ligne in golden.read_text(encoding="utf-8").splitlines() if ligne]
     return {
+        "version": version_manifeste(),
         "date": datetime.now(UTC).isoformat(timespec="seconds"),
         "commit": _commit(),
         "run": f"https://github.com/{depot}/actions/runs/{run}" if run and depot else None,

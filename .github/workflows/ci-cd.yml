@@ -1,8 +1,10 @@
 # Chaîne du socle (CI/CD/Evals)
 #   PR    : lint → test → [evals-pr]                       (portes exigées par la protection de main)
-#   merge : lint → test → build → staging (+ fumée) → [evals] → production (+ fumée)
+#   merge : lint → test → build → staging (+ fumée) → [evals] → release → production (+ fumée)
 # [evals…] ne tournent QUE si le prompt, le golden dataset ou la version du LLM changent
 # (job changements) ; sinon ils sont sautés et la chaîne continue.
+# Versions : l'image porte le SHA du commit ; la release vX.Y.Z (tag Git, tools/version.py) est
+# posée sur ce commit juste avant la production ; le manifeste des evals porte X.Y.Z-build.N.
 name: ci-cd
 
 on:
@@ -132,12 +134,31 @@ jobs:
           path: evals.json
           if-no-files-found: error
 
-  production:
+  release:
     needs: [changements, staging, evals]
-    # evals sautées (rien à évaluer) = feu vert ; evals en échec = production bloquée
+    # evals sautées (rien à évaluer) = feu vert ; evals en échec = ni tag ni production
     if: >-
       ${{ !cancelled() && needs.changements.result == 'success'
       && needs.staging.result == 'success' && needs.evals.result != 'failure' }}
+    runs-on: ubuntu-latest
+    permissions: { contents: write } # pousser le tag
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 } # tous les tags, pour calculer Z
+      - name: Tagger le commit vX.Y.Z (avant la production)
+        run: |
+          tag=$(python3 tools/version.py)
+          if ! git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$tag" -m "Release $tag — image agentinsurflow:${{ github.sha }}"
+            git push origin "$tag"
+          fi
+          echo "✔ release $tag → image ${{ github.sha }}" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  production:
+    needs: release
+    if: ${{ !cancelled() && needs.release.result == 'success' }}
     permissions: { contents: read, id-token: write }
     uses: ./.github/workflows/deploy.yml
     with: { environnement: production, tag: "${{ github.sha }}" }

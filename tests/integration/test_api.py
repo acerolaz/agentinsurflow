@@ -25,10 +25,19 @@ def _brancher(llm: ClientLLM | None) -> None:
     app.dependency_overrides[obtenir_llm] = lambda: llm
 
 
-def test_health_donne_la_version_deployee() -> None:
+def test_health_donne_les_versions_deployees(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_VERSION", "abc123")
+    monkeypatch.setenv("APP_RELEASE", "v0.1.1")
+    monkeypatch.setenv("APP_MANIFESTE", "0.1.0-build.42")
     reponse = client.get("/health")
     assert reponse.status_code == 200
-    assert reponse.json()["statut"] == "ok" and reponse.json()["version"]
+    assert reponse.json() | {"environnement": None} == {
+        "statut": "ok",
+        "version": "abc123",
+        "release": "v0.1.1",
+        "manifeste": "0.1.0-build.42",
+        "environnement": None,
+    }
 
 
 def test_l_agent_repond_via_le_llm() -> None:

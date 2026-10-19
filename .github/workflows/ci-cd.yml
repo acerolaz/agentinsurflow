@@ -1,8 +1,10 @@
 # Chaîne du socle (CI/CD/Evals)
 #   PR    : lint → test → [evals-pr]                       (portes exigées par la protection de main)
-#   merge : lint → test → build → staging (+ fumée) → [evals] → production (+ fumée)
+#   merge : lint → test → build → staging (+ fumée) → [evals] → release → production (+ fumée)
 # [evals…] ne tournent QUE si le prompt, le golden dataset ou la version du LLM changent
 # (job changements) ; sinon ils sont sautés et la chaîne continue.
+# Deux versions (tools/version.py) : l'artefact X.Y.Z-build.N (image, /health) à chaque build,
+# la release vX.Y.Z (tag Git) posée sur le commit juste avant la production.
 name: ci-cd
 
 on:
@@ -95,26 +97,38 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+      - name: Version de l'artefact (pyproject + n° de run)
+        id: version
+        run: echo "version=$(python3 tools/version.py)-build.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
       - uses: azure/login@v2 # OIDC : aucun secret de longue durée
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Construire et publier l'image (tag = SHA, immuable)
+      - name: Construire et publier l'image (tag = version de l'artefact, immuable)
         env:
-          IMAGE: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow:${{ github.sha }}
+          VERSION: ${{ steps.version.outputs.version }}
+          IMAGE: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow:${{ steps.version.outputs.version }}
         run: |
+          # Relance du run : même version, déjà publiée → on ne l'écrase pas
+          if az acr repository show -n "${{ vars.ACR_NAME }}" --image "agentinsurflow:$VERSION" -o none 2>/dev/null; then
+            echo "Image $VERSION déjà publiée"; exit 0
+          fi
           az acr login -n "${{ vars.ACR_NAME }}"
-          docker build --build-arg APP_VERSION=${{ github.sha }} -t "$IMAGE" .
+          docker build --build-arg APP_VERSION="$VERSION" \
+            --label org.opencontainers.image.version="$VERSION" \
+            --label org.opencontainers.image.revision=${{ github.sha }} -t "$IMAGE" .
           docker push "$IMAGE"
 
   staging:
     needs: build
     permissions: { contents: read, id-token: write }
     uses: ./.github/workflows/deploy.yml
-    with: { environnement: staging, tag: "${{ github.sha }}" }
+    with: { environnement: staging, tag: "${{ needs.build.outputs.version }}" }
     secrets: inherit
 
   evals:
@@ -132,13 +146,34 @@ jobs:
           path: evals.json
           if-no-files-found: error
 
-  production:
-    needs: [changements, staging, evals]
-    # evals sautées (rien à évaluer) = feu vert ; evals en échec = production bloquée
+  release:
+    needs: [build, changements, staging, evals]
+    # evals sautées (rien à évaluer) = feu vert ; evals en échec = ni tag ni production
     if: >-
       ${{ !cancelled() && needs.changements.result == 'success'
       && needs.staging.result == 'success' && needs.evals.result != 'failure' }}
+    runs-on: ubuntu-latest
+    permissions: { contents: write } # pousser le tag
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 } # tous les tags, pour calculer Z
+      - name: Tagger le commit vX.Y.Z (avant la production)
+        env:
+          ARTEFACT: ${{ needs.build.outputs.version }}
+        run: |
+          tag=$(python3 tools/version.py --release)
+          if ! git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$tag" -m "Release $tag — image agentinsurflow:$ARTEFACT"
+            git push origin "$tag"
+          fi
+          echo "✔ release $tag → image $ARTEFACT" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  production:
+    needs: [build, release]
+    if: ${{ !cancelled() && needs.release.result == 'success' }}
     permissions: { contents: read, id-token: write }
     uses: ./.github/workflows/deploy.yml
-    with: { environnement: production, tag: "${{ github.sha }}" }
+    with: { environnement: production, tag: "${{ needs.build.outputs.version }}" }
     secrets: inherit

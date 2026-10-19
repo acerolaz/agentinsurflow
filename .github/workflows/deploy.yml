@@ -1,5 +1,5 @@
 # Déploiement d'une image dans un environnement, suivi d'un test de fumée bloquant.
-# - appelé par ci-cd.yml après chaque merge (tag = SHA du commit) ;
+# - appelé par ci-cd.yml après chaque merge (tag = version de l'artefact, X.Y.Z-build.N) ;
 # - lancé à la main = ROLLBACK en une opération : `make rollback` ou Actions › deploy › Run
 #   workflow. Sans tag : redéploie l'image de la révision précédente.
 name: deploy
@@ -20,7 +20,7 @@ on:
         options: [production, staging]
         default: production
       tag:
-        description: "SHA de l'image ; vide = version précédente (rollback)"
+        description: "Version de l'image (ex. 0.1.0-build.42) ; vide = version précédente (rollback)"
         type: string
         required: false
 

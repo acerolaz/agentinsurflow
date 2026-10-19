@@ -11,8 +11,8 @@ L'interface est **Swagger UI**, servie à la racine `/`.
 flowchart LR
     PR(["👤 PR"]) --> L(["🧹 lint<br/>ruff + mypy"]) --> T{{"🛡️ test<br/>couverture ≥ 80 %"}}
     T -- "PR" --> EP{{"🛡️ evals-pr<br/>si déclencheur"}} -- "✔ merge" --> M(["👤 merge main"])
-    M --> B(["📦 build<br/>image → ACR :sha"]) --> S(["🚀 staging"]) --> FS{{"🛡️ fumée"}}
-    FS -- "✔" --> EV{{"🛡️ evals<br/>si déclencheur"}} -- "✔ ou sautées" --> P(["🌐 production"]) --> FP{{"🛡️ fumée"}}
+    M --> B(["📦 build<br/>image → ACR :X.Y.Z-build.N"]) --> S(["🚀 staging"]) --> FS{{"🛡️ fumée"}}
+    FS -- "✔" --> EV{{"🛡️ evals<br/>si déclencheur"}} -- "✔ ou sautées" --> R(["🏷️ release<br/>tag vX.Y.Z"]) --> P(["🌐 production"]) --> FP{{"🛡️ fumée"}}
     T -- "✘" --> X(["⛔ chaîne arrêtée<br/>merge refusé"])
     P -. "make rollback (1 opération)" .-> RB(["↩️ image précédente"])
     classDef plat fill:#1E3A8A,stroke:#1E3A8A,color:#fff
@@ -20,7 +20,7 @@ flowchart LR
     classDef ko fill:#FEE2E2,stroke:#B91C1C,color:#7F1D1D
     classDef gate fill:#EDE9FE,stroke:#7C3AED,color:#3B0764
     class PR,M,P plat
-    class L,B,S ok
+    class L,B,S,R ok
     class X,RB ko
     class T,EP,FS,EV,FP gate
 ```
@@ -160,8 +160,16 @@ Installation, à faire une seule fois :
 3. `git push`, puis `make proteger` : `main` n'accepte plus que des commits dont `lint`, `test` et `evals-pr`
    sont verts (un `evals-pr` sauté compte comme vert).
 
-Ensuite, chaque **merge sur `main`** déclenche toute la chaîne, sans action manuelle. L'image est tagguée par
-le SHA du commit, et `/health` renvoie ce SHA : on lit ainsi quelle version tourne.
+Ensuite, chaque **merge sur `main`** déclenche toute la chaîne, sans action manuelle. Deux versions, calculées
+par `tools/version.py` :
+
+| Version | Forme | Quand | Où la lire |
+|---|---|---|---|
+| Artefact (l'image) | `X.Y.Z-build.N` (ex. `0.1.0-build.42`) | à chaque build | tag de l'image dans l'ACR, `/health` |
+| Release | `vX.Y.Z` (ex. `v0.1.3`) | sur le commit, juste avant la production | tags Git (`git tag`), résumé du run |
+
+X.Y se choisissent à la main dans `pyproject.toml` (`version`) ; Z est calculé : `v0.1.0`, puis `v0.1.1`…
+Passer le pyproject à `0.2.0` donne `v0.2.0`. Le tag de release est annoté avec la version de l'image livrée.
 
 ### Ressources Azure actuelles
 
@@ -170,19 +178,17 @@ le SHA du commit, et `/health` renvoie ce SHA : on lit ainsi quelle version tour
 | Groupe de ressources | `svespuceRG` (`swedencentral`) | ✅ |
 | Registre d'images | `acerolazacr` (`acerolazacr.azurecr.io`) | ✅ créé |
 | Environnement Container Apps | `cae-insurflow` | ✅ créé |
-| Container App staging | `insurflow-staging` → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ créée (image provisoire) |
-| Container App production | `insurflow-production` → `https://insurflow-production.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ créée (image provisoire) |
+| Container App staging | `insurflow-staging` → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ déployée |
+| Container App production | `insurflow-production` → `https://insurflow-production.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ déployée |
 | Modèle | `Kimi-K2.5` sur la ressource Foundry `svespuce-971` | ✅ |
 | Application Entra de la CI | `agentinsurflow` + 4 fédérations OIDC | ✅ |
-| Rôles (Contributor, AcrPush, AcrPull, Cognitive Services User) | — | 🔴 demandés au formateur |
-
-Tant que les rôles manquent, `build` s'arrête sur `No subscriptions found`.
+| Rôles (Contributor, AcrPush, AcrPull, Cognitive Services User) | — | ✅ attribués |
 
 ## Rollback
 
 ```bash
 make rollback             # production → image précédente, en une opération
-make rollback ENV=staging TAG=<sha>   # ou une version précise
+make rollback ENV=staging TAG=0.1.0-build.42   # ou une version précise de l'image
 ```
 
 Détails et scénario de répétition : [docs/rollback.md](docs/rollback.md).

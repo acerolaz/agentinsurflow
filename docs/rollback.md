@@ -16,17 +16,19 @@ On peut aussi passer par l'interface : Actions › **deploy** › *Run workflow*
 
 1. `deploy.yml` lit les révisions de la Container App et retient l'**image de l'avant-dernière révision**.
 2. Il crée une nouvelle révision avec cette image ; les variables et le secret sont reposés à l'identique.
-3. Le **test de fumée** vérifie que `/health` renvoie bien le SHA de cette image et que l'agent joint le LLM.
+3. Le **test de fumée** vérifie que `/health` renvoie bien la version de cette image et que l'agent joint le LLM.
 4. Le run reste dans le journal Actions : c'est la trace du rollback.
 
-Aucune reconstruction : les images sont **immuables** (tag = SHA) et déjà dans l'ACR. Le prompt et la version
+Aucune reconstruction : les images sont **immuables** (tag = version de l'artefact, `X.Y.Z-build.N`, jamais
+réécrit) et déjà dans l'ACR. Le prompt et la version
 du LLM (`llm.env`) étant **dans l'image**, le rollback les restaure aussi.
 
 > 🔁 **Analogie .NET** : c'est un *swap* de slot App Service, sauf qu'on repointe une image existante au lieu
 > d'échanger deux slots.
 
 ⚠️ La « version précédente » est l'avant-dernière révision **créée**. Relancer `make rollback` revient donc à la
-version qu'on vient de quitter, ce qui sert à revenir en avant. Pour une version précise : `make rollback TAG=<sha>`.
+version qu'on vient de quitter, ce qui sert à revenir en avant. Pour une version précise : `make rollback TAG=0.1.0-build.42`.
+Le tag de release `vX.Y.Z` reste sur son commit : un rollback change l'image servie, pas l'historique Git.
 
 ## Scénario de répétition
 

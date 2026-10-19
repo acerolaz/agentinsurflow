@@ -16,7 +16,7 @@ from .llm import ClientLLM, charger_config, fabrique_llm
 
 
 class ConfigApp(BaseSettings):
-    """``APP_VERSION`` est gravée dans l'image au build (SHA du commit)."""
+    """``APP_VERSION`` est gravée dans l'image au build (version de l'artefact, X.Y.Z-build.N)."""
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
 

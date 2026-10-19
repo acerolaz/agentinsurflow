@@ -1,6 +1,6 @@
 [project]
 name = "agentinsurflow-rag"
-version = "0.3.0"
+version = "0.4.0"
 description = "AgentInsurFlow — rag : corpus Légifrance, recherche hybride et agent à réponses citées."
 requires-python = ">=3.12,<3.13"
 dependencies = [
@@ -9,6 +9,8 @@ dependencies = [
     "openai>=1.50",
     "pydantic-settings>=2.4",
     "azure-identity>=1.17",
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg>=0.29",
 ]
 
 [build-system]

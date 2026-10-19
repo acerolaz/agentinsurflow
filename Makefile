@@ -9,7 +9,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et, plus tard,
 # underwriting-admin/ (C#, leurs propres Makefile, appelés par gateway-<cible>).
-.PHONY: install fmt lint test pyramide eval run build docker infra proteger rollback preuve
+.PHONY: install fmt lint test test-integration pyramide up down eval run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked
@@ -23,8 +23,18 @@ lint:               ## porte 1 : style + typage
 	uv run ruff format --check .
 	uv run mypy rag/agentinsurflow_rag tools
 
-test:               ## porte 2 : unitaires + intégration, couverture >= 80 %
+test:               ## TU, sans Docker (rag/tests/unit + outillage de la racine)
+	uv run pytest tests rag/tests/unit --no-cov
+
+test-integration:   ## porte 2 : TU + TI (PostgreSQL du compose), couverture >= 80 %
+	docker compose up -d --build --wait postgres
 	uv run pytest
+
+up:                 ## la solution en local : postgres + rag (:8001) + gateway (:8000, Swagger unique)
+	docker compose up -d --build --wait
+
+down:               ## arrête la solution et vide la base annexe
+	docker compose down -v
 
 pyramide:           ## porte S3-22 : TU >= 65 %, TI <= 25 %, E2E <= 15 % (rag + underwriting-admin + e2e)
 	uv run python tools/pyramide.py

@@ -66,7 +66,7 @@ Le code Python du sprint 2 vit désormais dans [`rag/`](rag/README.md), en archi
 │   ├── preuves/               # journaux de chaîne, rapports d'evals et captures versionnés
 │   └── ateliers/              # grille de l'atelier croisé n°2
 ├── Makefile                   # orchestre : lint, test, pyramide, eval, build ; gateway-<cible> → gateway/
-├── pyproject.toml · uv.lock   # espace de travail uv (membre : rag) ; version de la solution (0.3.0)
+├── pyproject.toml · uv.lock   # espace de travail uv (membre : rag) ; version de la solution (0.4.0)
 ├── global.json · Directory.Build.props  # SDK .NET 10 et règles communes des projets C#
 ├── .python-version
 └── .env.example               # toutes les clés, sans valeurs
@@ -86,13 +86,16 @@ Le code Python du sprint 2 vit désormais dans [`rag/`](rag/README.md), en archi
 Prérequis : [uv](https://docs.astral.sh/uv/) et Docker.
 
 ```bash
-cp .env.example .env      # remplir AZURE_OPENAI_ENDPOINT (+ la clé, ou az login) ; sans endpoint : mode dégradé
+cp .env.example .env      # remplir AZURE_OPENAI_ENDPOINT (+ la clé, ou az login), AZURE_TENANT_ID, PG_*_PASSWORD
 make install              # dépendances figées par uv.lock
-make run                  # http://localhost:8000 → Swagger
-make docker               # la même chose, dans l'image qui part en production
+make up                   # postgres + rag (:8001) + gateway (:8000) → http://localhost:8000/ : Swagger unique
+make down                 # arrête tout et vide la base annexe
+make run                  # rag seul, sans Docker : http://localhost:8000 → Swagger de rag
 ```
 
-Exemple de réponse de `POST /api/agent` : `{"texte": "…", "mode": "llm", "modele": "Kimi-K2.5"}`.
+Dans la **page Swagger unique** de la gateway (`http://localhost:8000/`), le menu donne les 3 documents OpenAPI ; « Authorize » se connecte à Entra (PKCE) et « Try it out » appelle les routes REST publiques de la gateway, avec jeton, rôle et limite de débit.
+
+Exemple de réponse de `POST /api/reponses` : `{"texte": "…", "mode": "llm", "modele": "Kimi-K2.5"}`.
 Avec `"mode": "degrade"`, le LLM n'est pas joignable (ou ne répond pas en 30 s, `LLM_DELAI_S`) et la demande
 part en revue humaine (source : dossier-conception-v1.md, K5).
 
@@ -105,7 +108,10 @@ Le modèle est épinglé dans `rag/llm.env` ; l'endpoint est accepté avec ou sa
 
 ```bash
 make lint                 # ruff (style) + mypy (typage strict)
-make test                 # pytest : unitaires + intégration, couverture ≥ 80 %
+make test                 # TU (sans Docker) : rag/tests/unit + outillage
+make test-integration     # TU + TI contre le PostgreSQL du compose, couverture ≥ 80 % (job CI « test »)
+make pyramide             # porte 70 / 20 / 10 (S3-22)
+make gateway-test         # gateway : TI + couverture ≥ 80 %
 ```
 
 Les jobs `lint` et `test` **mockent toujours le LLM** (`FakeLLM`, HTTP simulé) : aucun secret ni appel réel.

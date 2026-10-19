@@ -1,6 +1,8 @@
-"""API REST de rag : ``GET /health`` et ``POST /api/agent`` ; interface = Swagger UI sur ``/``.
+"""API REST de rag : ``GET /health`` et ``POST /api/reponses`` ; Swagger UI sur ``/``.
 
 Routes minces : elles traduisent HTTP en appel de cas d'usage et rendent des DTO Pydantic.
+Derrière la gateway, le document est servi en ``/rag/openapi.json`` dans la page Swagger unique ;
+il ne déclare pas de ``servers`` : le « Try it out » vise les routes publiques de la gateway.
 """
 
 from __future__ import annotations

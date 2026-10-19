@@ -91,7 +91,10 @@ jobs:
             sleep 5
           done
           [ "$version" = "$attendu" ] || { echo "::error::version servie '$version' ≠ '$attendu'"; exit 1; }
-          mode=$(curl -fsS -X POST "$URL/api/agent" -H 'content-type: application/json' \
-            -d '{"texte":"Réponds simplement OK."}' | jq -r .mode)
+          # ponytail: repli sur /api/agent pour un rollback vers une image < 0.4.0 ; à retirer ensuite
+          mode=$(for chemin in /api/reponses /api/agent; do
+            curl -fsS -X POST "$URL$chemin" -H 'content-type: application/json' \
+              -d '{"texte":"Réponds simplement OK."}' && break
+          done | jq -r .mode)
           [ "$mode" = "llm" ] || { echo "::error::l'agent ne joint pas le LLM (mode=$mode)"; exit 1; }
           echo "✔ $URL sert $attendu, agent en mode llm"

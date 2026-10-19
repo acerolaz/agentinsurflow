@@ -1,6 +1,6 @@
 """Évaluations de l'agent (``make eval``) : rejoue ``eval/golden.jsonl`` contre une API déployée.
 
-Boîte noire : seul ``POST /api/agent`` est appelé, aucun secret Azure n'est nécessaire.
+Boîte noire : seul ``POST /api/reponses`` est appelé, aucun secret Azure n'est nécessaire.
 Chaque cas passe ses contrôles déterministes (``verifier``) et sa latence est mesurée. Le rapport
 JSON s'ouvre sur un ``manifeste`` (commit, modèle, prompts, golden dataset, portes) : il dit ce qui
 a été évalué. Code de sortie 1 si le taux de réussite est sous le seuil ou si la latence p95
@@ -111,7 +111,7 @@ def manifeste(
 
 def interroger(url: str, question: str) -> dict[str, Any]:
     requete = urllib.request.Request(
-        f"{url.rstrip('/')}/api/agent",
+        f"{url.rstrip('/')}/api/reponses",
         data=json.dumps({"texte": question}).encode(),
         headers={"content-type": "application/json"},
     )

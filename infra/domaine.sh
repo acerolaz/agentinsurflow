@@ -33,7 +33,11 @@ echo "① Enregistrements DNS à créer dans la zone de $domaine :"
 printf '   %-5s %-40s %s\n' "$type" "$domaine" "$cible" TXT "asuid.$domaine" "$id"
 
 echo "② Attente de la résolution DNS (10 min au plus)"
-resout() { dig +short "$2" "$1" | tr -d '"' | sed 's/\.$//' | grep -qxF -- "$3"; }
+# Serveur de noms qui fait autorité : un résolveur local garde l'ancienne valeur jusqu'à la fin du TTL
+zone=$domaine
+[ "$type" = A ] || zone=${domaine#*.}
+ns=$(dig +short "$zone" NS | head -1)
+resout() { dig +short @"$ns" "$2" "$1" | tr -d '"' | sed 's/\.$//' | grep -qxF -- "$3"; }
 for i in $(seq 60); do
   resout "$type" "$domaine" "$cible" && resout TXT "asuid.$domaine" "$id" && break
   [ "$i" -lt 60 ] || { echo "✘ DNS pas encore propagé : relancer le script plus tard"; exit 1; }

@@ -7,8 +7,8 @@ URL ?= http://localhost:8000
 IMAGE ?= agentinsurflow:local
 VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
-# Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et, plus tard,
-# underwriting-admin/ (C#, leurs propres Makefile, appelés par gateway-<cible>).
+# Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et underwriting-admin/
+# (C#, leurs propres Makefile, appelés par gateway-<cible> et underwriting-<cible>).
 .PHONY: install fmt lint test test-integration pyramide migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
@@ -39,7 +39,7 @@ ingest:             ## make ingest [URL=<gateway>] [INSTANTANE=data/raw/…] : L
 extraire:           ## extraction Légifrance seule → data/raw/ (identifiants PISTE du .env, bac à sable)
 	uv run python -m agentinsurflow_rag.cli.ingest --sans-envoi
 
-up:                 ## la solution en local : postgres + rag (:8001) + gateway (:8000, Swagger unique)
+up:                 ## la solution en local : postgres + rag (:8001) + underwriting-admin (:8002) + gateway (:8000, Swagger unique)
 	docker compose up -d --build --wait
 
 down:               ## arrête la solution et vide la base annexe
@@ -50,6 +50,9 @@ pyramide:           ## porte S3-22 : TU >= 65 %, TI <= 25 %, E2E <= 15 % (rag + 
 
 gateway-%:          ## cibles de gateway/Makefile : make gateway-test, gateway-lint, gateway-docker-build
 	$(MAKE) -C gateway $*
+
+underwriting-%:     ## cibles de underwriting-admin/Makefile : make underwriting-test, underwriting-lint
+	$(MAKE) -C underwriting-admin $*
 
 eval:               ## porte 3 : make eval [URL=…] — golden set + jeu de démo (jeton : EVALS_JETON)
 	uv run python tools/evals.py --url $(URL) --questions eval/questions-demo.jsonl

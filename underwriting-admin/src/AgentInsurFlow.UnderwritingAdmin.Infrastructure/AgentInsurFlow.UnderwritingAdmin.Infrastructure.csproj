@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AgentInsurFlow.UnderwritingAdmin.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AgentInsurFlow.UnderwritingAdmin.Application\AgentInsurFlow.UnderwritingAdmin.Application.csproj" />
+    <ProjectReference Include="..\AgentInsurFlow.UnderwritingAdmin.Domain\AgentInsurFlow.UnderwritingAdmin.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

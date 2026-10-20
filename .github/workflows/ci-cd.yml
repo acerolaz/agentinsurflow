@@ -63,6 +63,16 @@ jobs:
       - run: make -C gateway lint
       - run: make -C gateway test
 
+  underwriting-admin:
+    # underwriting-admin (C#, .NET 10) : format + analyseurs, puis TU + TI avec couverture >= 80 %.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { global-json-file: global.json }
+      - run: make -C underwriting-admin lint
+      - run: make -C underwriting-admin test
+
   changements:
     runs-on: ubuntu-latest
     outputs:

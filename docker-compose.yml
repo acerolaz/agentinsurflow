@@ -1,7 +1,7 @@
 # Solution en local : make up (tout) · make test-integration (postgres seul).
 # Mots de passe et identifiants lus dans .env (jamais versionné ; clés dans .env.example).
 # Swagger unique : http://localhost:8000/ (gateway) ; rag seul : http://localhost:8001/
-# underwriting-admin arrive en Task U1.
+# underwriting-admin (:8002) : joignable par la gateway (/api/contrats, /api/traces, /v1/traces).
 name: agentinsurflow
 
 x-mots-de-passe: &mots-de-passe
@@ -49,6 +49,14 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
 
+  underwriting-admin:
+    build: { context: ., dockerfile: underwriting-admin/Dockerfile }
+    environment:
+      AzureAd__TenantId: ${AZURE_TENANT_ID:?AZURE_TENANT_ID manquant (.env)}
+      AzureAd__ClientId: ${UNDERWRITING_API_CLIENT_ID:-00000000-0000-0000-0000-000000000000}
+      AzureAd__Audience: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
+    ports: ["8002:8002"]
+
   gateway:
     build: { context: ., dockerfile: gateway/Dockerfile }
     environment:
@@ -61,4 +69,4 @@ services:
       Entra__Audiences__underwriting__0: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
       SWAGGER_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
     ports: ["8000:8000"]
-    depends_on: [rag]
+    depends_on: [rag, underwriting-admin]

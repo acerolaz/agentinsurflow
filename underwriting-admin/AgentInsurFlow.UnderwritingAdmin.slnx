@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AgentInsurFlow.UnderwritingAdmin.Domain/AgentInsurFlow.UnderwritingAdmin.Domain.csproj" />
+    <Project Path="src/AgentInsurFlow.UnderwritingAdmin.Application/AgentInsurFlow.UnderwritingAdmin.Application.csproj" />
+    <Project Path="src/AgentInsurFlow.UnderwritingAdmin.Infrastructure/AgentInsurFlow.UnderwritingAdmin.Infrastructure.csproj" />
+    <Project Path="src/AgentInsurFlow.UnderwritingAdmin.Api/AgentInsurFlow.UnderwritingAdmin.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AgentInsurFlow.UnderwritingAdmin.Domain.Tests/AgentInsurFlow.UnderwritingAdmin.Domain.Tests.csproj" />
+    <Project Path="tests/AgentInsurFlow.UnderwritingAdmin.Application.Tests/AgentInsurFlow.UnderwritingAdmin.Application.Tests.csproj" />
+    <Project Path="tests/AgentInsurFlow.UnderwritingAdmin.Infrastructure.Tests/AgentInsurFlow.UnderwritingAdmin.Infrastructure.Tests.csproj" />
+    <Project Path="tests/AgentInsurFlow.UnderwritingAdmin.Api.Tests/AgentInsurFlow.UnderwritingAdmin.Api.Tests.csproj" />
+  </Folder>
+</Solution>

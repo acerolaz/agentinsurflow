@@ -157,4 +157,16 @@ gateway/
 
 ## Déploiement
 
-La gateway sera le conteneur exposé (port 8000) de la Container App à 4 conteneurs (Task U5 du plan). D'ici là, elle est construite et testée par la CI (job `gateway`) mais **pas encore déployée** : le déploiement actuel de l'API Python est inchangé.
+**Une Container App par environnement, 3 conteneurs** (G5, S3-19, S3-30), décrite par `infra/containerapp.yaml` : `gateway` (8000, **seule entrée externe**), `rag` (8001, interne) et l'annexe `postgres` (5432, base éphémère). `build` publie `agentinsurflow-{rag,gateway}:<sha>` ; `deploy.yml` substitue ces images et les variables dans le modèle, puis `az containerapp update --yaml`. **Rollback** : les 2 images du SHA de la révision précédente (lu sur l'image de sa gateway). U5 ajoute `underwriting-admin`.
+
+**Une fois, à la main (Acerola), avant le premier déploiement** : `make annexe` (image annexe + secrets PostgreSQL), `make entra DOMAINE=aibrokerflow.fr` (inscriptions `agentinsurflow-rag` et `agentinsurflow-underwriting`, rôles, redirections Swagger), puis les variables GitHub `RAG_API_CLIENT_ID` et `UNDERWRITING_API_CLIENT_ID` affichées.
+
+**Fumée (porte bloquante)**, par la gateway : `/health` et `/health/rag` donnent le SHA déployé ; `POST /api/reponses` sans jeton → 401.
+
+**IP publique (#10)** : IP statique entrante de l'environnement `cae-insurflow` : `4.225.231.167` (`az containerapp env show --query properties.staticIp`). Seule la gateway a une entrée externe ; derrière l'envoy d'Azure, elle reprend l'IP réelle du client (`Proxy__EnvoyDevant=true`).
+
+### Domaine personnalisé (G4, S3-28, issue #12)
+
+`make domaine DOMAINE=<domaine>` (Acerola, une fois) lie le domaine à l'entrée de la Container App de production, donc il reste valable quand la gateway devient l'entrée. Le script affiche les enregistrements DNS à créer (sous-domaine : `CNAME` vers le FQDN de l'app ; apex : `A` vers l'IP statique de l'environnement ; dans les deux cas `TXT asuid.<domaine>`), attend leur résolution, puis lie le nom avec un certificat managé. Il ne fait rien si le nom est déjà lié.
+
+Ensuite : variable GitHub `PROD_URL=https://<domaine>` ; la fumée de production passe alors par le domaine et vérifie son certificat. L'URI de redirection Swagger `https://<domaine>/oauth2-redirect.html` est ajoutée en G5 (`infra/entra.sh`).

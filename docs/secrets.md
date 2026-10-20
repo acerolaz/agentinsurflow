@@ -17,22 +17,32 @@ reportée **à la main** dans GitHub.
 
 Avant tout report, créer les deux environnements : Settings › Environments › *New environment* › `staging`, puis `production`.
 
+Les **mots de passe PostgreSQL** de la base annexe ne passent pas par GitHub : ce sont des **secrets des Container
+Apps** (`pg-*-password`), posés à la main par `make annexe` (`infra/postgres-annexe.sh`) et lus par `secretRef` dans
+`infra/containerapp.yaml`.
+
 ## 2. Report clé par clé
 
 | Clé du `.env` | Où dans GitHub | Nom côté GitHub | Usage dans le YAML |
 |---|---|---|---|
-| `AZURE_CLIENT_ID` | Variable de repo | `AZURE_CLIENT_ID` | `azure/login` (OIDC) : `ci-cd.yml` › build et evals-pr, `deploy.yml` |
+| `AZURE_CLIENT_ID` | Variable de repo | `AZURE_CLIENT_ID` | `azure/login` (OIDC) : `ci-cd.yml` › build et evals (et evals-pr, désactivé), `deploy.yml` |
 | `AZURE_TENANT_ID` | Variable de repo | `AZURE_TENANT_ID` | idem |
 | `AZURE_SUBSCRIPTION_ID` | Variable de repo | `AZURE_SUBSCRIPTION_ID` | idem |
 | `AZURE_RESOURCE_GROUP` | Variable de repo | `AZURE_RESOURCE_GROUP` | `deploy.yml` : `RG` |
 | `ACR_NAME` | Variable de repo | `ACR_NAME` | `ci-cd.yml` › build (push), `deploy.yml` (image) |
 | `APP_STAGING` | Variable de l'env. `staging` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
 | `APP_PRODUCTION` | Variable de l'env. `production` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
-| `AZURE_OPENAI_ENDPOINT` | Variable de **repo** | `AZURE_OPENAI_ENDPOINT` | `deploy.yml` › `--set-env-vars` ; `ci-cd.yml` › `evals-pr` |
+| `AZURE_OPENAI_ENDPOINT` | Variable de **repo** | `AZURE_OPENAI_ENDPOINT` | `deploy.yml` → `infra/containerapp.yaml` (conteneur rag) ; `ci-cd.yml` › `evals-pr` (désactivé) |
+| `RAG_SEUIL` | Variable de **repo** | `RAG_SEUIL` | `deploy.yml` → conteneur rag (porte de pertinence ; vide → `/api/extraits` en 503) |
+| `RAG_API_CLIENT_ID` | Variable de **repo** | `RAG_API_CLIENT_ID` | `deploy.yml` → audiences de la gateway et de rag, connexion de la page Swagger |
+| `UNDERWRITING_API_CLIENT_ID` | Variable de **repo** | `UNDERWRITING_API_CLIENT_ID` | `deploy.yml` → audiences de la gateway |
+| — | Variable de l'env. `production` | `PROD_URL` | `deploy.yml` : URL publique de la production (domaine personnalisé, `make domaine`) ; la fumée vérifie aussi son certificat |
 | `AZURE_OPENAI_DEPLOYMENT` | — (**pas dans GitHub**) | — | Épinglé dans `llm.env`, versionné et copié dans l'image : le changer déclenche les evals |
 | `AZURE_OPENAI_API_KEY` 🔒 | — (**jamais dans GitHub**) | — | Local seulement ; la CI et les Container Apps s'authentifient sans clé (§4) |
+| `PG_*_PASSWORD` 🔒 | — (**jamais dans GitHub**) | — | Secrets des Container Apps (`make annexe`) ; en local, `.env` |
 | `APP_ENV`, `LLM_DELAI_S` | — (non reporté) | — | `APP_ENV` est posé par `deploy.yml` ; `LLM_DELAI_S` garde sa valeur par défaut (30 s) |
 | `AZURE_LOCATION`, `CONTAINERAPPS_ENV`, `GITHUB_REPO` | — (non reporté) | — | Lus seulement par `make` en local |
+| `LEGIFRANCE_*`, `INGESTION_JETON`, `TELEMETRIE_JETON`, `RAG_CLIENT_SECRET` 🔒, `RAG_TOP_K`, `RAG_API_AUDIENCES`, `UNDERWRITING_URL`, `AZURE_UAMI_CLIENT_ID`, `OTEL_*`, `PG_HOST`, `PG_PORT` | — (non reporté) | — | Local seulement : `make extraire`, `make ingest`, compose ; en Azure, leurs valeurs viennent de `infra/containerapp.yaml` ou de leurs défauts |
 
 Si tu préfères la ligne de commande à l'interface, chaque report a son équivalent `gh`, à taper toi-même :
 
@@ -48,10 +58,10 @@ La CI s'authentifie par **OIDC** : GitHub émet un jeton à courte durée de vie
 
 | Fédération | Sujet (format immuable de GitHub) | Jobs |
 |---|---|---|
-| `ref-refs-heads-main` | `repo:acerolaz@186313822/agentinsurflow@1420380073:ref:refs/heads/main` | `build` |
+| `ref-refs-heads-main` | `repo:acerolaz@186313822/agentinsurflow@1420380073:ref:refs/heads/main` | `build` ; `evals` : jeton pour `api://agentinsurflow-rag` (rôle `Gestionnaire` de la CI, `make entra`) |
 | `environment-staging` | `…:environment:staging` | déploiement staging |
 | `environment-production` | `…:environment:production` | déploiement production, rollback |
-| `pull_request` | `…:pull_request` | `evals-pr` : le jeton Entra sert aussi à **appeler le LLM, sans clé** |
+| `pull_request` | `…:pull_request` | `evals-pr` (⏸️ désactivé jusqu'à U5) : le jeton Entra sert aussi à **appeler le LLM, sans clé** |
 
 Le préfixe du sujet dépend du repo : `make infra` le lit sur GitHub
 (`gh api repos/<repo>/actions/oidc/customization/sub`). `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` et
@@ -66,7 +76,7 @@ Le dépôt et GitHub ne contiennent **aucun secret** : ni pour Azure, ni pour le
 
 ```mermaid
 flowchart LR
-    CI(["⚙️ Job evals-pr<br/>(runner GitHub)"]) -- "jeton OIDC<br/>app agentinsurflow" --> F(["🤖 Foundry svespuce-971<br/>Kimi-K2.5"])
+    CI(["⚙️ Job evals-pr<br/>(désactivé jusqu'à U5)"]) -- "jeton OIDC<br/>app agentinsurflow" --> F(["🤖 Foundry svespuce-971<br/>Kimi-K2.5"])
     CA(["🚀 Container Apps<br/>staging / production"]) -- "identité managée<br/>(sans secret)" --> F
     DEV(["💻 Poste local"]) -. "clé du .env<br/>ou az login" .-> F
     classDef plat fill:#1E3A8A,stroke:#1E3A8A,color:#fff
@@ -77,14 +87,15 @@ flowchart LR
 
 | Qui appelle le modèle | Identité | Rôle requis sur `svespuce-971` |
 |---|---|---|
-| Job `evals-pr` | application Entra `agentinsurflow` (OIDC) | *Cognitive Services User* |
-| `insurflow-staging`, `insurflow-production` | identité managée de chaque app | *Cognitive Services User* |
+| Job `evals-pr` (désactivé jusqu'à U5) | application Entra `agentinsurflow` (OIDC) | *Cognitive Services User* |
+| `insurflow-staging`, `insurflow-production` (conteneur rag) | identité managée de chaque app | *Cognitive Services User* |
 | Toi, en local | clé du `.env`, ou ton compte (`az login`) | aucun avec la clé ; *Cognitive Services User* sans clé |
 
 > 🔁 **Analogie .NET** : c'est `DefaultAzureCredential` d'`Azure.Identity`, comme une Web App qui lit SQL avec
 > `Authentication=Active Directory Managed Identity` au lieu d'un mot de passe.
 
-Sans ce rôle, l'app répond en mode dégradé, et la fumée bloque alors le déploiement.
+Sans ce rôle, l'agent répond en mode dégradé (`REVUE_HUMAINE`) ; la fumée ne l'appelle pas, ce sont les **evals
+de staging** qui bloquent alors la release.
 
 ## 5. Vérifier
 
@@ -95,4 +106,4 @@ gh secret list -R acerolaz/agentinsurflow -e production   # noms seulement, jama
 ```
 
 **Reconstruire depuis le repo seul** : `git clone` → `cp .env.example .env` → remplir → `make infra` →
-reporter dans GitHub (§2) → `git push`.
+`make entra` → `make annexe` → `make domaine DOMAINE=…` → reporter dans GitHub (§2) → `git push`.

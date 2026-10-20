@@ -14,13 +14,21 @@ On peut aussi passer par l'interface : Actions › **deploy** › *Run workflow*
 
 ## Ce qui se passe
 
-1. `deploy.yml` lit les révisions de la Container App et retient l'**image de l'avant-dernière révision**.
-2. Il crée une nouvelle révision avec cette image ; les variables et le secret sont reposés à l'identique.
-3. Le **test de fumée** vérifie que `/health` renvoie bien le SHA de cette image et que l'agent joint le LLM.
+1. `deploy.yml` lit les révisions de la Container App et retient le **SHA de l'avant-dernière révision**, lu sur
+   l'image de son conteneur `gateway`.
+2. Il crée une nouvelle révision depuis `infra/containerapp.yaml` avec les **deux images à ce SHA**
+   (`agentinsurflow-gateway`, `agentinsurflow-rag`) ; l'image PostgreSQL annexe (`agentinsurflow-postgres:1`), les
+   variables et les secrets des Container Apps restent identiques.
+3. Le **test de fumée**, par la gateway, vérifie que `/health` et `/health/rag` renvoient ce SHA et que
+   `/api/reponses` répond 401 sans jeton.
 4. Le run reste dans le journal Actions : c'est la trace du rollback.
 
 Aucune reconstruction : les images sont **immuables** (tag = SHA) et déjà dans l'ACR. Le prompt et la version
 du LLM (`llm.env`) étant **dans l'image**, le rollback les restaure aussi.
+
+⚠️ **Base annexe éphémère** : la nouvelle révision repart d'une base vide (migrations au démarrage). Après un
+rollback, le corpus est à réingérer (`make ingest URL=<environnement> INSTANTANE=data/raw/…`) avant que l'agent
+réponde à nouveau avec des citations.
 
 > 🔁 **Analogie .NET** : c'est un *swap* de slot App Service, sauf qu'on repointe une image existante au lieu
 > d'échanger deux slots.
@@ -32,8 +40,8 @@ version qu'on vient de quitter, ce qui sert à revenir en avant. Pour une versio
 
 | # | Geste | Vérification |
 |---|---|---|
-| 1 | Noter la version servie | `curl -s https://<prod>/health` → `version = A` |
-| 2 | Merger une PR visible, par exemple un changement d'`examples` dans le schéma `Question` (Swagger) | La chaîne passe ; `/health` → `version = B` |
+| 1 | Noter la version servie | `curl -s https://<prod>/health` (et `/health/rag`) → `version = A` |
+| 2 | Merger une PR visible, par exemple un changement d'exemple dans un schéma de l'API (Swagger) | La chaîne passe ; `/health` → `version = B` |
 | 3 | `make rollback` (**démarrer le chrono**) | Run `deploy` vert ; `/health` → `version = A` (**arrêter le chrono**) |
 | 4 | `make rollback TAG=B` | `/health` → `version = B` : retour en avant |
 

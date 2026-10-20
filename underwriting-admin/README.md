@@ -1,21 +1,47 @@
 # underwriting-admin — AgentInsurFlow
 
-Service C# (.NET 10, Clean Architecture) : dossiers de souscription et référentiel SQL des traces. Port **8002**, joint par la gateway (`/api/contrats`, `/api/traces`, `/v1/traces`).
+Service C# (.NET 10, Clean Architecture), port **8002**, joint uniquement par la gateway (et par `rag` en
+On-Behalf-Of sur `localhost`). Deux responsabilités :
+
+- **Dossiers** : base `dossiers` (MCD Merise, migrations EF Core), lue par la **vue minimisée** avec le compte
+  `dossiers` ; contrôle **BOLA** (`gestionnaire_id` = `oid` du jeton).
+- **Référentiel SQL des traces OpenTelemetry** : base `traces`, table `span` au modèle OTLP ; récepteur
+  OTLP/HTTP protobuf.
+
+| Route | Rôle | Réponses |
+|---|---|---|
+| `GET /api/contrats?limit&offset` | `Gestionnaire` | 200 (portefeuille du gestionnaire, `limit` ≤ 100) · 401 · 403 |
+| `GET /api/contrats/{numero_contrat}` | `Gestionnaire` | 200 (vue minimisée, 10 champs en snake_case) · 404 `CONTRAT_INTROUVABLE` (inexistant **ou** à un autre gestionnaire) |
+| `POST /v1/traces` | sans jeton depuis `Otlp:SourcesSansJeton` sans `X-Forwarded-For`, sinon `Telemetrie` | 200 (protobuf) · 400 `OTLP_INVALIDE` · 401 · 403 · 415 |
+| `GET /api/traces/{trace_id}` | `Gestionnaire` | 200 (spans dans l'ordre) · 400 `TRACE_ID_INVALIDE` · 404 `TRACE_INTROUVABLE` |
+| `GET /health` | aucun | `statut`, `version` (SHA), `release` |
+| `GET /openapi/v1.json` | aucun | Document affiché dans la page Swagger unique de la gateway (pas de Swagger UI propre) |
 
 | Projet | Rôle |
 |---|---|
-| `Domain` | Cœur métier, aucune dépendance NuGet |
-| `Application` | Cas d'usage (dépend de `Domain`) |
-| `Infrastructure` | Adapters (dépend de `Application`, `Domain`) |
-| `Api` | ASP.NET : `Program.cs`, jeton Entra (`AzureAd:*`), politiques `Gestionnaire` / `Telemetrie`, OpenAPI, OpenTelemetry |
+| `Domain` | `VueContrat`, `Span`, règles pures (`TrancheAge`, `Departement`, `ReglesTraces`) — aucune dépendance NuGet |
+| `Application` | Ports `IDepotDossiers`, `IDepotTraces` ; cas d'usage `ListerPortefeuille`, `ConsulterContrat`, `EnregistrerSpans`, `LireTrace` |
+| `Infrastructure` | EF Core + Npgsql : `Dossiers/` (MCD, vue, seed, migrations), `Traces/` (table `span`), `Otlp/` (protobuf → `Span`) |
+| `Api` | `Program.cs` : jeton Entra (`Microsoft.Identity.Web`, audiences `Entra:Audiences:underwriting`), politiques, routes, OpenTelemetry |
 
-- Refus par défaut : tout exige un jeton valide ; `GET /health` (`statut`, `version`, `release`) et `GET /openapi/v1.json` sont publics.
-- JSON en snake_case ; erreurs en ProblemDetails avec `code` (`NON_AUTHENTIFIE`, `ACCES_REFUSE`).
-- OpenAPI sans `servers` ; pas de Swagger UI propre : la page unique est celle de la gateway.
+## Configuration
+
+| Clé | Rôle |
+|---|---|
+| `AzureAd__TenantId`, `AzureAd__ClientId` | Inscription Entra `agentinsurflow-underwriting` |
+| `Entra__Audiences__underwriting__0` | Liste « a, b » des audiences acceptées (la même que la gateway) |
+| `PG_HOST`, `PG_PORT`, `PG_*_PASSWORD` | Comptes `migrateur`, `dossiers`, `traces_writer`, `traces_reader` |
+| `Migrations__AuDemarrage` | `true` : migrations et seed au démarrage (compte `migrateur`, attente de PostgreSQL ≤ 60 s) |
+| `SEED_GESTIONNAIRE_A`, `SEED_GESTIONNAIRE_B` | `oid` Entra des deux gestionnaires du seed (jamais commités) |
+| `Otlp__SourcesSansJeton` | CIDR acceptés sans jeton sur `/v1/traces` (défaut : boucle locale) |
+
+## Commandes
 
 ```bash
-make lint test      # format + analyseurs ; TU + TI, couverture >= 80 %
-make docker-build   # image locale
+make lint test         # format + analyseurs ; TU + TI (PostgreSQL du compose), couverture ≥ 80 % (couverture.py)
+make docker-build      # image locale
+make -C .. openapi     # docs/openapi/underwriting-admin.json, généré au build
 ```
 
-SDK .NET 10 requis (`global.json` à la racine du monorepo).
+SDK .NET 10 requis (`global.json` à la racine du monorepo). Données : [`docs/donnees/modele.md`](../docs/donnees/modele.md),
+[`docs/donnees/traces.md`](../docs/donnees/traces.md).

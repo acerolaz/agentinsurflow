@@ -31,7 +31,9 @@ async def attribuer(
     )
     if choisie is None:
         raise VersionIntrouvable(version or doc_id)
-    article = next(c.article for c in document.chunks if c.version == choisie.version)
+    article = next((c.article for c in document.chunks if c.version == choisie.version), None)
+    if article is None:
+        raise VersionIntrouvable(choisie.version)  # aucun extrait : rien à attribuer
     return Attribution(
         doc_id, article, choisie.version, choisie.date_debut, choisie.url_source, choisie.extrait_le
     )

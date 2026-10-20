@@ -34,6 +34,9 @@ from pathlib import Path
 from typing import Any
 
 LONGUEUR_MAX = 600  # « trois phrases au plus » (prompt système de l'agent)
+# ponytail: fenêtre fixe de la gateway (RateLimit:FenetreSecondes, 10 POST /api/reponses par
+# minute) ; lire Retry-After si la fenêtre devient configurable par environnement
+ATTENTE_429_S = 60.0
 
 
 def _article(numero: str) -> str:
@@ -228,9 +231,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--prompts", type=Path, default=Path("rag/agentinsurflow_rag/prompts"))
     parser.add_argument("--llm-env", type=Path, default=Path("rag/llm.env"))
     parser.add_argument("--rapport", type=Path)
+    # ponytail: tant qu'underwriting-admin n'existe pas (U2), un cas à numero_contrat répond 503 ;
+    # retirer l'option de la CI quand U2 est déployé
+    parser.add_argument(
+        "--sans-dossiers", action="store_true", help="écarter les cas à numero_contrat"
+    )
     args = parser.parse_args(argv)
     jeton = os.environ.get("EVALS_JETON")  # rôle Gestionnaire ; jamais écrit dans le rapport
     tous = lire_cas(args.golden, args.questions)
+    ecartes = [c["id"] for c in tous if args.sans_dossiers and c.get("numero_contrat")]
+    tous = [c for c in tous if c["id"] not in ecartes]
 
     if args.calibrer:
         calibrer(args.url, tous, jeton)
@@ -238,12 +248,16 @@ def main(argv: list[str] | None = None) -> int:
 
     resultats = []
     for cas in tous:
-        debut = time.perf_counter()
-        try:
-            http, reponse = interroger(args.url, cas, jeton)
-        except (OSError, ValueError) as exc:  # réseau, JSON illisible
-            http, reponse = 0, {"erreur": repr(exc)}
-        latence = round(time.perf_counter() - debut, 2)
+        for essai in range(2):  # un 429 de la gateway : rejoué une fois, après la fenêtre
+            debut = time.perf_counter()
+            try:
+                http, reponse = interroger(args.url, cas, jeton)
+            except (OSError, ValueError) as exc:  # réseau, JSON illisible
+                http, reponse = 0, {"erreur": repr(exc)}
+            latence = round(time.perf_counter() - debut, 2)  # attente exclue
+            if http != 429 or essai:
+                break
+            time.sleep(ATTENTE_429_S)
         resultats.append(
             {
                 "id": cas["id"],
@@ -266,6 +280,7 @@ def main(argv: list[str] | None = None) -> int:
         "manifeste": entete,
         "taux": taux,
         "latence_p95_s": latence_p95,
+        "ecartes": ecartes,
         "resultats": resultats,
     }
     sortie = json.dumps(rapport, ensure_ascii=False, indent=2)

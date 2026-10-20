@@ -107,3 +107,15 @@ jobs:
           [ "$code" = 401 ] || { echo "::error::POST /api/reponses sans jeton : $code ≠ 401"; exit 1; }
           # Le LLM est vérifié avec un jeton de la CI par le job evals (staging)
           echo "✔ $URL : gateway et rag en $attendu, /api/reponses fermée sans jeton"
+
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "0.11.13", enable-cache: true }
+
+      - name: Corpus — base annexe éphémère, chaque révision (déploiement ou rollback) repart vide
+        # dernier instantané versionné, rejoué par la gateway ; jeton az de la CI (rôle Ingestion)
+        env:
+          URL: ${{ steps.deployer.outputs.url }}
+          APP_ENV: ${{ inputs.environnement }}
+        run: |
+          make install
+          make ingest URL="$URL" INSTANTANE="$(ls data/raw/code-assurances-*.json | sort | tail -1)"

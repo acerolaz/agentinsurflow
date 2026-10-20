@@ -26,9 +26,9 @@ On peut aussi passer par l'interface : Actions › **deploy** › *Run workflow*
 Aucune reconstruction : les images sont **immuables** (tag = SHA) et déjà dans l'ACR. Le prompt et la version
 du LLM (`llm.env`) étant **dans l'image**, le rollback les restaure aussi.
 
-⚠️ **Base annexe éphémère** : la nouvelle révision repart d'une base vide (migrations au démarrage). Après un
-rollback, le corpus est à réingérer (`make ingest URL=<environnement> INSTANTANE=data/raw/…`) avant que l'agent
-réponde à nouveau avec des citations.
+⚠️ **Base annexe éphémère** : la nouvelle révision repart d'une base vide (migrations au démarrage). Après la fumée,
+`deploy.yml` réingère le dernier instantané versionné (`data/raw/`) du commit qui lance le workflow : pour un
+rollback lancé à la main, celui de `main`, pas celui du SHA restauré.
 
 > 🔁 **Analogie .NET** : c'est un *swap* de slot App Service, sauf qu'on repointe une image existante au lieu
 > d'échanger deux slots.

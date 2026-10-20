@@ -6,10 +6,10 @@ using OpenTelemetry.Proto.Common.V1;
 using OpenTelemetry.Proto.Resource.V1;
 using OpenTelemetry.Proto.Trace.V1;
 
-namespace AgentInsurFlow.UnderwritingAdmin.Application.Tests;
+namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Tests;
 
-/// <summary>TU : conversion OTLP → spans (octets en mémoire, aucune I/O) et cas d'usage avec un port simulé.</summary>
-public sealed class TracesTests
+/// <summary>Conversion OTLP → spans (adapter, octets en mémoire, sans base).</summary>
+public sealed class OtlpVersSpansTests
 {
     private static readonly byte[] TraceId = Convert.FromHexString("0af7651916cd43dd8448eb211c80319c");
     private static readonly byte[] SpanId = Convert.FromHexString("b7ad6b7169203331");
@@ -132,39 +132,5 @@ public sealed class TracesTests
         Assert.Equal("cache", evenements.RootElement[0].GetProperty("name").GetString());
         using var liens = JsonDocument.Parse(resultat.Links);
         Assert.Equal("b7ad6b7169203331", liens.RootElement[0].GetProperty("span_id").GetString());
-    }
-
-    [Fact]
-    public void TraceId_valide_seulement_en_32_hexa()
-    {
-        Assert.True(Domain.ReglesTraces.EstTraceIdValide("0af7651916cd43dd8448eb211c80319c"));
-        Assert.False(Domain.ReglesTraces.EstTraceIdValide("0af7651916cd43dd8448eb211c80319"));
-        Assert.False(Domain.ReglesTraces.EstTraceIdValide("zaf7651916cd43dd8448eb211c80319c"));
-        Assert.False(Domain.ReglesTraces.EstTraceIdValide(null));
-    }
-
-    private sealed class DepotSimule : IDepotTraces
-    {
-        private readonly HashSet<(string, string)> _connus = [];
-
-        public Task<int> Inserer(IReadOnlyList<Domain.Span> spans, CancellationToken ct) =>
-            Task.FromResult(spans.Count(s => _connus.Add((s.TraceId, s.SpanId))));
-
-        public Task<IReadOnlyList<Domain.Span>> Lire(string traceId, CancellationToken ct) =>
-            Task.FromResult<IReadOnlyList<Domain.Span>>([]);
-    }
-
-    [Fact]
-    public async Task EnregistrerSpans_rejeu_idempotent()
-    {
-        var cas = new EnregistrerSpans(new DepotSimule());
-        var spans = OtlpVersSpans.Convertir(Requete("rag", UnSpan()), Recu);
-
-        var premier = await cas.Executer(spans, TestContext.Current.CancellationToken);
-        var rejeu = await cas.Executer(spans, TestContext.Current.CancellationToken);
-
-        Assert.Equal(1, premier);
-        Assert.Equal(0, rejeu);
-        Assert.Equal(0, await cas.Executer([], TestContext.Current.CancellationToken));
     }
 }

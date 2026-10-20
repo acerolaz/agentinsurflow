@@ -16,7 +16,6 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="AgentInsurFlow.UnderwritingAdmin.Infrastructure.Tests" />
-    <InternalsVisibleTo Include="AgentInsurFlow.UnderwritingAdmin.Application.Tests" />
     <InternalsVisibleTo Include="AgentInsurFlow.UnderwritingAdmin.Api.Tests" />
   </ItemGroup>
 

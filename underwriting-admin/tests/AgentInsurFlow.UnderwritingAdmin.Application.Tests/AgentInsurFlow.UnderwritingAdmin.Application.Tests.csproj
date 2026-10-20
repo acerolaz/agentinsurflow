@@ -18,8 +18,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AgentInsurFlow.UnderwritingAdmin.Application\AgentInsurFlow.UnderwritingAdmin.Application.csproj" />
-    <!-- TU de la conversion OTLP : octets en mémoire, sans I/O -->
-    <ProjectReference Include="..\..\src\AgentInsurFlow.UnderwritingAdmin.Infrastructure\AgentInsurFlow.UnderwritingAdmin.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -8,10 +8,12 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 build:
 	dotnet build $(SLN)
 
-test:               ## TU + TI, couverture de lignes >= 80 %
+test:               ## TU + TI, couverture de lignes >= 80 % (fusionnée sur tous les projets de test)
+	rm -rf TestResults
 	dotnet test --solution $(SLN) --results-directory TestResults \
-	  --coverlet --coverlet-include "[AgentInsurFlow.*]*" --coverlet-output-format cobertura \
-	  --coverlet-threshold 80 --coverlet-threshold-type line
+	  --coverlet --coverlet-include "[AgentInsurFlow.*]*" --coverlet-exclude-by-attribute CompilerGeneratedAttribute \
+	  --coverlet-exclude-by-file "**/Migrations/**" --coverlet-output-format cobertura
+	python3 couverture.py TestResults 80
 
 lint:               ## style et analyseurs (avertissements = erreurs, Directory.Build.props)
 	dotnet format $(SLN) --verify-no-changes

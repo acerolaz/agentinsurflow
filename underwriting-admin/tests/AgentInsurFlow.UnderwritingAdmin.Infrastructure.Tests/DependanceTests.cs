@@ -1,4 +1,4 @@
-using AgentInsurFlow.UnderwritingAdmin.Infrastructure;
+using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
 
 namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Tests;
 
@@ -8,7 +8,7 @@ public sealed class DependanceTests
     [Fact]
     public void Infrastructure_ne_reference_pas_Api()
     {
-        var references = typeof(Marqueur).Assembly.GetReferencedAssemblies().Select(a => a.Name!).ToList();
+        var references = typeof(DepotDossiersEf).Assembly.GetReferencedAssemblies().Select(a => a.Name!).ToList();
 
         Assert.DoesNotContain(references, n => n.EndsWith(".Api", StringComparison.Ordinal));
     }

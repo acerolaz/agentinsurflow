@@ -8,7 +8,7 @@ public sealed class DependanceTests
     [Fact]
     public void Domain_ne_reference_aucun_assembly_externe()
     {
-        var externes = typeof(Marqueur).Assembly.GetReferencedAssemblies()
+        var externes = typeof(VueContrat).Assembly.GetReferencedAssemblies()
             .Select(a => a.Name!)
             .Where(n => !n.StartsWith("System", StringComparison.Ordinal) && n is not ("netstandard" or "mscorlib"));
 

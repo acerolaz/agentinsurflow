@@ -1,6 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
+    <!-- Outillage `dotnet ef migrations` seulement : pas embarqué dans l'image -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="AgentInsurFlow.UnderwritingAdmin.Infrastructure.Tests" />
   </ItemGroup>
 

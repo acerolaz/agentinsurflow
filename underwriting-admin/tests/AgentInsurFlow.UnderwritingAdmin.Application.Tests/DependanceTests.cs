@@ -8,7 +8,7 @@ public sealed class DependanceTests
     [Fact]
     public void Application_ne_reference_ni_Infrastructure_ni_Api()
     {
-        var references = typeof(Marqueur).Assembly.GetReferencedAssemblies().Select(a => a.Name!).ToList();
+        var references = typeof(ListerPortefeuille).Assembly.GetReferencedAssemblies().Select(a => a.Name!).ToList();
 
         Assert.DoesNotContain(references, n => n.Contains("Infrastructure", StringComparison.Ordinal));
         Assert.DoesNotContain(references, n => n.EndsWith(".Api", StringComparison.Ordinal));

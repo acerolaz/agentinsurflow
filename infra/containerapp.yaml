@@ -1,0 +1,41 @@
+# Container App : modèle versionné (G5, S3-19, S3-30). deploy.yml y substitue les variables (envsubst),
+# puis `az containerapp update --yaml`. Seul `template` est fourni : l'entrée (port 8000, gateway),
+# le registre et les secrets posés à la main (infra/postgres-annexe.sh) restent tels quels
+# (🔴 Z4 : conservation des secrets à vérifier au premier déploiement en staging).
+# Les conteneurs partagent localhost : gateway 8000 (seule exposée), rag 8001, postgres 5432.
+properties:
+  template:
+    scale:
+      minReplicas: 1 # base annexe éphémère : une seule réplique, toujours allumée
+      maxReplicas: 1
+    containers:
+      - name: gateway
+        image: ${IMAGE_GATEWAY}
+        resources: { cpu: 0.5, memory: 1Gi }
+        env:
+          - { name: Proxy__EnvoyDevant, value: "true" }
+          - { name: Entra__TenantId, value: "${AZURE_TENANT_ID}" }
+          - { name: Entra__Audiences__rag__0, value: api://agentinsurflow-rag }
+          - { name: Entra__Audiences__rag__1, value: "${RAG_API_CLIENT_ID}" }
+          - { name: Entra__Audiences__underwriting__0, value: api://agentinsurflow-underwriting }
+          - { name: Entra__Audiences__underwriting__1, value: "${UNDERWRITING_API_CLIENT_ID}" }
+          # ponytail: la page Swagger se connecte avec l'inscription de rag (A3 : pas d'inscription gateway)
+          - { name: SWAGGER_CLIENT_ID, value: "${RAG_API_CLIENT_ID}" }
+      - name: rag
+        image: ${IMAGE_RAG}
+        resources: { cpu: 0.5, memory: 1Gi }
+        env:
+          # Aucune clé : le modèle est appelé avec l'identité managée (Cognitive Services User)
+          - { name: APP_ENV, value: "${APP_ENV}" }
+          - { name: AZURE_OPENAI_ENDPOINT, value: "${AZURE_OPENAI_ENDPOINT}" }
+      - name: postgres
+        image: ${IMAGE_POSTGRES}
+        resources: { cpu: 0.5, memory: 1Gi }
+        env:
+          - { name: POSTGRES_PASSWORD, secretRef: pg-postgres-password }
+          - { name: PG_MIGRATEUR_PASSWORD, secretRef: pg-migrateur-password }
+          - { name: PG_WRITER_PASSWORD, secretRef: pg-writer-password }
+          - { name: PG_READER_PASSWORD, secretRef: pg-reader-password }
+          - { name: PG_DOSSIERS_PASSWORD, secretRef: pg-dossiers-password }
+          - { name: PG_TRACES_WRITER_PASSWORD, secretRef: pg-traces-writer-password }
+          - { name: PG_TRACES_READER_PASSWORD, secretRef: pg-traces-reader-password }

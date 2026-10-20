@@ -17,5 +17,6 @@ ENV APP_VERSION=$APP_VERSION APP_RELEASE=$APP_RELEASE APP_MANIFESTE=$APP_MANIFES
     PATH="/app/.venv/bin:$PATH"
 
 USER nobody
-EXPOSE 8000
-CMD ["uvicorn", "agentinsurflow.api:app", "--host", "0.0.0.0", "--port", "8000"]
+# 8001 : la gateway, seule exposée, écoute sur 8000 dans la même Container App (G5)
+EXPOSE 8001
+CMD ["uvicorn", "agentinsurflow.api:app", "--host", "0.0.0.0", "--port", "8001"]

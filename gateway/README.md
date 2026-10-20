@@ -157,7 +157,13 @@ gateway/
 
 ## Déploiement
 
-La gateway devient le conteneur exposé (port 8000) de la Container App en Task G5 ; jusque-là, elle est construite et testée par la CI (job `gateway`) mais **pas encore déployée**.
+**Une Container App par environnement, 3 conteneurs** (G5, S3-19, S3-30), décrite par `infra/containerapp.yaml` : `gateway` (8000, **seule entrée externe**), `rag` (8001, interne) et l'annexe `postgres` (5432, base éphémère). `build` publie `agentinsurflow-{rag,gateway}:<sha>` ; `deploy.yml` substitue ces images et les variables dans le modèle, puis `az containerapp update --yaml`. **Rollback** : les 2 images du SHA de la révision précédente (lu sur l'image de sa gateway). U5 ajoute `underwriting-admin`.
+
+**Une fois, à la main (Acerola), avant le premier déploiement** : `make annexe` (image annexe + secrets PostgreSQL), `make entra DOMAINE=aibrokerflow.fr` (inscriptions `agentinsurflow-rag` et `agentinsurflow-underwriting`, rôles, redirections Swagger), puis les variables GitHub `RAG_API_CLIENT_ID` et `UNDERWRITING_API_CLIENT_ID` affichées.
+
+**Fumée (porte bloquante)**, par la gateway : `/health` et `/health/rag` donnent le SHA déployé ; `POST /api/reponses` sans jeton → 401.
+
+**IP publique (#10)** : IP statique entrante de l'environnement `cae-insurflow` : `4.225.231.167` (`az containerapp env show --query properties.staticIp`). Seule la gateway a une entrée externe ; derrière l'envoy d'Azure, elle reprend l'IP réelle du client (`Proxy__EnvoyDevant=true`).
 
 ### Domaine personnalisé (G4, S3-28, issue #12)
 

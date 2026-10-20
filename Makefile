@@ -42,6 +42,12 @@ infra:              ## une fois : Azure (RG, ACR, Container Apps, OIDC) + variab
 domaine:            ## G4 : lie DOMAINE=… à la Container App de production (certificat managé)
 	bash infra/domaine.sh "$(DOMAINE)"
 
+entra:              ## G5 : inscriptions Entra des API + rôles [DOMAINE=…] [DEMO_USER_ID=…]
+	bash infra/entra.sh
+
+annexe:             ## G5 : image PostgreSQL annexe + secrets des Container Apps
+	bash infra/postgres-annexe.sh
+
 proteger:           ## après le 1er push : main exige lint + test verts
 	gh api -X PUT repos/$(GITHUB_REPO)/branches/main/protection --input infra/protection-main.json
 

@@ -36,12 +36,12 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 | Projet | Langage | Rôle | État |
 |---|---|---|---|
 | [`gateway/`](gateway/README.md) | C# · YARP · .NET 10 | **Seule entrée publique** : routage, jeton Entra + rôle par route, limitation de débit, Swagger unique | ✅ déployée (staging, production) ; domaine personnalisé en production |
-| [`rag/`](rag/README.md) | Python · hexagonal | Corpus Légifrance (ingestion, dédup, versions), recherche hybride, agent à 3 verrous, attribution Etalab 2.0 | ✅ déployé ; Code des assurances ingéré en staging le 20/10 (119 articles lus, 107 insérés, [preuves](eval/preuves/)) |
+| [`rag/`](rag/README.md) | Python · hexagonal | Corpus Légifrance (ingestion, dédup, versions), recherche hybride, agent à 3 verrous, attribution Etalab 2.0 | ✅ déployé ; Code des assurances (instantané du 20/10, 119 articles lus, 107 insérés, [preuves](eval/preuves/)) réingéré à chaque déploiement |
 | `underwriting-admin/` | C# · Clean Architecture · .NET 10 | Dossiers (BOLA) et référentiel SQL des traces OpenTelemetry | ⏳ à venir (Tasks U) ; ses routes figurent déjà au [contrat REST](gateway/README.md#contrat-rest-s3-24) |
 
-> ⚠️ **Chaîne de livraison** : depuis le monorepo (#14), le job `evals` de staging échoue (taux de réussite
-> **54 %** < 80 % au run du 20/10 sur `8ba31c6`) ; `release` et `production` sont donc sautées. **Staging** reçoit
-> chaque merge ; la **production** sert toujours **`v0.2.0`** (`966786c`, #16).
+> **Production** : **`v0.4.0`** (`74fb443`, manifeste `0.4.0-build.43`) depuis le 20/10, corpus ingéré (110 chunks).
+> Evals de staging passées à **81,8 %** (9/11, porte 80 %) : marge d'un cas, deux échecs connus (réponse trop
+> longue sur `reference-exacte-l211-1`, annexe bonus-malus d'A121-1 absente de l'instantané).
 
 Le contrat REST (ressources, méthodes, codes) et la correspondance avec les noms d'endpoints du brief sont dans
 [`gateway/README.md`](gateway/README.md#contrat-rest-s3-24) ; le détail des routes de `rag` (rôles, erreurs, contrat
@@ -251,11 +251,15 @@ jusqu'à nouvel ordre).
 - **Release** : Z est calculé par `tools/version.py` d'après les tags (`v0.1.0`, puis `v0.1.1`…) ; passer le
   pyproject à `0.2.0` donne `v0.2.0`. En staging, `release` est la **candidate** : le tag n'est posé qu'après
   staging et evals, juste avant la production.
+- **Version croissante** : hors rollback, une release livrée ne descend jamais sous la précédente. Un pyproject
+  dont X.Y est sous la dernière release fait échouer `changements` ; avant la production, `deploy.yml` compare la
+  release à livrer à celle en service (`/health`) et refuse une version inférieure (égale = relance du même
+  déploiement ; production injoignable = refus). Seul `deploy.yml` lancé à la main (`make rollback`) revient en arrière.
 - **Manifeste** : si un déclencheur a changé, nouvelle version `X.Y.Z-build.<n° du run>` (`X.Y.Z-local` hors CI),
   taguée `manifeste-…` quand les evals passent ; sinon, celle du dernier manifeste validé.
 
-La **fumée** (bloquante, par la gateway) vérifie que gateway et rag servent le SHA attendu et que `/api/reponses`
-répond 401 sans jeton ; le LLM est vérifié par les evals de staging.
+La **fumée** (bloquante, par la gateway) attend que gateway **et** rag servent le SHA attendu (rag démarre après
+ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le LLM est vérifié par les evals de staging.
 
 ### Ressources Azure actuelles
 
@@ -265,7 +269,7 @@ répond 401 sans jeton ; le LLM est vérifié par les evals de staging.
 | Registre d'images | `acerolazacr` : `agentinsurflow-gateway`, `agentinsurflow-rag` (tag = SHA), `agentinsurflow-postgres:1` | ✅ |
 | Environnement Container Apps | `cae-insurflow` | ✅ |
 | Container App staging | `insurflow-staging` (3 conteneurs) → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ reçoit chaque merge |
-| Container App production | `insurflow-production` (3 conteneurs), domaine personnalisé (`PROD_URL`) | ✅ `v0.2.0` |
+| Container App production | `insurflow-production` (3 conteneurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.4.0` |
 | Modèles | `Kimi-K2.5` et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971` | ✅ |
 | Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag` et `agentinsurflow-underwriting` | ✅ |
 | Rôles (Contributor, AcrPush, AcrPull, Cognitive Services User) | — | ✅ attribués |

@@ -5,6 +5,7 @@ PISTE et API simulés (httpx.MockTransport), traces vers un hôte injoignable.
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -68,6 +69,12 @@ def test_instantane_altere_refuse(tmp_path: Path) -> None:
         lire_instantane(chemin)
 
 
+def test_lire_instantane_rend_la_date_du_manifeste(tmp_path: Path) -> None:
+    chemin = sauvegarder_instantane(CORPUS, tmp_path, "local", "2026-10-19")
+    articles, sha, jour = lire_instantane(chemin)
+    assert (len(articles), sha, jour) == (4, sha_articles(articles), date(2026, 10, 19))
+
+
 def test_rejeu_instantane_n_appelle_pas_piste(tmp_path: Path, appels: list[httpx.Request]) -> None:
     chemin = sauvegarder_instantane(CORPUS, tmp_path, "local", "2026-10-19")
     code = ingest.main(
@@ -79,6 +86,8 @@ def test_rejeu_instantane_n_appelle_pas_piste(tmp_path: Path, appels: list[httpx
     assert appels[0].headers["authorization"] == "Bearer jeton-ingestion"
     preuve = json.loads((tmp_path / "preuves" / "ingestion-2026-10-19-local.json").read_text())
     assert (preuve["inseres"], preuve["mode"]) == (4, "instantane")
+    assert preuve["instantane_date"] == "2026-10-19"
+    assert json.loads(appels[0].content)["instantane_date"] == "2026-10-19"
 
 
 def test_401_piste_code_de_sortie_1(
@@ -114,3 +123,20 @@ def test_echec_export_traces_n_echoue_pas_l_ingestion(
          "--preuves", str(tmp_path)]
     )  # fmt: skip
     assert code == 0
+
+
+def test_date_du_manifeste_malformee_message_clair(
+    tmp_path: Path, appels: list[httpx.Request], capsys: pytest.CaptureFixture[str]
+) -> None:
+    chemin = sauvegarder_instantane(CORPUS, tmp_path, "local", "pas-une-date")
+    assert ingest.main(["--instantane", str(chemin), "--preuves", str(tmp_path)]) == 1
+    assert "Invalid isoformat string" in capsys.readouterr().err
+    assert appels == []
+
+
+def test_option_date_malformee_message_clair(
+    appels: list[httpx.Request], capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert ingest.main(["--date", "20/10/2026", "--sans-envoi"]) == 1
+    assert "Invalid isoformat string" in capsys.readouterr().err
+    assert appels == []

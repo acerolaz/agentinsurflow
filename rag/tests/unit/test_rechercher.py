@@ -7,7 +7,7 @@ import pytest
 from agentinsurflow_rag.application.use_cases.ingerer import ingerer
 from agentinsurflow_rag.application.use_cases.rechercher import rechercher
 from agentinsurflow_rag.domain.models import ResultatRecherche
-from corpus_de_test import CORPUS, SHA
+from corpus_de_test import CORPUS, DATE_INSTANTANE, SHA
 from fakes import FakeDepotCorpus, FakeEmbeddings
 
 COLLECTIONS = ["textes_reglementaires"]
@@ -17,7 +17,12 @@ COLLECTIONS = ["textes_reglementaires"]
 async def depot() -> FakeDepotCorpus:
     d = FakeDepotCorpus()
     await ingerer(
-        d, FakeEmbeddings(), collection=COLLECTIONS[0], instantane_sha256=SHA, articles=CORPUS
+        d,
+        FakeEmbeddings(),
+        collection=COLLECTIONS[0],
+        instantane_sha256=SHA,
+        instantane_date=DATE_INSTANTANE,
+        articles=CORPUS,
     )
     return d
 

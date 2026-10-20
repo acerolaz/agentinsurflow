@@ -11,8 +11,14 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from ...application.use_cases.consulter import lire_document, lire_ingestion, lister_ingestions
+from ...application.use_cases.consulter import (
+    attribuer,
+    lire_document,
+    lire_ingestion,
+    lister_ingestions,
+)
 from ...application.use_cases.ingerer import ingerer
+from ...domain.attribution import VersionIntrouvable
 from ...domain.corpus import collections_pour
 from ...domain.models import Appelant
 from ...domain.ports import ClientEmbeddings
@@ -28,8 +34,10 @@ from ..dependances import (
 from ..erreurs import ErreurApi, reponses
 from ..recherche import chercher
 from ..schemas.corpus import (
+    AttributionDTO,
     DocumentDTO,
     IngestionDTO,
+    LicenceDTO,
     LotIngestion,
     RapportIngestionDTO,
     ResultatRechercheDTO,
@@ -66,6 +74,7 @@ async def creer_ingestion(
                 emb,
                 collection=lot.collection,
                 instantane_sha256=lot.instantane_sha256,
+                instantane_date=lot.instantane_date,
                 articles=[a.model_dump() for a in lot.articles],
             )
         except IntegrityError as exc:  # un lot concurrent a écrit le même article ; lot annulé
@@ -141,3 +150,44 @@ async def lire_un_document(doc_id: str, appelant: Gestionnaire, conn: Lecture) -
     if document is None:
         raise ErreurApi(404, "DOCUMENT_INTROUVABLE", "Document introuvable")
     return DocumentDTO.model_validate(document)
+
+
+@router.get(
+    "/api/documents/{doc_id}/attribution",
+    summary="Mentions d'attribution Etalab 2.0 d'un article (version courante par défaut)",
+    responses=reponses(401, 403, 404, 503),
+)
+async def lire_l_attribution(
+    doc_id: str,
+    appelant: Gestionnaire,
+    conn: Lecture,
+    version: Annotated[
+        str | None,
+        Query(
+            min_length=1,
+            description="Facultatif : version courante par défaut ; une version obsolète "
+            "reste attribuable",
+            examples=["2023-01-01"],
+        ),
+    ] = None,
+) -> AttributionDTO:
+    try:
+        attribution = await attribuer(
+            PgDepotCorpus(conn), doc_id, version, collections_pour(appelant.roles)
+        )
+    except VersionIntrouvable as exc:
+        raise ErreurApi(404, "VERSION_INTROUVABLE", "Version introuvable pour cet article") from exc
+    if attribution is None:
+        raise ErreurApi(404, "DOCUMENT_INTROUVABLE", "Document introuvable")
+    return AttributionDTO(
+        doc_id=attribution.doc_id,
+        article=attribution.article,
+        version=attribution.version,
+        date_debut=attribution.date_debut,
+        url_source=attribution.url_source,
+        source=attribution.source,
+        concedant=attribution.concedant,
+        licence=LicenceDTO(nom=attribution.licence_nom, url=attribution.licence_url),
+        mise_a_jour_le=attribution.mise_a_jour_le,
+        modifications=attribution.modifications,
+    )

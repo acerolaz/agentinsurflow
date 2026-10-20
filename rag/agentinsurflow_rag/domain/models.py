@@ -115,6 +115,7 @@ class VersionDocument:
     obsolete: bool
     ingere_le: datetime
     url_source: str
+    extrait_le: date
 
 
 @dataclass(frozen=True)

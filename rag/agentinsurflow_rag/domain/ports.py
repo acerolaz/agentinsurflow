@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any, Protocol
 
 from .models import (
@@ -62,7 +63,12 @@ class DepotCorpus(Protocol):
         collection: str,
         chunks: list[str],
         vecteurs: list[list[float]],
+        extrait_le: date,
     ) -> None: ...
+
+    async def confirmer(self, document_id: int, extrait_le: date) -> None:
+        """Version revue inchangée dans un instantané : ``extrait_le`` n'avance que vers l'avant."""
+        ...
 
     async def marquer_obsolete(self, document_id: int) -> None: ...
 

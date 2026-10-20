@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 SHA = "f" * 64
+DATE_INSTANTANE = date(2026, 10, 20)
+DATE_ISO = DATE_INSTANTANE.isoformat()
 
 
 def article(

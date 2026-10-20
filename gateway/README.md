@@ -25,7 +25,7 @@ Jeton **Entra ID** (Bearer) validé à l'entrée : signature (clés publiées pa
 
 | Route | Politique | Rôle d'app | Audience |
 |---|---|---|---|
-| `POST /api/reponses`, `GET /api/extraits`, `GET /api/documents/{doc_id}` | `rag-gestionnaire` | `Gestionnaire` | `agentinsurflow-rag` |
+| `POST /api/reponses`, `GET /api/extraits`, `GET /api/documents/{doc_id}`, `GET /api/documents/{doc_id}/attribution` | `rag-gestionnaire` | `Gestionnaire` | `agentinsurflow-rag` |
 | `POST`/`GET /api/ingestions[/{id}]` | `rag-ingestion` | `Ingestion` | `agentinsurflow-rag` |
 | `GET /api/contrats[/{numero_contrat}]`, `GET /api/traces/{trace_id}` | `underwriting-gestionnaire` | `Gestionnaire` | `agentinsurflow-underwriting` |
 | `POST /v1/traces` | `underwriting-telemetrie` | `Telemetrie` | `agentinsurflow-underwriting` |
@@ -63,6 +63,7 @@ En Azure, la gateway est derrière l'**envoy** de Container Apps, qui ajoute l'I
 | `GET /api/ingestions`, `GET /api/ingestions/{id}` | `rag` | 200 | Rapports d'ingestion journalisés |
 | `GET /api/extraits?question=…&top_k=5` | `rag` | 200 | Extraits du corpus passant la porte de pertinence (`NOT_FOUND_IN_CORPUS` sinon) |
 | `GET /api/documents/{doc_id}` | `rag` | 200 · 404 | Document source, ses versions et ses chunks (traçabilité) |
+| `GET /api/documents/{doc_id}/attribution?version=` | `rag` | 200 · 404 | Mentions Etalab 2.0 d'un article cité |
 | `GET /api/contrats?limit&offset`, `GET /api/contrats/{numero_contrat}` | `underwriting-admin` | 200 · 404 | Portefeuille du gestionnaire, vue minimisée (BOLA : 404 hors portefeuille) |
 | `GET /api/traces/{trace_id}` | `underwriting-admin` | 200 · 404 | Trace OpenTelemetry, tous services confondus |
 | `POST /v1/traces` | `underwriting-admin` | 200 | **Exception** : chemin imposé par la norme OTLP (récepteur de spans), pas une API métier |

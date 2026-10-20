@@ -28,7 +28,7 @@ from agentinsurflow_rag.api.dependances import (
 )
 from agentinsurflow_rag.api.securite import charger_auth, obtenir_cle
 from agentinsurflow_rag.infrastructure.postgres.connexions import ConfigBD
-from corpus_de_test import CORPUS, SHA
+from corpus_de_test import CORPUS, DATE_ISO, SHA
 from fakes import FakeEmbeddings
 from jetons_de_test import CLE_PUBLIQUE, config_auth, creer
 
@@ -120,7 +120,12 @@ def entetes(*roles: str) -> dict[str, str]:
 @pytest.fixture
 async def corpus(api: httpx.AsyncClient) -> httpx.AsyncClient:
     """L'API, avec le corpus de fixture (4 articles) ingéré par la vraie route."""
-    corps = {"collection": "textes_reglementaires", "instantane_sha256": SHA, "articles": CORPUS}
+    corps = {
+        "collection": "textes_reglementaires",
+        "instantane_sha256": SHA,
+        "instantane_date": DATE_ISO,
+        "articles": CORPUS,
+    }
     reponse = await api.post("/api/ingestions", json=corps, headers=entetes("Ingestion"))
     assert reponse.status_code == 201
     return api

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -18,7 +19,7 @@ from agentinsurflow_rag.api.dependances import obtenir_embeddings
 from agentinsurflow_rag.domain.ports import ErreurEmbeddings
 from agentinsurflow_rag.infrastructure.postgres.corpus import PgDepotCorpus
 from conftest import entetes
-from corpus_de_test import CORPUS, SHA
+from corpus_de_test import CORPUS, DATE_ISO, SHA
 from fakes import FakeEmbeddings
 
 INGESTION = entetes("Ingestion")
@@ -28,6 +29,7 @@ def lot(articles: list[dict[str, Any]] | None = None, **autres: Any) -> dict[str
     return {
         "collection": "textes_reglementaires",
         "instantane_sha256": SHA,
+        "instantane_date": DATE_ISO,
         "articles": CORPUS if articles is None else articles,
     } | autres
 
@@ -42,6 +44,28 @@ async def test_post_ingestion_201_location_et_rapport(api: httpx.AsyncClient) ->
     rapport = reponse.json()
     assert reponse.headers["location"] == f"/api/ingestions/{rapport['id']}"
     assert (rapport["lus"], rapport["inseres"], rapport["inchanges"]) == (4, 4, 0)
+
+
+async def test_lot_sans_instantane_date_422(api: httpx.AsyncClient) -> None:
+    corps = lot()
+    del corps["instantane_date"]
+    reponse = await api.post("/api/ingestions", json=corps, headers=INGESTION)
+    assert reponse.status_code == 422
+
+
+async def test_lot_date_future_422(api: httpx.AsyncClient) -> None:
+    futur = datetime.now(UTC).date() + timedelta(days=2)
+    corps = lot(instantane_date=futur.isoformat())
+    reponse = await api.post("/api/ingestions", json=corps, headers=INGESTION)
+    assert reponse.status_code == 422
+
+
+async def test_lot_date_demain_accepte(api: httpx.AsyncClient) -> None:
+    # frontière Paris / UTC : une CLI à Paris peut déjà être « demain » pour le serveur
+    demain = datetime.now(UTC).date() + timedelta(days=1)
+    corps = lot(CORPUS[:1], instantane_date=demain.isoformat())
+    reponse = await api.post("/api/ingestions", json=corps, headers=INGESTION)
+    assert reponse.status_code == 201
 
 
 async def test_rejeu_idempotent(api: httpx.AsyncClient, conn_writer: AsyncConnection) -> None:

@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
+import asyncio
+from datetime import date
+from typing import Any
+
 import pytest
 from alembic import command
-from sqlalchemy import text
+from sqlalchemy import TextClause, text
 from sqlalchemy.exc import IntegrityError, ProgrammingError
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
 
-from conftest import config_alembic
+from conftest import config_alembic, config_bd
 
 INSERT_DOCUMENT = text(
-    "INSERT INTO document (doc_id, collection, version, etat, url_source, hash_contenu) "
-    "VALUES (:doc_id, 'textes_reglementaires', :version, 'VIGUEUR', 'https://x', :hash) "
-    "RETURNING id"
+    "INSERT INTO document (doc_id, collection, version, etat, url_source, hash_contenu, "
+    "extrait_le) VALUES (:doc_id, 'textes_reglementaires', :version, 'VIGUEUR', 'https://x', "
+    ":hash, '2026-10-20') RETURNING id"
 )
 
 
@@ -88,8 +92,9 @@ async def test_collection_hors_liste_refusee(conn_writer: AsyncConnection) -> No
     with pytest.raises(IntegrityError):
         await conn_writer.execute(
             text(
-                "INSERT INTO document (doc_id, collection, version, etat, url_source, hash_contenu)"
-                " VALUES ('X', 'inconnue', 'v1', 'VIGUEUR', 'https://x', :h)"
+                "INSERT INTO document (doc_id, collection, version, etat, url_source, "
+                "hash_contenu, extrait_le) VALUES ('X', 'inconnue', 'v1', 'VIGUEUR', "
+                "'https://x', :h, '2026-10-20')"
             ),
             {"h": "a" * 64},
         )
@@ -114,3 +119,46 @@ def test_downgrade_puis_upgrade_sans_erreur(vecteurs_migree: None) -> None:
     cfg = config_alembic()
     command.downgrade(cfg, "base")
     command.upgrade(cfg, "head")
+
+
+def test_0002_ajoute_extrait_le_rempli_et_obligatoire(vecteurs_migree: None) -> None:
+    cfg = config_alembic()
+    command.downgrade(cfg, "base")
+    command.upgrade(cfg, "0001")
+
+    async def sql(requete: TextClause, params: dict[str, Any] | None = None) -> Any:
+        moteur = create_async_engine(config_bd().url("migrateur"))
+        try:
+            async with moteur.begin() as conn:
+                resultat = await conn.execute(requete, params)
+                return resultat.scalar() if resultat.returns_rows else None
+        finally:
+            await moteur.dispose()
+
+    try:
+        asyncio.run(
+            sql(
+                text(
+                    "INSERT INTO document (doc_id, collection, version, etat, url_source, "
+                    "hash_contenu, ingere_le) VALUES ('X', 'textes_reglementaires', 'v1', "
+                    "'VIGUEUR', 'https://x', :hash, '2026-10-18 10:00+00')"
+                ),
+                {"hash": "a" * 64},
+            )
+        )
+        command.upgrade(cfg, "head")
+        assert asyncio.run(sql(text("SELECT extrait_le FROM document"))) == date(2026, 10, 18)
+        with pytest.raises(IntegrityError):  # NOT NULL
+            asyncio.run(
+                sql(
+                    text(
+                        "INSERT INTO document (doc_id, collection, version, etat, url_source, "
+                        "hash_contenu) VALUES ('Y', 'textes_reglementaires', 'v1', 'VIGUEUR', "
+                        "'https://x', :hash)"
+                    ),
+                    {"hash": "b" * 64},
+                )
+            )
+    finally:
+        command.downgrade(cfg, "base")
+        command.upgrade(cfg, "head")

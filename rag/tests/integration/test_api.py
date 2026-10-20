@@ -88,6 +88,7 @@ ROUTES_REST = {
     "/api/ingestions/{ingestion_id}",
     "/api/extraits",
     "/api/documents/{doc_id}",
+    "/api/documents/{doc_id}/attribution",
 }
 
 
@@ -107,6 +108,7 @@ def test_contrat_rest_plus_de_route_rpc() -> None:
         ("/api/ingestions/{ingestion_id}", "get", {"200", "401", "403", "404"}),
         ("/api/extraits", "get", {"200", "401", "403", "422", "503"}),
         ("/api/documents/{doc_id}", "get", {"200", "401", "403", "404"}),
+        ("/api/documents/{doc_id}/attribution", "get", {"200", "401", "403", "404", "422", "503"}),
     ],
 )
 def test_chaque_route_documente_ses_erreurs(chemin: str, methode: str, codes: set[str]) -> None:

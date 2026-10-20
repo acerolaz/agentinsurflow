@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class DTO(BaseModel):
@@ -30,7 +30,16 @@ class ArticleEntrant(BaseModel):
 class LotIngestion(BaseModel):
     collection: Literal["textes_reglementaires"]
     instantane_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    instantane_date: date = Field(examples=["2026-10-20"])
     articles: list[ArticleEntrant] = Field(min_length=1, max_length=50)
+
+    @field_validator("instantane_date")
+    @classmethod
+    def _pas_dans_le_futur(cls, jour: date) -> date:
+        # +1 jour : la CLI tourne à Paris, déjà « demain » juste après minuit pour le serveur (UTC)
+        if jour > datetime.now(UTC).date() + timedelta(days=1):
+            raise ValueError("instantane_date ne peut pas être dans le futur")
+        return jour
 
 
 class RejetDTO(DTO):
@@ -95,6 +104,7 @@ class VersionDTO(DTO):
     obsolete: bool
     ingere_le: datetime
     url_source: str
+    extrait_le: date
 
 
 class ChunkDTO(DTO):
@@ -110,3 +120,23 @@ class DocumentDTO(DTO):
     collection: str
     versions: list[VersionDTO]
     chunks: list[ChunkDTO]
+
+
+class LicenceDTO(DTO):
+    nom: str
+    url: str
+
+
+class AttributionDTO(DTO):
+    """Mentions dues au réutilisateur (Licence Ouverte 2.0) ; valeurs fixes du domaine."""
+
+    doc_id: str
+    article: str
+    version: str
+    date_debut: date | None
+    url_source: str
+    source: str
+    concedant: str
+    licence: LicenceDTO
+    mise_a_jour_le: date
+    modifications: str

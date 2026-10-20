@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import fields
+from datetime import date
 from typing import Any
 
 from sqlalchemy import text
@@ -120,13 +121,14 @@ class PgDepotCorpus:
         collection: str,
         chunks: list[str],
         vecteurs: list[list[float]],
+        extrait_le: date,
     ) -> None:
         document_id = (
             await self._conn.execute(
                 text(
                     "INSERT INTO document (doc_id, collection, version, date_debut, etat, "
-                    "url_source, hash_contenu) VALUES (:doc_id, :collection, :version, "
-                    ":date_debut, :etat, :url_source, :hash) RETURNING id"
+                    "url_source, hash_contenu, extrait_le) VALUES (:doc_id, :collection, :version, "
+                    ":date_debut, :etat, :url_source, :hash, :extrait_le) RETURNING id"
                 ),
                 {
                     "doc_id": article.doc_id,
@@ -136,6 +138,7 @@ class PgDepotCorpus:
                     "etat": article.etat,
                     "url_source": article.url_source,
                     "hash": article.hash_contenu,
+                    "extrait_le": extrait_le,
                 },
             )
         ).scalar_one()
@@ -154,6 +157,15 @@ class PgDepotCorpus:
                 }
                 for ordre, (chunk, vecteur) in enumerate(zip(chunks, vecteurs, strict=True))
             ],
+        )
+
+    async def confirmer(self, document_id: int, extrait_le: date) -> None:
+        await self._conn.execute(
+            text(
+                "UPDATE document SET extrait_le = GREATEST(extrait_le, :extrait_le) "
+                "WHERE id = :id AND extrait_le < :extrait_le"
+            ),
+            {"id": document_id, "extrait_le": extrait_le},
         )
 
     async def marquer_obsolete(self, document_id: int) -> None:
@@ -218,7 +230,7 @@ class PgDepotCorpus:
                 await self._conn.execute(
                     text(
                         "SELECT collection, version, etat, date_debut, hash_contenu, obsolete, "
-                        "ingere_le, url_source FROM document WHERE doc_id = :doc_id "
+                        "ingere_le, url_source, extrait_le FROM document WHERE doc_id = :doc_id "
                         "ORDER BY ingere_le, id"
                     ),
                     {"doc_id": doc_id},

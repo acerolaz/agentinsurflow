@@ -85,13 +85,13 @@ def sauvegarder_instantane(
     return chemin
 
 
-def lire_instantane(chemin: Path) -> tuple[list[dict[str, Any]], str]:
+def lire_instantane(chemin: Path) -> tuple[list[dict[str, Any]], str, Date]:
     contenu = json.loads(chemin.read_text(encoding="utf-8"))
     articles: list[dict[str, Any]] = contenu["articles"]
     sha = sha_articles(articles)
     if sha != contenu["manifeste"]["sha256"]:
         raise ErreurEnvoi(f"instantané altéré : sha256 {sha} ≠ manifeste")
-    return articles, sha
+    return articles, sha, Date.fromisoformat(contenu["manifeste"]["date"])
 
 
 # ---------------------------------------------------------------- envoi
@@ -116,6 +116,7 @@ def envoyer(
     jeton: str,
     articles: Sequence[dict[str, Any]],
     sha: str,
+    instantane_date: Date,
     tracer: Tracer,
 ) -> dict[str, Any]:
     rapports = []
@@ -128,6 +129,7 @@ def envoyer(
             corps = {
                 "collection": "textes_reglementaires",
                 "instantane_sha256": sha,
+                "instantane_date": instantane_date.isoformat(),
                 "articles": lot,
             }
             try:
@@ -198,10 +200,10 @@ def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _instantane(args: argparse.Namespace) -> tuple[list[dict[str, Any]], str, str]:
+def _instantane(args: argparse.Namespace) -> tuple[list[dict[str, Any]], str, Date, str]:
     if args.instantane:
-        articles, sha = lire_instantane(args.instantane)
-        return articles, sha, "instantane"
+        articles, sha, jour = lire_instantane(args.instantane)
+        return articles, sha, jour, "instantane"
     try:
         cfg = ConfigLegifrance()  # type: ignore[call-arg]
     except ValidationError as exc:
@@ -212,14 +214,15 @@ def _instantane(args: argparse.Namespace) -> tuple[list[dict[str, Any]], str, st
         articles = extraire(client, cfg, jeton_piste(client, cfg), args.date)
     chemin = sauvegarder_instantane(articles, args.dossier, args.environnement, args.date)
     print(f"✔ instantané {chemin} ({len(articles)} articles)")
-    return articles, sha_articles(articles), "extraction"
+    return articles, sha_articles(articles), Date.fromisoformat(args.date), "extraction"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _arguments(argv)
     fournisseur: TracerProvider | None = None
     try:
-        articles, sha, mode = _instantane(args)
+        Date.fromisoformat(args.date)  # tôt : avant PISTE, et pour le nom de la preuve
+        articles, sha, jour, mode = _instantane(args)
         if args.sans_envoi:
             return 0
         jeton = jeton_api("agentinsurflow-rag", "INGESTION_JETON")
@@ -239,19 +242,26 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "ingest.mode": mode,
                 }
             )
-            rapport = envoyer(client, args.url, jeton, articles, sha, tracer)
+            rapport = envoyer(client, args.url, jeton, articles, sha, jour, tracer)
         args.preuves.mkdir(parents=True, exist_ok=True)
         preuve = args.preuves / f"ingestion-{args.date}-{args.environnement}.json"
         preuve.write_text(
             json.dumps(
-                {"instantane_sha256": sha, "mode": mode, **rapport}, ensure_ascii=False, indent=2
+                {
+                    "instantane_sha256": sha,
+                    "instantane_date": jour.isoformat(),
+                    "mode": mode,
+                    **rapport,
+                },
+                ensure_ascii=False,
+                indent=2,
             ),
             encoding="utf-8",
         )
         print(f"✔ {rapport['inseres']} insérés, {rapport['inchanges']} inchangés, "
               f"{len(rapport['rejets'])} rejets → {preuve}")  # fmt: skip
         return 0
-    except (ErreurPiste, ErreurEnvoi, OSError, KeyError, json.JSONDecodeError) as exc:
+    except (ErreurPiste, ErreurEnvoi, OSError, KeyError, ValueError) as exc:
         print(f"✘ {exc}", file=sys.stderr)
         return 1
     finally:

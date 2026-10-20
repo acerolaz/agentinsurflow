@@ -17,6 +17,12 @@ from agentinsurflow_rag.domain.models import (
 )
 from agentinsurflow_rag.domain.ports import ErreurEmbeddings, ErreurLLM
 
+# ponytail: liste courte des mots outils français, à compléter si un rejeu bute sur un autre
+MOTS_OUTILS = frozenset(
+    "a à au aux ce ces d de des du en est et il l la le les leur n ne on ou par pas pour qu que "
+    "qui s sa se son sont sur un une y".split()
+)
+
 
 def cosinus(a: list[float], b: list[float]) -> float:
     na, nb = math.sqrt(sum(x * x for x in a)), math.sqrt(sum(y * y for y in b))
@@ -174,6 +180,8 @@ class FakeEmbeddings:
     """Embeddings déterministes : mots hachés dans ``dim`` dimensions, puis normalisation L2.
 
     Le cosinus reflète les mots partagés (tests de seuil significatifs) ; jamais le vecteur nul.
+    Les mots outils sont ignorés : sur le vrai corpus, « de », « pour », « un »… suffisaient à
+    faire passer une question hors corpus au-dessus du seuil (rejeu de l'instantané réel).
     """
 
     def __init__(self, dim: int = 1536, *, erreur: ErreurEmbeddings | None = None) -> None:
@@ -183,7 +191,8 @@ class FakeEmbeddings:
     def _vecteur(self, texte: str) -> list[float]:
         vecteur = [0.0] * self.dim
         for mot in re.findall(r"\w+", texte.lower()):
-            vecteur[int(hashlib.sha256(mot.encode()).hexdigest(), 16) % self.dim] += 1.0
+            if mot not in MOTS_OUTILS:
+                vecteur[int(hashlib.sha256(mot.encode()).hexdigest(), 16) % self.dim] += 1.0
         if not any(vecteur):
             vecteur[0] = 1.0
         norme = math.sqrt(sum(x * x for x in vecteur))

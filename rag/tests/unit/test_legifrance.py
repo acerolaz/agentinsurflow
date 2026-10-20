@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import subprocess
 from collections.abc import Callable
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -165,6 +166,9 @@ def test_vers_article_entrant_champs_absents_restent_absents() -> None:
 # ---------------------------------------------------------------- envoi par lots
 
 
+JOUR = date(2026, 10, 20)
+
+
 def _articles(n: int) -> list[dict[str, Any]]:
     return [{"doc_id": f"D{i}"} for i in range(n)]
 
@@ -185,18 +189,25 @@ def _api(recu: list[httpx.Request], statut: int = 201) -> httpx.Client:
 def test_envoi_par_lots_de_50() -> None:
     recu: list[httpx.Request] = []
     tracer = TracerProvider().get_tracer("test")
-    rapport = envoyer(_api(recu), "http://gw", "jeton", _articles(120), "f" * 64, tracer)
+    rapport = envoyer(_api(recu), "http://gw", "jeton", _articles(120), "f" * 64, JOUR, tracer)
     assert [len(json.loads(r.content)["articles"]) for r in recu] == [50, 50, 20]
     assert recu[0].url.path == "/api/ingestions"
     assert recu[0].headers["authorization"] == "Bearer jeton"
     assert (rapport["lus"], rapport["inseres"], rapport["ingestions"]) == (120, 120, [1, 2, 3])
 
 
+def test_envoi_porte_la_date_de_l_instantane() -> None:
+    recu: list[httpx.Request] = []
+    tracer = TracerProvider().get_tracer("test")
+    envoyer(_api(recu), "http://gw", "jeton", _articles(1), "f" * 64, JOUR, tracer)
+    assert json.loads(recu[0].content)["instantane_date"] == "2026-10-20"
+
+
 def test_traceparent_injecte_dans_chaque_lot_meme_trace() -> None:
     recu: list[httpx.Request] = []
     tracer = TracerProvider().get_tracer("test")
     with tracer.start_as_current_span("ingest.run"):
-        envoyer(_api(recu), "http://gw", "jeton", _articles(60), "f" * 64, tracer)
+        envoyer(_api(recu), "http://gw", "jeton", _articles(60), "f" * 64, JOUR, tracer)
     traces = {r.headers["traceparent"].split("-")[1] for r in recu}
     assert len(recu) == 2 and len(traces) == 1
 
@@ -236,6 +247,7 @@ def test_lot_refuse_erreur_envoi() -> None:
             "j",
             _articles(1),
             "f" * 64,
+            JOUR,
             TracerProvider().get_tracer("t"),
         )
 

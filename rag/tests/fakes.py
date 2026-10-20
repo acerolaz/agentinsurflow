@@ -6,7 +6,7 @@ import hashlib
 import math
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from agentinsurflow_rag.domain.models import (
@@ -40,6 +40,7 @@ class _Document:
     collection: str
     obsolete: bool
     ingere_le: datetime
+    extrait_le: date
 
 
 @dataclass
@@ -98,11 +99,18 @@ class FakeDepotCorpus:
         collection: str,
         chunks: list[str],
         vecteurs: list[list[float]],
+        extrait_le: date,
     ) -> None:
-        doc = _Document(len(self.documents) + 1, article, collection, False, datetime.now(UTC))
+        doc = _Document(
+            len(self.documents) + 1, article, collection, False, datetime.now(UTC), extrait_le
+        )
         self.documents.append(doc)
         for ordre, (texte, vecteur) in enumerate(zip(chunks, vecteurs, strict=True)):
             self.chunks.append(_Chunk(len(self.chunks) + 1, doc.id, ordre, texte, vecteur))
+
+    async def confirmer(self, document_id: int, extrait_le: date) -> None:
+        doc = self._doc(document_id)
+        doc.extrait_le = max(doc.extrait_le, extrait_le)
 
     async def marquer_obsolete(self, document_id: int) -> None:
         self._doc(document_id).obsolete = True

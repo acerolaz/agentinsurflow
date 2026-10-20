@@ -9,6 +9,7 @@ import asyncio
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict
+from datetime import date
 
 from ...domain.corpus import decider, decouper, nettoyer
 from ...domain.models import ArticlePropre, QuasiDoublon, RapportIngestion, Rejet
@@ -23,6 +24,7 @@ async def ingerer(
     *,
     collection: str,
     instantane_sha256: str,
+    instantane_date: date,
     articles: Sequence[Mapping[str, object]],
 ) -> RapportIngestion:
     debut = time.perf_counter()
@@ -48,6 +50,8 @@ async def ingerer(
         decision = decider(courant[1:] if courant else None, art.version, art.hash_contenu)
         if decision == "inchange":
             rapport.inchanges += 1
+            assert courant is not None  # « inchangé » suppose une version courante
+            await depot.confirmer(courant[0], instantane_date)
         elif decision == "conflit_version":
             rapport.rejets.append(Rejet(art.doc_id, "conflit_version"))
         elif await depot.version_connue(art.doc_id, art.version):
@@ -73,7 +77,7 @@ async def ingerer(
             rapport.nouvelles_versions += 1
         else:
             rapport.inseres += 1
-        await depot.inserer(art, collection, chunks, vecteurs_art)
+        await depot.inserer(art, collection, chunks, vecteurs_art, instantane_date)
 
     rapport.duree_s = round(time.perf_counter() - debut, 3)
     contenu = {k: v for k, v in asdict(rapport).items() if k != "id"}

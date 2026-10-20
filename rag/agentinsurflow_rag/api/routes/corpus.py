@@ -66,6 +66,7 @@ async def creer_ingestion(
                 emb,
                 collection=lot.collection,
                 instantane_sha256=lot.instantane_sha256,
+                instantane_date=lot.instantane_date,
                 articles=[a.model_dump() for a in lot.articles],
             )
         except IntegrityError as exc:  # un lot concurrent a écrit le même article ; lot annulé

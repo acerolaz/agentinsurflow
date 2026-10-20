@@ -18,7 +18,7 @@ from agentinsurflow_rag.api.dependances import ConfigRag, charger_rag, connexion
 from agentinsurflow_rag.infrastructure.postgres import corpus as pg_corpus
 from agentinsurflow_rag.infrastructure.postgres.connexions import ConfigBD, creer_moteurs
 from conftest import config_bd, entetes
-from corpus_de_test import CORPUS, SHA
+from corpus_de_test import CORPUS, DATE_ISO, SHA
 
 GESTIONNAIRE = entetes("Gestionnaire")
 
@@ -64,7 +64,12 @@ async def test_version_obsolete_exclue(corpus: httpx.AsyncClient) -> None:
         "version": "v2",
         "texte_html": "<p>Nouvelle rédaction de la clause de réduction majoration.</p>",
     }
-    corps = {"collection": "textes_reglementaires", "instantane_sha256": SHA, "articles": [modifie]}
+    corps = {
+        "collection": "textes_reglementaires",
+        "instantane_sha256": SHA,
+        "instantane_date": DATE_ISO,
+        "articles": [modifie],
+    }
     await corpus.post("/api/ingestions", json=corps, headers=entetes("Ingestion"))
     resultat = await _extraits(corpus, "A121-1")
     textes = [e["texte"] for e in resultat["resultats"] if e["citation"]["article"] == "A121-1"]
@@ -121,6 +126,11 @@ async def test_document_trace_versions_et_chunks(corpus: httpx.AsyncClient) -> N
     assert [v["version"] for v in document["versions"]] == ["LEGIARTI000006800836-v1"]
     assert document["chunks"][0]["article"] == "L211-1"
     assert "embedding" not in document["chunks"][0]
+
+
+async def test_document_expose_extrait_le(corpus: httpx.AsyncClient) -> None:
+    reponse = await corpus.get("/api/documents/LEGIARTI000006800836", headers=GESTIONNAIRE)
+    assert reponse.json()["versions"][0]["extrait_le"] == DATE_ISO
 
 
 async def test_document_inconnu_404(api: httpx.AsyncClient) -> None:

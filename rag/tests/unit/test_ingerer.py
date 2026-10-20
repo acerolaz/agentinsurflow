@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 import pytest
@@ -9,18 +10,22 @@ import pytest
 from agentinsurflow_rag.application.use_cases.ingerer import ingerer
 from agentinsurflow_rag.domain.models import QuasiDoublon, RapportIngestion, Rejet
 from agentinsurflow_rag.domain.ports import ErreurEmbeddings
-from corpus_de_test import CORPUS, SHA, article
+from corpus_de_test import CORPUS, DATE_INSTANTANE, SHA, article
 from fakes import FakeDepotCorpus, FakeEmbeddings
 
 
 async def _ingerer(
-    depot: FakeDepotCorpus, articles: list[dict[str, Any]], emb: FakeEmbeddings | None = None
+    depot: FakeDepotCorpus,
+    articles: list[dict[str, Any]],
+    emb: FakeEmbeddings | None = None,
+    jour: date = DATE_INSTANTANE,
 ) -> RapportIngestion:
     return await ingerer(
         depot,
         emb or FakeEmbeddings(),
         collection="textes_reglementaires",
         instantane_sha256=SHA,
+        instantane_date=jour,
         articles=articles,
     )
 
@@ -32,6 +37,37 @@ async def test_lot_insere_puis_rejeu_idempotent() -> None:
     assert (premier.lus, premier.inseres, premier.inchanges) == (4, 4, 0)
     assert (second.inseres, second.inchanges, second.nouvelles_versions) == (0, 4, 0)
     assert len(depot.documents) == 4
+
+
+async def test_version_inseree_porte_la_date_de_l_instantane() -> None:
+    depot = FakeDepotCorpus()
+    await _ingerer(depot, CORPUS[:1])
+    assert depot.documents[0].extrait_le == date(2026, 10, 20)
+
+
+async def test_version_inchangee_avance_sa_date_sans_jamais_reculer() -> None:
+    depot = FakeDepotCorpus()
+    await _ingerer(depot, CORPUS[:1], jour=date(2026, 10, 20))
+    await _ingerer(depot, CORPUS[:1], jour=date(2026, 10, 25))
+    assert depot.documents[0].extrait_le == date(2026, 10, 25)
+    await _ingerer(depot, CORPUS[:1], jour=date(2026, 10, 22))
+    assert depot.documents[0].extrait_le == date(2026, 10, 25)
+
+
+async def test_meme_instantane_rejoue_deux_fois_ne_change_rien() -> None:
+    depot = FakeDepotCorpus()
+    await _ingerer(depot, CORPUS)
+    rapport2 = await _ingerer(depot, CORPUS)
+    assert (rapport2.inchanges, depot.documents[0].extrait_le) == (4, date(2026, 10, 20))
+
+
+async def test_version_anterieure_ne_touche_aucune_date() -> None:
+    depot = FakeDepotCorpus()
+    await _ingerer(depot, CORPUS[:1], jour=date(2026, 10, 10))
+    v2 = CORPUS[0] | {"version": "v2", "texte_html": "<p>Texte modifié, assez long.</p>"}
+    await _ingerer(depot, [v2], jour=date(2026, 10, 20))
+    await _ingerer(depot, CORPUS[:1], jour=date(2026, 10, 30))  # l'ancienne version, rejouée
+    assert [d.extrait_le for d in depot.documents] == [date(2026, 10, 10), date(2026, 10, 20)]
 
 
 async def test_nouvelle_version_rend_l_ancienne_obsolete() -> None:

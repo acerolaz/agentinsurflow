@@ -50,6 +50,7 @@ async def test_rejeu_questions_ci_sur_instantane_reel(api: httpx.AsyncClient) ->
         lot = {
             "collection": "textes_reglementaires",
             "instantane_sha256": contenu["manifeste"]["sha256"],
+            "instantane_date": contenu["manifeste"]["date"],
             "articles": articles[debut : debut + 50],
         }
         reponse = await api.post("/api/ingestions", json=lot, headers=entetes("Ingestion"))

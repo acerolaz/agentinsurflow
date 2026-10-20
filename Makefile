@@ -9,7 +9,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et underwriting-admin/
 # (C#, leurs propres Makefile, appelés par gateway-<cible> et underwriting-<cible>).
-.PHONY: install fmt lint test test-integration pyramide migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
+.PHONY: install fmt lint test test-integration test-e2e pyramide migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked
@@ -29,6 +29,9 @@ test:               ## TU, sans Docker (rag/tests/unit + outillage de la racine)
 test-integration:   ## porte 2 : TU + TI (PostgreSQL du compose), couverture >= 80 %
 	docker compose up -d --build --wait postgres
 	uv run pytest
+
+test-e2e:           ## make test-e2e URL=<gateway> : la solution qui tourne (compose ou staging), jetons via az
+	E2E_URL=$(URL) uv run pytest e2e --no-cov -rs
 
 migrate:            ## migrations Alembic de la base vecteurs (compte migrateur, PG_* du .env)
 	cd rag && uv run alembic -n vecteurs upgrade head

@@ -1,0 +1,1606 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AgentInsurFlow — rag",
+    "version": "0.4.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Sante",
+        "description": "Sonde : toujours 200 ; ``corpus`` dit si l'ingestion a eu lieu (null sans base).",
+        "operationId": "sante_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sante"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reponses": {
+      "post": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Réponse citée de l'agent, ou refus hors corpus (NOT_FOUND_IN_CORPUS)",
+        "operationId": "creer_reponse_api_reponses_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Question"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton absent ou invalide (JETON_ABSENT, JETON_INVALIDE)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle d'app manquant (ROLE_MANQUANT)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressource introuvable (CONTRAT_INTROUVABLE, DOCUMENT_INTROUVABLE…)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "entra": []
+          }
+        ]
+      }
+    },
+    "/api/ingestions": {
+      "post": {
+        "tags": [
+          "corpus"
+        ],
+        "summary": "Ingérer un lot d'articles (au plus 50) ; rapport journalisé",
+        "operationId": "creer_ingestion_api_ingestions_post",
+        "security": [
+          {
+            "entra": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotIngestion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RapportIngestionDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton absent ou invalide (JETON_ABSENT, JETON_INVALIDE)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle d'app manquant (ROLE_MANQUANT)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflit avec un lot concurrent (CONFLIT_INGESTION) : rejouer le lot",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "corpus"
+        ],
+        "summary": "Rapports d'ingestion, du plus récent au plus ancien",
+        "operationId": "lister_les_ingestions_api_ingestions_get",
+        "security": [
+          {
+            "entra": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IngestionDTO"
+                  },
+                  "title": "Response Lister Les Ingestions Api Ingestions Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton absent ou invalide (JETON_ABSENT, JETON_INVALIDE)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle d'app manquant (ROLE_MANQUANT)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ingestions/{ingestion_id}": {
+      "get": {
+        "tags": [
+          "corpus"
+        ],
+        "summary": "Un rapport d'ingestion",
+        "operationId": "lire_une_ingestion_api_ingestions__ingestion_id__get",
+        "security": [
+          {
+            "entra": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ingestion_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Ingestion Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton absent ou invalide (JETON_ABSENT, JETON_INVALIDE)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle d'app manquant (ROLE_MANQUANT)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressource introuvable (CONTRAT_INTROUVABLE, DOCUMENT_INTROUVABLE…)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/extraits": {
+      "get": {
+        "tags": [
+          "corpus"
+        ],
+        "summary": "Extraits du corpus qui passent la porte de pertinence (NOT_FOUND_IN_CORPUS sinon)",
+        "operationId": "lister_les_extraits_api_extraits_get",
+        "security": [
+          {
+            "entra": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "question",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000,
+              "title": "Question"
+            }
+          },
+          {
+            "name": "top_k",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 20,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Top K"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatRechercheDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton absent ou invalide (JETON_ABSENT, JETON_INVALIDE)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle d'app manquant (ROLE_MANQUANT)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{doc_id}": {
+      "get": {
+        "tags": [
+          "corpus"
+        ],
+        "summary": "Traçabilité d'un article : ses versions et ses chunks (sans les vecteurs)",
+        "operationId": "lire_un_document_api_documents__doc_id__get",
+        "security": [
+          {
+            "entra": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton absent ou invalide (JETON_ABSENT, JETON_INVALIDE)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle d'app manquant (ROLE_MANQUANT)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressource introuvable (CONTRAT_INTROUVABLE, DOCUMENT_INTROUVABLE…)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{doc_id}/attribution": {
+      "get": {
+        "tags": [
+          "corpus"
+        ],
+        "summary": "Mentions d'attribution Etalab 2.0 d'un article (version courante par défaut)",
+        "operationId": "lire_l_attribution_api_documents__doc_id__attribution_get",
+        "security": [
+          {
+            "entra": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Facultatif : version courante par défaut ; une version obsolète reste attribuable",
+              "examples": [
+                "2023-01-01"
+              ],
+              "title": "Version"
+            },
+            "description": "Facultatif : version courante par défaut ; une version obsolète reste attribuable"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttributionDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton absent ou invalide (JETON_ABSENT, JETON_INVALIDE)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle d'app manquant (ROLE_MANQUANT)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressource introuvable (CONTRAT_INTROUVABLE, DOCUMENT_INTROUVABLE…)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Probleme"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArticleEntrant": {
+        "properties": {
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "article": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article",
+            "examples": [
+              "L. 211-1"
+            ]
+          },
+          "date_debut": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Debut",
+            "examples": [
+              "2003-01-01"
+            ]
+          },
+          "etat": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Etat",
+            "examples": [
+              "VIGUEUR"
+            ]
+          },
+          "texte_html": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texte Html"
+          },
+          "url_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url Source"
+          }
+        },
+        "type": "object",
+        "title": "ArticleEntrant",
+        "description": "Un article tel qu'extrait de Légifrance ; tout est facultatif : un article partiel est\nrejeté avec sa raison, sans faire échouer le lot (spec §3.2 ⑤)."
+      },
+      "AttributionDTO": {
+        "properties": {
+          "doc_id": {
+            "type": "string",
+            "title": "Doc Id"
+          },
+          "article": {
+            "type": "string",
+            "title": "Article"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "date_debut": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Debut"
+          },
+          "url_source": {
+            "type": "string",
+            "title": "Url Source"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "concedant": {
+            "type": "string",
+            "title": "Concedant"
+          },
+          "licence": {
+            "$ref": "#/components/schemas/LicenceDTO"
+          },
+          "mise_a_jour_le": {
+            "type": "string",
+            "format": "date",
+            "title": "Mise A Jour Le"
+          },
+          "modifications": {
+            "type": "string",
+            "title": "Modifications"
+          }
+        },
+        "type": "object",
+        "required": [
+          "doc_id",
+          "article",
+          "version",
+          "date_debut",
+          "url_source",
+          "source",
+          "concedant",
+          "licence",
+          "mise_a_jour_le",
+          "modifications"
+        ],
+        "title": "AttributionDTO",
+        "description": "Mentions dues au réutilisateur (Licence Ouverte 2.0) ; valeurs fixes du domaine."
+      },
+      "ChunkDTO": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "article": {
+            "type": "string",
+            "title": "Article"
+          },
+          "ordre": {
+            "type": "integer",
+            "title": "Ordre"
+          },
+          "texte": {
+            "type": "string",
+            "title": "Texte"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "version",
+          "article",
+          "ordre",
+          "texte"
+        ],
+        "title": "ChunkDTO"
+      },
+      "CitationRagDTO": {
+        "properties": {
+          "doc_id": {
+            "type": "string",
+            "title": "Doc Id"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "article": {
+            "type": "string",
+            "title": "Article"
+          },
+          "collection": {
+            "type": "string",
+            "title": "Collection"
+          },
+          "date_debut": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Debut"
+          },
+          "url_source": {
+            "type": "string",
+            "title": "Url Source"
+          },
+          "chunk_id": {
+            "type": "integer",
+            "title": "Chunk Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "doc_id",
+          "version",
+          "article",
+          "collection",
+          "date_debut",
+          "url_source",
+          "chunk_id"
+        ],
+        "title": "CitationRagDTO"
+      },
+      "CitationSqlDTO": {
+        "properties": {
+          "table": {
+            "type": "string",
+            "const": "vue_contrat_minimisee",
+            "title": "Table"
+          },
+          "identifiant": {
+            "type": "string",
+            "title": "Identifiant"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "table",
+          "identifiant",
+          "date"
+        ],
+        "title": "CitationSqlDTO"
+      },
+      "CorpusSante": {
+        "properties": {
+          "instantane_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instantane Sha256",
+            "description": "dernier instantané ingéré"
+          },
+          "chunks": {
+            "type": "integer",
+            "title": "Chunks",
+            "description": "chunks des versions courantes ; 0 avant la 1re ingestion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "instantane_sha256",
+          "chunks"
+        ],
+        "title": "CorpusSante"
+      },
+      "DocumentDTO": {
+        "properties": {
+          "doc_id": {
+            "type": "string",
+            "title": "Doc Id"
+          },
+          "collection": {
+            "type": "string",
+            "title": "Collection"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/VersionDTO"
+            },
+            "type": "array",
+            "title": "Versions"
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkDTO"
+            },
+            "type": "array",
+            "title": "Chunks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "doc_id",
+          "collection",
+          "versions",
+          "chunks"
+        ],
+        "title": "DocumentDTO"
+      },
+      "ExtraitDTO": {
+        "properties": {
+          "citation": {
+            "$ref": "#/components/schemas/CitationRagDTO"
+          },
+          "texte": {
+            "type": "string",
+            "title": "Texte"
+          },
+          "cosinus": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cosinus"
+          },
+          "score_rrf": {
+            "type": "number",
+            "title": "Score Rrf"
+          }
+        },
+        "type": "object",
+        "required": [
+          "citation",
+          "texte",
+          "cosinus",
+          "score_rrf"
+        ],
+        "title": "ExtraitDTO"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "IngestionDTO": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "instantane_sha256": {
+            "type": "string",
+            "title": "Instantane Sha256"
+          },
+          "recu_le": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recu Le"
+          },
+          "rapport": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Rapport"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "instantane_sha256",
+          "recu_le",
+          "rapport"
+        ],
+        "title": "IngestionDTO"
+      },
+      "LicenceDTO": {
+        "properties": {
+          "nom": {
+            "type": "string",
+            "title": "Nom"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nom",
+          "url"
+        ],
+        "title": "LicenceDTO"
+      },
+      "LotIngestion": {
+        "properties": {
+          "collection": {
+            "type": "string",
+            "const": "textes_reglementaires",
+            "title": "Collection"
+          },
+          "instantane_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Instantane Sha256"
+          },
+          "instantane_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Instantane Date",
+            "examples": [
+              "2026-10-20"
+            ]
+          },
+          "articles": {
+            "items": {
+              "$ref": "#/components/schemas/ArticleEntrant"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Articles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "collection",
+          "instantane_sha256",
+          "instantane_date",
+          "articles"
+        ],
+        "title": "LotIngestion"
+      },
+      "Probleme": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "about:blank"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "integer",
+            "title": "Status"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "status",
+          "code"
+        ],
+        "title": "Probleme",
+        "description": "Corps d'erreur (RFC 9457) ; ``code`` est stable et sert aux clients."
+      },
+      "QuasiDoublonDTO": {
+        "properties": {
+          "doc_id": {
+            "type": "string",
+            "title": "Doc Id"
+          },
+          "proche_de": {
+            "type": "string",
+            "title": "Proche De"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "doc_id",
+          "proche_de",
+          "score"
+        ],
+        "title": "QuasiDoublonDTO"
+      },
+      "Question": {
+        "properties": {
+          "texte": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Texte",
+            "examples": [
+              "Que couvre l'assurance obligatoire du véhicule ?"
+            ]
+          },
+          "numero_contrat": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9-]{1,40}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Contrat",
+            "description": "Facultatif : le dossier est ajouté au contexte (vue minimisée, contrôle BOLA)",
+            "examples": [
+              "AIF-2026-0001"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "texte"
+        ],
+        "title": "Question"
+      },
+      "RapportIngestionDTO": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "lus": {
+            "type": "integer",
+            "title": "Lus"
+          },
+          "inseres": {
+            "type": "integer",
+            "title": "Inseres"
+          },
+          "inchanges": {
+            "type": "integer",
+            "title": "Inchanges"
+          },
+          "nouvelles_versions": {
+            "type": "integer",
+            "title": "Nouvelles Versions"
+          },
+          "rejets": {
+            "items": {
+              "$ref": "#/components/schemas/RejetDTO"
+            },
+            "type": "array",
+            "title": "Rejets"
+          },
+          "quasi_doublons": {
+            "items": {
+              "$ref": "#/components/schemas/QuasiDoublonDTO"
+            },
+            "type": "array",
+            "title": "Quasi Doublons"
+          },
+          "duree_s": {
+            "type": "number",
+            "title": "Duree S"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "lus",
+          "inseres",
+          "inchanges",
+          "nouvelles_versions",
+          "rejets",
+          "quasi_doublons",
+          "duree_s"
+        ],
+        "title": "RapportIngestionDTO"
+      },
+      "RejetDTO": {
+        "properties": {
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id"
+          },
+          "raison": {
+            "type": "string",
+            "title": "Raison"
+          }
+        },
+        "type": "object",
+        "required": [
+          "doc_id",
+          "raison"
+        ],
+        "title": "RejetDTO"
+      },
+      "ReponseDTO": {
+        "properties": {
+          "texte": {
+            "type": "string",
+            "title": "Texte"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "llm",
+              "degrade",
+              "refus"
+            ],
+            "title": "Mode"
+          },
+          "modele": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modele"
+          },
+          "statut": {
+            "type": "string",
+            "enum": [
+              "OK",
+              "NOT_FOUND_IN_CORPUS",
+              "REVUE_HUMAINE"
+            ],
+            "title": "Statut"
+          },
+          "citations": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CitationRagDTO"
+                },
+                {
+                  "$ref": "#/components/schemas/CitationSqlDTO"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id",
+            "description": "Trace OpenTelemetry : GET /api/traces/{trace_id}"
+          }
+        },
+        "type": "object",
+        "required": [
+          "texte",
+          "mode",
+          "statut",
+          "citations",
+          "trace_id"
+        ],
+        "title": "ReponseDTO"
+      },
+      "ResultatRechercheDTO": {
+        "properties": {
+          "statut": {
+            "type": "string",
+            "enum": [
+              "OK",
+              "NOT_FOUND_IN_CORPUS"
+            ],
+            "title": "Statut"
+          },
+          "seuil": {
+            "type": "number",
+            "title": "Seuil"
+          },
+          "cosinus_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cosinus Max"
+          },
+          "reference_exacte": {
+            "type": "boolean",
+            "title": "Reference Exacte"
+          },
+          "resultats": {
+            "items": {
+              "$ref": "#/components/schemas/ExtraitDTO"
+            },
+            "type": "array",
+            "title": "Resultats"
+          }
+        },
+        "type": "object",
+        "required": [
+          "statut",
+          "seuil",
+          "cosinus_max",
+          "reference_exacte",
+          "resultats"
+        ],
+        "title": "ResultatRechercheDTO"
+      },
+      "Sante": {
+        "properties": {
+          "statut": {
+            "type": "string",
+            "const": "ok",
+            "title": "Statut",
+            "default": "ok"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "SHA du commit de l'image"
+          },
+          "release": {
+            "type": "string",
+            "title": "Release",
+            "description": "vX.Y.Z ; en staging, la release candidate"
+          },
+          "manifeste": {
+            "type": "string",
+            "title": "Manifeste",
+            "description": "X.Y.Z-build.N : modèle, prompts et golden dataset évalués"
+          },
+          "environnement": {
+            "type": "string",
+            "title": "Environnement"
+          },
+          "corpus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CorpusSante"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null si la base est injoignable ou non migrée"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "release",
+          "manifeste",
+          "environnement",
+          "corpus"
+        ],
+        "title": "Sante"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VersionDTO": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "etat": {
+            "type": "string",
+            "title": "Etat"
+          },
+          "date_debut": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Debut"
+          },
+          "hash_contenu": {
+            "type": "string",
+            "title": "Hash Contenu"
+          },
+          "obsolete": {
+            "type": "boolean",
+            "title": "Obsolete"
+          },
+          "ingere_le": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ingere Le"
+          },
+          "url_source": {
+            "type": "string",
+            "title": "Url Source"
+          },
+          "extrait_le": {
+            "type": "string",
+            "format": "date",
+            "title": "Extrait Le"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "etat",
+          "date_debut",
+          "hash_contenu",
+          "obsolete",
+          "ingere_le",
+          "url_source",
+          "extrait_le"
+        ],
+        "title": "VersionDTO"
+      }
+    },
+    "securitySchemes": {
+      "entra": {
+        "type": "http",
+        "description": "Jeton Entra ID",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

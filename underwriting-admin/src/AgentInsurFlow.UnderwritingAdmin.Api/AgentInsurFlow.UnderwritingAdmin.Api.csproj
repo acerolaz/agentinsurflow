@@ -9,7 +9,15 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.20.0" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.0" />
+    <!-- Document OpenAPI généré au build, seulement sur demande (make openapi : -p:OpenApiGenerateDocuments=true) -->
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.13" PrivateAssets="all" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <OpenApiGenerateDocuments Condition="'$(OpenApiGenerateDocuments)' == ''">false</OpenApiGenerateDocuments>
+    <OpenApiDocumentsDirectory>$(MSBuildThisFileDirectory)../../../docs/openapi</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name underwriting-admin</OpenApiGenerateDocumentsOptions>
+  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AgentInsurFlow.UnderwritingAdmin.Application\AgentInsurFlow.UnderwritingAdmin.Application.csproj" />

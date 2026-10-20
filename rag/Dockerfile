@@ -10,7 +10,8 @@ COPY pyproject.toml uv.lock ./
 COPY rag/pyproject.toml rag/
 RUN uv sync --locked --no-dev --package agentinsurflow-rag --no-install-workspace
 COPY rag/agentinsurflow_rag rag/agentinsurflow_rag
-COPY rag/llm.env rag/
+COPY rag/llm.env rag/alembic.ini rag/demarrer.sh rag/
+COPY rag/migrations rag/migrations
 RUN uv sync --locked --no-dev --package agentinsurflow-rag
 
 # Versions servies par /health, gravées au build : SHA du commit, release vX.Y.Z, manifeste
@@ -23,5 +24,5 @@ WORKDIR /app/rag
 USER nobody
 # 8001 : la gateway écoute sur 8000 dans la même Container App (G5)
 EXPOSE 8001
-# pas de journal d'accès : il écrirait la query string (/api/extraits?question=…, RGPD)
-CMD ["uvicorn", "agentinsurflow_rag.api:app", "--host", "0.0.0.0", "--port", "8001", "--no-access-log"]
+# migrations (compte migrateur) puis uvicorn : voir demarrer.sh
+CMD ["sh", "demarrer.sh"]

@@ -34,6 +34,8 @@ properties:
           - { name: RAG_API_AUDIENCES, value: "api://agentinsurflow-rag,${RAG_API_CLIENT_ID}" }
           - { name: RAG_SEUIL, value: "${RAG_SEUIL}" } # vide → avertissement, /api/extraits en 503
           - { name: PG_HOST, value: localhost }
+          # migrateur : au démarrage seulement (demarrer.sh), retiré avant uvicorn
+          - { name: PG_MIGRATEUR_PASSWORD, secretRef: pg-migrateur-password }
           - { name: PG_WRITER_PASSWORD, secretRef: pg-writer-password }
           - { name: PG_READER_PASSWORD, secretRef: pg-reader-password }
           # ponytail: traces coupées jusqu'au récepteur OTLP d'underwriting-admin (U3)

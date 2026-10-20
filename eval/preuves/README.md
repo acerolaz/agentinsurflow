@@ -9,5 +9,6 @@ ou répétition**. Nommage : `<sujet>-AAAA-MM-JJ.<ext>`.
 | `evals` | artefact `evals-staging-<sha>` ou `evals-pr-<sha>` (`gh run download <id> -n <nom>`) : manifeste + résultats | `evals-AAAA-MM-JJ.json` |
 | `blocage` | `make preuve RUN=<id du run rouge> NOM=blocage-AAAA-MM-JJ` + capture de la PR | `.log`, `.resume.txt`, `-pr.png` |
 | `rollback` | `make preuve RUN=<id du run deploy> NOM=rollback-AAAA-MM-JJ` + `/health` avant et après | `.log`, `.resume.txt`, `.md`, `.png` |
+| `ingestion` | `make ingest URL=<gateway> INSTANTANE=data/raw/…` (environnement : `APP_ENV` ou `--environnement`) : instantané, lots, insérés, rejets | `ingestion-AAAA-MM-JJ-<env>.json` |
 
 Les journaux GitHub masquent les secrets (`***`). Relire tout de même chaque fichier avant de le committer.

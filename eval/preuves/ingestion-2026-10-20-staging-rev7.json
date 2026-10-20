@@ -1,0 +1,65 @@
+{
+  "instantane_sha256": "c7f3f10025e493c161455e8180fb1590bd092b59a245c19939d914c3ad106d96",
+  "mode": "instantane",
+  "ingestions": [
+    1,
+    2,
+    3
+  ],
+  "lus": 119,
+  "inseres": 107,
+  "inchanges": 0,
+  "nouvelles_versions": 0,
+  "rejets": [
+    {
+      "doc_id": "LEGIARTI000006792318",
+      "raison": "non_en_vigueur:ABROGE_DIFF"
+    },
+    {
+      "doc_id": "LEGIARTI000006795361",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812118",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812128",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812143",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812165",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812178",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812192",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812211",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006786667",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006786720",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006786748",
+      "raison": "non_en_vigueur:ABROGE"
+    }
+  ],
+  "quasi_doublons": [],
+  "duree_s": 7.601
+}

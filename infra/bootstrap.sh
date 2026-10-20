@@ -32,7 +32,7 @@ existe az containerapp env show -n "$CONTAINERAPPS_ENV" -g "$RG" ||
 echo "② Image d'amorçage + deux Container Apps (staging, production)"
 amorce="$ACR_NAME.azurecr.io/agentinsurflow:amorce"
 az acr login -n "$ACR_NAME"
-docker build --platform linux/amd64 --build-arg APP_VERSION=amorce -t "$amorce" .
+docker build --platform linux/amd64 -f rag/Dockerfile --build-arg APP_VERSION=amorce -t "$amorce" .
 docker push "$amorce"
 for app in "$APP_STAGING" "$APP_PRODUCTION"; do
   # identité managée « system » : tire les images de l'ACR sans mot de passe (AcrPull)

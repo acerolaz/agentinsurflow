@@ -21,7 +21,7 @@ concurrency:
 
 env:
   # Fichiers qui peuvent changer le résultat des évaluations
-  DECLENCHEURS_EVALS: '^(agentinsurflow/prompts/|eval/golden\.jsonl$|llm\.env$)'
+  DECLENCHEURS_EVALS: '^(rag/agentinsurflow_rag/prompts/|eval/golden\.jsonl$|eval/questions-demo\.jsonl$|data/raw/|rag/llm\.env$)'
 
 jobs:
   lint:
@@ -40,8 +40,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with: { version: "0.11.13", enable-cache: true }
+      - name: Mots de passe PostgreSQL éphémères (générés à chaque run, jamais stockés)
+        run: |
+          for v in MIGRATEUR WRITER READER DOSSIERS TRACES_WRITER TRACES_READER POSTGRES; do
+            mdp=$(openssl rand -hex 16); echo "::add-mask::$mdp"
+            echo "PG_${v}_PASSWORD=$mdp" >> "$GITHUB_ENV"
+          done
       - run: make install
-      - run: make test # LLM mocké : aucun appel réel
+      # TU + TI contre le PostgreSQL annexe du compose ; LLM mocké : aucun appel réel
+      - run: make test-integration
+        env:
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }} # lu par le compose (service gateway, non démarré ici)
 
   gateway:
     # Gateway YARP (C#, .NET 10) : format + analyseurs, puis TI avec couverture >= 80 %.
@@ -88,7 +97,10 @@ jobs:
 
   evals-pr:
     needs: [test, changements]
-    if: github.event_name == 'pull_request' && needs.changements.outputs.evals == 'true'
+    # ponytail: désactivé jusqu'à U5. Depuis R6, /api/reponses exige un jeton Entra (rôle
+    # Gestionnaire), PostgreSQL et RAG_SEUIL : ce job n'a encore ni identité de CI (A4) ni base
+    # annexe. Un job sauté satisfait la protection de main ; les evals de staging restent bloquantes.
+    if: false && github.event_name == 'pull_request' && needs.changements.outputs.evals == 'true'
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
     env:
@@ -105,7 +117,7 @@ jobs:
       - run: make install
       - name: Golden set contre l'API de la PR, LLM réel (porte bloquante avant merge)
         run: |
-          uv run uvicorn agentinsurflow.api:app --port 8000 &
+          (cd rag && uv run uvicorn agentinsurflow_rag.api:app --port 8000) & # llm.env lu dans rag/
           for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:8000/health > /dev/null && break; sleep 1; done
           uv run python tools/evals.py --url http://127.0.0.1:8000 --rapport evals-pr.json
       - uses: actions/upload-artifact@v4
@@ -137,7 +149,7 @@ jobs:
           az acr login -n "${{ vars.ACR_NAME }}"
           # /health : SHA de l'image, release vX.Y.Z (et manifeste pour rag), gravés au build
           docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
-            --build-arg APP_MANIFESTE="$MANIFESTE" -t "$ACR/agentinsurflow-rag:$SHA" .
+            --build-arg APP_MANIFESTE="$MANIFESTE" -f rag/Dockerfile -t "$ACR/agentinsurflow-rag:$SHA" .
           docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
             -f gateway/Dockerfile -t "$ACR/agentinsurflow-gateway:$SHA" .
           docker push "$ACR/agentinsurflow-rag:$SHA"
@@ -154,10 +166,23 @@ jobs:
     needs: [staging, changements]
     if: needs.changements.outputs.evals == 'true'
     runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
     steps:
       - uses: actions/checkout@v4
-      - name: Golden set contre staging (porte bloquante, aucun secret)
-        run: python3 tools/evals.py --url "${{ needs.staging.outputs.url }}" --rapport evals.json
+      - uses: azure/login@v2 # OIDC : le jeton d'évaluation est demandé à Entra, aucun secret
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+      - name: Golden set + jeu de démo contre staging (porte bloquante)
+        run: |
+          # 🔴 A4 : l'identité de CI doit porter le rôle Gestionnaire sur agentinsurflow-rag
+          EVALS_JETON=$(az account get-access-token --scope "api://agentinsurflow-rag/.default" \
+            --query accessToken -o tsv)
+          echo "::add-mask::$EVALS_JETON"
+          export EVALS_JETON
+          python3 tools/evals.py --url "${{ needs.staging.outputs.url }}" \
+            --questions eval/questions-demo.jsonl --rapport evals.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

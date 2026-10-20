@@ -27,8 +27,11 @@ builder.Services.AddOpenApi();
 // Entra ID (S3-25) : sans tenant ni audiences, la gateway refuse de démarrer plutôt que de s'ouvrir.
 var tenant = builder.Configuration["Entra:TenantId"]
     ?? throw new InvalidOperationException("Entra:TenantId manquant");
+// Chaque valeur peut être une liste « a, b » : la même variable que le service (RAG_API_AUDIENCES).
 string[] Audiences(string service) =>
-    builder.Configuration.GetSection($"Entra:Audiences:{service}").Get<string[]>() is { Length: > 0 } a
+    (builder.Configuration.GetSection($"Entra:Audiences:{service}").Get<string[]>() ?? [])
+        .SelectMany(v => v.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        .ToArray() is { Length: > 0 } a
         ? a
         : throw new InvalidOperationException($"Entra:Audiences:{service} manquant");
 var audiencesRag = Audiences("rag");

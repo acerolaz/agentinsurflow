@@ -1,0 +1,63 @@
+# Solution en local : make up (tout) · make test-integration (postgres seul).
+# Mots de passe et identifiants lus dans .env (jamais versionné ; clés dans .env.example).
+# Swagger unique : http://localhost:8000/ (gateway) ; rag seul : http://localhost:8001/
+# underwriting-admin arrive en Task U1.
+name: agentinsurflow
+
+x-mots-de-passe: &mots-de-passe
+  PG_MIGRATEUR_PASSWORD: ${PG_MIGRATEUR_PASSWORD:?PG_MIGRATEUR_PASSWORD manquant (.env)}
+  PG_WRITER_PASSWORD: ${PG_WRITER_PASSWORD:?PG_WRITER_PASSWORD manquant (.env)}
+  PG_READER_PASSWORD: ${PG_READER_PASSWORD:?PG_READER_PASSWORD manquant (.env)}
+  PG_DOSSIERS_PASSWORD: ${PG_DOSSIERS_PASSWORD:?PG_DOSSIERS_PASSWORD manquant (.env)}
+  PG_TRACES_WRITER_PASSWORD: ${PG_TRACES_WRITER_PASSWORD:?PG_TRACES_WRITER_PASSWORD manquant (.env)}
+  PG_TRACES_READER_PASSWORD: ${PG_TRACES_READER_PASSWORD:?PG_TRACES_READER_PASSWORD manquant (.env)}
+
+services:
+  postgres:
+    build: infra/postgres
+    environment:
+      <<: *mots-de-passe
+      POSTGRES_PASSWORD: ${PG_POSTGRES_PASSWORD:?PG_POSTGRES_PASSWORD manquant (.env)}
+      PG_BASES_TEST: "1"
+    ports: ["${PG_PORT:-5432}:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vecteurs"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  rag:
+    build: { context: ., dockerfile: rag/Dockerfile }
+    environment:
+      PG_HOST: postgres
+      PG_WRITER_PASSWORD: ${PG_WRITER_PASSWORD}
+      PG_READER_PASSWORD: ${PG_READER_PASSWORD}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      RAG_API_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
+      # même liste que la gateway (Entra__Audiences__rag__0), même défaut
+      RAG_API_AUDIENCES: ${RAG_API_AUDIENCES:-api://agentinsurflow-rag}
+      RAG_SEUIL: ${RAG_SEUIL:-} # à calibrer (make calibrer) ; vide → /api/extraits en 503
+      # dossiers en On-Behalf-Of (underwriting-admin arrive en Task U1) ; secret : .env local seulement
+      UNDERWRITING_API_CLIENT_ID: ${UNDERWRITING_API_CLIENT_ID:-}
+      UNDERWRITING_URL: http://underwriting-admin:8002
+      RAG_CLIENT_SECRET: ${RAG_CLIENT_SECRET:-}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
+      APP_ENV: local
+    ports: ["8001:8001"]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  gateway:
+    build: { context: ., dockerfile: gateway/Dockerfile }
+    environment:
+      ReverseProxy__Clusters__rag__Destinations__d1__Address: http://rag:8001
+      ReverseProxy__Clusters__underwriting__Destinations__d1__Address: http://underwriting-admin:8002
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
+      Entra__TenantId: ${AZURE_TENANT_ID:?AZURE_TENANT_ID manquant (.env)}
+      # une liste « a, b » par service, la même que celle lue par le service lui-même
+      Entra__Audiences__rag__0: ${RAG_API_AUDIENCES:-api://agentinsurflow-rag}
+      Entra__Audiences__underwriting__0: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
+      SWAGGER_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
+    ports: ["8000:8000"]
+    depends_on: [rag]

@@ -1,10 +1,17 @@
-"""Évaluations de l'agent (``make eval``) : rejoue ``eval/golden.jsonl`` contre une API déployée.
+"""Évaluations de l'agent (``make eval``) : rejoue ``eval/golden.jsonl`` (et, avec ``--questions``,
+le jeu de démo ``eval/questions-demo.jsonl``) contre une API déployée. Python 3 seul, sans
+dépendance (le job « changements » de la CI l'importe tel quel).
 
-Boîte noire : seul ``POST /api/agent`` est appelé, aucun secret Azure n'est nécessaire.
-Chaque cas passe ses contrôles déterministes (``verifier``) et sa latence est mesurée. Le rapport
-JSON s'ouvre sur un ``manifeste`` (commit, modèle, prompts, golden dataset, portes) : il dit ce qui
-a été évalué. Code de sortie 1 si le taux de réussite est sous le seuil ou si la latence p95
-dépasse son maximum : porte bloquante.
+Boîte noire : seuls ``POST /api/reponses``, ``GET /api/extraits`` et ``/health`` sont appelés,
+avec le jeton de ``EVALS_JETON`` (rôle ``Gestionnaire``) ; aucun secret Azure n'est nécessaire.
+Chaque cas passe ses contrôles déterministes (``verifier`` : contrat RAG ``statut``, ``articles``,
+``http`` ; réponse non vide, trois phrases au plus) et sa latence est mesurée. Le rapport JSON
+s'ouvre sur un ``manifeste`` (commit, modèle, prompts, golden dataset, questions, corpus, portes) :
+il dit ce qui a été évalué. Code de sortie 1 si le taux de réussite est sous le seuil ou si la
+latence p95 dépasse son maximum : porte bloquante.
+
+``--calibrer`` (``make calibrer``) affiche le cosinus max de chaque question, couvertes et hors
+corpus séparées, et propose l'intervalle où choisir ``RAG_SEUIL`` (spec §4.1).
 """
 
 from __future__ import annotations
@@ -14,10 +21,13 @@ import hashlib
 import json
 import math
 import os
+import re
 import subprocess
 import sys
 import time
 import tomllib
+import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
@@ -26,19 +36,33 @@ from typing import Any
 LONGUEUR_MAX = 600  # « trois phrases au plus » (prompt système de l'agent)
 
 
-def verifier(cas: dict[str, Any], reponse: dict[str, Any]) -> list[str]:
+def _article(numero: str) -> str:
+    """« L. 211-1 » → « L211-1 » (même normalisation que le domaine de rag)."""
+    return re.sub(r"[\s.]", "", numero).upper()
+
+
+def verifier(cas: dict[str, Any], reponse: dict[str, Any], http: int = 200) -> list[str]:
     """Les contrôles ratés pour un cas ; une liste vide signifie que le cas est réussi."""
+    attendu = cas.get("attendu", {})
+    if http != attendu.get("http", 200):
+        return ["http"]
+    if http != 200:
+        return []  # refus attendu au niveau HTTP (BOLA : 404) ; le corps est un ProblemDetails
     texte = str(reponse.get("texte", ""))
+    statut = attendu.get("statut")
     echecs = []
-    if reponse.get("mode") != "llm":
-        echecs.append("mode_llm")  # le LLM n'a pas répondu (repli ou erreur)
+    if statut in (None, "OK") and reponse.get("mode") != "llm":
+        echecs.append("mode_llm")  # le LLM n'a pas répondu (repli, refus ou erreur)
+    if statut and reponse.get("statut") != statut:
+        echecs.append("statut")
+    articles = {_article(a) for a in attendu.get("articles", [])}
+    cites = {_article(str(c.get("article", ""))) for c in reponse.get("citations", [])}
+    if articles and not articles & cites:
+        echecs.append("articles")  # au moins un des articles attendus doit être cité
     if not texte.strip():
         echecs.append("non_vide")
-    if len(texte) > cas.get("max_caracteres", LONGUEUR_MAX):
+    if len(texte) > LONGUEUR_MAX:
         echecs.append("longueur")
-    attendus = cas.get("contient_un", [])
-    if attendus and not any(mot.lower() in texte.lower() for mot in attendus):
-        echecs.append("contient_un")
     return echecs
 
 
@@ -79,13 +103,25 @@ def version_manifeste(pyproject: Path = Path("pyproject.toml")) -> str:
     return f"{base}-build.{run}" if run else f"{base}-local"
 
 
+def _jsonl(chemin: Path) -> list[dict[str, Any]]:
+    return [json.loads(ligne) for ligne in chemin.read_text(encoding="utf-8").splitlines() if ligne]
+
+
+def lire_cas(golden: Path, questions: Path | None = None) -> list[dict[str, Any]]:
+    return _jsonl(golden) + (_jsonl(questions) if questions else [])
+
+
 def manifeste(
-    url: str, golden: Path, prompts: Path, llm_env: Path, portes: dict[str, float]
+    url: str,
+    golden: Path,
+    prompts: Path,
+    llm_env: Path,
+    portes: dict[str, float],
+    questions: Path | None = None,
 ) -> dict[str, Any]:
-    """Ce qui est évalué : commit, modèle épinglé, prompts et golden dataset (empreintes)."""
+    """Ce qui est évalué : commit, modèle épinglé, prompts, golden dataset, questions, corpus."""
     run = os.environ.get("GITHUB_RUN_ID")
     depot = os.environ.get("GITHUB_REPOSITORY")
-    cas = [json.loads(ligne) for ligne in golden.read_text(encoding="utf-8").splitlines() if ligne]
     return {
         "version": version_manifeste(),
         "date": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -103,49 +139,116 @@ def manifeste(
         "golden": {
             "fichier": str(golden),
             "sha256": _sha256(golden),
-            "cas": [c["id"] for c in cas],
+            "cas": [c["id"] for c in lire_cas(golden)],
         },
+        "questions": None
+        if questions is None
+        else {
+            "fichier": str(questions),
+            "sha256": _sha256(questions),
+            "cas": [c["id"] for c in _jsonl(questions)],
+        },
+        "corpus": corpus(url),  # dernier instantané ingéré et nombre de chunks (/health)
         "portes": portes,
     }
 
 
-def interroger(url: str, question: str) -> dict[str, Any]:
+def _appeler(
+    url: str, chemin: str, jeton: str | None, corps: dict[str, Any] | None = None
+) -> tuple[int, dict[str, Any]]:
+    """Code HTTP et corps JSON ; une réponse ≠ 2xx est rendue, pas levée (BOLA : 404 attendu)."""
+    entetes = {"content-type": "application/json"}
+    if jeton:
+        entetes["Authorization"] = f"Bearer {jeton}"
     requete = urllib.request.Request(
-        f"{url.rstrip('/')}/api/agent",
-        data=json.dumps({"texte": question}).encode(),
-        headers={"content-type": "application/json"},
+        f"{url.rstrip('/')}{chemin}",
+        data=None if corps is None else json.dumps(corps).encode(),
+        headers=entetes,
     )
-    with urllib.request.urlopen(requete, timeout=60) as reponse:
-        resultat: dict[str, Any] = json.load(reponse)
-        return resultat
+    try:
+        with urllib.request.urlopen(requete, timeout=60) as reponse:
+            return reponse.status, json.load(reponse)
+    except urllib.error.HTTPError as exc:
+        try:
+            return exc.code, json.load(exc)
+        except ValueError:
+            return exc.code, {}
+
+
+def interroger(url: str, cas: dict[str, Any], jeton: str | None) -> tuple[int, dict[str, Any]]:
+    corps = {"texte": cas["question"], "numero_contrat": cas.get("numero_contrat")}
+    return _appeler(url, "/api/reponses", jeton, corps)
+
+
+def extraits(url: str, question: str, jeton: str | None) -> dict[str, Any]:
+    parametres = urllib.parse.urlencode({"question": question})
+    return _appeler(url, f"/api/extraits?{parametres}", jeton)[1]
+
+
+def corpus(url: str) -> dict[str, Any] | None:
+    try:
+        return _appeler(url, "/health", None)[1].get("corpus")
+    except (OSError, ValueError):
+        return None
+
+
+def calibrer(url: str, cas: list[dict[str, Any]], jeton: str | None) -> None:
+    """Cosinus max par question (couvertes / hors corpus) et intervalle possible pour le seuil."""
+    lignes = []
+    for c in cas:
+        statut = c.get("attendu", {}).get("statut")
+        if statut not in ("OK", "NOT_FOUND_IN_CORPUS"):
+            continue  # BOLA ou cas sans statut attendu : sans rapport avec la porte
+        mesure = extraits(url, c["question"], jeton)
+        type_ = "couverte" if statut == "OK" else "hors_corpus"
+        if mesure.get("reference_exacte"):
+            type_ = "reference_exacte"  # passe la porte par la référence, quel que soit le cosinus
+        lignes.append((c["id"], type_, mesure.get("cosinus_max") or 0.0))
+    lignes.sort(key=lambda ligne: -ligne[2])
+    for id_, type_, cosinus in lignes:
+        print(f"{id_:<28} {type_:<17} {cosinus:.3f}")
+    couvertes = [cos for _, t, cos in lignes if t == "couverte"]
+    hors = [cos for _, t, cos in lignes if t == "hors_corpus"]
+    if couvertes and hors and min(couvertes) > max(hors):
+        print(f"✔ RAG_SEUIL entre {max(hors):.3f} et {min(couvertes):.3f}")
+    else:
+        print("✘ aucun seuil ne sépare les questions couvertes des hors corpus (verrous ② ③)")
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://localhost:8000")
     parser.add_argument("--golden", type=Path, default=Path("eval/golden.jsonl"))
+    parser.add_argument("--questions", type=Path, help="jeu de démo YAML, lu en plus du golden")
+    parser.add_argument("--calibrer", action="store_true", help="cosinus max par question")
     # ponytail: seuil de départ, 🔴 à calibrer sur plusieurs runs (comme la couverture, P4)
     parser.add_argument("--seuil", type=float, default=0.8)
     # latence de l'évaluation p95 ≤ 30 s (dossier-conception-v1.md, D11)
     parser.add_argument("--latence-p95-max", type=float, default=30.0)
-    parser.add_argument("--prompts", type=Path, default=Path("agentinsurflow/prompts"))
-    parser.add_argument("--llm-env", type=Path, default=Path("llm.env"))
+    parser.add_argument("--prompts", type=Path, default=Path("rag/agentinsurflow_rag/prompts"))
+    parser.add_argument("--llm-env", type=Path, default=Path("rag/llm.env"))
     parser.add_argument("--rapport", type=Path)
     args = parser.parse_args(argv)
+    jeton = os.environ.get("EVALS_JETON")  # rôle Gestionnaire ; jamais écrit dans le rapport
+    tous = lire_cas(args.golden, args.questions)
 
-    lignes = args.golden.read_text(encoding="utf-8").splitlines()
+    if args.calibrer:
+        calibrer(args.url, tous, jeton)
+        return 0
+
     resultats = []
-    for cas in (json.loads(ligne) for ligne in lignes if ligne.strip()):
+    for cas in tous:
         debut = time.perf_counter()
         try:
-            reponse = interroger(args.url, cas["question"])
-        except (OSError, ValueError) as exc:  # réseau, HTTP ≠ 2xx, JSON illisible
-            reponse = {"erreur": repr(exc)}
+            http, reponse = interroger(args.url, cas, jeton)
+        except (OSError, ValueError) as exc:  # réseau, JSON illisible
+            http, reponse = 0, {"erreur": repr(exc)}
         latence = round(time.perf_counter() - debut, 2)
         resultats.append(
             {
                 "id": cas["id"],
-                "echecs": verifier(cas, reponse),
+                "echecs": verifier(cas, reponse, http),
+                "http": http,
                 "latence_s": latence,
                 "reponse": reponse,
             }
@@ -154,7 +257,7 @@ def main(argv: list[str] | None = None) -> int:
     taux = sum(not r["echecs"] for r in resultats) / len(resultats)
     latence_p95 = p95([r["latence_s"] for r in resultats])
     portes = {"seuil": args.seuil, "latence_p95_max_s": args.latence_p95_max}
-    entete = manifeste(args.url, args.golden, args.prompts, args.llm_env, portes)
+    entete = manifeste(args.url, args.golden, args.prompts, args.llm_env, portes, args.questions)
     # le modèle réellement servi par l'API, pour le comparer au modèle épinglé
     entete["modele"]["observe"] = sorted(
         {str(r["reponse"]["modele"]) for r in resultats if r["reponse"].get("modele")}

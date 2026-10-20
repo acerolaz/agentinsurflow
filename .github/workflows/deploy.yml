@@ -79,9 +79,10 @@ jobs:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           RAG_API_CLIENT_ID: ${{ vars.RAG_API_CLIENT_ID }}
           UNDERWRITING_API_CLIENT_ID: ${{ vars.UNDERWRITING_API_CLIENT_ID }}
+          RAG_SEUIL: ${{ vars.RAG_SEUIL }}
         run: |
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
-          envsubst '$IMAGE_GATEWAY $IMAGE_RAG $IMAGE_POSTGRES $APP_ENV $AZURE_OPENAI_ENDPOINT $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID' \
+          envsubst '$IMAGE_GATEWAY $IMAGE_RAG $IMAGE_POSTGRES $APP_ENV $AZURE_OPENAI_ENDPOINT $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $RAG_SEUIL' \
             < infra/containerapp.yaml > "$RUNNER_TEMP/containerapp.yaml"
           az containerapp update -n "$APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp.yaml" -o none
           # Production : le domaine personnalisé (G4, #12) dès que PROD_URL est posée ; la fumée
@@ -104,5 +105,5 @@ jobs:
           [ "$version" = "$attendu" ] || { echo "::error::rag : version '$version' ≠ '$attendu'"; exit 1; }
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/reponses" -H 'content-type: application/json' -d '{}')
           [ "$code" = 401 ] || { echo "::error::POST /api/reponses sans jeton : $code ≠ 401"; exit 1; }
-          # « mode llm » avec un jeton de la CI : au merge de la PR #14 (rag sert alors /api/reponses)
+          # Le LLM est vérifié avec un jeton de la CI par le job evals (staging)
           echo "✔ $URL : gateway et rag en $attendu, /api/reponses fermée sans jeton"

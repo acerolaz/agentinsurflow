@@ -120,3 +120,23 @@ class DocumentDTO(DTO):
     collection: str
     versions: list[VersionDTO]
     chunks: list[ChunkDTO]
+
+
+class LicenceDTO(DTO):
+    nom: str
+    url: str
+
+
+class AttributionDTO(DTO):
+    """Mentions dues au réutilisateur (Licence Ouverte 2.0) ; valeurs fixes du domaine."""
+
+    doc_id: str
+    article: str
+    version: str
+    date_debut: date | None
+    url_source: str
+    source: str
+    concedant: str
+    licence: LicenceDTO
+    mise_a_jour_le: date
+    modifications: str

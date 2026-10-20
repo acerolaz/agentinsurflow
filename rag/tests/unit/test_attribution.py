@@ -42,7 +42,7 @@ async def _depot(*, v2_obsolete: bool = False, v2_chunks: bool = True) -> FakeDe
     return depot
 
 
-async def test_attribution_de_la_version_courante_par_defaut():
+async def test_attribution_de_la_version_courante_par_defaut() -> None:
     a = await attribuer(await _depot(), "LEGIARTI1", None, COLLECTIONS)
     assert a is not None
     assert (a.version, a.article, a.mise_a_jour_le) == ("v2", "L211-1", date(2026, 10, 20))

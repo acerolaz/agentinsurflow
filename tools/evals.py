@@ -189,10 +189,16 @@ def extraits(url: str, question: str, jeton: str | None) -> dict[str, Any]:
 
 
 def corpus(url: str) -> dict[str, Any] | None:
-    try:
-        return _appeler(url, "/health", None)[1].get("corpus")
-    except (OSError, ValueError):
-        return None
+    """Corpus servi par rag : ``/health/rag`` derrière la gateway, ``/health`` en direct."""
+    for chemin in ("/health/rag", "/health"):
+        try:
+            http, sante = _appeler(url, chemin, None)
+        except (OSError, ValueError):
+            continue
+        etat: dict[str, Any] | None = sante.get("corpus")
+        if http == 200 and etat is not None:
+            return etat
+    return None
 
 
 def calibrer(url: str, cas: list[dict[str, Any]], jeton: str | None) -> None:

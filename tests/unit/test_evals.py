@@ -11,12 +11,29 @@ import pytest
 from tools import evals
 
 OK = {"texte": "Je vous assiste en assurance auto.", "mode": "llm", "modele": "chat"}
+CORPUS_REEL = evals.corpus  # la vraie fonction, avant la doublure autouse ci-dessous
 
 
 @pytest.fixture(autouse=True)
 def _sans_reseau(monkeypatch: pytest.MonkeyPatch) -> None:
     """``/health`` simulé : le manifeste lit l'état du corpus de l'API évaluée."""
     monkeypatch.setattr(evals, "corpus", lambda url: {"instantane_sha256": "f" * 64, "chunks": 4})
+
+
+@pytest.mark.parametrize(
+    ("sante", "attendu"),
+    [
+        # derrière la gateway : /health est celui de la gateway, le corpus est dans /health/rag
+        ({"/health/rag": (200, {"corpus": {"chunks": 110}}), "/health": (200, {})}, 110),
+        # rag en direct (make run) : pas de /health/rag
+        ({"/health/rag": (404, {}), "/health": (200, {"corpus": {"chunks": 4}})}, 4),
+    ],
+)
+def test_le_corpus_vient_de_rag(
+    monkeypatch: pytest.MonkeyPatch, sante: dict[str, tuple[int, dict[str, Any]]], attendu: int
+) -> None:
+    monkeypatch.setattr(evals, "_appeler", lambda url, chemin, jeton: sante[chemin])
+    assert CORPUS_REEL("https://x") == {"chunks": attendu}
 
 
 def test_reponse_conforme() -> None:

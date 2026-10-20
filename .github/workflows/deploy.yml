@@ -9,6 +9,8 @@ on:
     inputs:
       environnement: { type: string, required: true }
       tag: { type: string, required: true }
+      # release vX.Y.Z livrée : vérifiée ≥ celle en service (ci-cd.yml la passe pour la production)
+      release: { type: string, required: false, default: "" }
     outputs:
       url:
         description: URL publique de l'environnement déployé
@@ -67,6 +69,18 @@ jobs:
           echo "SHA retenu : $TAG"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
+      - name: Version croissante — hors rollback, la release livrée ne descend pas sous celle en service
+        # lancé à la main (rollback, TAG précis) : pas de release, donc pas de contrôle
+        if: inputs.release != ''
+        env:
+          RELEASE: ${{ inputs.release }}
+        run: |
+          url="${{ inputs.environnement == 'production' && vars.PROD_URL || '' }}"
+          [ -n "$url" ] || url="https://$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)"
+          # environnement injoignable : refus (fail-closed) ; revenir en arrière passe par le rollback
+          sante=$(curl -fsS "$url/health") || { echo "::error::$url/health injoignable : release en service inconnue"; exit 1; }
+          python3 tools/version.py --verifier "$(echo "$sante" | jq -r '.release // empty')" "$RELEASE"
+
       - name: Déployer (modèle infra/containerapp.yaml, nouvelle révision)
         id: deployer
         env:
@@ -96,13 +110,15 @@ jobs:
           URL: ${{ steps.deployer.outputs.url }}
           attendu: ${{ steps.image.outputs.tag }}
         run: |
-          for _ in $(seq 1 30); do   # démarrage de la nouvelle révision
-            version=$(curl -fsS "$URL/health" | jq -r .version) && [ "$version" = "$attendu" ] && break
+          # démarrage de la nouvelle révision : rag joue ses migrations avant uvicorn, après la gateway
+          for _ in $(seq 1 30); do
+            version=$(curl -fsS "$URL/health" | jq -r .version) || version=""
+            version_rag=$(curl -fsS "$URL/health/rag" | jq -r .version) || version_rag=""
+            [ "$version" = "$attendu" ] && [ "$version_rag" = "$attendu" ] && break
             sleep 5
           done
           [ "$version" = "$attendu" ] || { echo "::error::gateway : version '$version' ≠ '$attendu'"; exit 1; }
-          version=$(curl -fsS "$URL/health/rag" | jq -r .version)
-          [ "$version" = "$attendu" ] || { echo "::error::rag : version '$version' ≠ '$attendu'"; exit 1; }
+          [ "$version_rag" = "$attendu" ] || { echo "::error::rag : version '$version_rag' ≠ '$attendu'"; exit 1; }
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/reponses" -H 'content-type: application/json' -d '{}')
           [ "$code" = 401 ] || { echo "::error::POST /api/reponses sans jeton : $code ≠ 401"; exit 1; }
           # Le LLM est vérifié avec un jeton de la CI par le job evals (staging)

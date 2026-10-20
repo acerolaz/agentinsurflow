@@ -36,6 +36,9 @@ rollback lancé à la main, celui de `main`, pas celui du SHA restauré.
 ⚠️ La « version précédente » est l'avant-dernière révision **créée**. Relancer `make rollback` revient donc à la
 version qu'on vient de quitter, ce qui sert à revenir en avant. Pour une version précise : `make rollback TAG=<sha>`.
 
+Le rollback est la **seule** façon de servir une release inférieure : la chaîne, elle, refuse avant la production
+toute release sous celle en service (`tools/version.py --verifier`).
+
 ## Scénario de répétition
 
 | # | Geste | Vérification |

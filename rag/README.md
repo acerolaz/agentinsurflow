@@ -1,8 +1,8 @@
 # 🐍 rag — AgentInsurFlow
 
-Service Python (FastAPI) du **corpus réglementaire** : il portera l'ingestion des textes Légifrance (Code des assurances, périmètre auto), la recherche hybride (cosinus pgvector + plein texte + numéro d'article, fusion RRF) et l'**agent** à réponses citées, qui refuse hors corpus (spec du sprint 3, décision S3-16).
+Service Python (FastAPI) du **corpus réglementaire** : il porte l'ingestion des textes Légifrance (Code des assurances, périmètre auto), la recherche hybride (cosinus pgvector + plein texte + numéro d'article, fusion RRF) et l'**agent** à réponses citées, qui refuse hors corpus (spec du sprint 3, décision S3-16).
 
-> **État (v0.4.0, Tasks R0 → R8)** : socle hexagonal ; PostgreSQL annexe et migrations de la base `vecteurs` ; domaine du corpus (nettoyage, dédup, découpage, porte) ; embeddings et jetons Entra ; ingestion et recherche hybride en REST ; agent à 3 verrous, dossiers en On-Behalf-Of, traces OTLP ; CLI Légifrance ; jeu de démo, evals et calibrage. 🔴 Le premier instantané réel (`data/raw/`) attend les identifiants PISTE (Task G0).
+> **État (v0.4.0, Tasks R0 → R8, au 20/10)** : socle hexagonal ; PostgreSQL annexe et migrations de la base `vecteurs` (rejouées au démarrage du conteneur) ; domaine du corpus (nettoyage, dédup, découpage, porte) ; embeddings et jetons Entra ; ingestion et recherche hybride en REST ; agent à 3 verrous, dossiers en On-Behalf-Of, traces OTLP ; CLI Légifrance ; jeu de démo, evals et calibrage ; attribution Etalab 2.0 des articles cités (#20). Premier instantané réel versionné : `data/raw/code-assurances-2026-10-20.json` (sha256 `c7f3f100…`), ingéré en staging le 20/10 : 119 articles lus, 107 insérés, 12 rejetés (abrogés) — preuves dans `eval/preuves/ingestion-2026-10-20-staging*.json`.
 
 ## API (REST, S3-24)
 
@@ -22,7 +22,7 @@ Service Python (FastAPI) du **corpus réglementaire** : il portera l'ingestion d
 - **Refus par défaut** : chaque route du corpus exige son rôle ; les collections lisibles viennent du rôle (`Gestionnaire` → `textes_reglementaires`), aucune sinon.
 - **Swagger** : derrière la gateway, le document est servi en `GET /rag/openapi.json` dans la **page Swagger unique** (`http://localhost:8000/`). Il ne déclare pas de `servers` : le « Try it out » appelle les routes publiques de la gateway (jeton, rôle et limite de débit). Sans gateway, rag sert aussi son propre Swagger sur `/` (`http://localhost:8001/` dans le compose).
 - Un test de contrat vérifie que seules ces routes sont publiées (les anciens noms RPC répondent 404) et que chacune documente ses réponses d'erreur et son schéma de sécurité.
-- Sans PostgreSQL, sans Entra ou sans `RAG_SEUIL` configurés, l'API **démarre quand même** ; les routes concernées répondent 503 (le déploiement actuel n'a pas encore la base annexe), et un `RAG_SEUIL` absent ou invalide est signalé dès le démarrage (refus de démarrer en U5). Audiences des jetons : `RAG_API_AUDIENCES` (« a, b »), la même liste que la gateway (`Entra__Audiences__rag__0`) ; défaut `<ID client>,api://<ID client>`.
+- Sans PostgreSQL, sans Entra ou sans `RAG_SEUIL` configurés, l'API **démarre quand même** ; les routes concernées répondent 503, et un `RAG_SEUIL` absent ou invalide est signalé dès le démarrage (refus de démarrer en U5). Audiences des jetons : `RAG_API_AUDIENCES` (« a, b »), la même liste que la gateway (`Entra__Audiences__rag__0`) ; défaut `<ID client>,api://<ID client>`.
 
 ## Agent à trois verrous (spec §4.2)
 
@@ -44,7 +44,7 @@ make ingest URL=… INSTANTANE=data/raw/code-assurances-<date>.json   # rejeu, s
 
 ① jeton PISTE (identifiants du `.env` local, jamais dans GitHub ; 401 → « identifiants PISTE invalides », code de sortie 1) ; ② plan du Code des assurances, filtre du périmètre auto (`L121-*`, `A121-1`, `L211-*`, `R211-*`, `A211-*`), `getArticle` séquentiel, 3 nouvelles tentatives (1 s, 2 s, 4 s) sur 429 et 5xx ; ③ **instantané versionné** écrit dans un `.tmp` puis renommé, avec son manifeste (date, environnement, périmètre, nombre d'articles, sha256 du JSON canonique, vérifié au rejeu) ; ④ lots de 50 vers `POST /api/ingestions` avec un jeton Entra (`INGESTION_JETON`, sinon `az` pour `api://agentinsurflow-rag`) et le `traceparent` ; rapport cumulé dans `eval/preuves/ingestion-<date>-<env>.json`. Traces `ingest.run` et `ingest.lot` (service `agentinsurflow-ingest`) envoyées par la gateway (`/v1/traces`, rôle `Telemetrie`) ; leur échec ne fait jamais échouer l'ingestion.
 
-> 🔴 Les noms de champs de l'API Légifrance (`cid`, `num`, `dateDebut`, `texteHtml`) et la forme du plan sont à confirmer au premier appel réel (Task G0) ; la correspondance est dans `infrastructure/legifrance/client.py` (`vers_article_entrant`).
+> Les noms de champs de l'API Légifrance (`cid`, `num`, `dateDebut`, `texteHtml`) et la forme du plan ont servi à la première extraction réelle (instantané du 20/10, 119 articles) ; la correspondance est dans `infrastructure/legifrance/client.py` (`vers_article_entrant`).
 
 ## Évaluations et calibrage (`tools/evals.py`)
 
@@ -53,8 +53,8 @@ EVALS_JETON=<jeton rôle Gestionnaire> make eval URL=…   # golden set + eval/q
 EVALS_JETON=… make calibrer URL=…                        # cosinus max par question → RAG_SEUIL
 ```
 
-- **Contrat vérifié par cas** (`attendu`) : `statut` (`OK` ou `NOT_FOUND_IN_CORPUS`), `articles` (au moins un cité), `http` (404 pour le cas BOLA) ; plus les contrôles du sprint 2 (`contient_un`, longueur). Le rapport s'ouvre sur un manifeste (commit, modèle, prompts, golden, questions, `corpus` de `/health`).
-- **Jeu de démo** (`eval/questions-demo.jsonl`) : 5 questions couvertes, 3 refus (hors corpus, hors périmètre, BOLA). Les cas `ci: true` (références exactes, hors corpus, BOLA) sont aussi rejoués en CI sur l'instantané réel, modèles simulés (`tests/integration/test_questions_demo.py`, sauté tant que `data/raw/` est vide). 🔴 Numéros d'articles (L211-1, A121-1, L121-1) à confirmer sur le premier instantané réel (Task G0) ; l'annexe d'A121-1 (règles du bonus-malus) est peut-être hors du filtre de périmètre. 🔴 Les cas avec `numero_contrat` demandent underwriting-admin (U2) et un jeton délégué pour l'On-Behalf-Of.
+- **Contrat vérifié par cas** (`attendu`) : `statut` (`OK` ou `NOT_FOUND_IN_CORPUS`), `articles` (au moins un cité), `http` (404 pour le cas BOLA) ; plus `mode_llm` (le LLM a répondu), `non_vide` et `longueur`. Le rapport s'ouvre sur un manifeste (commit, modèle, prompts, golden, questions, `corpus` de `/health`).
+- **Jeu de démo** (`eval/questions-demo.jsonl`) : 5 questions couvertes, 3 refus (hors corpus, hors périmètre, BOLA). Les cas `ci: true` (références exactes, hors corpus, BOLA) sont aussi rejoués en CI sur l'instantané réel, modèles simulés (`tests/integration/test_questions_demo.py`, sauté sans instantané dans `data/raw/`). Les articles attendus (L211-1, A121-1, L121-1) sont en vigueur dans l'instantané du 20/10 ; 🔴 l'annexe d'A121-1 (règles du bonus-malus) n'y figure peut-être pas (texte de l'article seul). 🔴 Les cas avec `numero_contrat` demandent underwriting-admin (U2) et un jeton délégué pour l'On-Behalf-Of.
 - **Calibrage** : choisir `RAG_SEUIL` dans l'intervalle affiché, entre le plus grand cosinus des questions hors corpus et le plus petit des questions couvertes ; les questions qui citent un article passent la porte par la référence et ne comptent pas. Reporter la valeur dans `.env` et dans la variable GitHub `RAG_SEUIL`.
 
 ## Traces (spec §9)

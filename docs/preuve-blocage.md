@@ -1,5 +1,8 @@
 # Preuve du blocage : le commit volontairement cassé
 
+> 🗄️ **Preuve du sprint 2**, conservée telle quelle. Depuis, la protection de `main` exige aussi le job `gateway`
+> (`lint`, `test`, `gateway`, `evals-pr`), et `evals-pr` est désactivé jusqu'à U5 : voir le [README](../README.md).
+
 **Critère 3 de la grille** : « Le commit volontairement cassé est arrêté par la chaîne, démontré en live »
 (source : grille-atelier-2-socle-chaine.pdf).
 

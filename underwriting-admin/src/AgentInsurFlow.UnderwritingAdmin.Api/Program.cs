@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using AgentInsurFlow.UnderwritingAdmin.Api;
 using AgentInsurFlow.UnderwritingAdmin.Application;
 using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
+using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Traces;
 using Microsoft.Identity.Web;
 using Microsoft.OpenApi;
 using OpenTelemetry.Exporter;
@@ -52,6 +53,8 @@ builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.Authenticatio
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("Gestionnaire", p => p.RequireRole("Gestionnaire"))
     .AddPolicy("Telemetrie", p => p.RequireRole("Telemetrie"))
+    // Règle S3-21 pour /v1/traces : source locale sans X-Forwarded-For, ou rôle Telemetrie
+    .AddPolicy("Otlp", p => p.AddRequirements(new SourceSansJetonOuTelemetrie()))
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
 // Document OpenAPI sans `servers` (la page Swagger unique est celle de la gateway) mais avec le schéma Bearer.
@@ -65,6 +68,8 @@ builder.Services.AddOpenApi(o => o.AddDocumentTransformer((doc, _, _) =>
     };
     return Task.CompletedTask;
 }));
+
+builder.Services.AddSingleton<IAuthorizationHandler, SourcesSansJetonHandler>();
 
 // Seul le préfixe de la gateway (X-Forwarded-Prefix) est repris : X-Forwarded-For reste celui lu par la règle S3-21.
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
@@ -83,6 +88,15 @@ var connexions = new ConnexionsDossiers(
     builder.Configuration["PG_DOSSIERS_PASSWORD"] ?? "");
 builder.Services.AjouterDossiers(connexions);
 builder.Services.AddScoped<ListerPortefeuille>().AddScoped<ConsulterContrat>();
+
+// Base traces : écriture par traces_writer, relecture par traces_reader ; migrations par `migrateur`.
+var connexionsTraces = new ConnexionsTraces(
+    connexions.Hote, connexions.Port, connexions.SuffixeBase, connexions.MotDePasseMigrateur,
+    builder.Configuration["PG_TRACES_WRITER_PASSWORD"] ?? "",
+    builder.Configuration["PG_TRACES_READER_PASSWORD"] ?? "");
+builder.Services.AjouterTraces(connexionsTraces);
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<EnregistrerSpans>().AddScoped<LireTrace>();
 
 // Les spans de ce service rejoignent leur propre référentiel, par son /v1/traces en localhost.
 var otlp = builder.Configuration["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] ?? "http://localhost:8002/v1/traces";
@@ -105,6 +119,7 @@ var app = builder.Build();
 if (builder.Configuration.GetValue<bool>("Migrations:AuDemarrage"))
 {
     await MigrationsDossiers.AppliquerAsync(connexions, TimeSpan.FromSeconds(60), CancellationToken.None);
+    await MigrationsTraces.AppliquerAsync(connexionsTraces, TimeSpan.FromSeconds(60), CancellationToken.None);
 }
 
 app.UseForwardedHeaders();
@@ -117,6 +132,7 @@ app.MapGet("/health", (IConfiguration cfg) =>
     .WithSummary("Santé du service (versions servies)")
     .AllowAnonymous();
 app.MapContrats();
+app.MapTraces();
 app.MapOpenApi().AllowAnonymous(); // /openapi/v1.json
 
 await app.RunAsync();

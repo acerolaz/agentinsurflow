@@ -12,7 +12,7 @@ test:               ## TU + TI, couverture de lignes >= 80 % (fusionnée sur tou
 	rm -rf TestResults
 	dotnet test --solution $(SLN) --results-directory TestResults \
 	  --coverlet --coverlet-include "[AgentInsurFlow.*]*" --coverlet-exclude-by-attribute CompilerGeneratedAttribute \
-	  --coverlet-exclude-by-file "**/Migrations/**" --coverlet-output-format cobertura
+	  --coverlet-exclude-by-file "**/Migrations/**" --coverlet-exclude-by-file "**/obj/**" --coverlet-output-format cobertura
 	python3 couverture.py TestResults 80
 
 lint:               ## style et analyseurs (avertissements = erreurs, Directory.Build.props)

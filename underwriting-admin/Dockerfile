@@ -1,6 +1,9 @@
 # underwriting-admin — contexte de build = racine du monorepo : docker build -f underwriting-admin/Dockerfile .
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+# protoc du paquet Debian : le protoc livré par Grpc.Tools (linux_arm64) plante (code 139) dans Docker Desktop sur Mac ARM
+RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler && rm -rf /var/lib/apt/lists/*
+ENV PROTOBUF_PROTOC=/usr/bin/protoc
 COPY global.json Directory.Build.props ./
 COPY underwriting-admin/src/ underwriting-admin/src/
 RUN dotnet restore underwriting-admin/src/AgentInsurFlow.UnderwritingAdmin.Api/AgentInsurFlow.UnderwritingAdmin.Api.csproj

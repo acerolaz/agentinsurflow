@@ -61,6 +61,11 @@ services:
       PG_HOST: postgres
       PG_MIGRATEUR_PASSWORD: ${PG_MIGRATEUR_PASSWORD} # au démarrage seulement
       PG_DOSSIERS_PASSWORD: ${PG_DOSSIERS_PASSWORD}
+      # base traces : écriture (traces_writer) et relecture (traces_reader) ; migrations par migrateur
+      PG_TRACES_WRITER_PASSWORD: ${PG_TRACES_WRITER_PASSWORD}
+      PG_TRACES_READER_PASSWORD: ${PG_TRACES_READER_PASSWORD}
+      # règle S3-21 : sans jeton, la loopback et le réseau interne du compose (sans X-Forwarded-For) ; Azure : loopback seule
+      Otlp__SourcesSansJeton: 127.0.0.1/32,::1/128,172.29.250.0/24
       # oid fictifs en local ; en Azure, ceux de deux gestionnaires de test (jamais commités)
       SEED_GESTIONNAIRE_A: ${SEED_GESTIONNAIRE_A:-00000000-0000-0000-0000-00000000000a}
       SEED_GESTIONNAIRE_B: ${SEED_GESTIONNAIRE_B:-00000000-0000-0000-0000-00000000000b}
@@ -81,3 +86,10 @@ services:
       SWAGGER_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
     ports: ["8000:8000"]
     depends_on: [rag, underwriting-admin]
+
+# Réseau interne à plage fixe : c'est celle que /v1/traces accepte sans jeton (Otlp__SourcesSansJeton)
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.29.250.0/24

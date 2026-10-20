@@ -5,14 +5,17 @@ des lots à l'API (sans réseau, sans fichier).
 from __future__ import annotations
 
 import json
+import subprocess
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
 from opentelemetry.sdk.trace import TracerProvider
 
-from agentinsurflow_rag.cli.ingest import ErreurEnvoi, cumuler, envoyer
+from agentinsurflow_rag.cli import ingest
+from agentinsurflow_rag.cli.ingest import ErreurEnvoi, cumuler, envoyer, sauvegarder_instantane
 from agentinsurflow_rag.infrastructure.legifrance.client import (
     ConfigLegifrance,
     ErreurPiste,
@@ -196,6 +199,33 @@ def test_traceparent_injecte_dans_chaque_lot_meme_trace() -> None:
         envoyer(_api(recu), "http://gw", "jeton", _articles(60), "f" * 64, tracer)
     traces = {r.headers["traceparent"].split("-")[1] for r in recu}
     assert len(recu) == 2 and len(traces) == 1
+
+
+def test_jetons_az_demandes_pour_l_identifiant_des_applications(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Entra n'enregistre que ``api://<nom>`` (infra/entra.sh) : ``api://<ID client>`` échoue."""
+    instantane = sauvegarder_instantane([], tmp_path, "test", "2026-10-20")
+    for variable in ("INGESTION_JETON", "TELEMETRIE_JETON"):
+        monkeypatch.delenv(variable, raising=False)
+    monkeypatch.setenv("RAG_API_CLIENT_ID", "00000000-0000-0000-0000-000000000001")
+    monkeypatch.setenv("UNDERWRITING_API_CLIENT_ID", "00000000-0000-0000-0000-000000000002")
+    portees: list[str] = []
+
+    def az(commande: list[str], **_: Any) -> subprocess.CompletedProcess[str]:
+        portees.append(commande[commande.index("--scope") + 1])
+        return subprocess.CompletedProcess(commande, 0, stdout="jeton\n")
+
+    def arret(*_: Any) -> None:
+        raise OSError("arrêt du test après les jetons")
+
+    monkeypatch.setattr(ingest.subprocess, "run", az)
+    monkeypatch.setattr(ingest, "configurer_traces", arret)
+    assert ingest.main(["--instantane", str(instantane)]) == 1
+    assert portees == [
+        "api://agentinsurflow-rag/.default",
+        "api://agentinsurflow-underwriting/.default",
+    ]
 
 
 def test_lot_refuse_erreur_envoi() -> None:

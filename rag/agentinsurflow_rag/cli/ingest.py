@@ -145,17 +145,21 @@ def envoyer(
     return cumuler(rapports)
 
 
-def jeton_api(id_client: str, variable: str) -> str:
-    """Jeton Entra pour ``api://<id_client>`` : la variable si elle existe (CI), sinon ``az``."""
+def jeton_api(application: str, variable: str) -> str:
+    """Jeton Entra pour ``api://<application>`` : la variable si elle existe (CI), sinon ``az``.
+
+    ``api://<nom>`` est le seul identifiant enregistré par infra/entra.sh (``api://<ID client>``
+    échoue avec ``az``) ; c'est aussi celui que demande le job evals de la CI.
+    """
     if os.environ.get(variable):
         return os.environ[variable]
     sortie = subprocess.run(
-        ["az", "account", "get-access-token", "--scope", f"api://{id_client}/.default",
+        ["az", "account", "get-access-token", "--scope", f"api://{application}/.default",
          "--query", "accessToken", "-o", "tsv"],
         capture_output=True, text=True, check=False,
     )  # fmt: skip
     if sortie.returncode != 0 or not sortie.stdout.strip():
-        raise ErreurEnvoi(f"aucun jeton pour api://{id_client} : {variable} ou « az login »")
+        raise ErreurEnvoi(f"aucun jeton pour api://{application} : {variable} ou « az login »")
     return sortie.stdout.strip()
 
 
@@ -218,11 +222,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         articles, sha, mode = _instantane(args)
         if args.sans_envoi:
             return 0
-        jeton = jeton_api(os.environ.get("RAG_API_CLIENT_ID", ""), "INGESTION_JETON")
-        id_underwriting = os.environ.get("UNDERWRITING_API_CLIENT_ID", "")
+        jeton = jeton_api("agentinsurflow-rag", "INGESTION_JETON")
+        # UNDERWRITING_API_CLIENT_ID posé = underwriting-admin déployé, donc traces exportées
         jeton_telemetrie = (
-            jeton_api(id_underwriting, "TELEMETRIE_JETON")
-            if id_underwriting or os.environ.get("TELEMETRIE_JETON")
+            jeton_api("agentinsurflow-underwriting", "TELEMETRIE_JETON")
+            if os.environ.get("UNDERWRITING_API_CLIENT_ID") or os.environ.get("TELEMETRIE_JETON")
             else None
         )
         fournisseur = configurer_traces(args.url, jeton_telemetrie)

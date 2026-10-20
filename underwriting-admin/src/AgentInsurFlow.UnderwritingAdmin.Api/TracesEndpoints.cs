@@ -18,7 +18,7 @@ internal static class TracesEndpoints
         // politique de repli (401 pour une source locale sans jeton) ; le type est donc vérifié dans la route.
         app.MapPost("/v1/traces", async (HttpRequest requete, EnregistrerSpans cas, TimeProvider horloge, CancellationToken ct) =>
             {
-                if (!MediaTypeHeaderValue.TryParse(requete.ContentType, out var type) || type.MediaType != Protobuf)
+                if (!MediaTypeHeaderValue.TryParse(requete.ContentType, out var type) || !type.MediaType.Equals(Protobuf, StringComparison.OrdinalIgnoreCase))
                 {
                     return Problemes.Creer(415, "OTLP/HTTP : seul application/x-protobuf est accepté", "TYPE_NON_SUPPORTE");
                 }

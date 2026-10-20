@@ -15,10 +15,22 @@ var builder = WebApplication.CreateBuilder(args);
 // JSON en snake_case pour toute l'API : les clients (rag) lisent ces noms tels quels.
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower);
 
-// Entra ID : AzureAd:* lu dans la configuration, audience de ce service uniquement.
-builder.Services.AddMicrosoftIdentityWebApiAuthentication(builder.Configuration);
-builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
+// Entra ID : AzureAd:* (tenant, client) lu dans la configuration. Audiences = convention de la gateway et de rag :
+// Entra:Audiences:underwriting, chaque valeur pouvant être une liste « a, b » (UNDERWRITING_API_AUDIENCES).
+var audiences = (builder.Configuration.GetSection("Entra:Audiences:underwriting").Get<string[]>() ?? [])
+    .SelectMany(v => v.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+    .ToArray();
+if (audiences.Length == 0)
 {
+    throw new InvalidOperationException("Entra:Audiences:underwriting manquant");
+}
+builder.Services.AddMicrosoftIdentityWebApiAuthentication(builder.Configuration);
+// PostConfigure : passe après Identity.Web, qui fixerait sinon sa propre audience (ClientId).
+builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
+{
+    o.TokenValidationParameters.ValidAudience = null;
+    o.TokenValidationParameters.AudienceValidator = null;
+    o.TokenValidationParameters.ValidAudiences = audiences;
     o.TokenValidationParameters.RoleClaimType = "roles";
     o.TokenValidationParameters.NameClaimType = "oid";
     var evenements = o.Events ??= new JwtBearerEvents();

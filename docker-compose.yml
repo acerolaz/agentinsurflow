@@ -54,7 +54,8 @@ services:
     environment:
       AzureAd__TenantId: ${AZURE_TENANT_ID:?AZURE_TENANT_ID manquant (.env)}
       AzureAd__ClientId: ${UNDERWRITING_API_CLIENT_ID:-00000000-0000-0000-0000-000000000000}
-      AzureAd__Audience: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
+      # liste « a, b » : la même que celle lue par la gateway
+      Entra__Audiences__underwriting__0: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
     ports: ["8002:8002"]
 
   gateway:

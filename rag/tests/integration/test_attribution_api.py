@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import httpx
-from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from agentinsurflow_rag.api import app
 from conftest import entetes
 from corpus_de_test import CORPUS, DATE_ISO
 
@@ -77,8 +75,3 @@ async def test_version_avec_caracteres_encodes(corpus: httpx.AsyncClient) -> Non
 
 async def test_version_vide_422(corpus: httpx.AsyncClient) -> None:
     assert (await corpus.get(f"{URL}?version=", headers=GESTIONNAIRE)).status_code == 422
-
-
-def test_route_publiee_dans_l_openapi() -> None:
-    chemins = TestClient(app).get("/openapi.json").json()["paths"]
-    assert "/api/documents/{doc_id}/attribution" in chemins

@@ -162,7 +162,8 @@ class PgDepotCorpus:
     async def confirmer(self, document_id: int, extrait_le: date) -> None:
         await self._conn.execute(
             text(
-                "UPDATE document SET extrait_le = GREATEST(extrait_le, :extrait_le) WHERE id = :id"
+                "UPDATE document SET extrait_le = GREATEST(extrait_le, :extrait_le) "
+                "WHERE id = :id AND extrait_le < :extrait_le"
             ),
             {"id": document_id, "extrait_le": extrait_le},
         )

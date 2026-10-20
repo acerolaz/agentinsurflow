@@ -30,7 +30,7 @@ class ArticleEntrant(BaseModel):
 class LotIngestion(BaseModel):
     collection: Literal["textes_reglementaires"]
     instantane_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    instantane_date: date
+    instantane_date: date = Field(examples=["2026-10-20"])
     articles: list[ArticleEntrant] = Field(min_length=1, max_length=50)
 
     @field_validator("instantane_date")

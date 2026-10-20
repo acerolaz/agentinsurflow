@@ -45,13 +45,14 @@ async def ingerer(
 
     # ⑦ dédup : que faut-il (ré)indexer ?
     a_indexer: list[tuple[ArticlePropre, int | None]] = []  # (article, version courante à périmer)
+    a_confirmer: list[int] = []  # versions inchangées : confirmées après les embeddings
     for art in propres:
         courant = await depot.version_courante(art.doc_id)
         decision = decider(courant[1:] if courant else None, art.version, art.hash_contenu)
         if decision == "inchange":
             rapport.inchanges += 1
             assert courant is not None  # « inchangé » suppose une version courante
-            await depot.confirmer(courant[0], instantane_date)
+            a_confirmer.append(courant[0])
         elif decision == "conflit_version":
             rapport.rejets.append(Rejet(art.doc_id, "conflit_version"))
         elif await depot.version_connue(art.doc_id, art.version):
@@ -65,7 +66,9 @@ async def ingerer(
     textes = [chunk for chunks in decoupes for chunk in chunks]
     vecteurs = await asyncio.to_thread(emb.vectoriser, textes) if textes else []
 
-    # ⑩ écriture : voisins cherchés avant l'insertion, pour voir aussi le début du lot
+    # ⑩ écriture : confirmations, puis voisins cherchés avant l'insertion (voir le début du lot)
+    for document_id in a_confirmer:
+        await depot.confirmer(document_id, instantane_date)
     position = 0
     for (art, perime), chunks in zip(a_indexer, decoupes, strict=True):
         vecteurs_art = vecteurs[position : position + len(chunks)]

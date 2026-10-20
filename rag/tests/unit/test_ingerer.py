@@ -133,6 +133,16 @@ async def test_embeddings_en_panne_rien_n_est_ecrit() -> None:
     assert depot.documents == [] and depot.journal == []
 
 
+async def test_embeddings_en_panne_aucune_confirmation() -> None:
+    depot = FakeDepotCorpus()
+    await _ingerer(depot, CORPUS[:1], jour=date(2026, 10, 20))
+    lot = CORPUS[:2]  # le 1er est inchangé, le 2e est à indexer
+    panne = FakeEmbeddings(erreur=ErreurEmbeddings("panne"))
+    with pytest.raises(ErreurEmbeddings):
+        await _ingerer(depot, lot, panne, date(2026, 10, 25))
+    assert depot.documents[0].extrait_le == date(2026, 10, 20)  # confirmer n'a pas eu lieu
+
+
 async def test_un_seul_appel_d_embeddings_par_lot() -> None:
     emb = FakeEmbeddings()
     await _ingerer(FakeDepotCorpus(), CORPUS, emb)

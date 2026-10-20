@@ -161,7 +161,15 @@ async def lire_l_attribution(
     doc_id: str,
     appelant: Gestionnaire,
     conn: Lecture,
-    version: Annotated[str | None, Query(min_length=1)] = None,
+    version: Annotated[
+        str | None,
+        Query(
+            min_length=1,
+            description="Facultatif : version courante par défaut ; une version obsolète "
+            "reste attribuable",
+            examples=["2023-01-01"],
+        ),
+    ] = None,
 ) -> AttributionDTO:
     try:
         attribution = await attribuer(

@@ -221,6 +221,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _arguments(argv)
     fournisseur: TracerProvider | None = None
     try:
+        Date.fromisoformat(args.date)  # tôt : avant PISTE, et pour le nom de la preuve
         articles, sha, jour, mode = _instantane(args)
         if args.sans_envoi:
             return 0
@@ -246,14 +247,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         preuve = args.preuves / f"ingestion-{args.date}-{args.environnement}.json"
         preuve.write_text(
             json.dumps(
-                {"instantane_sha256": sha, "mode": mode, **rapport}, ensure_ascii=False, indent=2
+                {
+                    "instantane_sha256": sha,
+                    "instantane_date": jour.isoformat(),
+                    "mode": mode,
+                    **rapport,
+                },
+                ensure_ascii=False,
+                indent=2,
             ),
             encoding="utf-8",
         )
         print(f"✔ {rapport['inseres']} insérés, {rapport['inchanges']} inchangés, "
               f"{len(rapport['rejets'])} rejets → {preuve}")  # fmt: skip
         return 0
-    except (ErreurPiste, ErreurEnvoi, OSError, KeyError, json.JSONDecodeError) as exc:
+    except (ErreurPiste, ErreurEnvoi, OSError, KeyError, ValueError) as exc:
         print(f"✘ {exc}", file=sys.stderr)
         return 1
     finally:

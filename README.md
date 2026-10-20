@@ -60,7 +60,7 @@ Chaque environnement (staging, production) est **une Container App** à **trois 
 | `postgres` | 5432 | **base annexe éphémère** (pgvector) : une réplique, sans volume |
 
 La base annexe repart **vide à chaque nouvelle révision** (déploiement ou rollback) : les migrations la recréent au
-démarrage, et le corpus est à réingérer (`make ingest`).
+démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `data/raw/` (rôle `Ingestion` de la CI).
 
 ## Arborescence
 
@@ -198,7 +198,7 @@ le réévalue, même s'il ne touche pas ces fichiers. Sans aucun tag `manifeste-
 | Job | Quand | Contre quoi | Jeton |
 |---|---|---|---|
 | `evals-pr` | PR | API lancée dans le runner | ⏸️ **désactivé jusqu'à U5** : depuis R6, `/api/reponses` exige un jeton Entra, PostgreSQL et `RAG_SEUIL`, que ce job n'a pas encore. Sauté, il satisfait la protection de `main` |
-| `evals` | merge, avant la production | **staging** déployé | Entra par **OIDC** (`api://agentinsurflow-rag/.default`) : l'identité de la CI porte le rôle `Gestionnaire` (`make entra`) |
+| `evals` | merge, avant la production | **staging** déployé, corpus réingéré par `deploy.yml` ; cas à `numero_contrat` écartés jusqu'à underwriting-admin (U2, `--sans-dossiers`) | Entra par **OIDC** (`api://agentinsurflow-rag/.default`) : l'identité de la CI porte le rôle `Gestionnaire` (`make entra`) |
 
 **Artefact de chaque passage** : `evals-staging-<sha>` (onglet *Summary* du run). Le rapport JSON s'ouvre sur un
 **manifeste** qui dit ce qui a été évalué :
@@ -277,8 +277,8 @@ make rollback             # production → images précédentes, en une opérati
 make rollback ENV=staging TAG=<sha>   # ou une version précise
 ```
 
-Le rollback redéploie **gateway et rag** au SHA de la révision précédente. La base annexe étant éphémère, le corpus
-est à réingérer ensuite. Détails et scénario de répétition : [docs/rollback.md](docs/rollback.md).
+Le rollback redéploie **gateway et rag** au SHA de la révision précédente, puis réingère le corpus (base annexe
+éphémère). Détails et scénario de répétition : [docs/rollback.md](docs/rollback.md).
 
 ## Preuves et atelier
 

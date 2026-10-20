@@ -181,8 +181,9 @@ jobs:
             --query accessToken -o tsv)
           echo "::add-mask::$EVALS_JETON"
           export EVALS_JETON
+          # --sans-dossiers : cas à numero_contrat écartés jusqu'à underwriting-admin (U2)
           python3 tools/evals.py --url "${{ needs.staging.outputs.url }}" \
-            --questions eval/questions-demo.jsonl --rapport evals.json
+            --questions eval/questions-demo.jsonl --sans-dossiers --rapport evals.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

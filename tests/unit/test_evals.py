@@ -221,3 +221,49 @@ def test_calibrer_trie_par_cosinus_et_propose_un_seuil(
     sortie = capsys.readouterr().out
     assert [ligne.split()[0] for ligne in sortie.splitlines()[:4]] == ["rc", "bm", "hors", "ref"]
     assert "RAG_SEUIL entre 0.310 et 0.550" in sortie
+
+
+def test_un_429_est_rejoue_apres_la_fenetre_hors_latence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    golden = tmp_path / "golden.jsonl"
+    golden.write_text(json.dumps({"id": "a", "question": "q"}), encoding="utf-8")
+    reponses = iter([(429, {"code": "TROP_DE_REQUETES"}), (200, OK)])
+    monkeypatch.setattr(evals, "interroger", lambda url, cas, jeton: next(reponses))
+    attentes: list[float] = []
+    monkeypatch.setattr(evals.time, "sleep", attentes.append)
+    rapport = tmp_path / "rapport.json"
+
+    assert evals.main(["--golden", str(golden), "--rapport", str(rapport)]) == 0
+    assert attentes == [evals.ATTENTE_429_S]
+    (resultat,) = json.loads(rapport.read_text(encoding="utf-8"))["resultats"]
+    assert (resultat["http"], resultat["echecs"]) == (200, [])
+    assert resultat["latence_s"] < evals.ATTENTE_429_S  # l'attente n'est pas de la latence
+
+
+def test_sans_dossiers_ecarte_les_cas_a_numero_de_contrat(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    golden = tmp_path / "golden.jsonl"
+    golden.write_text(
+        "\n".join(
+            json.dumps(c)
+            for c in [
+                {"id": "corpus", "question": "q"},
+                {"id": "dossier", "question": "q", "numero_contrat": "A-1"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    interroges: list[str] = []
+
+    def interroger(url: str, cas: dict[str, Any], jeton: str | None) -> tuple[int, dict[str, Any]]:
+        interroges.append(cas["id"])
+        return 200, OK
+
+    monkeypatch.setattr(evals, "interroger", interroger)
+    rapport = tmp_path / "rapport.json"
+
+    assert evals.main(["--golden", str(golden), "--sans-dossiers", "--rapport", str(rapport)]) == 0
+    assert interroges == ["corpus"]
+    assert json.loads(rapport.read_text(encoding="utf-8"))["ecartes"] == ["dossier"]

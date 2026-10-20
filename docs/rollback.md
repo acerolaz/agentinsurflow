@@ -57,3 +57,7 @@ Durée mesurée : `🔴 À MESURER` à la répétition. Ne pas annoncer de chiff
 | Journal du run de rollback | `make preuve RUN=<id> NOM=rollback-AAAA-MM-JJ` | `eval/preuves/rollback-AAAA-MM-JJ.log` |
 | Versions avant / après | `curl -s …/health` avant et après, collés dans le fichier | `eval/preuves/rollback-AAAA-MM-JJ.md` |
 | Capture du run | capture d'écran | `eval/preuves/rollback-AAAA-MM-JJ.png` |
+
+## Limite : les trois images du SHA
+
+Un déploiement ou un rollback pose les **trois** images (`rag`, `underwriting`, `gateway`) au même SHA, lu sur la gateway de la révision visée. `deploy.yml` vérifie dans l'ACR (lecture seule) qu'elles existent toutes avant de toucher à l'application, sinon il échoue sans rien déployer. Conséquence : un rollback vers une révision **antérieure à U5** est refusé (`agentinsurflow-underwriting:<ancien SHA>` n'a jamais été construite). Le premier rollback possible est vers la première révision à 3 images ; au-delà, redéployer à la main un SHA précis (`make rollback TAG=<sha>`).

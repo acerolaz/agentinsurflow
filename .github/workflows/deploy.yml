@@ -66,6 +66,12 @@ jobs:
             TAG=${image##*:}
           fi
           test -n "$TAG" || { echo "::error::aucune révision précédente avec une gateway"; exit 1; }
+          # Les 3 images doivent exister pour ce SHA (lecture seule) : pas de déploiement partiel.
+          # Rollback vers une révision d'avant U5 : agentinsurflow-underwriting:<ancien SHA> n'existe pas.
+          for depot in rag underwriting gateway; do
+            az acr repository show -n "${{ vars.ACR_NAME }}" --image "agentinsurflow-$depot:$TAG" -o none 2>/dev/null ||
+              { echo "::error::image agentinsurflow-$depot:$TAG absente de l'ACR : déploiement ou rollback refusé (voir docs/rollback.md)"; exit 1; }
+          done
           echo "SHA retenu : $TAG"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
@@ -108,6 +114,20 @@ jobs:
           url="${{ inputs.environnement == 'production' && vars.PROD_URL || '' }}"
           [ -n "$url" ] || url="https://$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)"
           echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Identité managée et secrets conservés par l'update --yaml (lecture seule, porte bloquante)
+        env:
+          UAMI: ${{ vars.AZURE_UAMI_CLIENT_ID }}
+        run: |
+          app=$(az containerapp show -n "$APP" -g "$RG" -o json)
+          jq -e --arg u "$UAMI" '[.identity.userAssignedIdentities // {} | .[] | .clientId] | index($u)' <<<"$app" > /dev/null ||
+            { echo "::error::identité managée $UAMI absente de $APP après l'update (OBO de rag impossible)"; exit 1; }
+          for secret in pg-postgres-password pg-migrateur-password pg-writer-password pg-reader-password \
+            pg-dossiers-password pg-traces-writer-password pg-traces-reader-password; do
+            jq -e --arg s "$secret" '[.properties.configuration.secrets[]?.name] | index($s)' <<<"$app" > /dev/null ||
+              { echo "::error::secret $secret perdu par l'update de $APP (relancer infra/postgres-annexe.sh)"; exit 1; }
+          done
+          echo "✔ identité managée et 7 secrets pg-* conservés"
 
       - name: Fumée par la gateway — bonnes versions, rag et underwriting-admin joignables, API fermée sans jeton (porte bloquante)
         env:

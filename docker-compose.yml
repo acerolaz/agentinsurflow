@@ -30,6 +30,7 @@ services:
     build: { context: ., dockerfile: rag/Dockerfile }
     environment:
       PG_HOST: postgres
+      PG_MIGRATEUR_PASSWORD: ${PG_MIGRATEUR_PASSWORD} # au démarrage seulement (demarrer.sh)
       PG_WRITER_PASSWORD: ${PG_WRITER_PASSWORD}
       PG_READER_PASSWORD: ${PG_READER_PASSWORD}
       AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}

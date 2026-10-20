@@ -139,16 +139,21 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Construire et publier l'image (tag = SHA, immuable)
+      - name: Construire et publier les images rag et gateway (tag = SHA, immuable)
         env:
-          IMAGE: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow:${{ github.sha }}
+          ACR: ${{ vars.ACR_NAME }}.azurecr.io
+          SHA: ${{ github.sha }}
+          RELEASE: ${{ needs.changements.outputs.release }}
+          MANIFESTE: ${{ needs.changements.outputs.manifeste }}
         run: |
           az acr login -n "${{ vars.ACR_NAME }}"
-          # /health : SHA de l'image, release vX.Y.Z et version du manifeste, gravés au build
-          docker build -f rag/Dockerfile --build-arg APP_VERSION=${{ github.sha }} \
-            --build-arg APP_RELEASE=${{ needs.changements.outputs.release }} \
-            --build-arg APP_MANIFESTE=${{ needs.changements.outputs.manifeste }} -t "$IMAGE" .
-          docker push "$IMAGE"
+          # /health : SHA de l'image, release vX.Y.Z (et manifeste pour rag), gravés au build
+          docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
+            --build-arg APP_MANIFESTE="$MANIFESTE" -f rag/Dockerfile -t "$ACR/agentinsurflow-rag:$SHA" .
+          docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
+            -f gateway/Dockerfile -t "$ACR/agentinsurflow-gateway:$SHA" .
+          docker push "$ACR/agentinsurflow-rag:$SHA"
+          docker push "$ACR/agentinsurflow-gateway:$SHA"
 
   staging:
     needs: build
@@ -172,7 +177,7 @@ jobs:
       - name: Golden set + jeu de démo contre staging (porte bloquante)
         run: |
           # 🔴 A4 : l'identité de CI doit porter le rôle Gestionnaire sur agentinsurflow-rag
-          EVALS_JETON=$(az account get-access-token --scope "api://${{ vars.RAG_API_CLIENT_ID }}/.default" \
+          EVALS_JETON=$(az account get-access-token --scope "api://agentinsurflow-rag/.default" \
             --query accessToken -o tsv)
           echo "::add-mask::$EVALS_JETON"
           export EVALS_JETON

@@ -21,6 +21,7 @@ ENV APP_VERSION=$APP_VERSION APP_RELEASE=$APP_RELEASE APP_MANIFESTE=$APP_MANIFES
 # llm.env est lu dans le répertoire courant
 WORKDIR /app/rag
 USER nobody
-EXPOSE 8000
+# 8001 : la gateway écoute sur 8000 dans la même Container App (G5)
+EXPOSE 8001
 # pas de journal d'accès : il écrirait la query string (/api/extraits?question=…, RGPD)
-CMD ["uvicorn", "agentinsurflow_rag.api:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+CMD ["uvicorn", "agentinsurflow_rag.api:app", "--host", "0.0.0.0", "--port", "8001", "--no-access-log"]

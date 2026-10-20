@@ -44,14 +44,14 @@ services:
       RAG_CLIENT_SECRET: ${RAG_CLIENT_SECRET:-}
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
       APP_ENV: local
-    ports: ["8001:8000"]
+    ports: ["8001:8001"]
     depends_on:
       postgres: { condition: service_healthy }
 
   gateway:
     build: { context: ., dockerfile: gateway/Dockerfile }
     environment:
-      ReverseProxy__Clusters__rag__Destinations__d1__Address: http://rag:8000
+      ReverseProxy__Clusters__rag__Destinations__d1__Address: http://rag:8001
       ReverseProxy__Clusters__underwriting__Destinations__d1__Address: http://underwriting-admin:8002
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
       Entra__TenantId: ${AZURE_TENANT_ID:?AZURE_TENANT_ID manquant (.env)}

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Base PostgreSQL annexe des Container Apps (G5, avancée depuis U5 ; S3-5, S3-12, S3-19).
+# `make annexe` (lit le .env via le Makefile). Idempotent. Lancé par Acerola AVANT le merge de G5 :
+# infra/containerapp.yaml référence l'image et les secrets posés ici.
+# Base éphémère (S3-5) : chaque révision repart vide ; le corpus revient par l'ingestion.
+set -euo pipefail
+
+for v in AZURE_RESOURCE_GROUP ACR_NAME APP_STAGING APP_PRODUCTION PG_POSTGRES_PASSWORD \
+  PG_MIGRATEUR_PASSWORD PG_WRITER_PASSWORD PG_READER_PASSWORD PG_DOSSIERS_PASSWORD \
+  PG_TRACES_WRITER_PASSWORD PG_TRACES_READER_PASSWORD; do
+  [ -n "${!v:-}" ] || { echo "✘ $v manquant dans .env"; exit 1; }
+done
+# ponytail: tag fixe, à incrémenter ici et dans deploy.yml quand infra/postgres/ change
+image="$ACR_NAME.azurecr.io/agentinsurflow-postgres:1"
+
+echo "① Image annexe (pgvector, bases et comptes créés au premier démarrage)"
+az acr login -n "$ACR_NAME"
+docker build --platform linux/amd64 -t "$image" infra/postgres
+docker push "$image"
+
+echo "② Secrets PostgreSQL de chaque Container App"
+for app in "$APP_STAGING" "$APP_PRODUCTION"; do
+  az containerapp secret set -n "$app" -g "$AZURE_RESOURCE_GROUP" -o none --secrets \
+    "pg-postgres-password=$PG_POSTGRES_PASSWORD" \
+    "pg-migrateur-password=$PG_MIGRATEUR_PASSWORD" \
+    "pg-writer-password=$PG_WRITER_PASSWORD" \
+    "pg-reader-password=$PG_READER_PASSWORD" \
+    "pg-dossiers-password=$PG_DOSSIERS_PASSWORD" \
+    "pg-traces-writer-password=$PG_TRACES_WRITER_PASSWORD" \
+    "pg-traces-reader-password=$PG_TRACES_READER_PASSWORD"
+done
+echo "✔ Annexe prête : le prochain déploiement ajoute le conteneur postgres"

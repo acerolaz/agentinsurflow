@@ -86,6 +86,7 @@ jobs:
         env:
           IMAGE_GATEWAY: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-gateway:${{ steps.image.outputs.tag }}
           IMAGE_RAG: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-rag:${{ steps.image.outputs.tag }}
+          IMAGE_UNDERWRITING: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-underwriting:${{ steps.image.outputs.tag }}
           # Tag fixe de l'image annexe, construite à la main (infra/postgres-annexe.sh)
           IMAGE_POSTGRES: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-postgres:1
           APP_ENV: ${{ inputs.environnement }}
@@ -94,9 +95,12 @@ jobs:
           RAG_API_CLIENT_ID: ${{ vars.RAG_API_CLIENT_ID }}
           UNDERWRITING_API_CLIENT_ID: ${{ vars.UNDERWRITING_API_CLIENT_ID }}
           RAG_SEUIL: ${{ vars.RAG_SEUIL }}
+          AZURE_UAMI_CLIENT_ID: ${{ vars.AZURE_UAMI_CLIENT_ID }}
+          SEED_GESTIONNAIRE_A: ${{ vars.SEED_GESTIONNAIRE_A }}
+          SEED_GESTIONNAIRE_B: ${{ vars.SEED_GESTIONNAIRE_B }}
         run: |
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
-          envsubst '$IMAGE_GATEWAY $IMAGE_RAG $IMAGE_POSTGRES $APP_ENV $AZURE_OPENAI_ENDPOINT $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $RAG_SEUIL' \
+          envsubst '$IMAGE_GATEWAY $IMAGE_RAG $IMAGE_UNDERWRITING $IMAGE_POSTGRES $APP_ENV $AZURE_OPENAI_ENDPOINT $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $RAG_SEUIL $AZURE_UAMI_CLIENT_ID $SEED_GESTIONNAIRE_A $SEED_GESTIONNAIRE_B' \
             < infra/containerapp.yaml > "$RUNNER_TEMP/containerapp.yaml"
           az containerapp update -n "$APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp.yaml" -o none
           # Production : le domaine personnalisé (G4, #12) dès que PROD_URL est posée ; la fumée
@@ -105,24 +109,26 @@ jobs:
           [ -n "$url" ] || url="https://$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)"
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
-      - name: Fumée par la gateway — bonnes versions, rag joignable, API fermée sans jeton (porte bloquante)
+      - name: Fumée par la gateway — bonnes versions, rag et underwriting-admin joignables, API fermée sans jeton (porte bloquante)
         env:
           URL: ${{ steps.deployer.outputs.url }}
           attendu: ${{ steps.image.outputs.tag }}
         run: |
-          # démarrage de la nouvelle révision : rag joue ses migrations avant uvicorn, après la gateway
+          # démarrage de la nouvelle révision : rag et underwriting-admin jouent leurs migrations avant d'écouter, après la gateway
           for _ in $(seq 1 30); do
             version=$(curl -fsS "$URL/health" | jq -r .version) || version=""
             version_rag=$(curl -fsS "$URL/health/rag" | jq -r .version) || version_rag=""
-            [ "$version" = "$attendu" ] && [ "$version_rag" = "$attendu" ] && break
+            version_uw=$(curl -fsS "$URL/health/underwriting" | jq -r .version) || version_uw=""
+            [ "$version" = "$attendu" ] && [ "$version_rag" = "$attendu" ] && [ "$version_uw" = "$attendu" ] && break
             sleep 5
           done
           [ "$version" = "$attendu" ] || { echo "::error::gateway : version '$version' ≠ '$attendu'"; exit 1; }
           [ "$version_rag" = "$attendu" ] || { echo "::error::rag : version '$version_rag' ≠ '$attendu'"; exit 1; }
+          [ "$version_uw" = "$attendu" ] || { echo "::error::underwriting-admin : version '$version_uw' ≠ '$attendu'"; exit 1; }
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/reponses" -H 'content-type: application/json' -d '{}')
           [ "$code" = 401 ] || { echo "::error::POST /api/reponses sans jeton : $code ≠ 401"; exit 1; }
           # Le LLM est vérifié avec un jeton de la CI par le job evals (staging)
-          echo "✔ $URL : gateway et rag en $attendu, /api/reponses fermée sans jeton"
+          echo "✔ $URL : gateway, rag et underwriting-admin en $attendu, /api/reponses fermée sans jeton"
 
       - uses: astral-sh/setup-uv@v6
         with: { version: "0.11.13", enable-cache: true }

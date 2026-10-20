@@ -1,6 +1,7 @@
 # Chaîne du socle (CI/CD/Evals)
 #   PR    : lint → test → [evals-pr]                       (portes exigées par la protection de main)
-#   merge : lint → test → build → staging (+ fumée) → [evals] → release → production (+ fumée)
+#   merge : lint → test → build → staging (+ fumée) → [evals] + e2e-staging → release → production (+ fumée)
+#   integration (compose + TI) et pyramide tournent en parallèle ; pyramide est informative (voir le job).
 # [evals…] ne tournent QUE si le prompt, le golden dataset ou la version du LLM ont changé depuis le
 # dernier manifeste validé (job changements) ; sinon ils sont sautés et la chaîne continue.
 # Versions, gravées dans l'image et lues sur /health : SHA du commit ; release vX.Y.Z (tag posé
@@ -64,14 +65,57 @@ jobs:
       - run: make -C gateway test
 
   underwriting-admin:
-    # underwriting-admin (C#, .NET 10) : format + analyseurs, puis TU + TI avec couverture >= 80 %.
+    # underwriting-admin (C#, .NET 10) : format + analyseurs, puis compilation. Ses TU + TI (couverture
+    # >= 80 %) ont besoin du PostgreSQL du compose : ils tournent dans le job integration.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with: { global-json-file: global.json }
       - run: make -C underwriting-admin lint
-      - run: make -C underwriting-admin test
+      - run: make -C underwriting-admin build
+
+  integration:
+    # Le compose (PostgreSQL annexe) : TU + TI de rag, puis TU + TI d'underwriting-admin contre la même base.
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "0.11.13", enable-cache: true }
+      - uses: actions/setup-dotnet@v4
+        with: { global-json-file: global.json }
+      - name: Mots de passe PostgreSQL éphémères (générés à chaque run, jamais stockés)
+        run: |
+          for v in MIGRATEUR WRITER READER DOSSIERS TRACES_WRITER TRACES_READER POSTGRES; do
+            mdp=$(openssl rand -hex 16); echo "::add-mask::$mdp"
+            echo "PG_${v}_PASSWORD=$mdp" >> "$GITHUB_ENV"
+          done
+      - run: make install
+      - run: make test-integration # démarre le postgres du compose, puis TU + TI de rag
+        env:
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }} # lu par le compose (services non démarrés ici)
+      - run: make -C underwriting-admin test # TI contre le postgres déjà démarré (PG_* de l'environnement)
+      - if: always()
+        run: docker compose down -v
+        env:
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+
+  pyramide:
+    # ponytail: INFORMATIVE (décision d'Acerola) tant que la tâche dédiée aux TU d'underwriting-admin n'est pas
+    # livrée : la pyramide est encore hors seuils. À rendre bloquante ensuite : retirer continue-on-error
+    # et ajouter « pyramide » aux contextes de infra/protection-main.json.
+    needs: lint
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "0.11.13", enable-cache: true }
+      - uses: actions/setup-dotnet@v4
+        with: { global-json-file: global.json }
+      - run: make install
+      - run: make pyramide
 
   changements:
     runs-on: ubuntu-latest
@@ -138,7 +182,7 @@ jobs:
           if-no-files-found: error
 
   build:
-    needs: [test, changements]
+    needs: [test, integration, changements]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
@@ -149,7 +193,7 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Construire et publier les images rag et gateway (tag = SHA, immuable)
+      - name: Construire et publier les images rag, underwriting et gateway (tag = SHA, immuable)
         env:
           ACR: ${{ vars.ACR_NAME }}.azurecr.io
           SHA: ${{ github.sha }}
@@ -161,8 +205,11 @@ jobs:
           docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
             --build-arg APP_MANIFESTE="$MANIFESTE" -f rag/Dockerfile -t "$ACR/agentinsurflow-rag:$SHA" .
           docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
+            -f underwriting-admin/Dockerfile -t "$ACR/agentinsurflow-underwriting:$SHA" .
+          docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
             -f gateway/Dockerfile -t "$ACR/agentinsurflow-gateway:$SHA" .
           docker push "$ACR/agentinsurflow-rag:$SHA"
+          docker push "$ACR/agentinsurflow-underwriting:$SHA"
           docker push "$ACR/agentinsurflow-gateway:$SHA"
 
   staging:
@@ -201,12 +248,42 @@ jobs:
           path: evals.json
           if-no-files-found: error
 
+  e2e-staging:
+    # Parcours bout en bout via la gateway de staging ; manque d'environnement = échec (E2E_STRICT)
+    needs: staging
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "0.11.13", enable-cache: true }
+      - uses: azure/login@v2 # OIDC : jetons demandés à Entra, aucun secret
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+      - run: make install
+      - name: E2E contre staging (porte bloquante)
+        env:
+          E2E_STRICT: "1"
+          # contrat d'un gestionnaire de la CI (témoin positif BOLA) : variable GitHub, pas un secret
+          E2E_CONTRAT_PROPRE: ${{ vars.E2E_CONTRAT_PROPRE }}
+        run: |
+          # 🔴 A4 : l'identité de CI porte les rôles Gestionnaire/Ingestion (rag), Gestionnaire (underwriting)
+          jeton() { az account get-access-token --scope "api://$1/.default" --query accessToken -o tsv; }
+          E2E_JETON_GESTIONNAIRE=$(jeton agentinsurflow-rag); echo "::add-mask::$E2E_JETON_GESTIONNAIRE"
+          E2E_JETON_INGESTION=$E2E_JETON_GESTIONNAIRE
+          E2E_JETON_GESTIONNAIRE_UNDERWRITING=$(jeton agentinsurflow-underwriting); echo "::add-mask::$E2E_JETON_GESTIONNAIRE_UNDERWRITING"
+          export E2E_JETON_GESTIONNAIRE E2E_JETON_INGESTION E2E_JETON_GESTIONNAIRE_UNDERWRITING
+          make test-e2e URL="${{ needs.staging.outputs.url }}"
+
   release:
-    needs: [changements, staging, evals]
-    # evals sautées (rien à évaluer) = feu vert ; evals en échec = ni tag ni production
+    needs: [changements, staging, evals, e2e-staging]
+    # evals sautées (rien à évaluer) = feu vert ; evals ou E2E en échec = ni tag ni production
     if: >-
       ${{ !cancelled() && needs.changements.result == 'success'
-      && needs.staging.result == 'success' && needs.evals.result != 'failure' }}
+      && needs.staging.result == 'success' && needs.evals.result != 'failure'
+      && needs.e2e-staging.result == 'success' }}
     runs-on: ubuntu-latest
     permissions: { contents: write } # pousser les tags
     steps:

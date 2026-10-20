@@ -1,8 +1,9 @@
 """Couverture de lignes d'underwriting-admin, tous projets de test confondus (TU + TI).
 
-Chaque projet de test mesure ses propres assemblies : un seuil par projet pénaliserait le Domain (testé par
-Domain.Tests) parce qu'Application.Tests le charge sans l'exercer. On fusionne donc les rapports Cobertura
-(une ligne est couverte si un projet au moins la couvre) et on applique le seuil au total.
+Chaque projet de test mesure ses propres assemblies : un seuil par projet pénaliserait le Domain
+(testé par Domain.Tests) parce qu'Application.Tests le charge sans l'exercer. On fusionne donc les
+rapports Cobertura (une ligne est couverte si un projet au moins la couvre) et on applique le seuil
+au total.
 
 Usage : python3 couverture.py <dossier des rapports> <seuil en %>
 """
@@ -28,5 +29,8 @@ if __name__ == "__main__":
     seuil = float(sys.argv[2])
     couvertes = sum(1 for hits in lignes.values() if hits > 0)
     pourcentage = 100 * couvertes / len(lignes) if lignes else 0.0
-    print(f"Couverture de lignes (tous projets de test) : {pourcentage:.1f} % ({couvertes}/{len(lignes)}), seuil {seuil:.0f} %")
+    print(
+        f"Couverture de lignes (tous projets de test) : {pourcentage:.1f} % "
+        f"({couvertes}/{len(lignes)}), seuil {seuil:.0f} %"
+    )
     sys.exit(0 if pourcentage >= seuil else 1)

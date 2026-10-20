@@ -23,15 +23,25 @@ def bearer(jeton: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {jeton}"}
 
 
-def _sauter_si_indisponible(r: httpx.Response) -> None:
-    """Un 503 de dépendance (embeddings, dossiers OBO) est un manque d'environnement, pas un bug."""
-    if r.status_code == 503:
-        pytest.skip(f"environnement incomplet : {r.json().get('code')} (HTTP 503)")
+CODES_ATTENDUS = {"EMBEDDINGS_INDISPONIBLES", "DOSSIERS_INDISPONIBLES"}
 
 
-def _poser(client, jeton: str, corps: dict) -> httpx.Response:
+def _manque_si_indisponible(r: httpx.Response, manque) -> None:
+    """Seul un 503 au code attendu est un manque d'environnement ; tout autre 503 est un échec."""
+    if r.status_code != 503:
+        return
+    try:
+        code = r.json().get("code")
+    except ValueError:
+        code = None
+    if code in CODES_ATTENDUS:
+        manque(f"{code} (HTTP 503)")
+    pytest.fail(f"503 inattendu : {r.text[:300]}")
+
+
+def _poser(client, manque, jeton: str, corps: dict) -> httpx.Response:
     r = client.post("/api/reponses", json=corps, headers=bearer(jeton))
-    _sauter_si_indisponible(r)
+    _manque_si_indisponible(r, manque)
     return r
 
 
@@ -45,10 +55,10 @@ def test_seule_la_gateway_est_exposee(url, local, client):
             httpx.get(f"http://{hote}:{port}/health", timeout=5)
 
 
-def test_ingestion_rejouee_zero_insere(url, jeton_ingestion):
+def test_ingestion_rejouee_zero_insere(url, jeton_ingestion, manque):
     instantane = max((RACINE / "data/raw").glob("*.json"), default=None)
     if instantane is None:
-        pytest.skip("aucun instantané dans data/raw/ à rejouer")
+        manque("aucun instantané dans data/raw/ à rejouer")
     env = {**os.environ, "INGESTION_JETON": jeton_ingestion}
     cmd = ["make", "ingest", f"URL={url}", f"INSTANTANE={instantane.relative_to(RACINE)}"]
     sorties = [
@@ -57,15 +67,15 @@ def test_ingestion_rejouee_zero_insere(url, jeton_ingestion):
     ]
     for s in sorties:
         if "EMBEDDINGS_INDISPONIBLES" in s.stdout + s.stderr:
-            pytest.skip("environnement incomplet : EMBEDDINGS_INDISPONIBLES (HTTP 503)")
+            manque("EMBEDDINGS_INDISPONIBLES (HTTP 503)")
         assert s.returncode == 0, s.stderr[-500:]
     assert re.search(r"✔ 0 insérés", sorties[1].stdout), sorties[1].stdout[-500:]
 
 
 def test_question_couverte_citee_et_tracable(
-    client, jeton_gestionnaire, jeton_gestionnaire_underwriting
+    client, manque, jeton_gestionnaire, jeton_gestionnaire_underwriting
 ):
-    r = _poser(client, jeton_gestionnaire, {"texte": QUESTION_COUVERTE})
+    r = _poser(client, manque, jeton_gestionnaire, {"texte": QUESTION_COUVERTE})
     assert r.status_code == 200, r.text
     corps = r.json()
     assert corps["statut"] == "OK" and corps["citations"]
@@ -86,8 +96,8 @@ def test_question_couverte_citee_et_tracable(
         assert any(attendu in nom for nom in services), f"aucun span {attendu} : {services}"
 
 
-def test_question_hors_corpus_refusee(client, jeton_gestionnaire):
-    r = _poser(client, jeton_gestionnaire, {"texte": QUESTION_HORS_CORPUS})
+def test_question_hors_corpus_refusee(client, manque, jeton_gestionnaire):
+    r = _poser(client, manque, jeton_gestionnaire, {"texte": QUESTION_HORS_CORPUS})
     assert r.status_code == 200, r.text
     corps = r.json()
     assert corps["statut"] == "NOT_FOUND_IN_CORPUS"
@@ -96,7 +106,7 @@ def test_question_hors_corpus_refusee(client, jeton_gestionnaire):
 
 
 def test_contrat_d_un_autre_gestionnaire_404(
-    client, jeton_gestionnaire, jeton_gestionnaire_underwriting
+    client, contrat_propre, jeton_gestionnaire_underwriting
 ):
     # via /api/contrats : un contrat d'un autre gestionnaire est indiscernable d'un contrat inconnu
     h = bearer(jeton_gestionnaire_underwriting)
@@ -106,11 +116,23 @@ def test_contrat_d_un_autre_gestionnaire_404(
     assert autre.json() == inconnu.json()
     assert autre.json()["code"] == "CONTRAT_INTROUVABLE"
 
+    # témoin positif : le gestionnaire connecté voit son propre contrat, et seulement le sien
+    # ponytail: sans E2E_CONTRAT_PROPRE (local seulement), ce témoin est omis
+    if contrat_propre:
+        assert client.get(f"/api/contrats/{contrat_propre}", headers=h).status_code == 200
+        liste = client.get("/api/contrats?limit=100", headers=h)
+        assert liste.status_code == 200
+        numeros = {c["numero_contrat"] for c in liste.json()}
+        assert contrat_propre in numeros and CONTRAT_AUTRE not in numeros
 
-def test_contrat_d_un_autre_gestionnaire_404_via_reponses(client, jeton_gestionnaire):
+
+def test_contrat_d_un_autre_gestionnaire_404_via_reponses(client, manque, jeton_gestionnaire):
     """Chemin OBO : même refus, rien du dossier n'est révélé."""
     r = _poser(
-        client, jeton_gestionnaire, {"texte": QUESTION_COUVERTE, "numero_contrat": CONTRAT_AUTRE}
+        client,
+        manque,
+        jeton_gestionnaire,
+        {"texte": QUESTION_COUVERTE, "numero_contrat": CONTRAT_AUTRE},
     )
     assert r.status_code == 404, r.text
     assert r.json()["code"] == "CONTRAT_INTROUVABLE"
@@ -122,13 +144,13 @@ def test_v1_traces_sans_jeton_refuse_depuis_l_exterieur(client):
 
 
 def test_ip_client_reelle_dans_les_spans(
-    local, client, jeton_gestionnaire, jeton_gestionnaire_underwriting
+    local, client, manque, jeton_gestionnaire, jeton_gestionnaire_underwriting
 ):
     """S3-26 : le span de la gateway porte l'IP publique du poste de test, pas celle de l'envoy."""
     if local:
         pytest.skip("staging seulement : en local il n'y a pas d'envoy ni d'IP publique")
     ip = httpx.get("https://api.ipify.org", timeout=10).text.strip()
-    r = _poser(client, jeton_gestionnaire, {"texte": QUESTION_COUVERTE})
+    r = _poser(client, manque, jeton_gestionnaire, {"texte": QUESTION_COUVERTE})
     assert r.status_code == 200, r.text
     spans: list[dict] = []
     for _ in range(20):

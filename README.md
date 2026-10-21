@@ -49,8 +49,8 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 > **Pyramide au 20/10** : ≈ 52 % TU / 46 % TI / 2 % E2E, hors seuils ; le job `pyramide` est **informatif** en CI
 > (décision d'Acerola) jusqu'à une tâche dédiée aux tests unitaires.
 
-> **Production** : **`v0.4.1`** (`eaad2c8`, `/health` au 21/10), corpus ingéré (110 chunks). La v0.5.0 (PR #35) est en
-> staging : son E2E bloquant échoue encore, elle n'est pas promue.
+> **Production** : **`v0.5.0`** (`057b7ab`, 4 conteneurs) depuis le 21/10, corpus ingéré (110 chunks), manifeste
+> `0.4.0-build.43` ; `/health`, `/health/rag` et `/health/underwriting` servent la même release.
 > Evals de staging passées à **81,8 %** (9/11, porte 80 %) : marge d'un cas, deux échecs connus (réponse trop
 > longue sur `reference-exacte-l211-1`, annexe bonus-malus d'A121-1 absente de l'instantané).
 
@@ -285,8 +285,8 @@ ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le L
 | Groupe de ressources | `svespuceRG` (`swedencentral`) | ✅ |
 | Registre d'images | `acerolazacr` : `agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting` (tag = SHA), `agentinsurflow-postgres:1` | ✅ |
 | Environnement Container Apps | `cae-insurflow` | ✅ |
-| Container App staging | `insurflow-staging` (3 conteneurs) → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ reçoit chaque merge |
-| Container App production | `insurflow-production` (3 conteneurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.4.1` (v0.5.0 à 4 conteneurs : bloquée en staging) |
+| Container App staging | `insurflow-staging` (4 conteneurs) → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ reçoit chaque merge |
+| Container App production | `insurflow-production` (4 conteneurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.5.0` |
 | Modèles | `Kimi-K2.5` et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971` | ✅ |
 | Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag` et `agentinsurflow-underwriting` | ✅ |
 | Rôles (Contributor, AcrPush, AcrPull, Cognitive Services User) | — | ✅ attribués |

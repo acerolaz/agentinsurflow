@@ -2,7 +2,7 @@
 # puis `az containerapp update --yaml`. Seul `template` est fourni : l'entrée (port 8000, gateway),
 # le registre et les secrets posés à la main (infra/postgres-annexe.sh) restent tels quels
 # (🔴 Z4 : conservation des secrets à vérifier au premier déploiement en staging).
-# Les conteneurs partagent localhost : gateway 8000 (seule exposée), rag 8001, underwriting-admin 8002 (interne), postgres 5432.
+# Les conteneurs partagent localhost : gateway 8000 (seule exposée), rag 8001, underwriting-admin 8002 et serveur-mcp 8003 (internes), postgres 5432.
 properties:
   template:
     scale:
@@ -47,6 +47,30 @@ properties:
           - { name: UNDERWRITING_URL, value: "http://localhost:8000" }
           - { name: UNDERWRITING_API_CLIENT_ID, value: "${UNDERWRITING_API_CLIENT_ID}" }
           - { name: AZURE_UAMI_CLIENT_ID, value: "${AZURE_UAMI_CLIENT_ID}" }
+      - name: serveur-mcp
+        image: ${IMAGE_MCP}
+        resources: { cpu: 0.5, memory: 1Gi }
+        # port 8003 : jamais d'entrée externe, seule la gateway (localhost) l'appelle
+        probes:
+          - { type: Liveness, httpGet: { path: /health, port: 8003 }, initialDelaySeconds: 10, periodSeconds: 10 }
+          - { type: Readiness, httpGet: { path: /health, port: 8003 }, initialDelaySeconds: 5, periodSeconds: 5 }
+        env:
+          # Aucun secret : OBO par l'identité managée fédérée (AZURE_UAMI_CLIENT_ID), jamais MCP_CLIENT_SECRET
+          - { name: APP_ENV, value: "${APP_ENV}" }
+          - { name: AZURE_TENANT_ID, value: "${AZURE_TENANT_ID}" }
+          - { name: MCP_API_CLIENT_ID, value: "${MCP_API_CLIENT_ID}" }
+          # même liste que la gateway (Entra__Audiences__mcp__0 et __1)
+          - { name: MCP_API_AUDIENCES, value: "api://agentinsurflow-mcp,${MCP_API_CLIENT_ID}" }
+          # azp des agents (matrice d'accès) : inscriptions de #7, à poser en variables GitHub ensuite
+          - { name: MCP_AZP_ORCHESTRATEUR, value: "${MCP_AZP_ORCHESTRATEUR}" }
+          - { name: MCP_AZP_REDACTEUR, value: "${MCP_AZP_REDACTEUR}" }
+          - { name: MCP_AZP_ACTUAIRE, value: "${MCP_AZP_ACTUAIRE}" }
+          - { name: RAG_API_CLIENT_ID, value: "${RAG_API_CLIENT_ID}" }
+          - { name: UNDERWRITING_API_CLIENT_ID, value: "${UNDERWRITING_API_CLIENT_ID}" }
+          - { name: AZURE_UAMI_CLIENT_ID, value: "${AZURE_UAMI_CLIENT_ID}" }
+          # rag et dossiers : PAR LA GATEWAY (D22)
+          - { name: GATEWAY_URL, value: "http://localhost:8000" }
+          - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: "http://localhost:8002/v1/traces" }
       - name: underwriting-admin
         image: ${IMAGE_UNDERWRITING}
         resources: { cpu: 0.5, memory: 1Gi }

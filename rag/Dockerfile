@@ -8,6 +8,7 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 COPY rag/pyproject.toml rag/
+COPY serveur-mcp/pyproject.toml serveur-mcp/
 RUN uv sync --locked --no-dev --package agentinsurflow-rag --no-install-workspace
 COPY rag/agentinsurflow_rag rag/agentinsurflow_rag
 COPY rag/llm.env rag/alembic.ini rag/demarrer.sh rag/

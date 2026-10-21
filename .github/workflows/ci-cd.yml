@@ -193,7 +193,7 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Construire et publier les images rag, underwriting et gateway (tag = SHA, immuable)
+      - name: Construire et publier les images rag, underwriting, gateway et serveur MCP (tag = SHA, immuable)
         env:
           ACR: ${{ vars.ACR_NAME }}.azurecr.io
           SHA: ${{ github.sha }}
@@ -208,9 +208,12 @@ jobs:
             -f underwriting-admin/Dockerfile -t "$ACR/agentinsurflow-underwriting:$SHA" .
           docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
             -f gateway/Dockerfile -t "$ACR/agentinsurflow-gateway:$SHA" .
+          docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
+            -f serveur-mcp/Dockerfile -t "$ACR/agentinsurflow-mcp:$SHA" .
           docker push "$ACR/agentinsurflow-rag:$SHA"
           docker push "$ACR/agentinsurflow-underwriting:$SHA"
           docker push "$ACR/agentinsurflow-gateway:$SHA"
+          docker push "$ACR/agentinsurflow-mcp:$SHA"
 
   staging:
     needs: build

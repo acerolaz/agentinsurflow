@@ -66,6 +66,12 @@ def jeton_gestionnaire_underwriting() -> str:
 
 
 @pytest.fixture(scope="session")
+def jeton_mcp() -> str:
+    """Rôle Gestionnaire, audience du serveur MCP (``POST /mcp``)."""
+    return _jeton("E2E_JETON_MCP", "agentinsurflow-mcp")
+
+
+@pytest.fixture(scope="session")
 def jeton_ingestion() -> str:
     return _jeton("E2E_JETON_INGESTION", "agentinsurflow-rag")
 

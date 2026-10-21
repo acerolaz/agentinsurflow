@@ -4,6 +4,7 @@
 # Prérequis : az login avec le droit de créer des inscriptions d'application dans le tenant.
 # La gateway n'a pas d'inscription propre : elle valide les jetons des deux audiences.
 # U5 : permission déléguée rag → underwriting (OBO, S3-20) et identité managée fédérée de rag (A7).
+# ⑥ (#15) : serveur MCP agentinsurflow-mcp. Les inscriptions des agents (azp) relèvent de #7.
 set -euo pipefail
 
 for v in AZURE_RESOURCE_GROUP APP_STAGING APP_PRODUCTION AZURE_CLIENT_ID; do
@@ -18,6 +19,8 @@ RAG_INGESTION=3f6c2a1e-8b4d-4c7a-9e21-5d0b7a6f1c02
 UW_SCOPE=7a1d9e40-2c3b-4f58-8a6e-1b9c0d2e3f03
 UW_GESTIONNAIRE=7a1d9e40-2c3b-4f58-8a6e-1b9c0d2e3f01
 UW_TELEMETRIE=7a1d9e40-2c3b-4f58-8a6e-1b9c0d2e3f02
+MCP_SCOPE=5b8e1c72-6d4a-4e39-b0f1-2a7c9d3e4f03
+MCP_GESTIONNAIRE=5b8e1c72-6d4a-4e39-b0f1-2a7c9d3e4f01
 
 echo "① Redirections SPA de la page Swagger unique (S3-24)"
 redirections=("http://localhost:8000/oauth2-redirect.html")
@@ -120,7 +123,31 @@ if [ "$(az ad app federated-credential list --id "$rag" --query "length([?name==
     \"subject\": \"$uami_principal\", \"audiences\": [\"api://AzureADTokenExchange\"]}"
 fi
 
+echo "⑥ Serveur MCP agentinsurflow-mcp : rôle, portée, permissions déléguées mcp → rag et underwriting, identité fédérée"
+mcp=$(inscrire agentinsurflow-mcp "$MCP_SCOPE" "Gestionnaire=$MCP_GESTIONNAIRE")
+attribuer "$mcp" "$MCP_GESTIONNAIRE" "$moi" "toi → Gestionnaire (mcp)"
+attribuer "$mcp" "$MCP_GESTIONNAIRE" "$ci" "CI → Gestionnaire (mcp)"
+[ -z "${DEMO_USER_ID:-}" ] || attribuer "$mcp" "$MCP_GESTIONNAIRE" "$DEMO_USER_ID" "2e gestionnaire → Gestionnaire (mcp)"
+mcp_objet=$(az ad app show --id "$mcp" --query id -o tsv)
+# OBO du serveur : access_as_user de rag et d'underwriting ; remplace ces deux entrées, relancer ne les duplique pas
+acces=$(az ad app show --id "$mcp" --query "requiredResourceAccess" -o json |
+  jq -c --arg rag "$rag" --arg rs "$RAG_SCOPE" --arg uw "$uw" --arg us "$UW_SCOPE" \
+    'map(select(.resourceAppId != $rag and .resourceAppId != $uw)) + [
+      {resourceAppId: $rag, resourceAccess: [{id: $rs, type: "Scope"}]},
+      {resourceAppId: $uw, resourceAccess: [{id: $us, type: "Scope"}]}]')
+az rest --method PATCH --uri "$GRAPH/applications/$mcp_objet" --headers content-type=application/json \
+  --body "{\"requiredResourceAccess\": $acces}" -o none
+az ad app permission admin-consent --id "$mcp" -o none ||
+  echo "⚠ consentement administrateur refusé : à accorder dans le portail (Autorisations d'API de agentinsurflow-mcp)"
+# même identité managée que rag (⑤) : elle prouve aussi l'identité du serveur MCP, sans secret client
+if [ "$(az ad app federated-credential list --id "$mcp" --query "length([?name=='uami-mcp'])" -o tsv)" = 0 ]; then
+  az ad app federated-credential create --id "$mcp" -o none --parameters "{
+    \"name\": \"uami-mcp\", \"issuer\": \"https://login.microsoftonline.com/$(az account show --query tenantId -o tsv)/v2.0\",
+    \"subject\": \"$uami_principal\", \"audiences\": [\"api://AzureADTokenExchange\"]}"
+fi
+
 echo "✔ Variables GitHub du repo à poser :"
 echo "   RAG_API_CLIENT_ID=$rag"
 echo "   UNDERWRITING_API_CLIENT_ID=$uw"
+echo "   MCP_API_CLIENT_ID=$mcp"
 echo "   AZURE_UAMI_CLIENT_ID=$uami_client"

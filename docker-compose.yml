@@ -1,7 +1,7 @@
 # Solution en local : make up (tout) · make test-integration (postgres seul).
 # Mots de passe et identifiants lus dans .env (jamais versionné ; clés dans .env.example).
 # Swagger unique : http://localhost:8000/ (gateway) ; rag seul : http://localhost:8001/
-# underwriting-admin (:8002) : joignable par la gateway (/api/contrats, /api/traces, /v1/traces).
+# serveur-mcp (:8003) : joignable par la gateway (/mcp). underwriting-admin (:8002) : joignable par la gateway (/api/contrats, /api/traces, /v1/traces).
 name: agentinsurflow
 
 x-mots-de-passe: &mots-de-passe
@@ -49,6 +49,26 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
 
+  serveur-mcp:
+    build: { context: ., dockerfile: serveur-mcp/Dockerfile }
+    environment:
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      MCP_API_CLIENT_ID: ${MCP_API_CLIENT_ID:-}
+      # même liste que la gateway (Entra__Audiences__mcp__0), même défaut
+      MCP_API_AUDIENCES: ${MCP_API_AUDIENCES:-api://agentinsurflow-mcp}
+      # azp des agents (matrice d'accès) : vides tant que les inscriptions de #7 n'existent pas
+      MCP_AZP_ORCHESTRATEUR: ${MCP_AZP_ORCHESTRATEUR:-}
+      MCP_AZP_REDACTEUR: ${MCP_AZP_REDACTEUR:-}
+      MCP_AZP_ACTUAIRE: ${MCP_AZP_ACTUAIRE:-}
+      # rag et dossiers en On-Behalf-Of, par la gateway (D22) ; secret : .env local seulement
+      RAG_API_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
+      UNDERWRITING_API_CLIENT_ID: ${UNDERWRITING_API_CLIENT_ID:-}
+      GATEWAY_URL: http://gateway:8000
+      MCP_CLIENT_SECRET: ${MCP_CLIENT_SECRET:-}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
+      APP_ENV: local
+    ports: ["8003:8003"]
+
   underwriting-admin:
     build: { context: ., dockerfile: underwriting-admin/Dockerfile }
     environment:
@@ -87,7 +107,7 @@ services:
       Entra__Audiences__mcp__0: ${MCP_API_AUDIENCES:-api://agentinsurflow-mcp}
       SWAGGER_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
     ports: ["8000:8000"]
-    depends_on: [rag, underwriting-admin]
+    depends_on: [rag, underwriting-admin, serveur-mcp]
 
 # Réseau interne à plage fixe : c'est celle que /v1/traces accepte sans jeton (Otlp__SourcesSansJeton)
 networks:

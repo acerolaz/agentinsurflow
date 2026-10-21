@@ -7,7 +7,8 @@ make up
 make test-e2e URL=http://localhost:8000      # staging : URL=https://<domaine>
 ```
 
-- Jetons : `E2E_JETON_GESTIONNAIRE` (audience rag), `E2E_JETON_GESTIONNAIRE_UNDERWRITING`, `E2E_JETON_INGESTION` ; à défaut `az account get-access-token --resource api://agentinsurflow-…` (lecture seule). Sans jeton, le test est sauté avec la raison.
+- Jetons : `E2E_JETON_GESTIONNAIRE` (audience rag), `E2E_JETON_GESTIONNAIRE_UNDERWRITING`, `E2E_JETON_INGESTION`, `E2E_JETON_MCP` (audience `agentinsurflow-mcp`) ; à défaut `az account get-access-token --resource api://agentinsurflow-…` (lecture seule). Sans jeton, le test est sauté avec la raison.
+- `test_mcp_liste_filtree_et_refus_type` : un jeton d'utilisateur n'est l'`azp` d'aucun agent, donc liste d'outils vide et `search_rag` refusé (`UNAUTHORIZED_TOOL`). `/health/mcp` et le 401 sans jeton n'ont pas besoin de jeton.
 - Sautés en local : `test_seule_la_gateway_est_exposee` et `test_ip_client_reelle_dans_les_spans` (staging seulement).
 - `test_contrat_d_un_autre_gestionnaire_404_via_reponses` est sauté avec un jeton d'application (CI) : Entra ne fait l'On-Behalf-Of qu'avec un jeton d'utilisateur. Ce chemin se vérifie avec un compte humain (démo), après le consentement administrateur de la permission `agentinsurflow-rag` → `access_as_user`.
 - Sautés si l'environnement est incomplet (503 `EMBEDDINGS_INDISPONIBLES` : clé Azure OpenAI absente du compose ; 503 `DOSSIERS_INDISPONIBLES` : `RAG_CLIENT_SECRET` absent, donc pas d'OBO).

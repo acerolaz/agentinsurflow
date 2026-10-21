@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using static AgentInsurFlow.Gateway.Api.Tests.JetonsDeTest;
 
@@ -27,6 +29,25 @@ public sealed class IpClientTests(Backends backends) : IClassFixture<Backends>
 
         var entetes = Assert.Single(backends.Underwriting.LogEntries).RequestMessage!.Headers!;
         Assert.Equal("203.0.113.7", string.Join(",", entetes["X-Forwarded-For"]));
+    }
+
+    [Fact]
+    public async Task EnvoyDevant_IP_reelle_dans_le_span()
+    {
+        var adresses = new ConcurrentBag<string?>();
+        using var ecoute = new ActivityListener
+        {
+            ShouldListenTo = s => s.Name == "Microsoft.AspNetCore",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = a => adresses.Add(a.GetTagItem("client.address") as string),
+        };
+        ActivitySource.AddActivityListener(ecoute);
+        using var usine = backends.Gateway(("Proxy:EnvoyDevant", "true"));
+        using var client = usine.CreateClient();
+
+        await Envoyer(client, "/rag/openapi.json", "10.0.0.1, 203.0.113.42");
+
+        Assert.Contains("203.0.113.42", adresses);
     }
 
     [Fact]

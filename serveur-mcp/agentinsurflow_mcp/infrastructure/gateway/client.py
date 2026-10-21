@@ -28,7 +28,7 @@ class ClientGateway:
         if top_k is not None:
             params["top_k"] = top_k
         resultat = await self._appeler(
-            "GET", "/api/extraits", jeton, NOT_FOUND_IN_CORPUS, params=params
+            "GET", "/api/extraits", jeton, DOSSIERS_INDISPONIBLES, params=params
         )
         if resultat.get("statut") == NOT_FOUND_IN_CORPUS:
             raise ErreurOutil(NOT_FOUND_IN_CORPUS, "Aucun extrait pertinent dans le corpus")

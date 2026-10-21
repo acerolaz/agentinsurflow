@@ -94,7 +94,7 @@ async def test_corps_non_json_dossiers_indisponibles() -> None:
     assert exc.value.code == "DOSSIERS_INDISPONIBLES"
 
 
-async def test_404_du_corpus_est_not_found_in_corpus() -> None:
+async def test_404_du_corpus_est_une_panne_pas_un_corpus_muet() -> None:
     with pytest.raises(ErreurOutil) as exc:
         await client(httpx.Response(404)).chercher("j", "q", None)
-    assert exc.value.code == "NOT_FOUND_IN_CORPUS"
+    assert exc.value.code == "DOSSIERS_INDISPONIBLES"

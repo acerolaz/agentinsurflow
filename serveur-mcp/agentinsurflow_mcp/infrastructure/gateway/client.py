@@ -89,7 +89,7 @@ class ClientGateway:
         if reponse.status_code == 404:
             raise ErreurOutil(code_404, "Ressource introuvable")
         if reponse.status_code in (400, 422):
-            raise ErreurOutil(ARGUMENTS_INVALIDES, "Arguments refusés par le backend")
+            raise ErreurOutil(ARGUMENTS_INVALIDES, f"Arguments refusés{_code_refus(reponse)}")
         if not reponse.is_success:
             raise ErreurOutil(DOSSIERS_INDISPONIBLES, f"Gateway : HTTP {reponse.status_code}")
         if not reponse.content:
@@ -101,3 +101,12 @@ class ClientGateway:
         if not isinstance(donnees, dict):
             raise ErreurOutil(DOSSIERS_INDISPONIBLES, "Réponse de la gateway mal formée")
         return donnees
+
+
+def _code_refus(reponse: httpx.Response) -> str:
+    """Le ``code`` du ProblemDetails seul : ``title`` et ``detail`` peuvent être personnels."""
+    try:
+        code = reponse.json().get("code")
+    except (ValueError, AttributeError):
+        return ""
+    return f" : {code}" if isinstance(code, str) and code.isidentifier() else ""

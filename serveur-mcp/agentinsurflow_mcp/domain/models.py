@@ -38,7 +38,7 @@ class ErreurOutil(Exception):
 class Fiche:
     """La fiche d'un brouillon (mêmes champs que ``FicheBrouillon`` d'underwriting-admin)."""
 
-    decision: str
+    decision: Literal["ACCEPTE", "REFUSE", "REVUE_HUMAINE"]
     contrat_type: str
     score: float
     version_bareme: str
@@ -50,5 +50,5 @@ class Fiche:
 @dataclass(frozen=True)
 class PrimeBrouillon:
     prime_ttc: float
-    periodicite: str
+    periodicite: Literal["mensuelle", "annuelle"]
     date_effet: datetime.date

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Literal
 
 from mcp import types
 from mcp.server.fastmcp import FastMCP
@@ -90,7 +90,9 @@ class ServeurMcp(FastMCP):
 
         @self.tool()
         async def update_statut_dossier(
-            numero_contrat: str, statut: str, validation: str | None = None
+            numero_contrat: str,
+            statut: Literal["EN_ANALYSE", "REVUE_HUMAINE", "ACCEPTE", "REFUSE"],
+            validation: Literal["VALIDEE", "CORRIGEE"] | None = None,
         ) -> dict[str, Any]:
             """Change le statut d'un dossier (ex. REVUE_HUMAINE, ACCEPTE, REFUSE).
 
@@ -117,12 +119,11 @@ class ServeurMcp(FastMCP):
     ) -> Sequence[types.ContentBlock] | dict[str, Any]:
         appelant = appelant_courant.get()
         agent = appelant.agent if appelant else None
+        azp = appelant.azp if appelant else ""
         with tracer.start_as_current_span(
             "mcp.outil", record_exception=False, set_status_on_exception=False
         ) as span:
-            span.set_attributes(
-                {"mcp.outil": name, "appelant.azp": appelant.azp if appelant else ""}
-            )
+            span.set_attributes({"mcp.outil": name, "appelant.azp": azp})
             _attributs_des_arguments(span, arguments)
             autorise = est_autorise(agent, name)
             span.set_attributes(

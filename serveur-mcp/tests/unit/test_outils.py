@@ -67,7 +67,7 @@ FICHE = Fiche("ACCEPTE", "tous_risques", 12.5, "2026.1", ["R1"], ["bon profil"],
 
 async def test_enregistrer_brouillon_corps_snake_case_avec_prime() -> None:
     jetons, dossiers = FauxJetons(), FauxDossiers()
-    prime = PrimeBrouillon(480.0, "MENSUELLE", datetime.date(2026, 11, 1))
+    prime = PrimeBrouillon(480.0, "mensuelle", datetime.date(2026, 11, 1))
     resultat = await enregistrer_brouillon(
         appelant("orchestrateur"), jetons, dossiers, "AIF/1", FICHE, prime
     )
@@ -90,7 +90,7 @@ async def test_enregistrer_brouillon_corps_snake_case_avec_prime() -> None:
                 },
                 "prime": {
                     "prime_ttc": 480.0,
-                    "periodicite": "MENSUELLE",
+                    "periodicite": "mensuelle",
                     "date_effet": "2026-11-01",
                 },
             },

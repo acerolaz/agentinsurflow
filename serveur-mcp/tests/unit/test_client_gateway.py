@@ -98,3 +98,13 @@ async def test_404_du_corpus_est_une_panne_pas_un_corpus_muet() -> None:
     with pytest.raises(ErreurOutil) as exc:
         await client(httpx.Response(404)).chercher("j", "q", None)
     assert exc.value.code == "DOSSIERS_INDISPONIBLES"
+
+
+async def test_400_relaie_le_code_du_problemdetails_sans_title_ni_detail() -> None:
+    corps = {"code": "DECISION_ABSENTE", "title": "Écriture refusée", "detail": "secret-perso"}
+    with pytest.raises(ErreurOutil) as exc:
+        await client(httpx.Response(400, json=corps)).changer_statut("j", "X", {})
+    assert exc.value.code == "ARGUMENTS_INVALIDES"
+    assert "DECISION_ABSENTE" in str(exc.value)
+    assert "secret-perso" not in str(exc.value)
+    assert "Écriture refusée" not in str(exc.value)

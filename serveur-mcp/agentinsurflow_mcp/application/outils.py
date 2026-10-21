@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any
+from typing import Any, Literal
 
 from ..domain.models import Appelant, Fiche, PrimeBrouillon
 from ..domain.ports import CorpusPort, DossiersPort, JetonsPort
@@ -51,8 +51,8 @@ async def update_statut_dossier(
     jetons: JetonsPort,
     dossiers: DossiersPort,
     numero_contrat: str,
-    statut: str,
-    validation: str | None = None,
+    statut: Literal["EN_ANALYSE", "REVUE_HUMAINE", "ACCEPTE", "REFUSE"],
+    validation: Literal["VALIDEE", "CORRIGEE"] | None = None,
 ) -> dict[str, Any]:
     jeton = await jetons.obo(appelant, "underwriting")
     await dossiers.changer_statut(

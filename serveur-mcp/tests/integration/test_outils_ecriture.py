@@ -36,7 +36,7 @@ async def test_orchestrateur_enregistre_un_brouillon() -> None:
     args = {
         "numero_contrat": "AIF/1",
         "fiche": FICHE,
-        "prime": {"prime_ttc": 480, "periodicite": "MENSUELLE", "date_effet": "2026-11-01"},
+        "prime": {"prime_ttc": 480, "periodicite": "mensuelle", "date_effet": "2026-11-01"},
     }
     async with session_mcp(_app(dossiers), creer(AZP_ORCHESTRATEUR)) as s:
         r = await s.call_tool("enregistrer_brouillon", args)

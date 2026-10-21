@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
+    <!-- Outillage `dotnet ef migrations` seulement : pas embarqué dans l'image -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.2" PrivateAssets="all" />
+    <!-- OTLP : messages protobuf seulement (pas de gRPC), compilés depuis opentelemetry-proto v1.5.0 vendored -->
+    <PackageReference Include="Google.Protobuf" Version="3.33.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.76.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Otlp/protos/opentelemetry/proto/**/*.proto" ProtoRoot="Otlp/protos" GrpcServices="None" Access="Internal" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AgentInsurFlow.UnderwritingAdmin.Infrastructure.Tests" />
+    <InternalsVisibleTo Include="AgentInsurFlow.UnderwritingAdmin.Api.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AgentInsurFlow.UnderwritingAdmin.Application\AgentInsurFlow.UnderwritingAdmin.Application.csproj" />
+    <ProjectReference Include="..\AgentInsurFlow.UnderwritingAdmin.Domain\AgentInsurFlow.UnderwritingAdmin.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,7 +1,7 @@
 # Solution en local : make up (tout) · make test-integration (postgres seul).
 # Mots de passe et identifiants lus dans .env (jamais versionné ; clés dans .env.example).
 # Swagger unique : http://localhost:8000/ (gateway) ; rag seul : http://localhost:8001/
-# underwriting-admin arrive en Task U1.
+# underwriting-admin (:8002) : joignable par la gateway (/api/contrats, /api/traces, /v1/traces).
 name: agentinsurflow
 
 x-mots-de-passe: &mots-de-passe
@@ -39,13 +39,37 @@ services:
       # même liste que la gateway (Entra__Audiences__rag__0), même défaut
       RAG_API_AUDIENCES: ${RAG_API_AUDIENCES:-api://agentinsurflow-rag}
       RAG_SEUIL: ${RAG_SEUIL:-} # à calibrer (make calibrer) ; vide → /api/extraits en 503
-      # dossiers en On-Behalf-Of (underwriting-admin arrive en Task U1) ; secret : .env local seulement
+      # dossiers en On-Behalf-Of, par la gateway (D22) ; secret : .env local seulement
       UNDERWRITING_API_CLIENT_ID: ${UNDERWRITING_API_CLIENT_ID:-}
-      UNDERWRITING_URL: http://underwriting-admin:8002
+      UNDERWRITING_URL: http://gateway:8000
       RAG_CLIENT_SECRET: ${RAG_CLIENT_SECRET:-}
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
       APP_ENV: local
     ports: ["8001:8001"]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  underwriting-admin:
+    build: { context: ., dockerfile: underwriting-admin/Dockerfile }
+    environment:
+      AzureAd__TenantId: ${AZURE_TENANT_ID:?AZURE_TENANT_ID manquant (.env)}
+      AzureAd__ClientId: ${UNDERWRITING_API_CLIENT_ID:-00000000-0000-0000-0000-000000000000}
+      # liste « a, b » : la même que celle lue par la gateway
+      Entra__Audiences__underwriting__0: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
+      # base dossiers : migrations au démarrage (migrateur), lecture de la vue (dossiers)
+      Migrations__AuDemarrage: "true"
+      PG_HOST: postgres
+      PG_MIGRATEUR_PASSWORD: ${PG_MIGRATEUR_PASSWORD} # au démarrage seulement
+      PG_DOSSIERS_PASSWORD: ${PG_DOSSIERS_PASSWORD}
+      # base traces : écriture (traces_writer) et relecture (traces_reader) ; migrations par migrateur
+      PG_TRACES_WRITER_PASSWORD: ${PG_TRACES_WRITER_PASSWORD}
+      PG_TRACES_READER_PASSWORD: ${PG_TRACES_READER_PASSWORD}
+      # règle S3-21 : sans jeton, la loopback et le réseau interne du compose (sans X-Forwarded-For) ; Azure : loopback seule
+      Otlp__SourcesSansJeton: 127.0.0.1/32,::1/128,172.29.250.0/24
+      # oid fictifs en local ; en Azure, ceux de deux gestionnaires de test (jamais commités)
+      SEED_GESTIONNAIRE_A: ${SEED_GESTIONNAIRE_A:-00000000-0000-0000-0000-00000000000a}
+      SEED_GESTIONNAIRE_B: ${SEED_GESTIONNAIRE_B:-00000000-0000-0000-0000-00000000000b}
+    ports: ["8002:8002"]
     depends_on:
       postgres: { condition: service_healthy }
 
@@ -61,4 +85,11 @@ services:
       Entra__Audiences__underwriting__0: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
       SWAGGER_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
     ports: ["8000:8000"]
-    depends_on: [rag]
+    depends_on: [rag, underwriting-admin]
+
+# Réseau interne à plage fixe : c'est celle que /v1/traces accepte sans jeton (Otlp__SourcesSansJeton)
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.29.250.0/24

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Identity.Web" Version="4.0.1" />
+    <!-- Dépendances transitives de Identity.Web (9.0.0) vulnérables : relevées explicitement -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.20.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.20.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.0" />
+    <!-- Document OpenAPI généré au build, seulement sur demande (make openapi : -p:OpenApiGenerateDocuments=true) -->
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.13" PrivateAssets="all" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OpenApiGenerateDocuments Condition="'$(OpenApiGenerateDocuments)' == ''">false</OpenApiGenerateDocuments>
+    <OpenApiDocumentsDirectory>$(MSBuildThisFileDirectory)../../../docs/openapi</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name underwriting-admin</OpenApiGenerateDocumentsOptions>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AgentInsurFlow.UnderwritingAdmin.Application\AgentInsurFlow.UnderwritingAdmin.Application.csproj" />
+    <ProjectReference Include="..\AgentInsurFlow.UnderwritingAdmin.Infrastructure\AgentInsurFlow.UnderwritingAdmin.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AgentInsurFlow.UnderwritingAdmin.Api.Tests" />
+  </ItemGroup>
+
+</Project>

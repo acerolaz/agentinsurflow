@@ -25,9 +25,8 @@ class ConfigObo(BaseSettings):
     azure_tenant_id: str
     rag_api_client_id: str
     underwriting_api_client_id: str
-    underwriting_url: str = (
-        "http://localhost:8002"  # D22 : l'adresse de la gateway s'y prête aussi (C15)
-    )
+    # D22 : dossiers lus par la gateway (rôle par route, débit), jamais en direct
+    underwriting_url: str = "http://localhost:8000"
     rag_client_secret: SecretStr | None = None  # 🔒 .env local seulement
     azure_uami_client_id: str | None = None  # identité managée (Azure)
 

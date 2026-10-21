@@ -1,7 +1,7 @@
-# AgentInsurFlow — monorepo (sprint 3, v0.4.0)
+# AgentInsurFlow — monorepo (sprint 3, v0.5.0)
 
-Assistant des **gestionnaires d'assurance auto** : une **gateway** (seule entrée publique) devant le service **rag**,
-qui ingère le **Code des assurances** depuis Légifrance, le cherche (recherche hybride pgvector) et répond par un
+Assistant des **gestionnaires d'assurance auto** : une **gateway** (seule entrée publique) devant deux services,
+**underwriting-admin** (dossiers minimisés et référentiel SQL des traces) et **rag**, qui ingère le **Code des assurances** depuis Légifrance, le cherche (recherche hybride pgvector) et répond par un
 **agent à réponses citées**, sur un modèle **Azure AI Foundry** (`Kimi-K2.5`, API v1 compatible OpenAI). Le tout est
 livré par une **chaîne GitHub Actions CI/CD/Evals bloquante** jusqu'à la production (Azure Container Apps).
 
@@ -11,10 +11,16 @@ Toutes les API sont **REST** et consultables dans **une seule page Swagger**, se
 flowchart LR
     PR(["👤 PR"]) --> L(["🧹 lint<br/>ruff + mypy"]) --> T{{"🛡️ test<br/>couverture ≥ 80 %"}}
     PR --> G{{"🛡️ gateway<br/>TI .NET ≥ 80 %"}}
+    PR --> I{{"🛡️ integration<br/>compose + TI rag et underwriting-admin"}}
     T -- "✔" --> M(["👤 merge main"])
     G -- "✔" --> M
-    M --> B(["📦 build<br/>images rag + gateway → ACR :sha"]) --> S(["🚀 staging"]) --> FS{{"🛡️ fumée"}}
-    FS -- "✔" --> EV{{"🛡️ evals<br/>si déclencheur"}} -- "✔ ou sautées" --> R(["🏷️ release<br/>tag vX.Y.Z"]) --> P(["🌐 production"]) --> FP{{"🛡️ fumée"}}
+    I -- "✔" --> M
+    M --> B(["📦 build<br/>images rag + underwriting + gateway → ACR :sha"]) --> S(["🚀 staging"]) --> FS{{"🛡️ fumée"}}
+    FS -- "✔" --> E2E{{"🛡️ e2e-staging<br/>E2E_STRICT"}}
+    FS -- "✔" --> EV{{"🛡️ evals<br/>si déclencheur"}}
+    EV -- "✔ ou sautées" --> R(["🏷️ release<br/>tag vX.Y.Z"])
+    E2E -- "✔" --> R
+    R --> P(["🌐 production"]) --> FP{{"🛡️ fumée"}}
     T -- "✘" --> X(["⛔ chaîne arrêtée<br/>merge refusé"])
     P -. "make rollback (1 opération)" .-> RB(["↩️ images précédentes"])
     classDef plat fill:#1E3A8A,stroke:#1E3A8A,color:#fff
@@ -24,7 +30,7 @@ flowchart LR
     class PR,M,P plat
     class L,B,S,R ok
     class X,RB ko
-    class T,G,FS,EV,FP gate
+    class T,G,I,FS,E2E,EV,FP gate
 ```
 
 Un merge sur `main` relance `lint`, `test` et `gateway` avant `build`. Les evals (portes : réussite ≥ 80 % et latence
@@ -37,7 +43,11 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 |---|---|---|---|
 | [`gateway/`](gateway/README.md) | C# · YARP · .NET 10 | **Seule entrée publique** : routage, jeton Entra + rôle par route, limitation de débit, Swagger unique | ✅ déployée (staging, production) ; domaine personnalisé en production |
 | [`rag/`](rag/README.md) | Python · hexagonal | Corpus Légifrance (ingestion, dédup, versions), recherche hybride, agent à 3 verrous, attribution Etalab 2.0 | ✅ déployé ; Code des assurances (instantané du 20/10, 119 articles lus, 107 insérés, [preuves](eval/preuves/)) réingéré à chaque déploiement |
-| `underwriting-admin/` | C# · Clean Architecture · .NET 10 | Dossiers (BOLA) et référentiel SQL des traces OpenTelemetry | ⏳ à venir (Tasks U) ; ses routes figurent déjà au [contrat REST](gateway/README.md#contrat-rest-s3-24) |
+| [`underwriting-admin/`](underwriting-admin/README.md) | C# · Clean Architecture · .NET 10 | Dossiers (vue minimisée, BOLA) et référentiel SQL des traces OpenTelemetry (`/v1/traces`, `/api/traces/{trace_id}`) | ✅ branche `feat/underwriting-admin` (v0.5.0) ; déploiement à 4 conteneurs après les réglages Entra d'Acerola |
+| [`e2e/`](e2e/README.md) | Python · pytest | Parcours bout en bout par la gateway (compose ou staging) | ✅ ; job `e2e-staging` bloquant avant la release |
+
+> **Pyramide au 20/10** : ≈ 52 % TU / 46 % TI / 2 % E2E, hors seuils ; le job `pyramide` est **informatif** en CI
+> (décision d'Acerola) jusqu'à une tâche dédiée aux tests unitaires.
 
 > **Production** : **`v0.4.0`** (`74fb443`, manifeste `0.4.0-build.43`) depuis le 20/10, corpus ingéré (110 chunks).
 > Evals de staging passées à **81,8 %** (9/11, porte 80 %) : marge d'un cas, deux échecs connus (réponse trop
@@ -50,14 +60,20 @@ d'ingestion, agent) dans [`rag/README.md`](rag/README.md). Tests : pyramide **70
 
 ### Architecture déployée
 
-Chaque environnement (staging, production) est **une Container App** à **trois conteneurs** qui partagent
+Chaque environnement (staging, production) est **une Container App** à **quatre conteneurs** qui partagent
 `localhost` (modèle versionné : [`infra/containerapp.yaml`](infra/containerapp.yaml)) :
 
 | Conteneur | Port | Rôle |
 |---|---|---|
 | `gateway` | 8000 | **seul exposé** (entrée de la Container App) ; valide jeton et rôle, puis transmet |
 | `rag` | 8001 | API du corpus et de l'agent ; revalide le jeton ; migrations de la base au démarrage (`rag/demarrer.sh`) |
-| `postgres` | 5432 | **base annexe éphémère** (pgvector) : une réplique, sans volume |
+| `underwriting-admin` | 8002 | Dossiers (`/api/contrats`, BOLA) et traces (`/v1/traces`, `/api/traces/{trace_id}`) ; revalide le jeton ; migrations EF Core au démarrage |
+| `postgres` | 5432 | **base annexe éphémère** (pgvector) : bases `vecteurs`, `dossiers`, `traces` ; une réplique, sans volume |
+
+Documentation des données : [`docs/donnees/`](docs/donnees/) — [sources](docs/donnees/sources.md),
+[pipeline](docs/donnees/pipeline.md), [modèle Merise](docs/donnees/modele.md), [SQL](docs/donnees/requetes-sql.md),
+[RGPD](docs/donnees/rgpd.md), [recherche](docs/donnees/recherche.md), [traces](docs/donnees/traces.md) ;
+OpenAPI : [`docs/openapi/`](docs/openapi/) (`make openapi`) ; démo : [`docs/demo-atelier-3.md`](docs/demo-atelier-3.md).
 
 La base annexe repart **vide à chaque nouvelle révision** (déploiement ou rollback) : les migrations la recréent au
 démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `data/raw/` (rôle `Ingestion` de la CI).

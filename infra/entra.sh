@@ -3,7 +3,7 @@
 # `make entra [DOMAINE=aibrokerflow.fr] [DEMO_USER_ID=<objet>]` (lit le .env). Idempotent. Lancé par Acerola.
 # Prérequis : az login avec le droit de créer des inscriptions d'application dans le tenant.
 # La gateway n'a pas d'inscription propre : elle valide les jetons des deux audiences.
-# U5 ajoutera la permission déléguée rag → underwriting (OBO) et l'identité managée fédérée.
+# U5 : permission déléguée rag → underwriting (OBO, S3-20) et identité managée fédérée de rag (A7).
 set -euo pipefail
 
 for v in AZURE_RESOURCE_GROUP APP_STAGING APP_PRODUCTION AZURE_CLIENT_ID; do
@@ -91,6 +91,36 @@ else
   echo "   (2e gestionnaire de démo : relancer avec DEMO_USER_ID=<id d'objet Entra>)"
 fi
 
+echo "④ Permission déléguée rag → underwriting/access_as_user (OBO) + consentement administrateur"
+rag_objet=$(az ad app show --id "$rag" --query id -o tsv)
+# remplace seulement l'entrée de l'API underwriting : relancer ne la duplique pas
+acces=$(az ad app show --id "$rag" --query "requiredResourceAccess" -o json |
+  jq -c --arg api "$uw" --arg scope "$UW_SCOPE" \
+    'map(select(.resourceAppId != $api)) + [{resourceAppId: $api, resourceAccess: [{id: $scope, type: "Scope"}]}]')
+az rest --method PATCH --uri "$GRAPH/applications/$rag_objet" --headers content-type=application/json \
+  --body "{\"requiredResourceAccess\": $acces}" -o none
+az ad app permission admin-consent --id "$rag" -o none ||
+  echo "⚠ consentement administrateur refusé : à accorder dans le portail (Autorisations d'API de agentinsurflow-rag)"
+
+echo "⑤ Identité managée attribuée par l'utilisateur (A7) : rattachée aux Container Apps, fédérée à rag"
+UAMI=uami-insurflow-rag
+az identity show -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" -o none 2>/dev/null ||
+  az identity create -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" -o none
+uami_id=$(az identity show -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" --query id -o tsv)
+uami_client=$(az identity show -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" --query clientId -o tsv)
+uami_principal=$(az identity show -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" --query principalId -o tsv)
+for app in "$APP_STAGING" "$APP_PRODUCTION"; do
+  # `assign` ajoute l'identité sans toucher à l'identité système (AcrPull) ; sans effet si déjà posée
+  az containerapp identity assign -n "$app" -g "$AZURE_RESOURCE_GROUP" --user-assigned "$uami_id" -o none
+done
+# Identifiant fédéré : l'identité managée prouve l'identité de agentinsurflow-rag, sans secret client
+if [ "$(az ad app federated-credential list --id "$rag" --query "length([?name=='uami-rag'])" -o tsv)" = 0 ]; then
+  az ad app federated-credential create --id "$rag" -o none --parameters "{
+    \"name\": \"uami-rag\", \"issuer\": \"https://login.microsoftonline.com/$(az account show --query tenantId -o tsv)/v2.0\",
+    \"subject\": \"$uami_principal\", \"audiences\": [\"api://AzureADTokenExchange\"]}"
+fi
+
 echo "✔ Variables GitHub du repo à poser :"
 echo "   RAG_API_CLIENT_ID=$rag"
 echo "   UNDERWRITING_API_CLIENT_ID=$uw"
+echo "   AZURE_UAMI_CLIENT_ID=$uami_client"

@@ -16,7 +16,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from ..application import outils
 from ..domain.matrice import est_autorise, outils_autorises
-from ..domain.models import UNAUTHORIZED_TOOL, Appelant, ErreurOutil
+from ..domain.models import UNAUTHORIZED_TOOL, Appelant, ErreurOutil, Fiche, PrimeBrouillon
 from ..domain.ports import CorpusPort, DossiersPort, JetonsPort
 from .securite import appelant_courant
 
@@ -68,6 +68,34 @@ class ServeurMcp(FastMCP):
             Lecture seule : ne modifie rien. Erreur CONTRAT_INTROUVABLE si le numéro est inconnu.
             """
             return await outils.get_contrat(appelant(), jetons, dossiers, numero_contrat)
+
+        @self.tool()
+        async def enregistrer_brouillon(
+            numero_contrat: str, fiche: Fiche, prime: PrimeBrouillon | None = None
+        ) -> dict[str, Any]:
+            """Enregistre (ou remplace) la fiche de décision et la prime d'un contrat en brouillon.
+
+            Ne change pas le statut du dossier : utiliser update_statut_dossier. `prime` est
+            facultative ; `date_effet` au format AAAA-MM-JJ. Erreur CONTRAT_INTROUVABLE si le
+            numéro est inconnu, ARGUMENTS_INVALIDES si le backend refuse la fiche ou la prime.
+            """
+            return await outils.enregistrer_brouillon(
+                appelant(), jetons, dossiers, numero_contrat, fiche, prime
+            )
+
+        @self.tool()
+        async def update_statut_dossier(
+            numero_contrat: str, statut: str, validation: str | None = None
+        ) -> dict[str, Any]:
+            """Change le statut d'un dossier (ex. REVUE_HUMAINE, ACCEPTE, REFUSE).
+
+            ACCEPTE et REFUSE exigent `validation` (VALIDEE ou CORRIGEE) : sans elle le backend
+            refuse et l'erreur est ARGUMENTS_INVALIDES. Erreur CONTRAT_INTROUVABLE si le numéro
+            est inconnu.
+            """
+            return await outils.update_statut_dossier(
+                appelant(), jetons, dossiers, numero_contrat, statut, validation
+            )
 
     async def list_tools(self) -> list[types.Tool]:
         appelant = appelant_courant.get()

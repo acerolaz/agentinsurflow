@@ -18,28 +18,14 @@ from agentinsurflow_mcp.api.serveur import ServeurMcp
 from agentinsurflow_mcp.domain.models import ErreurOutil
 
 
-class BackendQuiEchoue:
-    """Port simulé : toute écriture vers le backend est un échec du test."""
-
-    def ecrire(self) -> None:
-        raise AssertionError("le backend ne doit pas être appelé")
+@pytest.fixture
+def dossiers() -> FauxDossiers:
+    return FauxDossiers(ErreurOutil("CONTRAT_INTROUVABLE", "Contrat introuvable"))
 
 
 @pytest.fixture
-def backend() -> BackendQuiEchoue:
-    return BackendQuiEchoue()
-
-
-@pytest.fixture
-def app(backend: BackendQuiEchoue) -> Any:
-    erreur = ErreurOutil("CONTRAT_INTROUVABLE", "Contrat introuvable")
-    serveur = ServeurMcp(FauxJetons(), FauxCorpus(), FauxDossiers(erreur), "test")
-
-    @serveur.tool()
-    def update_statut_dossier() -> str:
-        backend.ecrire()
-        return "ok"
-
+def app(dossiers: FauxDossiers) -> Any:
+    serveur = ServeurMcp(FauxJetons(), FauxCorpus(), dossiers, "test")
     application = creer_app(serveur)
     application.state.config_auth = config_auth()
     application.state.jwks = FauxJwks()
@@ -109,6 +95,7 @@ async def test_orchestrateur_voit_ses_outils(ouvrir: Ouvrir) -> None:
     async with ouvrir(creer(AZP_ORCHESTRATEUR)) as s:
         assert {t.name for t in (await s.list_tools()).tools} == {
             "update_statut_dossier",
+            "enregistrer_brouillon",
             "get_contrat",
         }
 
@@ -125,10 +112,11 @@ async def test_outil_autorise_appele(ouvrir: Ouvrir) -> None:
 
 
 async def test_redacteur_appelle_update_statut_dossier_UNAUTHORIZED_TOOL_sans_appel_backend(
-    ouvrir: Ouvrir,
+    ouvrir: Ouvrir, dossiers: FauxDossiers
 ) -> None:
     async with ouvrir(creer(AZP_REDACTEUR)) as s:
         r = await s.call_tool("update_statut_dossier", {})
+    assert dossiers.ecritures == []
     assert r.isError is True
     assert r.structuredContent == {"code": "UNAUTHORIZED_TOOL"}
 

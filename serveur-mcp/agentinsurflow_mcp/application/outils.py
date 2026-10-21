@@ -1,10 +1,11 @@
-"""Cas d'usage des outils de lecture : jeton OBO de la cible, puis appel du port."""
+"""Cas d'usage des outils : jeton OBO de la cible, puis appel du port."""
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Any
 
-from ..domain.models import Appelant
+from ..domain.models import Appelant, Fiche, PrimeBrouillon
 from ..domain.ports import CorpusPort, DossiersPort, JetonsPort
 
 
@@ -24,3 +25,37 @@ async def get_contrat(
 ) -> dict[str, Any]:
     jeton = await jetons.obo(appelant, "underwriting")
     return await dossiers.lire_contrat(jeton, numero_contrat)
+
+
+async def enregistrer_brouillon(
+    appelant: Appelant,
+    jetons: JetonsPort,
+    dossiers: DossiersPort,
+    numero_contrat: str,
+    fiche: Fiche,
+    prime: PrimeBrouillon | None = None,
+) -> dict[str, Any]:
+    corps = {
+        "fiche": asdict(fiche),
+        "prime": None
+        if prime is None
+        else {**asdict(prime), "date_effet": prime.date_effet.isoformat()},
+    }
+    jeton = await jetons.obo(appelant, "underwriting")
+    await dossiers.enregistrer_brouillon(jeton, numero_contrat, corps)
+    return {"ecrit": True}
+
+
+async def update_statut_dossier(
+    appelant: Appelant,
+    jetons: JetonsPort,
+    dossiers: DossiersPort,
+    numero_contrat: str,
+    statut: str,
+    validation: str | None = None,
+) -> dict[str, Any]:
+    jeton = await jetons.obo(appelant, "underwriting")
+    await dossiers.changer_statut(
+        jeton, numero_contrat, {"statut": statut, "validation": validation}
+    )
+    return {"ecrit": True}

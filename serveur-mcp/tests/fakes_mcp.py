@@ -39,6 +39,7 @@ class FauxDossiers:
     def __init__(self, erreur: ErreurOutil | None = None) -> None:
         self.erreur = erreur
         self.appels: list[tuple[str, str]] = []
+        self.ecritures: list[tuple[str, str, str, dict[str, Any]]] = []
 
     async def lire_contrat(self, jeton: str, numero_contrat: str) -> dict[str, Any]:
         self.appels.append((jeton, numero_contrat))
@@ -49,7 +50,11 @@ class FauxDossiers:
     async def enregistrer_brouillon(
         self, jeton: str, numero_contrat: str, corps: dict[str, Any]
     ) -> None:
-        raise AssertionError("hors tâche 5")
+        self.ecritures.append(("brouillon", jeton, numero_contrat, corps))
+        if self.erreur:
+            raise self.erreur
 
     async def changer_statut(self, jeton: str, numero_contrat: str, corps: dict[str, Any]) -> None:
-        raise AssertionError("hors tâche 5")
+        self.ecritures.append(("statut", jeton, numero_contrat, corps))
+        if self.erreur:
+            raise self.erreur

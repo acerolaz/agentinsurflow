@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -31,3 +32,23 @@ class ErreurOutil(Exception):
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
         self.code = code
+
+
+@dataclass(frozen=True)
+class Fiche:
+    """La fiche d'un brouillon (mêmes champs que ``FicheBrouillon`` d'underwriting-admin)."""
+
+    decision: str
+    contrat_type: str
+    score: float
+    version_bareme: str
+    regle_ids: list[str]
+    motifs: list[str]
+    citations: list[str]
+
+
+@dataclass(frozen=True)
+class PrimeBrouillon:
+    prime_ttc: float
+    periodicite: str
+    date_effet: datetime.date

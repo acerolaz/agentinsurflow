@@ -2,15 +2,25 @@
 
 from __future__ import annotations
 
+import datetime
+
 import pytest
 from fakes_mcp import FauxCorpus, FauxDossiers, FauxJetons, appelant
 
-from agentinsurflow_mcp.application.outils import get_contrat, search_rag
+from agentinsurflow_mcp.application.outils import (
+    enregistrer_brouillon,
+    get_contrat,
+    search_rag,
+    update_statut_dossier,
+)
 from agentinsurflow_mcp.domain.models import (
+    ARGUMENTS_INVALIDES,
     CONTRAT_INTROUVABLE,
     DOSSIERS_INDISPONIBLES,
     NOT_FOUND_IN_CORPUS,
     ErreurOutil,
+    Fiche,
+    PrimeBrouillon,
 )
 
 
@@ -50,3 +60,73 @@ async def test_obo_refuse_dossiers_indisponibles_sans_appel_backend() -> None:
         await get_contrat(appelant("orchestrateur"), FauxJetons(refuse=True), dossiers, "X")
     assert exc.value.code == DOSSIERS_INDISPONIBLES
     assert dossiers.appels == []
+
+
+FICHE = Fiche("ACCEPTE", "tous_risques", 12.5, "2026.1", ["R1"], ["bon profil"], ["art. 3"])
+
+
+async def test_enregistrer_brouillon_corps_snake_case_avec_prime() -> None:
+    jetons, dossiers = FauxJetons(), FauxDossiers()
+    prime = PrimeBrouillon(480.0, "MENSUELLE", datetime.date(2026, 11, 1))
+    resultat = await enregistrer_brouillon(
+        appelant("orchestrateur"), jetons, dossiers, "AIF/1", FICHE, prime
+    )
+    assert resultat == {"ecrit": True}
+    assert jetons.demandes == [("jeton-entrant", "underwriting")]
+    assert dossiers.ecritures == [
+        (
+            "brouillon",
+            "obo-underwriting",
+            "AIF/1",
+            {
+                "fiche": {
+                    "decision": "ACCEPTE",
+                    "contrat_type": "tous_risques",
+                    "score": 12.5,
+                    "version_bareme": "2026.1",
+                    "regle_ids": ["R1"],
+                    "motifs": ["bon profil"],
+                    "citations": ["art. 3"],
+                },
+                "prime": {
+                    "prime_ttc": 480.0,
+                    "periodicite": "MENSUELLE",
+                    "date_effet": "2026-11-01",
+                },
+            },
+        )
+    ]
+
+
+async def test_enregistrer_brouillon_sans_prime_envoie_null() -> None:
+    dossiers = FauxDossiers()
+    await enregistrer_brouillon(appelant("orchestrateur"), FauxJetons(), dossiers, "A", FICHE)
+    assert dossiers.ecritures[0][3]["prime"] is None
+
+
+async def test_update_statut_sans_validation() -> None:
+    dossiers = FauxDossiers()
+    resultat = await update_statut_dossier(
+        appelant("orchestrateur"), FauxJetons(), dossiers, "AIF/1", "REVUE_HUMAINE"
+    )
+    assert resultat == {"ecrit": True}
+    assert dossiers.ecritures == [
+        ("statut", "obo-underwriting", "AIF/1", {"statut": "REVUE_HUMAINE", "validation": None})
+    ]
+
+
+async def test_update_statut_avec_validation() -> None:
+    dossiers = FauxDossiers()
+    await update_statut_dossier(
+        appelant("orchestrateur"), FauxJetons(), dossiers, "A", "ACCEPTE", "VALIDEE"
+    )
+    assert dossiers.ecritures[0][3] == {"statut": "ACCEPTE", "validation": "VALIDEE"}
+
+
+async def test_ecriture_refusee_par_le_backend_propage_le_code() -> None:
+    dossiers = FauxDossiers(ErreurOutil(ARGUMENTS_INVALIDES, "VALIDATION_EXIGEE"))
+    with pytest.raises(ErreurOutil) as exc:
+        await update_statut_dossier(
+            appelant("orchestrateur"), FauxJetons(), dossiers, "A", "ACCEPTE"
+        )
+    assert exc.value.code == ARGUMENTS_INVALIDES

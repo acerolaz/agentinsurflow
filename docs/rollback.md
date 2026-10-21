@@ -16,10 +16,10 @@ On peut aussi passer par l'interface : Actions › **deploy** › *Run workflow*
 
 1. `deploy.yml` lit les révisions de la Container App et retient le **SHA de l'avant-dernière révision**, lu sur
    l'image de son conteneur `gateway`.
-2. Il crée une nouvelle révision depuis `infra/containerapp.yaml` avec les **deux images à ce SHA**
-   (`agentinsurflow-gateway`, `agentinsurflow-rag`) ; l'image PostgreSQL annexe (`agentinsurflow-postgres:1`), les
+2. Il crée une nouvelle révision depuis `infra/containerapp.yaml` avec les **trois images à ce SHA**
+   (`agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`) ; l'image PostgreSQL annexe (`agentinsurflow-postgres:1`), les
    variables et les secrets des Container Apps restent identiques.
-3. Le **test de fumée**, par la gateway, vérifie que `/health` et `/health/rag` renvoient ce SHA et que
+3. Le **test de fumée**, par la gateway, vérifie que `/health`, `/health/rag` et `/health/underwriting` renvoient ce SHA et que
    `/api/reponses` répond 401 sans jeton.
 4. Le run reste dans le journal Actions : c'est la trace du rollback.
 

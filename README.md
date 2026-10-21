@@ -43,13 +43,14 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 |---|---|---|---|
 | [`gateway/`](gateway/README.md) | C# · YARP · .NET 10 | **Seule entrée publique** : routage, jeton Entra + rôle par route, limitation de débit, Swagger unique | ✅ déployée (staging, production) ; domaine personnalisé en production |
 | [`rag/`](rag/README.md) | Python · hexagonal | Corpus Légifrance (ingestion, dédup, versions), recherche hybride, agent à 3 verrous, attribution Etalab 2.0 | ✅ déployé ; Code des assurances (instantané du 20/10, 119 articles lus, 107 insérés, [preuves](eval/preuves/)) réingéré à chaque déploiement |
-| [`underwriting-admin/`](underwriting-admin/README.md) | C# · Clean Architecture · .NET 10 | Dossiers (vue minimisée, BOLA) et référentiel SQL des traces OpenTelemetry (`/v1/traces`, `/api/traces/{trace_id}`) | ✅ branche `feat/underwriting-admin` (v0.5.0) ; déploiement à 4 conteneurs après les réglages Entra d'Acerola |
+| [`underwriting-admin/`](underwriting-admin/README.md) | C# · Clean Architecture · .NET 10 | Dossiers (vue minimisée, BOLA) et référentiel SQL des traces OpenTelemetry (`/v1/traces`, `/api/traces/{trace_id}`) | ✅ mergé (PR #35, release v0.5.0, epic #5 terminée) ; OBO `rag` → underwriting en Azure en attente du consentement administrateur Entra |
 | [`e2e/`](e2e/README.md) | Python · pytest | Parcours bout en bout par la gateway (compose ou staging) | ✅ ; job `e2e-staging` bloquant avant la release |
 
 > **Pyramide au 20/10** : ≈ 52 % TU / 46 % TI / 2 % E2E, hors seuils ; le job `pyramide` est **informatif** en CI
 > (décision d'Acerola) jusqu'à une tâche dédiée aux tests unitaires.
 
-> **Production** : **`v0.4.0`** (`74fb443`, manifeste `0.4.0-build.43`) depuis le 20/10, corpus ingéré (110 chunks).
+> **Production** : **`v0.4.1`** (`eaad2c8`, `/health` au 21/10), corpus ingéré (110 chunks). La v0.5.0 (PR #35) est en
+> staging : son E2E bloquant échoue encore, elle n'est pas promue.
 > Evals de staging passées à **81,8 %** (9/11, porte 80 %) : marge d'un cas, deux échecs connus (réponse trop
 > longue sur `reference-exacte-l211-1`, annexe bonus-malus d'A121-1 absente de l'instantané).
 
@@ -93,14 +94,14 @@ démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `d
 ├── tools/pyramide.py          # make pyramide : porte 70 / 20 / 10
 ├── tools/version.py           # release vX.Y.Z d'après les tags
 ├── data/raw/                  # instantanés Légifrance (code-assurances-<date>.json, manifeste + sha256)
-├── docker-compose.yml         # make up : postgres + rag (:8001) + gateway (:8000)
+├── docker-compose.yml         # make up : postgres + rag (:8001) + underwriting-admin (:8002) + gateway (:8000)
 ├── CLAUDE.md                  # contrat transverse du monorepo (non-négociables, pyramide, versions)
 ├── .github/workflows/
 │   ├── ci-cd.yml              # lint · test · gateway → [evals-pr] · build → staging → [evals] → release → production
 │   └── deploy.yml             # déploiement (modèle containerapp.yaml) + fumée ; lancé à la main = rollback
 ├── infra/
 │   ├── bootstrap.sh           # make infra : groupe de ressources, ACR, Container Apps, OIDC (idempotent)
-│   ├── containerapp.yaml      # modèle des Container Apps : gateway + rag + postgres
+│   ├── containerapp.yaml      # modèle des Container Apps : gateway + rag + underwriting-admin + postgres
 │   ├── domaine.sh             # make domaine : domaine personnalisé de la production (certificat managé)
 │   ├── entra.sh               # make entra : inscriptions Entra des API et rôles d'application
 │   ├── postgres/ · postgres-annexe.sh  # make annexe : image PostgreSQL annexe et secrets des Container Apps
@@ -112,7 +113,7 @@ démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `d
 │   ├── preuves/               # journaux de chaîne, rapports d'evals et d'ingestion versionnés
 │   └── ateliers/              # grille de l'atelier croisé n°2
 ├── Makefile                   # orchestre : lint, test, up, ingest, eval, infra… ; gateway-<cible> → gateway/
-├── pyproject.toml · uv.lock   # espace de travail uv (membre : rag) ; version de la solution (0.4.0)
+├── pyproject.toml · uv.lock   # espace de travail uv (membre : rag) ; version de la solution (0.5.0)
 ├── global.json · Directory.Build.props  # SDK .NET 10 et règles communes des projets C#
 ├── .python-version
 └── .env.example               # toutes les clés, sans valeurs
@@ -135,7 +136,7 @@ Prérequis : [uv](https://docs.astral.sh/uv/) et Docker.
 ```bash
 cp .env.example .env      # remplir AZURE_OPENAI_ENDPOINT (+ la clé, ou az login), AZURE_TENANT_ID, RAG_SEUIL, PG_*_PASSWORD…
 make install              # dépendances figées par uv.lock
-make up                   # postgres + rag (:8001) + gateway (:8000) → http://localhost:8000/ : Swagger unique
+make up                   # postgres + rag (:8001) + underwriting-admin (:8002) + gateway (:8000) → http://localhost:8000/ : Swagger unique
 make down                 # arrête tout et vide la base annexe
 make run                  # rag seul, sans Docker : http://localhost:8000 → Swagger de rag
 ```
@@ -257,12 +258,12 @@ Ensuite, chaque **merge sur `main`** déclenche toute la chaîne, sans action ma
 | Version | Forme | Désigne | Où la lire |
 |---|---|---|---|
 | Release | `vX.Y.Z` (ex. `v0.2.0`) | le commit livré en production, tagué juste avant | `/health` → `release`, tags Git, résumé du run |
-| Image | SHA du commit | les deux images (`agentinsurflow-gateway`, `agentinsurflow-rag`), même tag | `/health` (gateway) et `/health/rag` → `version` |
+| Image | SHA du commit | les trois images (`agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`), même tag | `/health` (gateway), `/health/rag` et `/health/underwriting` → `version` |
 | Manifeste | `X.Y.Z-build.N` (ex. `0.4.0-build.35`) | ce qui a été évalué : modèle, prompts, jeux d'évaluation | `/health/rag` → `manifeste`, rapport d'évaluation, tag `manifeste-…` |
 
 Les trois sont calculées par le job `changements` puis **gravées dans les images** : un rollback restaure aussi
-les versions affichées. X.Y se choisissent à la main dans `pyproject.toml` (`version`, fixée par Acerola : 0.4.0
-jusqu'à nouvel ordre).
+les versions affichées. X.Y se choisissent à la main dans `pyproject.toml` (`version`, fixée par Acerola : 0.5.0
+depuis la release v0.5.0 ; `rag/pyproject.toml` reste en 0.4.0).
 
 - **Release** : Z est calculé par `tools/version.py` d'après les tags (`v0.1.0`, puis `v0.1.1`…) ; passer le
   pyproject à `0.2.0` donne `v0.2.0`. En staging, `release` est la **candidate** : le tag n'est posé qu'après
@@ -274,7 +275,7 @@ jusqu'à nouvel ordre).
 - **Manifeste** : si un déclencheur a changé, nouvelle version `X.Y.Z-build.<n° du run>` (`X.Y.Z-local` hors CI),
   taguée `manifeste-…` quand les evals passent ; sinon, celle du dernier manifeste validé.
 
-La **fumée** (bloquante, par la gateway) attend que gateway **et** rag servent le SHA attendu (rag démarre après
+La **fumée** (bloquante, par la gateway) attend que gateway, rag **et** underwriting-admin servent le SHA attendu (rag démarre après
 ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le LLM est vérifié par les evals de staging.
 
 ### Ressources Azure actuelles
@@ -282,10 +283,10 @@ ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le L
 | Ressource | Nom | État |
 |---|---|---|
 | Groupe de ressources | `svespuceRG` (`swedencentral`) | ✅ |
-| Registre d'images | `acerolazacr` : `agentinsurflow-gateway`, `agentinsurflow-rag` (tag = SHA), `agentinsurflow-postgres:1` | ✅ |
+| Registre d'images | `acerolazacr` : `agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting` (tag = SHA), `agentinsurflow-postgres:1` | ✅ |
 | Environnement Container Apps | `cae-insurflow` | ✅ |
 | Container App staging | `insurflow-staging` (3 conteneurs) → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ reçoit chaque merge |
-| Container App production | `insurflow-production` (3 conteneurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.4.0` |
+| Container App production | `insurflow-production` (3 conteneurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.4.1` (v0.5.0 à 4 conteneurs : bloquée en staging) |
 | Modèles | `Kimi-K2.5` et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971` | ✅ |
 | Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag` et `agentinsurflow-underwriting` | ✅ |
 | Rôles (Contributor, AcrPush, AcrPull, Cognitive Services User) | — | ✅ attribués |
@@ -297,7 +298,7 @@ make rollback             # production → images précédentes, en une opérati
 make rollback ENV=staging TAG=<sha>   # ou une version précise
 ```
 
-Le rollback redéploie **gateway et rag** au SHA de la révision précédente, puis réingère le corpus (base annexe
+Le rollback redéploie **gateway, rag et underwriting-admin** au SHA de la révision précédente, puis réingère le corpus (base annexe
 éphémère). Détails et scénario de répétition : [docs/rollback.md](docs/rollback.md).
 
 ## Preuves et atelier
@@ -315,6 +316,6 @@ Le rollback redéploie **gateway et rag** au SHA de la révision précédente, p
 
 ## Hors périmètre actuel
 
-Pas encore livrés : `underwriting-admin` (dossiers, traces : Tasks U), le point d'entrée **MCP** par la gateway (#15),
+Pas encore livrés : le point d'entrée **MCP** par la gateway (#15),
 l'orchestrateur et les agents avec **validation humaine** (#7), l'OCR en A2A (source : dossier-conception-v1.md).
 Les sujets encore ouverts (découpage des agents, protocoles…) ne sont pas présumés.

@@ -27,13 +27,12 @@ VERSION = version("agentinsurflow-mcp")
 
 
 class ConfigApp(BaseSettings):
-    """Versions gravées dans l'image au build : SHA du commit, release vX.Y.Z, manifeste."""
+    """Versions gravées dans l'image au build : SHA du commit, release vX.Y.Z."""
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
 
     app_version: str = "dev"
     app_release: str = "dev"
-    app_manifeste: str = "dev"
     app_env: str = "local"
 
 
@@ -69,7 +68,6 @@ def creer_app(serveur: ServeurMcp) -> FastAPI:
         return {
             "version": cfg.app_version,
             "release": cfg.app_release,
-            "manifeste": cfg.app_manifeste,
             "environnement": cfg.app_env,
         }
 

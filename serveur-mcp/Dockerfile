@@ -13,9 +13,9 @@ RUN uv sync --locked --no-dev --package agentinsurflow-mcp --no-install-workspac
 COPY serveur-mcp/agentinsurflow_mcp serveur-mcp/agentinsurflow_mcp
 RUN uv sync --locked --no-dev --package agentinsurflow-mcp
 
-# Versions servies par /health, gravées au build : SHA du commit, release vX.Y.Z, manifeste
-ARG APP_VERSION=dev APP_RELEASE=dev APP_MANIFESTE=dev
-ENV APP_VERSION=$APP_VERSION APP_RELEASE=$APP_RELEASE APP_MANIFESTE=$APP_MANIFESTE \
+# Versions servies par /health, gravées au build : SHA du commit, release vX.Y.Z
+ARG APP_VERSION=dev APP_RELEASE=dev
+ENV APP_VERSION=$APP_VERSION APP_RELEASE=$APP_RELEASE \
     PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app/serveur-mcp

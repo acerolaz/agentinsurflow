@@ -107,7 +107,7 @@ Aucune valeur dans le dépôt : clés dans `.env.example`, déploiement dans `do
 | `MCP_CLIENT_SECRET` | Secret de l'OBO, **local seulement** | `.env` | jamais |
 | `AZURE_UAMI_CLIENT_ID` | Identité managée fédérée (OBO sans secret) | — | variable GitHub |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Récepteur OTLP | `http://underwriting-admin:8002/v1/traces` | `http://localhost:8002/v1/traces` |
-| `APP_VERSION`, `APP_RELEASE`, `APP_MANIFESTE`, `APP_ENV` | Versions gravées au build, environnement | build-args, `local` | build-args de la chaîne, `staging` ou `production` |
+| `APP_VERSION`, `APP_RELEASE`, `APP_ENV` | Versions gravées au build, environnement | build-args, `local` | build-args de la chaîne, `staging` ou `production` |
 
 Sans `AZURE_TENANT_ID` ou `MCP_API_CLIENT_ID`, l'API démarre mais `/mcp` répond 503 ; sans configuration OBO, les outils répondent en erreur.
 
@@ -116,7 +116,7 @@ Sans `AZURE_TENANT_ID` ou `MCP_API_CLIENT_ID`, l'API démarre mais `/mcp` répon
 | Sujet | Valeur |
 |---|---|
 | Port | `8003` (gateway 8000, rag 8001, underwriting-admin 8002) ; **aucune entrée externe** |
-| Santé directe | `GET /health` : toujours 200, `version`, `release`, `manifeste`, `environnement` |
+| Santé directe | `GET /health` : toujours 200, `version`, `release`, `environnement` |
 | Santé par la gateway | `GET /health/mcp` (anonyme, sans limite de débit) |
 | Sondes Container App | liveness et readiness sur `/health:8003` |
 | Image | `agentinsurflow-mcp:<SHA>` (`serveur-mcp/Dockerfile`, contexte = racine du monorepo) |

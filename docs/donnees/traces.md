@@ -68,7 +68,7 @@ avec un jeton. Le récepteur convertit la requête protobuf en lignes `span`, re
 
 | Span | Service | Attributs (jamais de donnée personnelle) |
 |---|---|---|
-| HTTP serveur (automatique) | gateway, rag, underwriting | méthode, route, statut ; `client.address` (IP réelle derrière l'envoy, S3-26) |
+| HTTP serveur (automatique) | gateway, rag, underwriting | méthode, route, statut ; `client.address` sur la gateway (IP réelle derrière l'envoy, S3-26, posé par la gateway) |
 | `rag.recherche` | rag | statut, cosinus max, seuil, référence exacte, articles |
 | `agent.repondre` | rag | statut, verrou (1, 2, 3 ou aucun), articles cités, `question.sha256`, `question.longueur` |
 | `llm.completer` · `embeddings.vectoriser` | rag | modèle, usage, version du prompt |

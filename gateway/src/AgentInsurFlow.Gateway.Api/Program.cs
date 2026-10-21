@@ -109,7 +109,14 @@ builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService(
         "agentinsurflow-gateway", serviceVersion: builder.Configuration["APP_VERSION"] ?? "dev"))
     .WithTracing(t => t
-        .AddAspNetCoreInstrumentation(o => o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health"))
+        .AddAspNetCoreInstrumentation(o =>
+        {
+            o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health");
+            // client.address (S3-26) : l'instrumentation ne le pose pas ; lu en fin de requête, donc après
+            // UseForwardedHeaders : l'IP réelle derrière l'envoy, pas celle de l'envoy
+            o.EnrichWithHttpResponse = (activite, reponse) =>
+                activite.SetTag("client.address", reponse.HttpContext.Connection.RemoteIpAddress?.ToString());
+        })
         .AddHttpClientInstrumentation()
         .AddOtlpExporter(o =>
         {

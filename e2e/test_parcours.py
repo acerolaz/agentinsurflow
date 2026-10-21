@@ -18,7 +18,8 @@ QUESTION_COUVERTE = "Que prévoit l'article L. 211-1 du Code des assurances ?"
 QUESTION_HORS_CORPUS = "Quelle est la recette de la blanquette de veau ?"
 CONTRAT_AUTRE = "AIF-2026-000004"  # seed : gestionnaire B (A possède 000001 à 000003)
 CONTRAT_INCONNU = "AIF-9999-9999"
-SERVICES_ATTENDUS = ("gateway", "rag", "underwriting")
+# sans numero_contrat, rag n'appelle pas underwriting : pas de span underwriting hors OBO
+SERVICES_ATTENDUS = ("gateway", "rag")
 
 
 def bearer(jeton: str) -> dict[str, str]:

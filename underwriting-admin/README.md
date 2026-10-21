@@ -1,7 +1,7 @@
 # underwriting-admin — AgentInsurFlow
 
-Service C# (.NET 10, Clean Architecture), port **8002**, joint uniquement par la gateway (et par `rag` en
-On-Behalf-Of sur `localhost`). Deux responsabilités :
+Service C# (.NET 10, Clean Architecture), port **8002**, joint uniquement par la gateway, y compris par `rag`
+(jeton On-Behalf-Of de l'utilisateur, D22) ; seuls les spans OTLP arrivent sur la boucle locale. Deux responsabilités :
 
 - **Dossiers** : base `dossiers` (MCD Merise, migrations EF Core), lue par la **vue minimisée** avec le compte
   `dossiers` ; contrôle **BOLA** (`gestionnaire_id` = `oid` du jeton).

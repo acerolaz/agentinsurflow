@@ -35,7 +35,7 @@ Les routes de documentation n'ouvrent **que** le document OpenAPI de chaque serv
 
 - **Refus par défaut** : tout le reste exige au moins un jeton valide (un chemin inconnu répond 401 sans jeton, 404 avec).
 - Erreurs en ProblemDetails : **401** `NON_AUTHENTIFIE` (+ `WWW-Authenticate: Bearer`), **403** `ACCES_REFUSE` ; aucun appel n'est transmis.
-- Appelants : les humains (Swagger en PKCE, `az login`), la CI (identité fédérée OIDC de GitHub Actions). `rag` appelle `underwriting-admin` en On-Behalf-Of **sur localhost**, sans passer par la gateway.
+- Appelants : les humains (Swagger en PKCE, `az login`), la CI (identité fédérée OIDC de GitHub Actions). `rag` lit les dossiers d'`underwriting-admin` en On-Behalf-Of **par la gateway** (`/api/contrats`, politique `underwriting-gestionnaire`), comme tout appelant (D22). Seul l'export OTLP des spans reste sur la boucle locale (S3-21).
 - Sans `Entra__TenantId` ou sans audiences, la gateway **refuse de démarrer** plutôt que de s'ouvrir.
 
 ## Limitation de débit (S3-27, issue #13)

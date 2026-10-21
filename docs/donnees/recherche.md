@@ -63,6 +63,7 @@ et registre de suivi de l'implémentation.*
 |---|---|---|
 | Noms des routes | `/api/contrats`, `/api/traces/{trace_id}` (au lieu de `/internal/…`) | Contrat REST S3-24, déjà routé par la gateway |
 | Format JSON | snake_case | Les clés que lit `rag` (`numero_contrat`, `tranche_age`…) |
+| `rag` → `underwriting-admin` | **Par la gateway** (`UNDERWRITING_URL` = :8000), jeton OBO de l'utilisateur | D22 du dossier (« tout passe par la gateway ») : rôle par route, débit, journal ; remplace l'appel direct sur localhost (C15), le 21/10 à la demande d'Acerola |
 | `/v1/traces` en local | `Otlp:SourcesSansJeton` (CIDR) en plus de la boucle locale | Les conteneurs du compose ne partagent pas `localhost` ; Azure garde la boucle seule |
 | Swagger | Pas de Swagger UI propre : `/openapi/v1.json` affiché par la gateway | Page Swagger unique (S3-24) |
 | `PRIME` | Une prime par contrat (montant, périodicité, date d'effet) | P18, tranché par Acerola |

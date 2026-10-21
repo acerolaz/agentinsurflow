@@ -41,8 +41,8 @@ properties:
           - { name: PG_WRITER_PASSWORD, secretRef: pg-writer-password }
           - { name: PG_READER_PASSWORD, secretRef: pg-reader-password }
           - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: "http://localhost:8002/v1/traces" }
-          # dossiers : On-Behalf-Of vers underwriting-admin, identité managée fédérée (zéro secret, A7)
-          - { name: UNDERWRITING_URL, value: "http://localhost:8002" }
+          # dossiers : On-Behalf-Of, PAR LA GATEWAY (D22 : rôle par route, débit) ; identité managée fédérée (A7)
+          - { name: UNDERWRITING_URL, value: "http://localhost:8000" }
           - { name: UNDERWRITING_API_CLIENT_ID, value: "${UNDERWRITING_API_CLIENT_ID}" }
           - { name: AZURE_UAMI_CLIENT_ID, value: "${AZURE_UAMI_CLIENT_ID}" }
       - name: underwriting-admin

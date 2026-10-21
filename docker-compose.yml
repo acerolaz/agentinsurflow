@@ -39,9 +39,9 @@ services:
       # même liste que la gateway (Entra__Audiences__rag__0), même défaut
       RAG_API_AUDIENCES: ${RAG_API_AUDIENCES:-api://agentinsurflow-rag}
       RAG_SEUIL: ${RAG_SEUIL:-} # à calibrer (make calibrer) ; vide → /api/extraits en 503
-      # dossiers en On-Behalf-Of ; secret : .env local seulement
+      # dossiers en On-Behalf-Of, par la gateway (D22) ; secret : .env local seulement
       UNDERWRITING_API_CLIENT_ID: ${UNDERWRITING_API_CLIENT_ID:-}
-      UNDERWRITING_URL: http://underwriting-admin:8002
+      UNDERWRITING_URL: http://gateway:8000
       RAG_CLIENT_SECRET: ${RAG_CLIENT_SECRET:-}
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
       APP_ENV: local

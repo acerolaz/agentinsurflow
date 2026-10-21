@@ -2,33 +2,20 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from collections.abc import Callable
+from contextlib import AbstractAsyncContextManager
 from typing import Any
 
-import httpx
 import pytest
-from jetons_mcp_de_test import (
-    AZP_ORCHESTRATEUR,
-    AZP_REDACTEUR,
-    CLE_PUBLIQUE,
-    config_auth,
-    creer,
-)
+from fakes_mcp import FauxCorpus, FauxDossiers, FauxJetons
+from jetons_mcp_de_test import AZP_ORCHESTRATEUR, AZP_REDACTEUR, config_auth, creer
 from jwt import PyJWKClientConnectionError
 from mcp import ClientSession
-from mcp.client.streamable_http import streamable_http_client
+from session_mcp import FauxJwks, client_http, session_mcp
 
 from agentinsurflow_mcp.api.app import creer_app
 from agentinsurflow_mcp.api.serveur import ServeurMcp
 from agentinsurflow_mcp.domain.models import ErreurOutil
-
-URL = "http://test/mcp"
-
-
-class FauxJwks:
-    def get_signing_key_from_jwt(self, jeton: str) -> Any:
-        return type("Cle", (), {"key": CLE_PUBLIQUE})()
 
 
 class BackendQuiEchoue:
@@ -45,20 +32,13 @@ def backend() -> BackendQuiEchoue:
 
 @pytest.fixture
 def app(backend: BackendQuiEchoue) -> Any:
-    serveur = ServeurMcp("test")
-
-    @serveur.tool()
-    def search_rag(question: str) -> str:
-        return f"extraits pour {question}"
+    erreur = ErreurOutil("CONTRAT_INTROUVABLE", "Contrat introuvable")
+    serveur = ServeurMcp(FauxJetons(), FauxCorpus(), FauxDossiers(erreur), "test")
 
     @serveur.tool()
     def update_statut_dossier() -> str:
         backend.ecrire()
         return "ok"
-
-    @serveur.tool()
-    def get_contrat() -> str:
-        raise ErreurOutil("CONTRAT_INTROUVABLE", "Contrat introuvable")
 
     application = creer_app(serveur)
     application.state.config_auth = config_auth()
@@ -66,21 +46,7 @@ def app(backend: BackendQuiEchoue) -> Any:
     return application
 
 
-def _client(app: Any, jeton: str | None) -> httpx.AsyncClient:
-    entetes = {"Authorization": f"Bearer {jeton}"} if jeton else {}
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://test", headers=entetes
-    )
-
-
-@asynccontextmanager
-async def _session(app: Any, jeton: str) -> AsyncIterator[ClientSession]:
-    # le cycle de vie démarre le gestionnaire de sessions MCP (dans la même tâche que le test)
-    async with app.router.lifespan_context(app), _client(app, jeton) as http:
-        async with streamable_http_client(URL, http_client=http) as (lire, ecrire, _):
-            async with ClientSession(lire, ecrire) as session:
-                await session.initialize()
-                yield session
+_client = client_http
 
 
 Ouvrir = Callable[[str], AbstractAsyncContextManager[ClientSession]]
@@ -88,7 +54,7 @@ Ouvrir = Callable[[str], AbstractAsyncContextManager[ClientSession]]
 
 @pytest.fixture
 def ouvrir(app: Any) -> Ouvrir:
-    return lambda jeton: _session(app, jeton)
+    return lambda jeton: session_mcp(app, jeton)
 
 
 async def test_sans_jeton_401(app: Any) -> None:
@@ -169,6 +135,6 @@ async def test_redacteur_appelle_update_statut_dossier_UNAUTHORIZED_TOOL_sans_ap
 
 async def test_erreur_outil_en_resultat_is_error(ouvrir: Ouvrir) -> None:
     async with ouvrir(creer(AZP_ORCHESTRATEUR)) as s:
-        r = await s.call_tool("get_contrat", {})
+        r = await s.call_tool("get_contrat", {"numero_contrat": "X"})
     assert r.isError is True
     assert r.structuredContent == {"code": "CONTRAT_INTROUVABLE"}

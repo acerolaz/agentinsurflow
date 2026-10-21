@@ -7,12 +7,15 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from importlib.metadata import version
 
+import httpx
 from fastapi import FastAPI
 from jwt import PyJWKClient
 from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ..infrastructure.entra.jetons import ConfigAuth
+from ..infrastructure.entra.obo import ConfigObo, JetonsEntra
+from ..infrastructure.gateway.client import ClientGateway
 from .securite import GardeMcp
 from .serveur import ServeurMcp
 
@@ -65,4 +68,18 @@ def creer_app(serveur: ServeurMcp) -> FastAPI:
     return app
 
 
-app = creer_app(ServeurMcp())
+def _serveur_reel() -> ServeurMcp:
+    """Adaptateurs réels ; sans configuration l'import réussit et les outils répondent en erreur."""
+    try:
+        cfg: ConfigObo | None = ConfigObo()  # type: ignore[call-arg]
+    except ValidationError:
+        cfg = None
+        journal.warning("OBO non configuré (AZURE_TENANT_ID, *_API_CLIENT_ID) : outils en erreur")
+    # ponytail: le client httpx n'est pas fermé à l'arrêt, le processus s'arrête avec lui
+    gateway = ClientGateway(
+        httpx.AsyncClient(), cfg.gateway_url if cfg else "http://localhost:8000"
+    )
+    return ServeurMcp(JetonsEntra(cfg), gateway, gateway)
+
+
+app = creer_app(_serveur_reel())

@@ -7,6 +7,7 @@ from jetons_mcp_de_test import (
     AZP_ACTUAIRE,
     AZP_ORCHESTRATEUR,
     AZP_REDACTEUR,
+    CLE_ETRANGERE,
     CLE_PUBLIQUE,
     CLIENT_RAG,
     EMETTEUR_V1,
@@ -57,3 +58,18 @@ def test_audience_de_rag_refusee() -> None:
 def test_jeton_absent_de_la_representation() -> None:
     jeton = creer()
     assert jeton not in repr(verifier_jeton(jeton, CLE_PUBLIQUE, CFG))
+
+
+@pytest.mark.parametrize(
+    "defaut",
+    [
+        {"expire_dans": -10},
+        {"iss": "https://sts.windows.net/autre/"},
+        {"cle": CLE_ETRANGERE},
+        {"oid": ""},
+    ],
+    ids=["expire", "emetteur_etranger", "autre_cle", "sans_oid"],
+)
+def test_jeton_refuse(defaut: dict[str, object]) -> None:
+    with pytest.raises(ErreurAuth):
+        verifier_jeton(creer(**defaut), CLE_PUBLIQUE, CFG)  # type: ignore[arg-type]

@@ -7,10 +7,11 @@ validé est publié dans ``appelant_courant`` pour toute la durée de la requêt
 
 from __future__ import annotations
 
+import asyncio
 from contextvars import ContextVar
 from typing import Any
 
-from jwt import PyJWKClient, PyJWTError
+from jwt import PyJWKClient, PyJWKClientConnectionError, PyJWTError
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -55,7 +56,7 @@ class GardeMcp:
         if jeton is None:
             reponse = _probleme(401, "JETON_ABSENT", "Jeton absent", NON_AUTHENTIFIE)
         else:
-            reponse = self._valider(etat.config_auth, etat.jwks, jeton)
+            reponse = await self._valider(etat.config_auth, etat.jwks, jeton)
         if isinstance(reponse, Appelant):
             marque = appelant_courant.set(reponse)
             try:
@@ -66,12 +67,15 @@ class GardeMcp:
         await reponse(scope, receive, send)
 
     @staticmethod
-    def _valider(cfg: ConfigAuth | None, jwks: PyJWKClient | None, jeton: str) -> Any:
+    async def _valider(cfg: ConfigAuth | None, jwks: PyJWKClient | None, jeton: str) -> Any:
         if cfg is None or jwks is None:
             return _probleme(503, "AUTH_INDISPONIBLE", "Authentification Entra non configurée")
         try:
-            cle = jwks.get_signing_key_from_jwt(jeton).key
+            # kid inconnu : le client JWKS va chercher les clés sur le réseau (appel bloquant)
+            cle = (await asyncio.to_thread(jwks.get_signing_key_from_jwt, jeton)).key
             appelant = verifier_jeton(jeton, cle, cfg)
+        except PyJWKClientConnectionError:  # JWKS injoignable : pas la faute du jeton
+            return _probleme(503, "AUTH_INDISPONIBLE", "Authentification Entra indisponible")
         except (PyJWTError, ErreurAuth):
             return _probleme(401, "JETON_INVALIDE", "Jeton invalide", NON_AUTHENTIFIE)
         if ROLE not in appelant.roles:

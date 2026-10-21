@@ -24,6 +24,7 @@ EMETTEUR_V1 = f"https://sts.windows.net/{TENANT}/"
 
 CLE = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 CLE_PUBLIQUE = CLE.public_key()
+CLE_ETRANGERE = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
 
 def creer(
@@ -35,6 +36,7 @@ def creer(
     aud: str = CLIENT_ID,
     iss: str = EMETTEUR_V2,
     expire_dans: int = 300,
+    cle: Any = CLE,
 ) -> str:
     maintenant = int(time.time())
     revendications: dict[str, Any] = {
@@ -48,7 +50,7 @@ def creer(
     }
     if azp is not None:
         revendications["appid" if azp_v1 else "azp"] = azp
-    return jwt.encode(revendications, CLE, algorithm="RS256")
+    return jwt.encode(revendications, cle, algorithm="RS256")
 
 
 def config_auth() -> ConfigAuth:

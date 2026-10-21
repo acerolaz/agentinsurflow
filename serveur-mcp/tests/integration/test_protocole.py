@@ -15,6 +15,7 @@ from jetons_mcp_de_test import (
     config_auth,
     creer,
 )
+from jwt import PyJWKClientConnectionError
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
@@ -107,6 +108,25 @@ async def test_role_manquant_403(app: Any) -> None:
     async with _client(app, creer(roles=[])) as c:
         r = await c.post("/mcp", json={})
     assert (r.status_code, r.json()["code"]) == (403, "ROLE_MANQUANT")
+
+
+class JwksInjoignable:
+    def get_signing_key_from_jwt(self, jeton: str) -> Any:
+        raise PyJWKClientConnectionError("Entra injoignable")
+
+
+async def test_sans_configuration_entra_503(app: Any) -> None:
+    app.state.config_auth = None
+    async with _client(app, creer()) as c:
+        r = await c.post("/mcp", json={})
+    assert (r.status_code, r.json()["code"]) == (503, "AUTH_INDISPONIBLE")
+
+
+async def test_jwks_injoignable_503_pas_401(app: Any) -> None:
+    app.state.jwks = JwksInjoignable()
+    async with _client(app, creer()) as c:
+        r = await c.post("/mcp", json={})
+    assert (r.status_code, r.json()["code"]) == (503, "AUTH_INDISPONIBLE")
 
 
 async def test_health_sans_jeton(app: Any) -> None:

@@ -27,7 +27,7 @@ internal static class TracesEndpoints
                 IReadOnlyList<Span> spans;
                 try
                 {
-                    spans = OtlpVersSpans.Convertir(corps.ToArray(), horloge.GetUtcNow());
+                    spans = OtlpVersSpans.Convertir(corps.GetBuffer().AsSpan(0, (int)corps.Length), horloge.GetUtcNow()); // sans recopie
                 }
                 catch (FormatException)
                 {

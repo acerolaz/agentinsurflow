@@ -126,6 +126,13 @@ public sealed class DossiersPostgresTests
         Assert.Equal("SELECT 1", SeedDossiers.Sql(null, GestionnaireB));
 
     [Fact]
+    public void Seed_oid_invalide_nomme_la_variable()
+    {
+        var erreur = Assert.Throws<InvalidOperationException>(() => SeedDossiers.Sql("pas-un-guid", GestionnaireB));
+        Assert.Contains("SEED_GESTIONNAIRE_A", erreur.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Depot_ne_rend_que_les_contrats_du_gestionnaire_et_suit_les_regles_du_domaine()
     {
         await Preparer();

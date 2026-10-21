@@ -79,21 +79,28 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
     o.KnownProxies.Clear();
 });
 
+// Secrets PostgreSQL : hors Development (compose, Azure), un mot de passe absent arrête le démarrage avec son nom,
+// au lieu d'un échec Npgsql obscur à la première requête. Les TI de l'API (Development) tournent sans base.
+string MotDePasse(string cle) => builder.Configuration[cle] is { Length: > 0 } valeur ? valeur
+    : builder.Environment.IsDevelopment() ? "" : throw new InvalidOperationException($"{cle} manquant");
+var port = builder.Configuration["PG_PORT"] is { Length: > 0 } p ? p : "5432";
+
 // Base dossiers : routes en lecture seule (compte `dossiers`, vue minimisée) ; les migrations passent par `migrateur`.
 var connexions = new ConnexionsDossiers(
     builder.Configuration["PG_HOST"] ?? "localhost",
-    int.Parse(builder.Configuration["PG_PORT"] ?? "5432", System.Globalization.CultureInfo.InvariantCulture),
+    int.TryParse(port, System.Globalization.CultureInfo.InvariantCulture, out var n) ? n
+        : throw new InvalidOperationException($"PG_PORT invalide : {port}"),
     builder.Configuration["PG_SUFFIXE_BASES"] ?? "",
     builder.Configuration["PG_MIGRATEUR_PASSWORD"],
-    builder.Configuration["PG_DOSSIERS_PASSWORD"] ?? "");
+    MotDePasse("PG_DOSSIERS_PASSWORD"));
 builder.Services.AjouterDossiers(connexions);
 builder.Services.AddScoped<ListerPortefeuille>().AddScoped<ConsulterContrat>();
 
 // Base traces : écriture par traces_writer, relecture par traces_reader ; migrations par `migrateur`.
 var connexionsTraces = new ConnexionsTraces(
     connexions.Hote, connexions.Port, connexions.SuffixeBase, connexions.MotDePasseMigrateur,
-    builder.Configuration["PG_TRACES_WRITER_PASSWORD"] ?? "",
-    builder.Configuration["PG_TRACES_READER_PASSWORD"] ?? "");
+    MotDePasse("PG_TRACES_WRITER_PASSWORD"),
+    MotDePasse("PG_TRACES_READER_PASSWORD"));
 builder.Services.AjouterTraces(connexionsTraces);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<EnregistrerSpans>().AddScoped<LireTrace>();

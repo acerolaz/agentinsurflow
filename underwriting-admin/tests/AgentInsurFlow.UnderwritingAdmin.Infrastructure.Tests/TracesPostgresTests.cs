@@ -51,6 +51,33 @@ public sealed class TracesPostgresTests
     }
 
     [Fact]
+    public async Task Insertion_par_lots_au_dela_d_un_lot_puis_rejeu_idempotent()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await MigrationsTraces.AppliquerAsync(Connexions(), TimeSpan.FromSeconds(30), ct);
+        var depot = new DepotTracesEf(Connexions());
+        var trace = Guid.NewGuid().ToString("N");
+        var spans = Enumerable.Range(1, DepotTracesEf.SpansParLot + 1)
+            .Select(i => UnSpan(trace, i.ToString("x16", System.Globalization.CultureInfo.InvariantCulture), i)).ToArray();
+
+        Assert.Equal(spans.Length, await depot.Inserer(spans, ct)); // deux lots
+        Assert.Equal(0, await depot.Inserer(spans, ct));
+        Assert.Equal(spans.Length, (await depot.Lire(trace, ct)).Count);
+    }
+
+    [Fact]
+    public void Insertion_par_lots_une_requete_parametree_par_lot()
+    {
+        var trace = Guid.NewGuid().ToString("N");
+        var (sql, parametres) = DepotTracesEf.InsertionParLot([UnSpan(trace, "0000000000000001", 1), UnSpan(trace, "0000000000000002", 2, "0000000000000001")]);
+
+        Assert.Equal(36, parametres.Length);
+        Assert.Equal(1, sql.Split("INSERT INTO span").Length - 1);
+        Assert.DoesNotContain(trace, sql, StringComparison.Ordinal); // aucune valeur dans le texte SQL
+        Assert.Equal(DBNull.Value, parametres[2].Value); // parent absent du premier span
+    }
+
+    [Fact]
     public async Task Droits_writer_insere_seulement_reader_lit_seulement()
     {
         await MigrationsTraces.AppliquerAsync(Connexions(), TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);

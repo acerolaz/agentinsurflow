@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace AgentInsurFlow.UnderwritingAdmin.Api.Tests;
@@ -66,5 +67,15 @@ public sealed class ApiTests : IDisposable
         var doc = await Json("/openapi/v1.json", HttpStatusCode.OK, prefixe: "/underwriting");
 
         Assert.False(doc.TryGetProperty("servers", out _));
+    }
+
+    [Fact]
+    public void Hors_Development_un_mot_de_passe_PostgreSQL_absent_arrete_le_demarrage()
+    {
+        using var usine = new WebApplicationFactory<Program>().WithWebHostBuilder(b => b
+            .UseEnvironment("Production").UseSetting("PG_DOSSIERS_PASSWORD", ""));
+
+        var erreur = Assert.Throws<InvalidOperationException>(() => usine.CreateClient());
+        Assert.Contains("PG_DOSSIERS_PASSWORD manquant", erreur.Message, StringComparison.Ordinal);
     }
 }

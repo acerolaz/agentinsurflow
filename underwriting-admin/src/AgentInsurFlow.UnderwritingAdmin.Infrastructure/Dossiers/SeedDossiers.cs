@@ -31,8 +31,8 @@ internal static class SeedDossiers
             return "SELECT 1";
         }
         // Un oid Entra est un GUID : le reparser exclut toute chaîne qui ne le serait pas (aucune injection possible).
-        var a = Guid.Parse(gestionnaireA).ToString("D");
-        var b = Guid.Parse(gestionnaireB).ToString("D");
+        var a = Oid(gestionnaireA, "SEED_GESTIONNAIRE_A");
+        var b = Oid(gestionnaireB, "SEED_GESTIONNAIRE_B");
         var sql = new StringBuilder();
         foreach (var d in Dossiers)
         {
@@ -42,6 +42,10 @@ internal static class SeedDossiers
     }
 
     private static string Id(int genre, int n, int rang = 0) => $"{genre:x8}-0000-0000-0000-{(n * 100) + rang:x12}";
+
+    private static string Oid(string valeur, string variable) =>
+        Guid.TryParse(valeur, out var oid) ? oid.ToString("D")
+            : throw new InvalidOperationException($"{variable} doit être un oid Entra (GUID) : « {valeur} » refusé");
 
     private static void Ajouter(StringBuilder sql, Dossier d, string gestionnaire)
     {

@@ -10,12 +10,14 @@ from importlib.metadata import version
 import httpx
 from fastapi import FastAPI
 from jwt import PyJWKClient
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ..infrastructure.entra.jetons import ConfigAuth
 from ..infrastructure.entra.obo import ConfigObo, JetonsEntra
 from ..infrastructure.gateway.client import ClientGateway
+from ..infrastructure.otel.telemetrie import configurer_telemetrie
 from .securite import GardeMcp
 from .serveur import ServeurMcp
 
@@ -39,7 +41,8 @@ def creer_app(serveur: ServeurMcp) -> FastAPI:
     @asynccontextmanager
     async def cycle_de_vie(app: FastAPI) -> AsyncIterator[None]:
         # ponytail: sans configuration Entra l'API démarre quand même, /mcp répond 503
-        if app.state.config_auth is None:  # déjà posée : tests
+        if app.state.config_auth is None:  # déjà posée : tests (qui posent aussi leur exportateur)
+            configurer_telemetrie(VERSION)
             try:
                 app.state.config_auth = ConfigAuth()  # type: ignore[call-arg]
                 app.state.jwks = PyJWKClient(app.state.config_auth.url_jwks, cache_keys=True)
@@ -48,7 +51,14 @@ def creer_app(serveur: ServeurMcp) -> FastAPI:
         async with serveur.session_manager.run():
             yield
 
-    app = FastAPI(title="AgentInsurFlow — serveur MCP", version=VERSION, lifespan=cycle_de_vie)
+    app = FastAPI(
+        title="AgentInsurFlow — serveur MCP",
+        version=VERSION,
+        lifespan=cycle_de_vie,
+        # FastAPI trace nativement (opérations, messages d'exception) : seul l'instrumenteur
+        # ci-dessous est actif, il exclut /health
+        telemetry={"tracing": False, "metrics": False, "logs": False, "operation_spans": False},
+    )
     app.state.config_auth = None
     app.state.jwks = None
 
@@ -65,6 +75,8 @@ def creer_app(serveur: ServeurMcp) -> FastAPI:
 
     app.mount("/", serveur.streamable_http_app())  # la route du SDK est /mcp
     app.add_middleware(GardeMcp)
+    # un span serveur par requête, traceparent entrant compris ; /health n'est pas tracé (sondes)
+    FastAPIInstrumentor.instrument_app(app, excluded_urls="health")
     return app
 
 

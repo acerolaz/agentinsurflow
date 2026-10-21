@@ -16,6 +16,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from starlette.concurrency import run_in_threadpool
 
 from ...domain.models import DOSSIERS_INDISPONIBLES, Appelant, ErreurOutil
+from ..otel.telemetrie import tracer
 
 PORTEE_FEDERATION = "api://AzureADTokenExchange/.default"
 
@@ -59,9 +60,20 @@ class JetonsEntra:
         self._cfg = cfg
 
     async def obo(self, appelant: Appelant, cible: Literal["rag", "underwriting"]) -> str:
-        if self._cfg is None:
-            raise ErreurOutil(DOSSIERS_INDISPONIBLES, "OBO non configuré (config Entra absente)")
-        client = (
-            self._cfg.rag_api_client_id if cible == "rag" else self._cfg.underwriting_api_client_id
-        )
-        return await run_in_threadpool(_jeton_obo, self._cfg, appelant.jeton, client)
+        with tracer.start_as_current_span(
+            "obo.echanger",
+            attributes={"obo.cible": cible, "obo.reussi": False},
+            record_exception=False,
+        ) as span:
+            if self._cfg is None:
+                raise ErreurOutil(
+                    DOSSIERS_INDISPONIBLES, "OBO non configuré (config Entra absente)"
+                )
+            client = (
+                self._cfg.rag_api_client_id
+                if cible == "rag"
+                else self._cfg.underwriting_api_client_id
+            )
+            jeton = await run_in_threadpool(_jeton_obo, self._cfg, appelant.jeton, client)
+            span.set_attribute("obo.reussi", True)
+            return jeton

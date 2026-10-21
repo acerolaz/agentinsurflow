@@ -6,6 +6,7 @@ surcharges sont donc celles que le protocole appelle. Le refus a lieu **avant** 
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Sequence
 from typing import Any
 
@@ -13,11 +14,13 @@ from mcp import types
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
+from opentelemetry.trace import Span
 
 from ..application import outils
 from ..domain.matrice import est_autorise, outils_autorises
 from ..domain.models import UNAUTHORIZED_TOOL, Appelant, ErreurOutil, Fiche, PrimeBrouillon
 from ..domain.ports import CorpusPort, DossiersPort, JetonsPort
+from ..infrastructure.otel.telemetrie import tracer
 from .securite import appelant_courant
 
 
@@ -99,18 +102,60 @@ class ServeurMcp(FastMCP):
 
     async def list_tools(self) -> list[types.Tool]:
         appelant = appelant_courant.get()
-        permis = outils_autorises(appelant.agent if appelant else None)
-        return [t for t in await super().list_tools() if t.name in permis]
+        with tracer.start_as_current_span("mcp.lister_outils") as span:
+            permis = outils_autorises(appelant.agent if appelant else None)
+            outils = [t for t in await super().list_tools() if t.name in permis]
+            span.set_attributes(
+                {"appelant.azp": appelant.azp if appelant else "", "outils.nombre": len(outils)}
+            )
+            return outils
 
     async def call_tool(
         self, name: str, arguments: dict[str, Any]
     ) -> Sequence[types.ContentBlock] | dict[str, Any]:
         appelant = appelant_courant.get()
-        if not est_autorise(appelant.agent if appelant else None, name):
-            return _erreur(UNAUTHORIZED_TOOL, "Outil non autorisé")  # type: ignore[return-value]
-        try:
-            return await super().call_tool(name, arguments)
-        except ToolError as exc:
-            if isinstance(exc.__cause__, ErreurOutil):
-                return _erreur(exc.__cause__.code, str(exc.__cause__))  # type: ignore[return-value]
-            raise
+        agent = appelant.agent if appelant else None
+        with tracer.start_as_current_span("mcp.outil", record_exception=False) as span:
+            span.set_attributes(
+                {"mcp.outil": name, "appelant.azp": appelant.azp if appelant else ""}
+            )
+            _attributs_des_arguments(span, arguments)
+            autorise = est_autorise(agent, name)
+            span.set_attributes(
+                {
+                    "autorisation.decision": "allow" if autorise else "deny",
+                    "autorisation.regle": f"matrice:{agent or 'inconnu'}",
+                }
+            )
+            if not autorise:
+                return _refus(span, UNAUTHORIZED_TOOL, "Outil non autorisé")  # type: ignore[return-value]
+            try:
+                resultat = await super().call_tool(name, arguments)
+            except ToolError as exc:
+                if isinstance(exc.__cause__, ErreurOutil):
+                    return _refus(span, exc.__cause__.code, str(exc.__cause__))  # type: ignore[return-value]
+                span.set_attributes({"resultat.code": "ERREUR", "isError": True})
+                raise
+            span.set_attributes({"resultat.code": "OK", "isError": False})
+            return resultat
+
+
+def _refus(span: Span, code: str, message: str) -> types.CallToolResult:
+    span.set_attributes({"resultat.code": code, "isError": True})
+    return _erreur(code, message)
+
+
+def _attributs_des_arguments(span: Span, arguments: dict[str, Any]) -> None:
+    """Jamais la valeur d'un argument personnel : empreinte, longueur ou présence seulement."""
+    question = arguments.get("question")
+    if isinstance(question, str):
+        span.set_attributes(
+            {
+                "question.sha256": hashlib.sha256(question.encode()).hexdigest(),
+                "question.longueur": len(question),
+            }
+        )
+    if "numero_contrat" in arguments:
+        span.set_attribute("contrat.present", True)
+    if isinstance(arguments.get("statut"), str):
+        span.set_attribute("statut.cible", arguments["statut"])

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import json
 import os
 import re
 import subprocess
@@ -126,8 +128,18 @@ def test_contrat_d_un_autre_gestionnaire_404(
         assert contrat_propre in numeros and CONTRAT_AUTRE not in numeros
 
 
+def _jeton_d_application(jeton: str) -> bool:
+    """Jeton d'application (CI) : sans ``scp`` ou ``idtyp`` = ``app`` (non vérifié)."""
+    charge = jeton.split(".")[1]
+    claims = json.loads(base64.urlsafe_b64decode(charge + "=" * (-len(charge) % 4)))
+    return "scp" not in claims or claims.get("idtyp") == "app"
+
+
 def test_contrat_d_un_autre_gestionnaire_404_via_reponses(client, manque, jeton_gestionnaire):
     """Chemin OBO : même refus, rien du dossier n'est révélé."""
+    if _jeton_d_application(jeton_gestionnaire):
+        # Entra n'échange en On-Behalf-Of qu'un jeton d'utilisateur : test manuel
+        pytest.skip("OBO impossible avec un jeton d'application (CI)")
     r = _poser(
         client,
         manque,

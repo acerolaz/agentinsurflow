@@ -11,6 +11,10 @@ public static class ReglesTraces
             ? Convert.ToHexStringLower(octets)
             : throw new FormatException($"identifiant de {octets.Length} octets, {longueurAttendue} attendus");
 
+    /// <summary>Horodatage OTLP (uint64) → <c>bigint</c> ; <see cref="FormatException"/> au-delà de <c>long.MaxValue</c>.</summary>
+    public static long Nanos(ulong nanos) =>
+        nanos <= long.MaxValue ? (long)nanos : throw new FormatException($"horodatage hors plage : {nanos}");
+
     /// <summary><c>service.name</c> absent ou vide : « inconnu ».</summary>
     public static string NomDeService(string? serviceName) =>
         string.IsNullOrWhiteSpace(serviceName) ? ServiceInconnu : serviceName;

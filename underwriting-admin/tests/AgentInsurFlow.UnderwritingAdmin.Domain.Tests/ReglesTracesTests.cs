@@ -11,6 +11,13 @@ public sealed class ReglesTracesTests
     }
 
     [Fact]
+    public void Horodatage_au_dela_de_long_refuse()
+    {
+        Assert.Equal(long.MaxValue, ReglesTraces.Nanos(long.MaxValue));
+        Assert.Throws<FormatException>(() => ReglesTraces.Nanos((ulong)long.MaxValue + 1));
+    }
+
+    [Fact]
     public void Service_absent_ou_vide_donne_inconnu()
     {
         Assert.Equal("inconnu", ReglesTraces.NomDeService(null));

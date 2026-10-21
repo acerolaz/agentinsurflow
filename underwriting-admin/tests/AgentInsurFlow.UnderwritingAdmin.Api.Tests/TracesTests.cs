@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenTelemetry;
@@ -150,6 +151,18 @@ public sealed class TracesTests : IDisposable
         Assert.Empty(await reponse.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken)); // ExportTraceServiceResponse vide
         var enregistres = await _depot.Lire(TraceId, TestContext.Current.CancellationToken);
         Assert.Equal("rag", Assert.Single(enregistres).ServiceName);
+    }
+
+    [Fact]
+    public void Cidr_invalide_nomme_la_cle_et_la_valeur()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Otlp:SourcesSansJeton"] = "127.0.0.1/32, pas-un-cidr" })
+            .Build();
+
+        var erreur = Assert.Throws<InvalidOperationException>(() => new SourcesSansJetonHandler(config));
+        Assert.Contains("Otlp:SourcesSansJeton", erreur.Message, StringComparison.Ordinal);
+        Assert.Contains("pas-un-cidr", erreur.Message, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -92,6 +92,15 @@ public sealed class OtlpVersSpansTests
     }
 
     [Fact]
+    public void Horodatage_hors_plage_est_refuse()
+    {
+        var span = UnSpan();
+        span.EndTimeUnixNano = ulong.MaxValue; // négatif une fois casté en long
+
+        Assert.Throws<FormatException>(() => OtlpVersSpans.Convertir(Requete("rag", span), Recu));
+    }
+
+    [Fact]
     public void Octets_invalides_sont_refuses()
     {
         Assert.Throws<FormatException>(() => OtlpVersSpans.Convertir(new byte[] { 0x0a, 0xff, 0x01 }, Recu));

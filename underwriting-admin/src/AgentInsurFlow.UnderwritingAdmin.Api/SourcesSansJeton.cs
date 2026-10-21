@@ -17,7 +17,8 @@ internal sealed class SourcesSansJetonHandler(IConfiguration configuration) : Au
 
     private readonly IPNetwork[] _reseaux = (configuration["Otlp:SourcesSansJeton"] ?? Defaut)
         .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-        .Select(IPNetwork.Parse)
+        .Select(cidr => IPNetwork.TryParse(cidr, out var reseau) ? reseau
+            : throw new InvalidOperationException($"Otlp:SourcesSansJeton : CIDR invalide « {cidr} »"))
         .ToArray();
 
     protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, SourceSansJetonOuTelemetrie requirement)

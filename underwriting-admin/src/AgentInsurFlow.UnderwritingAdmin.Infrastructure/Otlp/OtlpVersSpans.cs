@@ -40,8 +40,8 @@ public static class OtlpVersSpans
                         s.TraceState,
                         s.Name,
                         (int)s.Kind,
-                        unchecked((long)s.StartTimeUnixNano),
-                        unchecked((long)s.EndTimeUnixNano),
+                        ReglesTraces.Nanos(s.StartTimeUnixNano),
+                        ReglesTraces.Nanos(s.EndTimeUnixNano),
                         (int)(s.Status?.Code ?? 0),
                         s.Status?.Message ?? "",
                         ReglesTraces.NomDeService(service),
@@ -100,7 +100,7 @@ internal static class AnyValueJson
         {
             ecriture(w);
         }
-        return System.Text.Encoding.UTF8.GetString(flux.ToArray());
+        return System.Text.Encoding.UTF8.GetString(flux.GetBuffer(), 0, (int)flux.Length); // sans recopie
     }
 
     public static string Attributs(IEnumerable<KeyValue>? attributs) => Ecrire(w => EcrireAttributs(w, attributs));

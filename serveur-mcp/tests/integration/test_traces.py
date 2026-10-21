@@ -197,6 +197,18 @@ async def test_arguments_invalides_ne_fuient_pas_dans_les_spans(
     )
 
 
+async def test_statut_non_hashable_donne_une_erreur_d_outil_propre(
+    spans: InMemorySpanExporter,
+) -> None:
+    args = {"numero_contrat": CONTRAT, "statut": ["x"]}
+    async with session_mcp(_app(Gateway()), creer(AZP_ORCHESTRATEUR)) as s:
+        r = await s.call_tool("update_statut_dossier", args)
+    assert r.isError
+    attributs = _un(spans, "mcp.outil")
+    assert attributs["statut.cible"] == "INCONNU"
+    assert attributs["resultat.code"] == "ERREUR"
+
+
 async def test_aucune_donnee_personnelle_dans_les_spans(spans: InMemorySpanExporter) -> None:
     jeton = creer(AZP_ORCHESTRATEUR, oid=OID)
     async with session_mcp(_app(Gateway()), jeton) as s:

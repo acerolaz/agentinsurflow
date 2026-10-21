@@ -172,4 +172,7 @@ def _attributs_des_arguments(span: Span, arguments: dict[str, Any]) -> None:
         span.set_attribute("contrat.present", True)
     statut = arguments.get("statut")
     if statut is not None:  # une valeur saisie n'entre jamais dans la trace
-        span.set_attribute("statut.cible", statut if statut in STATUTS_CONNUS else "INCONNU")
+        span.set_attribute(
+            "statut.cible",
+            statut if isinstance(statut, str) and statut in STATUTS_CONNUS else "INCONNU",
+        )

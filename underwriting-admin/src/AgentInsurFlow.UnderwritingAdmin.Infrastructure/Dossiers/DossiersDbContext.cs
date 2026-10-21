@@ -14,7 +14,7 @@ public sealed class DossiersDbContext(DbContextOptions<DossiersDbContext> option
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
 
-        // Les clés sont des UUID fournis par l'appelant (le seed en fixe, les agents en générerons).
+        // Les clés sont des UUID fournis par l'appelant (le seed en fixe, les agents en généreront).
         modelBuilder.Entity<Souscripteur>(e => e.Property(x => x.Id).ValueGeneratedNever());
         modelBuilder.Entity<ConducteurSecondaire>(e =>
         {

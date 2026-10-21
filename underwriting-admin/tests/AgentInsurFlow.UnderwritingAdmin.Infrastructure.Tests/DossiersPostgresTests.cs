@@ -9,6 +9,7 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Tests;
 /// TI : base <c>dossiers_test</c> du PostgreSQL du compose (<c>docker compose up -d postgres</c>, variables PG_* du .env).
 /// Une seule classe : ses tests passent l'un après l'autre sur la même base.
 /// </summary>
+[Collection("PostgresDossiers")] // même base que EcrituresPostgresTests : pas en parallèle
 public sealed class DossiersPostgresTests
 {
     private const string GestionnaireA = "11111111-1111-1111-1111-111111111111";
@@ -61,7 +62,7 @@ public sealed class DossiersPostgresTests
         await Preparer();
 
         await using var db = DossiersDbContextFactory.Creer(Connexions().Migrateur);
-        Assert.Equal(3, (await db.Database.GetAppliedMigrationsAsync(TestContext.Current.CancellationToken)).Count());
+        Assert.Equal(4, (await db.Database.GetAppliedMigrationsAsync(TestContext.Current.CancellationToken)).Count());
         Assert.Empty(await db.Database.GetPendingMigrationsAsync(TestContext.Current.CancellationToken));
         var tables = await Lire(Connexions().Migrateur,
             "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '__EFMigrationsHistory'");
@@ -84,7 +85,7 @@ public sealed class DossiersPostgresTests
 
     [Theory]
     [InlineData("souscripteur")]
-    [InlineData("contrat")]
+    [InlineData("contrat")] // seules id, numero_contrat, gestionnaire_id sont lisibles (colonnes), jamais la table entière
     public async Task Compte_dossiers_ne_lit_pas_les_tables(string table)
     {
         await Preparer();
@@ -102,7 +103,7 @@ public sealed class DossiersPostgresTests
         Assert.NotEmpty(await Lire(Connexions().Dossiers, "SELECT * FROM vue_contrat_minimisee"));
         // Aucun droit d'écriture, sur la vue comme sur les tables : SELECT seulement.
         var droits = await Lire(Connexions().Migrateur,
-            "SELECT has_table_privilege('dossiers', 'vue_contrat_minimisee', 'INSERT, UPDATE, DELETE'), has_table_privilege('dossiers', 'contrat', 'SELECT')");
+            "SELECT has_table_privilege('dossiers', 'vue_contrat_minimisee', 'INSERT, UPDATE, DELETE'), has_table_privilege('dossiers', 'souscripteur', 'SELECT')");
         Assert.Equal([false, false], [droits[0][0], droits[0][1]]);
     }
 
@@ -110,6 +111,8 @@ public sealed class DossiersPostgresTests
     public async Task Seed_idempotent()
     {
         await Preparer();
+        // Remet le seed complet : les TI d'écriture ont pu supprimer une prime ou une décision.
+        await Lire(Connexions().Migrateur, SeedDossiers.Sql(GestionnaireA, GestionnaireB));
         var avant = new[] { await Compter("contrat"), await Compter("sinistre"), await Compter("prime"), await Compter("souscripteur") };
 
         // Rejoué deux fois : aucun doublon, aucune erreur.

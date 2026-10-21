@@ -85,7 +85,7 @@ string MotDePasse(string cle) => builder.Configuration[cle] is { Length: > 0 } v
     : builder.Environment.IsDevelopment() ? "" : throw new InvalidOperationException($"{cle} manquant");
 var port = builder.Configuration["PG_PORT"] is { Length: > 0 } p ? p : "5432";
 
-// Base dossiers : routes en lecture seule (compte `dossiers`, vue minimisée) ; les migrations passent par `migrateur`.
+// Base dossiers : lecture par la vue minimisée et écritures bornées (compte `dossiers`) ; les migrations passent par `migrateur`.
 var connexions = new ConnexionsDossiers(
     builder.Configuration["PG_HOST"] ?? "localhost",
     int.TryParse(port, System.Globalization.CultureInfo.InvariantCulture, out var n) ? n
@@ -94,7 +94,8 @@ var connexions = new ConnexionsDossiers(
     builder.Configuration["PG_MIGRATEUR_PASSWORD"],
     MotDePasse("PG_DOSSIERS_PASSWORD"));
 builder.Services.AjouterDossiers(connexions);
-builder.Services.AddScoped<ListerPortefeuille>().AddScoped<ConsulterContrat>();
+builder.Services.AddScoped<ListerPortefeuille>().AddScoped<ConsulterContrat>()
+    .AddScoped<EnregistrerBrouillon>().AddScoped<ChangerStatut>();
 
 // Base traces : écriture par traces_writer, relecture par traces_reader ; migrations par `migrateur`.
 var connexionsTraces = new ConnexionsTraces(
@@ -139,6 +140,7 @@ app.MapGet("/health", (IConfiguration cfg) =>
     .WithSummary("Santé du service (versions servies)")
     .AllowAnonymous();
 app.MapContrats();
+app.MapEcritures();
 app.MapTraces();
 app.MapOpenApi().AllowAnonymous(); // /openapi/v1.json
 

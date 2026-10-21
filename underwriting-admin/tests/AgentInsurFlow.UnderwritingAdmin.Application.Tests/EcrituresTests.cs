@@ -16,11 +16,14 @@ public sealed class EcrituresTests
             return Task.FromResult(resultat);
         }
 
-        public Task<bool> ChangerStatut(string gestionnaireId, string numeroContrat, ChangementStatut changement,
-            string auteur, CancellationToken ct)
+        public string? DernierStatut { get; private set; }
+
+        public Task<ResultatEcriture> ChangerStatut(string gestionnaireId, string numeroContrat, ChangementStatut changement,
+            CancellationToken ct)
         {
             Appels++;
-            return Task.FromResult(resultat);
+            DernierStatut = $"{gestionnaireId} {numeroContrat} {changement.StatutCible} {changement.Validation}";
+            return Task.FromResult(new ResultatEcriture(resultat, null));
         }
     }
 
@@ -47,6 +50,34 @@ public sealed class EcrituresTests
             new ChangementStatut("ACCEPTE", "VALIDEE"), TestContext.Current.CancellationToken);
 
         Assert.Equal(new ResultatEcriture(false, null), r);
+    }
+
+    [Fact]
+    public async Task ChangerStatut_transmet_au_port_numero_changement_et_gestionnaire()
+    {
+        var depot = new DepotSimule(true);
+        await new ChangerStatut(depot).Executer("A", "C-1", new ChangementStatut("REFUSE", "CORRIGEE"),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("A C-1 REFUSE CORRIGEE", depot.DernierStatut);
+    }
+
+    [Fact]
+    public async Task ChangerStatut_relaie_le_refus_du_port()
+    {
+        var r = await new ChangerStatut(new RefusSimule()).Executer("A", "C-1", new ChangementStatut("ACCEPTE", "VALIDEE"),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(new ResultatEcriture(false, "DECISION_ABSENTE"), r);
+    }
+
+    private sealed class RefusSimule : IDepotEcritures
+    {
+        public Task<bool> EnregistrerBrouillon(string gestionnaireId, string numeroContrat, FicheBrouillon fiche,
+            PrimeBrouillon? prime, CancellationToken ct) => throw new NotSupportedException();
+
+        public Task<ResultatEcriture> ChangerStatut(string gestionnaireId, string numeroContrat, ChangementStatut changement,
+            CancellationToken ct) => Task.FromResult(new ResultatEcriture(false, "DECISION_ABSENTE"));
     }
 
     [Fact]

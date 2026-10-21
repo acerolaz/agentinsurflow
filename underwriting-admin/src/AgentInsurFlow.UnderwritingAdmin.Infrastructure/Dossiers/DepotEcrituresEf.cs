@@ -53,10 +53,10 @@ internal sealed class DepotEcrituresEf(DossiersDbContext db, TimeProvider horlog
         return true;
     }
 
-    public async Task<bool> ChangerStatut(string gestionnaireId, string numeroContrat, ChangementStatut changement,
-        string auteur, CancellationToken ct)
+    public async Task<ResultatEcriture> ChangerStatut(string gestionnaireId, string numeroContrat, ChangementStatut changement,
+        CancellationToken ct)
     {
-        if (await IdContrat(gestionnaireId, numeroContrat, ct) is not { } contratId) return false;
+        if (await IdContrat(gestionnaireId, numeroContrat, ct) is not { } contratId) return new(false, null);
         var maintenant = horloge.GetUtcNow();
 
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
@@ -65,14 +65,19 @@ internal sealed class DepotEcrituresEf(DossiersDbContext db, TimeProvider horlog
         if (changement.Validation is not null)
         {
             // La décision finale est le statut cible (ACCEPTE/REFUSE) : CORRIGEE remplace la décision rendue par l'agent.
-            await db.Set<Decision>().Where(d => d.ContratId == contratId && d.EtatValidation == Brouillon).ExecuteUpdateAsync(
+            var touchees = await db.Set<Decision>().Where(d => d.ContratId == contratId && d.EtatValidation == Brouillon).ExecuteUpdateAsync(
                 s => s.SetProperty(d => d.EtatValidation, changement.Validation)
                     .SetProperty(d => d.DecisionRendue, changement.StatutCible)
-                    .SetProperty(d => d.Auteur, auteur)
+                    .SetProperty(d => d.Auteur, gestionnaireId)
                     .SetProperty(d => d.Horodatage, maintenant), ct);
+            if (touchees == 0)
+            {
+                await transaction.RollbackAsync(ct);
+                return new(false, "DECISION_ABSENTE");
+            }
         }
         await transaction.CommitAsync(ct);
-        return true;
+        return new(true, null);
     }
 
     private async Task<Guid?> IdContrat(string gestionnaireId, string numeroContrat, CancellationToken ct) =>

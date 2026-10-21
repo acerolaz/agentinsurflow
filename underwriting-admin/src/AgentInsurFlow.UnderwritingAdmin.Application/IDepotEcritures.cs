@@ -9,9 +9,13 @@ public interface IDepotEcritures
     Task<bool> EnregistrerBrouillon(string gestionnaireId, string numeroContrat, FicheBrouillon fiche,
         PrimeBrouillon? prime, CancellationToken ct);
 
-    /// <summary><c>false</c> si le contrat n'existe pas ou appartient à un autre gestionnaire.</summary>
-    Task<bool> ChangerStatut(string gestionnaireId, string numeroContrat, ChangementStatut changement,
-        string auteur, CancellationToken ct);
+    /// <summary>
+    /// <c>Ecrit=false, CodeRefus=null</c> si le contrat n'existe pas ou appartient à un autre gestionnaire ;
+    /// <c>DECISION_ABSENTE</c> si une validation est demandée sans décision brouillon (rien n'est écrit).
+    /// L'auteur de la validation est le gestionnaire.
+    /// </summary>
+    Task<ResultatEcriture> ChangerStatut(string gestionnaireId, string numeroContrat, ChangementStatut changement,
+        CancellationToken ct);
 }
 
 /// <summary><c>Ecrit=false, CodeRefus=null</c> : contrat introuvable (404).</summary>

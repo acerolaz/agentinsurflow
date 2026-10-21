@@ -1,3 +1,4 @@
+using AgentInsurFlow.UnderwritingAdmin.Application;
 using AgentInsurFlow.UnderwritingAdmin.Domain;
 using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
 using Npgsql;
@@ -103,7 +104,7 @@ public sealed class EcrituresPostgresTests
         var ct = TestContext.Current.CancellationToken;
         await depot.EnregistrerBrouillon(GestionnaireA, numero, Fiche, Prime, ct);
 
-        Assert.True(await depot.ChangerStatut(GestionnaireA, numero, new("ACCEPTE", "VALIDEE"), GestionnaireA, ct));
+        Assert.Equal(new ResultatEcriture(true, null), await depot.ChangerStatut(GestionnaireA, numero, new("ACCEPTE", "VALIDEE"), ct));
 
         var d = Assert.Single(await Decisions(numero));
         Assert.Equal(["VALIDEE", "ACCEPTE", GestionnaireA], d.Take(3).Select(o => o.ToString()));
@@ -118,10 +119,24 @@ public sealed class EcrituresPostgresTests
         var ct = TestContext.Current.CancellationToken;
         await depot.EnregistrerBrouillon(GestionnaireA, numero, Fiche, Prime, ct); // brouillon ACCEPTE
 
-        Assert.True(await depot.ChangerStatut(GestionnaireA, numero, new("REFUSE", "CORRIGEE"), GestionnaireA, ct));
+        Assert.Equal(new ResultatEcriture(true, null), await depot.ChangerStatut(GestionnaireA, numero, new("REFUSE", "CORRIGEE"), ct));
 
         var d = Assert.Single(await Decisions(numero));
         Assert.Equal(["CORRIGEE", "REFUSE", GestionnaireA], d.Take(3).Select(o => o.ToString()));
+    }
+
+    [Fact]
+    public async Task Statut_avec_validation_sans_brouillon_refuse_DECISION_ABSENTE_et_ne_change_rien()
+    {
+        var (db, depot, numero) = await Preparer(); // contrat sans décision
+        await using var _ = db;
+        var avant = (string)(await Lire(Connexions().Migrateur, "SELECT statut FROM contrat WHERE numero_contrat = @p0", numero))[0][0];
+
+        var r = await depot.ChangerStatut(GestionnaireA, numero, new("ACCEPTE", "VALIDEE"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(new ResultatEcriture(false, "DECISION_ABSENTE"), r);
+        Assert.Equal(avant, (string)(await Lire(Connexions().Migrateur, "SELECT statut FROM contrat WHERE numero_contrat = @p0", numero))[0][0]);
+        Assert.Empty(await Decisions(numero));
     }
 
     [Fact]
@@ -131,7 +146,7 @@ public sealed class EcrituresPostgresTests
         await using var _ = db;
         var avant = (string)(await Lire(Connexions().Migrateur, "SELECT statut FROM contrat WHERE numero_contrat = @p0", numero))[0][0];
 
-        Assert.False(await depot.ChangerStatut(GestionnaireB, numero, new("REFUSE", "VALIDEE"), GestionnaireB, TestContext.Current.CancellationToken));
+        Assert.Equal(new ResultatEcriture(false, null), await depot.ChangerStatut(GestionnaireB, numero, new("REFUSE", "VALIDEE"), TestContext.Current.CancellationToken));
 
         Assert.Equal(avant, (string)(await Lire(Connexions().Migrateur, "SELECT statut FROM contrat WHERE numero_contrat = @p0", numero))[0][0]);
     }

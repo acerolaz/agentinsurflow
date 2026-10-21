@@ -27,11 +27,12 @@ public sealed class EcrituresTests : IDisposable
             return Task.FromResult(gestionnaireId == GestionnaireA && numeroContrat == "AIF-A1");
         }
 
-        public Task<bool> ChangerStatut(string gestionnaireId, string numeroContrat, ChangementStatut changement,
-            string auteur, CancellationToken ct)
+        public Task<ResultatEcriture> ChangerStatut(string gestionnaireId, string numeroContrat, ChangementStatut changement,
+            CancellationToken ct)
         {
-            Appels.Add($"statut {gestionnaireId} {numeroContrat} {changement.StatutCible} {changement.Validation} {auteur}");
-            return Task.FromResult(gestionnaireId == GestionnaireA && numeroContrat == "AIF-A1");
+            Appels.Add($"statut {gestionnaireId} {numeroContrat} {changement.StatutCible} {changement.Validation}");
+            if (numeroContrat == "AIF-SANS-BROUILLON") return Task.FromResult(new ResultatEcriture(false, "DECISION_ABSENTE"));
+            return Task.FromResult(new ResultatEcriture(gestionnaireId == GestionnaireA && numeroContrat == "AIF-A1", null));
         }
     }
 
@@ -108,12 +109,12 @@ public sealed class EcrituresTests : IDisposable
         string.Join('|', p.EnumerateObject().Where(x => x.Name != "traceId").Select(x => $"{x.Name}={x.Value}"));
 
     [Fact]
-    public async Task Statut_nominal_204_et_auteur_est_l_oid()
+    public async Task Statut_nominal_204_et_le_port_recoit_le_gestionnaire_du_jeton()
     {
         var (statut, _) = await Put("/api/contrats/AIF-A1/statut", """{"statut":"REFUSE","validation":"CORRIGEE"}""", GestionnaireA, "Gestionnaire");
 
         Assert.Equal(HttpStatusCode.NoContent, statut);
-        Assert.Equal(["statut oid-gestionnaire-a AIF-A1 REFUSE CORRIGEE oid-gestionnaire-a"], DepotEnMemoire.Appels);
+        Assert.Equal(["statut oid-gestionnaire-a AIF-A1 REFUSE CORRIGEE"], DepotEnMemoire.Appels);
     }
 
     [Fact]
@@ -123,6 +124,15 @@ public sealed class EcrituresTests : IDisposable
 
         Assert.Equal(HttpStatusCode.BadRequest, statut);
         Assert.Equal("VALIDATION_EXIGEE", corps!.Value.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Statut_validation_sans_brouillon_400_DECISION_ABSENTE()
+    {
+        var (statut, corps) = await Put("/api/contrats/AIF-SANS-BROUILLON/statut", """{"statut":"ACCEPTE","validation":"VALIDEE"}""", GestionnaireA, "Gestionnaire");
+
+        Assert.Equal(HttpStatusCode.BadRequest, statut);
+        Assert.Equal("DECISION_ABSENTE", corps!.Value.GetProperty("code").GetString());
     }
 
     [Fact]

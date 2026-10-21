@@ -53,7 +53,7 @@ flowchart LR
     MCP -. "OTLP (boucle locale)" .-> UW
 ```
 
-- **Langage et emplacement** : Python, architecture **hexagonale** (règle `~/.claude/rules/python-hexagonal.md`), dans `brief2/src/mcp/` à côté de `rag/` (`specs/03`). Paquet, `pyproject` et `Dockerfile` calqués sur rag.
+- **Langage et emplacement** : Python, architecture **hexagonale** (règle `~/.claude/rules/python-hexagonal.md`), dans `brief2/src/serveur-mcp/` à côté de `rag/` (`specs/03` ; pas `mcp/`, qui masquerait le paquet `mcp` du SDK). Paquet, `pyproject` et `Dockerfile` calqués sur rag.
 - **SDK** : le SDK MCP officiel Python (déjà la convention des fiches Sorabel). Version : celle du dernier SDK stable au moment de l'implémentation, **à faire valider par Acerola avant ajout** (aucun changement de version sans accord).
 - **Transport** : **Streamable HTTP** sur `/mcp`. `POST` porte les requêtes JSON-RPC et peut répondre en SSE (`text/event-stream`) ; `GET` ouvre le flux SSE serveur. SSE **activé** (pas de `json_response=True`). L'ancien transport HTTP+SSE (`/sse` + `/messages`) n'est pas utilisé.
 - **Identités** (D27, D67) : une inscription d'application Entra par agent et pour l'orchestrateur. Le cluster présente au serveur MCP un jeton OBO dont l'`azp` est celui de l'agent appelant et qui porte le rôle du gestionnaire. Le serveur MCP fait à son tour un OBO vers rag ou underwriting-admin (l'`azp` devient celui du serveur MCP ; rag et underwriting-admin contrôlent le rôle et le portefeuille sur l'utilisateur, comme aujourd'hui). Prérequis : consentement administrateur Entra (#47).

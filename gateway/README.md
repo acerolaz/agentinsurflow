@@ -84,6 +84,16 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 | `/internal/sql/…` (contrats) | `GET /api/contrats[/{numero_contrat}]` |
 | `/internal/traces/{trace_id}` | `GET /api/traces/{trace_id}` |
 
+## Exception JSON-RPC : `/mcp`
+
+`/mcp` est la seule route qui n'est pas du REST : le serveur MCP (`serveur-mcp`, port 8003) parle MCP en Streamable HTTP (`POST` JSON-RPC, réponse JSON ou `text/event-stream`, `GET` pour ouvrir un flux SSE, `DELETE` pour clore la session). Aucun document OpenAPI : les outils et leurs schémas sont renvoyés par `tools/list`.
+
+- **Autorisation à deux niveaux** : la gateway exige un jeton d'audience `mcp` (`Entra__Audiences__mcp__0`, `api://agentinsurflow-mcp`) avec le rôle `Gestionnaire` ; le serveur MCP revalide le jeton, puis les services appelés revalident le leur.
+- **Flux sans tampon** : YARP relaie les événements SSE au fil de l'eau (testé) ; `ActivityTimeout` de 5 min sur le cluster `mcp`. `traceparent` est relayé.
+- **Débit** : `RateLimit__Mcp__PermitLimit` (60 requêtes/min par utilisateur), en plus de la limite globale.
+- Outils, codes d'erreur : voir `serveur-mcp/README.md`.
+- Les écritures `PUT /api/contrats/{numéro}/brouillon` et `/statut` passent par la route `underwriting-contrats` existante.
+
 ## Swagger
 
 - **Une seule page**, à la racine de la gateway (`/` → `/index.html`), avec un menu qui donne accès aux **3 documents OpenAPI** : `rag` (`/rag/openapi.json`), `underwriting-admin` (`/underwriting/openapi/v1.json`) et la gateway (`/openapi/v1.json`).
@@ -99,8 +109,10 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 | `Entra__TenantId` | **obligatoire** | Tenant Entra (émetteurs v1 et v2 acceptés) |
 | `Entra__Audiences__rag__0` | **obligatoire** | Audiences de `rag`, en liste « a, b » : la même valeur que `RAG_API_AUDIENCES`, lue par `rag` (`<ID client>,api://<ID client>`) |
 | `Entra__Audiences__underwriting__0` | **obligatoire** | Audiences d'`underwriting-admin`, en liste « a, b » (`UNDERWRITING_API_AUDIENCES`) |
+| `ReverseProxy__Clusters__mcp__Destinations__d1__Address` | `http://localhost:8003` | Adresse de `serveur-mcp` (compose : `http://serveur-mcp:8003`) |
+| `Entra__Audiences__mcp__0` | `api://agentinsurflow-mcp` | Audiences de `serveur-mcp`, en liste « a, b » |
 | `Proxy__EnvoyDevant` | `false` | `true` en Azure : IP réelle reprise de l'envoy |
-| `RateLimit__Global__PermitLimit`, `RateLimit__Reponses__PermitLimit`, `RateLimit__FenetreSecondes` | `120`, `10`, `60` | Limitation de débit |
+| `RateLimit__Global__PermitLimit`, `RateLimit__Reponses__PermitLimit`, `RateLimit__Mcp__PermitLimit`, `RateLimit__FenetreSecondes` | `120`, `10`, `60`, `60` | Limitation de débit |
 | `SWAGGER_CLIENT_ID` | vide | Client Entra public de la page Swagger |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | `http://localhost:8002/v1/traces` | Récepteur OTLP des traces |
 | `APP_VERSION`, `APP_RELEASE` | `dev` | Versions servies par `/health` (gravées au build) |

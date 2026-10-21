@@ -168,21 +168,24 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     }
 }
 
-/// <summary>Deux faux backends partagés par les tests de la classe ; ils répondent 200 à tout.</summary>
+/// <summary>Trois faux backends partagés par les tests de la classe ; ils répondent 200 à tout.</summary>
 public sealed class Backends : IDisposable
 {
     public WireMockServer Rag { get; } = Demarrer();
     public WireMockServer Underwriting { get; } = Demarrer();
+    public WireMockServer Mcp { get; } = Demarrer();
 
     /// <summary>Une gateway devant ces backends, avec Entra de test et des réglages propres au test.</summary>
     public WebApplicationFactory<Program> Gateway(params (string Cle, string Valeur)[] reglages)
     {
         Rag.ResetLogEntries();
         Underwriting.ResetLogEntries();
+        Mcp.ResetLogEntries();
         return new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseSetting("ReverseProxy:Clusters:rag:Destinations:d1:Address", Rag.Url)
                 .UseSetting("ReverseProxy:Clusters:underwriting:Destinations:d1:Address", Underwriting.Url)
+                .UseSetting("ReverseProxy:Clusters:mcp:Destinations:d1:Address", Mcp.Url)
                 .AvecEntraDeTest();
             foreach (var (cle, valeur) in reglages)
             {
@@ -202,5 +205,6 @@ public sealed class Backends : IDisposable
     {
         Rag.Stop();
         Underwriting.Stop();
+        Mcp.Stop();
     }
 }

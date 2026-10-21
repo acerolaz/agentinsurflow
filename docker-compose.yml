@@ -78,11 +78,13 @@ services:
     environment:
       ReverseProxy__Clusters__rag__Destinations__d1__Address: http://rag:8001
       ReverseProxy__Clusters__underwriting__Destinations__d1__Address: http://underwriting-admin:8002
+      ReverseProxy__Clusters__mcp__Destinations__d1__Address: http://serveur-mcp:8003
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
       Entra__TenantId: ${AZURE_TENANT_ID:?AZURE_TENANT_ID manquant (.env)}
       # une liste « a, b » par service, la même que celle lue par le service lui-même
       Entra__Audiences__rag__0: ${RAG_API_AUDIENCES:-api://agentinsurflow-rag}
       Entra__Audiences__underwriting__0: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
+      Entra__Audiences__mcp__0: ${MCP_API_AUDIENCES:-api://agentinsurflow-mcp}
       SWAGGER_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
     ports: ["8000:8000"]
     depends_on: [rag, underwriting-admin]

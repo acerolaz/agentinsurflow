@@ -19,6 +19,8 @@ properties:
           - { name: Entra__Audiences__rag__1, value: "${RAG_API_CLIENT_ID}" }
           - { name: Entra__Audiences__underwriting__0, value: api://agentinsurflow-underwriting }
           - { name: Entra__Audiences__underwriting__1, value: "${UNDERWRITING_API_CLIENT_ID}" }
+          - { name: Entra__Audiences__mcp__0, value: api://agentinsurflow-mcp }
+          - { name: Entra__Audiences__mcp__1, value: "${MCP_API_CLIENT_ID}" }
           # ponytail: la page Swagger se connecte avec l'inscription de rag (A3 : pas d'inscription gateway)
           - { name: SWAGGER_CLIENT_ID, value: "${RAG_API_CLIENT_ID}" }
           # traces : récepteur OTLP d'underwriting-admin (loopback, sans jeton : règle S3-21)

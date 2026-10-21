@@ -20,8 +20,10 @@ from ..application import outils
 from ..domain.matrice import est_autorise, outils_autorises
 from ..domain.models import UNAUTHORIZED_TOOL, Appelant, ErreurOutil, Fiche, PrimeBrouillon
 from ..domain.ports import CorpusPort, DossiersPort, JetonsPort
-from ..infrastructure.otel.telemetrie import tracer
+from ..infrastructure.otel.telemetrie import echec, tracer
 from .securite import appelant_courant
+
+STATUTS_CONNUS = frozenset({"EN_ANALYSE", "REVUE_HUMAINE", "ACCEPTE", "REFUSE"})
 
 
 def _erreur(code: str, message: str) -> types.CallToolResult:
@@ -115,7 +117,9 @@ class ServeurMcp(FastMCP):
     ) -> Sequence[types.ContentBlock] | dict[str, Any]:
         appelant = appelant_courant.get()
         agent = appelant.agent if appelant else None
-        with tracer.start_as_current_span("mcp.outil", record_exception=False) as span:
+        with tracer.start_as_current_span(
+            "mcp.outil", record_exception=False, set_status_on_exception=False
+        ) as span:
             span.set_attributes(
                 {"mcp.outil": name, "appelant.azp": appelant.azp if appelant else ""}
             )
@@ -134,14 +138,23 @@ class ServeurMcp(FastMCP):
             except ToolError as exc:
                 if isinstance(exc.__cause__, ErreurOutil):
                     return _refus(span, exc.__cause__.code, str(exc.__cause__))  # type: ignore[return-value]
-                span.set_attributes({"resultat.code": "ERREUR", "isError": True})
+                _erreur_inattendue(span)
+                raise
+            except Exception:
+                _erreur_inattendue(span)
                 raise
             span.set_attributes({"resultat.code": "OK", "isError": False})
             return resultat
 
 
+def _erreur_inattendue(span: Span) -> None:
+    span.set_attributes({"resultat.code": "ERREUR", "isError": True})
+    echec(span, "ERREUR")
+
+
 def _refus(span: Span, code: str, message: str) -> types.CallToolResult:
     span.set_attributes({"resultat.code": code, "isError": True})
+    echec(span, code)
     return _erreur(code, message)
 
 
@@ -157,5 +170,6 @@ def _attributs_des_arguments(span: Span, arguments: dict[str, Any]) -> None:
         )
     if "numero_contrat" in arguments:
         span.set_attribute("contrat.present", True)
-    if isinstance(arguments.get("statut"), str):
-        span.set_attribute("statut.cible", arguments["statut"])
+    statut = arguments.get("statut")
+    if statut is not None:  # une valeur saisie n'entre jamais dans la trace
+        span.set_attribute("statut.cible", statut if statut in STATUTS_CONNUS else "INCONNU")

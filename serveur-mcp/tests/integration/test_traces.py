@@ -166,6 +166,37 @@ async def test_traceparent_entrant_relie_mcp_outil_et_la_requete_vers_la_gateway
     assert sortant.split("-")[2] == format(appel.context.span_id, "016x")
 
 
+def _textes(spans: InMemorySpanExporter) -> list[str]:
+    """Tout ce qu'un span exporte : attributs, événements et description du statut."""
+    return [
+        str(v)
+        for sp in spans.get_finished_spans()
+        for attributs in [sp.attributes, *(e.attributes for e in sp.events)]
+        for v in (attributs or {}).values()
+    ] + [sp.status.description or "" for sp in spans.get_finished_spans()]
+
+
+async def test_arguments_invalides_ne_fuient_pas_dans_les_spans(
+    spans: InMemorySpanExporter,
+) -> None:
+    # top_k invalide : la validation pydantic de FastMCP cite input_value=<la valeur saisie>
+    args = {"question": QUESTION, "top_k": f"{CONTRAT} {QUESTION}"}
+    async with session_mcp(_app(Gateway()), creer(AZP_REDACTEUR)) as s:
+        r = await s.call_tool("search_rag", args)
+        assert r.isError
+        inconnu = {"numero_contrat": CONTRAT, "statut": f"{CONTRAT} {QUESTION}"}
+    async with session_mcp(_app(Gateway()), creer(AZP_ORCHESTRATEUR)) as s:
+        await s.call_tool("update_statut_dossier", {**inconnu, "validation": 3})
+    for interdit in (CONTRAT, "0042", "Dupont", QUESTION):
+        assert not any(interdit in t for t in _textes(spans)), interdit
+    erreur = _par_nom(spans, "mcp.outil")[0]
+    assert (erreur.attributes or {})["resultat.code"] == "ERREUR"
+    assert erreur.status.status_code.name == "ERROR"
+    assert any(
+        (sp.attributes or {}).get("statut.cible") == "INCONNU" for sp in spans.get_finished_spans()
+    )
+
+
 async def test_aucune_donnee_personnelle_dans_les_spans(spans: InMemorySpanExporter) -> None:
     jeton = creer(AZP_ORCHESTRATEUR, oid=OID)
     async with session_mcp(_app(Gateway()), jeton) as s:
@@ -173,12 +204,7 @@ async def test_aucune_donnee_personnelle_dans_les_spans(spans: InMemorySpanExpor
         await s.call_tool("search_rag", {"question": QUESTION})
         await s.call_tool("get_contrat", {"numero_contrat": CONTRAT})
         await s.call_tool("update_statut_dossier", {"numero_contrat": CONTRAT, "statut": "X"})
-    textes = [
-        str(v)
-        for sp in spans.get_finished_spans()
-        for attributs in [sp.attributes, *(e.attributes for e in sp.events)]
-        for v in (attributs or {}).values()
-    ]
+    textes = _textes(spans)
     assert textes
     for interdit in (CONTRAT, "0042", "Dupont", QUESTION, jeton, OID, "obo-"):
         assert not any(interdit in t for t in textes), interdit

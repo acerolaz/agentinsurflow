@@ -18,7 +18,7 @@ from ...domain.models import (
     NOT_FOUND_IN_CORPUS,
     ErreurOutil,
 )
-from ..otel.telemetrie import tracer
+from ..otel.telemetrie import echec, tracer
 
 GABARIT = "/api/contrats/{numero_contrat}"  # la route dans les traces : jamais le numéro réel
 
@@ -71,7 +71,10 @@ class ClientGateway:
         corps: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         with tracer.start_as_current_span(
-            "gateway.appel", attributes={"http.route": gabarit}, record_exception=False
+            "gateway.appel",
+            attributes={"http.route": gabarit},
+            record_exception=False,
+            set_status_on_exception=False,
         ) as span:
             entetes = {"Authorization": f"Bearer {jeton}"}
             propagate.inject(entetes)  # une seule trace agent → MCP → gateway → backend
@@ -80,6 +83,7 @@ class ClientGateway:
                     methode, self._base + chemin, headers=entetes, params=params, json=corps
                 )
             except httpx.HTTPError as exc:
+                echec(span, "gateway injoignable")
                 raise ErreurOutil(DOSSIERS_INDISPONIBLES, "Gateway injoignable") from exc
             span.set_attribute("http.status_code", reponse.status_code)
         if reponse.status_code == 404:

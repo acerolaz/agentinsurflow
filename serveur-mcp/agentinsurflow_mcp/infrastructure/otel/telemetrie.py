@@ -17,6 +17,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.trace import Span, Status, StatusCode
 
 SERVICE = "agentinsurflow-mcp"
 POINT_OTLP = "http://localhost:8002/v1/traces"
@@ -39,3 +40,8 @@ def configurer_telemetrie(version: str) -> None:
     # ponytail: une perte des spans (underwriting-admin en panne) ne bloque jamais une réponse
     fournisseur.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=point)))
     trace.set_tracer_provider(fournisseur)
+
+
+def echec(span: Span, message: str) -> None:
+    """Statut ERROR à message constant : jamais ``str(exc)`` (il peut porter une valeur saisie)."""
+    span.set_status(Status(StatusCode.ERROR, message))

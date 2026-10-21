@@ -14,7 +14,7 @@ import pytest
 RACINE = Path(__file__).resolve().parent.parent
 QUESTION_COUVERTE = "Que prévoit l'article L. 211-1 du Code des assurances ?"
 QUESTION_HORS_CORPUS = "Quelle est la recette de la blanquette de veau ?"
-CONTRAT_AUTRE = "AIF-2026-0001"  # semé pour d'autres gestionnaires (SEED_GESTIONNAIRE_A/B)
+CONTRAT_AUTRE = "AIF-2026-000004"  # seed : gestionnaire B (A possède 000001 à 000003)
 CONTRAT_INCONNU = "AIF-9999-9999"
 SERVICES_ATTENDUS = ("gateway", "rag", "underwriting")
 

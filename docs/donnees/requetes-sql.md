@@ -87,23 +87,24 @@ Insertion idempotente (`INSERT … ON CONFLICT DO NOTHING`, compte `traces_write
 
 ## 5. Mesures `EXPLAIN ANALYZE`
 
-### Vue minimisée — mesurée le 20/10/2026 sur la base locale (6 contrats, 2 gestionnaires)
+### Vue minimisée — mesurée le 21/10/2026 sur la base locale (6 contrats, 2 gestionnaires)
+
+Contrat existant, lu par son propre gestionnaire (`AIF-2026-000001`) :
 
 ```text
-Nested Loop Left Join  (actual time=0.010..0.010 rows=0 loops=1)
-  ->  Nested Loop
-        ->  Index Scan using ix_contrat_numero_contrat on contrat c
-              Index Cond: (numero_contrat = 'AIF-2026-0001'::text)
-              Filter: (gestionnaire_id = $1)
-        ->  Index Scan using pk_souscripteur on souscripteur s
-  ->  Index Scan using ix_releve_information_contrat_id on releve_information r
-  SubPlan 1 -> Aggregate -> Bitmap Index Scan on ix_sinistre_releve_information_id
-Planning Time: 0.371 ms
-Execution Time: 0.057 ms
+Nested Loop Left Join  (actual time=6.018..6.020 rows=1 loops=1)
+  ->  Nested Loop  (rows=1)
+        ->  Index Scan using ix_contrat_numero_contrat on contrat c  (rows=1)
+              Index Cond: (numero_contrat = 'AIF-2026-000001'::text)
+        ->  Index Scan using pk_souscripteur on souscripteur s  (rows=1)
+  ->  Index Scan using ix_releve_information_contrat_id on releve_information r  (rows=1)
+  SubPlan -> Aggregate -> Bitmap Heap Scan on sinistre si
+Planning Time: 0.564 ms
+Execution Time: 0.100 ms
 ```
 
-Le contrat est trouvé par l'index unique, puis filtré par gestionnaire : un contrat d'un autre gestionnaire
-ne renvoie aucune ligne (même 404 qu'un contrat inexistant).
+Le contrat est trouvé par l'index unique, puis filtré par gestionnaire (`gestionnaire_id = :oid`) : pour un
+contrat d'un autre gestionnaire, le même plan ne renvoie aucune ligne (même 404 qu'un contrat inexistant).
 
 ### Recherche vectorielle, plein texte, référence exacte — 🔴 à mesurer
 

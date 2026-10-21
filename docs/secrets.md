@@ -36,13 +36,16 @@ Apps** (`pg-*-password`), posés à la main par `make annexe` (`infra/postgres-a
 | `RAG_SEUIL` | Variable de **repo** | `RAG_SEUIL` | `deploy.yml` → conteneur rag (porte de pertinence ; vide → `/api/extraits` en 503) |
 | `RAG_API_CLIENT_ID` | Variable de **repo** | `RAG_API_CLIENT_ID` | `deploy.yml` → audiences de la gateway et de rag, connexion de la page Swagger |
 | `UNDERWRITING_API_CLIENT_ID` | Variable de **repo** | `UNDERWRITING_API_CLIENT_ID` | `deploy.yml` → audiences de la gateway |
+| `AZURE_UAMI_CLIENT_ID` | Variable de **repo** | `AZURE_UAMI_CLIENT_ID` | `deploy.yml` → identité managée fédérée de rag (OBO sans secret) |
+| `SEED_GESTIONNAIRE_A`, `SEED_GESTIONNAIRE_B` | Variable de **repo** | idem | `deploy.yml` → conteneur underwriting-admin : `oid` (GUID) des gestionnaires du seed BOLA |
+| `E2E_CONTRAT_PROPRE` | Variable de **repo** | `E2E_CONTRAT_PROPRE` | `ci-cd.yml` › E2E : contrat du gestionnaire de la CI (témoin positif BOLA) |
 | — | Variable de l'env. `production` | `PROD_URL` | `deploy.yml` : URL publique de la production (domaine personnalisé, `make domaine`) ; la fumée vérifie aussi son certificat |
 | `AZURE_OPENAI_DEPLOYMENT` | — (**pas dans GitHub**) | — | Épinglé dans `llm.env`, versionné et copié dans l'image : le changer déclenche les evals |
 | `AZURE_OPENAI_API_KEY` 🔒 | — (**jamais dans GitHub**) | — | Local seulement ; la CI et les Container Apps s'authentifient sans clé (§4) |
 | `PG_*_PASSWORD` 🔒 | — (**jamais dans GitHub**) | — | Secrets des Container Apps (`make annexe`) ; en local, `.env` |
 | `APP_ENV`, `LLM_DELAI_S` | — (non reporté) | — | `APP_ENV` est posé par `deploy.yml` ; `LLM_DELAI_S` garde sa valeur par défaut (30 s) |
 | `AZURE_LOCATION`, `CONTAINERAPPS_ENV`, `GITHUB_REPO` | — (non reporté) | — | Lus seulement par `make` en local |
-| `LEGIFRANCE_*`, `INGESTION_JETON`, `TELEMETRIE_JETON`, `RAG_CLIENT_SECRET` 🔒, `RAG_TOP_K`, `RAG_API_AUDIENCES`, `UNDERWRITING_URL`, `AZURE_UAMI_CLIENT_ID`, `OTEL_*`, `PG_HOST`, `PG_PORT` | — (non reporté) | — | Local seulement : `make extraire`, `make ingest`, compose ; en Azure, leurs valeurs viennent de `infra/containerapp.yaml` ou de leurs défauts |
+| `LEGIFRANCE_*`, `INGESTION_JETON`, `TELEMETRIE_JETON`, `RAG_CLIENT_SECRET` 🔒, `RAG_TOP_K`, `RAG_API_AUDIENCES`, `UNDERWRITING_API_AUDIENCES`, `UNDERWRITING_URL`, `OTEL_*`, `PG_HOST`, `PG_PORT` | — (non reporté) | — | Local seulement : `make extraire`, `make ingest`, compose ; en Azure, leurs valeurs viennent de `infra/containerapp.yaml` ou de leurs défauts |
 
 Si tu préfères la ligne de commande à l'interface, chaque report a son équivalent `gh`, à taper toi-même :
 

@@ -12,7 +12,7 @@
 | **TI** — intégration | **20 %** | Un adapter face à sa vraie dépendance ou à un double fidèle (PostgreSQL du compose, `httpx.MockTransport`, WireMock.Net), **ou** l'API complète en mémoire (contrat HTTP : routes, codes, ProblemDetails). | `rag/tests/integration` (`TestClient`, `httpx.AsyncClient`) | `*.Infrastructure.Tests`, `*.Api.Tests` (`WebApplicationFactory`) | `make test`, `make test-integration` |
 | **E2E** | **10 %** | La solution qui tourne (compose ou staging), **via la gateway**, avec ses vraies dépendances. Lent, exclu du cycle rapide. | `e2e/` (pytest, `E2E_URL`) | — | `make test-e2e URL=…` |
 
-- **Porte** : `make pyramide` (`tools/pyramide.py`) compte les tests de chaque niveau et **échoue si TU < 65 %, TI > 25 %, E2E > 15 %, ou si un niveau est vide**. Elle tourne en CI dès que les trois niveaux existent (Task U5).
+- **Porte** : `make pyramide` (`tools/pyramide.py`) compte les tests de chaque niveau et **échoue si TU < 65 %, TI > 25 %, E2E > 15 %, ou si un niveau est vide**. Elle tourne en CI (job `pyramide`) mais reste **informative** (`continue-on-error`, décision d'Acerola) tant que les seuils ne sont pas atteints (≈ 52 % TU / 46 % TI / 2 % E2E au 20/10) ; elle deviendra bloquante après une tâche dédiée aux TU.
 - **Couverture ≥ 80 %** de lignes, par projet, mesurée sur TU + TI. Aucun quota par niveau.
 
 ### TU ou TI ?

@@ -59,7 +59,7 @@ avec un jeton. Le récepteur convertit la requête protobuf en lignes `span`, re
 | `events` · `links` | `jsonb` | `Span.events` · `Span.links` |
 | `recu_le` | `timestamptz` | — (réception) |
 
-- **Clé primaire** (`trace_id`, `span_id`) : un span reçu deux fois est ignoré (`ON CONFLICT DO NOTHING`, SQL paramétré).
+- **Clé primaire** (`trace_id`, `span_id`) : un span reçu deux fois est ignoré (`ON CONFLICT DO NOTHING`, SQL paramétré). Insertion par lots : un `INSERT` multi-lignes par lot de 1 000 spans, dans une transaction.
 - **Index** : B-tree (`service_name`, `start_time_unix_nano`), B-tree (`parent_span_id`), GIN (`attributes`).
 - **Droits** : `traces_writer` → INSERT ; `traces_reader` → SELECT.
 - `/v1/traces` et `/health` ne sont pas instrumentés (pas de boucle).

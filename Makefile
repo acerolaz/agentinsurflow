@@ -54,7 +54,7 @@ pyramide:           ## porte S3-22 : TU >= 65 %, TI <= 25 %, E2E <= 15 % (rag + 
 openapi:            ## docs/openapi/{rag,underwriting-admin}.json, générés depuis le code (sans démarrer la solution)
 	uv run python -c "import json; from agentinsurflow_rag.api import app; \
 	  open('docs/openapi/rag.json', 'w').write(json.dumps(app.openapi(), ensure_ascii=False, indent=2) + '\n')"
-	env -u VERSION dotnet build underwriting-admin/src/AgentInsurFlow.UnderwritingAdmin.Api -p:OpenApiGenerateDocuments=true -v q # VERSION (SHA) serait lu comme la propriété MSBuild Version
+	ASPNETCORE_ENVIRONMENT=Development env -u VERSION dotnet build underwriting-admin/src/AgentInsurFlow.UnderwritingAdmin.Api -p:OpenApiGenerateDocuments=true -v q # VERSION (SHA) serait lu comme la propriété MSBuild Version ; Development : pas de mot de passe PostgreSQL exigé
 
 gateway-%:          ## cibles de gateway/Makefile : make gateway-test, gateway-lint, gateway-docker-build
 	$(MAKE) -C gateway $*

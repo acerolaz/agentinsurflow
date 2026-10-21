@@ -82,7 +82,8 @@ Seul objet lisible par le compte `dossiers` (`GRANT SELECT` sur la vue, aucun dr
 
 Dossiers synthétiques pour deux gestionnaires, dont les `oid` Entra viennent de `SEED_GESTIONNAIRE_A` et
 `SEED_GESTIONNAIRE_B` (variables d'environnement, jamais commitées). `ON CONFLICT DO NOTHING` : rejouable.
-La migration n'est jouée qu'une fois par base ; sans ces variables au premier démarrage, le seed est vide
+Répartition : `AIF-2026-000001` à `000003` → gestionnaire A, `000004` à `000006` → gestionnaire B ; une valeur qui
+n'est pas un GUID fait échouer la migration. La migration n'est jouée qu'une fois par base ; sans ces variables au premier démarrage, le seed est vide
 (redémarrer sur une base neuve pour le rejouer).
 
 ### Écarts au MCD officiel (documentés)

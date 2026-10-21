@@ -22,7 +22,7 @@ Service Python (FastAPI) du **corpus réglementaire** : il porte l'ingestion des
 - **Refus par défaut** : chaque route du corpus exige son rôle ; les collections lisibles viennent du rôle (`Gestionnaire` → `textes_reglementaires`), aucune sinon.
 - **Swagger** : derrière la gateway, le document est servi en `GET /rag/openapi.json` dans la **page Swagger unique** (`http://localhost:8000/`). Il ne déclare pas de `servers` : le « Try it out » appelle les routes publiques de la gateway (jeton, rôle et limite de débit). Sans gateway, rag sert aussi son propre Swagger sur `/` (`http://localhost:8001/` dans le compose).
 - Un test de contrat vérifie que seules ces routes sont publiées (les anciens noms RPC répondent 404) et que chacune documente ses réponses d'erreur et son schéma de sécurité.
-- Sans PostgreSQL, sans Entra ou sans `RAG_SEUIL` configurés, l'API **démarre quand même** ; les routes concernées répondent 503, et un `RAG_SEUIL` absent ou invalide est signalé dès le démarrage (refus de démarrer en U5). Audiences des jetons : `RAG_API_AUDIENCES` (« a, b »), la même liste que la gateway (`Entra__Audiences__rag__0`) ; défaut `<ID client>,api://<ID client>`.
+- Sans PostgreSQL, sans Entra ou sans `RAG_SEUIL` configurés, l'API **démarre quand même** ; les routes concernées répondent 503, et un `RAG_SEUIL` absent ou invalide est signalé par un avertissement au démarrage ; `/api/extraits` et `/api/reponses` répondent alors 503. Audiences des jetons : `RAG_API_AUDIENCES` (« a, b »), la même liste que la gateway (`Entra__Audiences__rag__0`) ; défaut `<ID client>,api://<ID client>`.
 
 ## Agent à trois verrous (spec §4.2)
 

@@ -90,6 +90,8 @@ Export OTLP/HTTP vers `underwriting-admin` `/v1/traces` (`OTEL_EXPORTER_OTLP_TRA
 
 **Jamais tracé** (vérifié par les tests) : jeton, `numero_contrat`, identité du gestionnaire, texte de la question (seulement `question.sha256` et `question.longueur`), contenu de contrat, de fiche ou de prime, message d'une exception.
 
+**Limite connue** : les spans HTTP de la gateway et d'underwriting-admin (instrumentation ASP.NET Core) contiennent `url.path`, donc le `numero_contrat` des routes `/api/contrats/{numero_contrat}…` ; antérieur au serveur MCP, à traiter dans une issue dédiée.
+
 ## 6. Exploitation
 
 ### 6.1 Variables d'environnement

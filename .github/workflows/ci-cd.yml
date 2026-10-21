@@ -272,12 +272,13 @@ jobs:
           # contrat d'un gestionnaire de la CI (témoin positif BOLA) : variable GitHub, pas un secret
           E2E_CONTRAT_PROPRE: ${{ vars.E2E_CONTRAT_PROPRE }}
         run: |
-          # 🔴 A4 : l'identité de CI porte les rôles Gestionnaire/Ingestion (rag), Gestionnaire (underwriting)
+          # 🔴 A4 : l'identité de CI porte les rôles Gestionnaire/Ingestion (rag), Gestionnaire (underwriting et serveur MCP)
           jeton() { az account get-access-token --scope "api://$1/.default" --query accessToken -o tsv; }
           E2E_JETON_GESTIONNAIRE=$(jeton agentinsurflow-rag); echo "::add-mask::$E2E_JETON_GESTIONNAIRE"
           E2E_JETON_INGESTION=$E2E_JETON_GESTIONNAIRE
           E2E_JETON_GESTIONNAIRE_UNDERWRITING=$(jeton agentinsurflow-underwriting); echo "::add-mask::$E2E_JETON_GESTIONNAIRE_UNDERWRITING"
-          export E2E_JETON_GESTIONNAIRE E2E_JETON_INGESTION E2E_JETON_GESTIONNAIRE_UNDERWRITING
+          E2E_JETON_MCP=$(jeton agentinsurflow-mcp); echo "::add-mask::$E2E_JETON_MCP"
+          export E2E_JETON_GESTIONNAIRE E2E_JETON_INGESTION E2E_JETON_GESTIONNAIRE_UNDERWRITING E2E_JETON_MCP
           make test-e2e URL="${{ needs.staging.outputs.url }}"
 
   release:

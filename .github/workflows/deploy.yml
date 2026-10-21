@@ -155,7 +155,7 @@ jobs:
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/reponses" -H 'content-type: application/json' -d '{}')
           [ "$code" = 401 ] || { echo "::error::POST /api/reponses sans jeton : $code ≠ 401"; exit 1; }
           # Le LLM est vérifié avec un jeton de la CI par le job evals (staging)
-          echo "✔ $URL : gateway, rag et underwriting-admin en $attendu, /api/reponses fermée sans jeton"
+          echo "✔ $URL : gateway, rag, underwriting-admin et serveur-mcp en $attendu, /api/reponses fermée sans jeton"
 
       - uses: astral-sh/setup-uv@v6
         with: { version: "0.11.13", enable-cache: true }

@@ -144,6 +144,8 @@ Même fonctionnement que rag.
 
 **Jamais tracé** (vérifié par tests, comme rag) : jeton, `numero_contrat`, identité du gestionnaire, texte de la requête `search_rag` (seulement `question.sha256` et `question.longueur`), contenu de contrat, de fiche ou de prime. L'audit « qui a validé » se lit dans la table `Decision`.
 
+**Limite connue** : les spans HTTP de la gateway et d'underwriting-admin (instrumentation ASP.NET Core) contiennent `url.path`, donc le `numero_contrat` des routes `/api/contrats/{numero_contrat}…` ; antérieur au serveur MCP, à traiter dans une issue dédiée.
+
 ## 8. Gateway
 
 - Route `/mcp` (`POST`, `GET`) dans `appsettings.Routes.json`, cluster `mcp`, politique d'autorisation (rôle `Gestionnaire` + audience du serveur MCP), limite de débit, refus par défaut.

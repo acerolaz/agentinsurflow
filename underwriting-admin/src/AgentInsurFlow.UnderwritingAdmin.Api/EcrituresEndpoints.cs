@@ -14,7 +14,7 @@ internal static class EcrituresEndpoints
 
         contrats.MapPut("/{numero_contrat}/brouillon", async (ClaimsPrincipal utilisateur, EnregistrerBrouillon cas, CancellationToken ct,
                 [FromRoute(Name = "numero_contrat")] string numeroContrat, BrouillonCorps corps) =>
-            Oid(utilisateur) is not { } oid
+            ContratsEndpoints.Oid(utilisateur) is not { } oid
                 ? Problemes.Creer(403, "Jeton sans identité de gestionnaire", "ACCES_REFUSE")
                 : Reponse(await cas.Executer(oid, numeroContrat, corps.Fiche, corps.Prime, ct)))
             .WithName("EnregistrerBrouillon")
@@ -23,7 +23,7 @@ internal static class EcrituresEndpoints
 
         contrats.MapPut("/{numero_contrat}/statut", async (ClaimsPrincipal utilisateur, ChangerStatut cas, CancellationToken ct,
                 [FromRoute(Name = "numero_contrat")] string numeroContrat, StatutCorps corps) =>
-            Oid(utilisateur) is not { } oid
+            ContratsEndpoints.Oid(utilisateur) is not { } oid
                 ? Problemes.Creer(403, "Jeton sans identité de gestionnaire", "ACCES_REFUSE")
                 : Reponse(await cas.Executer(oid, numeroContrat, new ChangementStatut(corps.Statut ?? "", corps.Validation), ct)))
             .WithName("ChangerStatut")
@@ -36,9 +36,6 @@ internal static class EcrituresEndpoints
         r is { Ecrit: true } ? Results.NoContent()
         : r.CodeRefus is { } code ? Problemes.Creer(400, "Écriture refusée", code)
         : Problemes.Creer(404, "Contrat introuvable", "CONTRAT_INTROUVABLE");
-
-    private static string? Oid(ClaimsPrincipal u) =>
-        u.FindFirst("oid")?.Value is { Length: > 0 } v ? v : null;
 }
 
 /// <summary>Corps de <c>PUT …/brouillon</c> ; la prime est facultative.</summary>

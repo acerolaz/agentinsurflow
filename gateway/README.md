@@ -86,7 +86,7 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 
 ## Exception JSON-RPC : `/mcp`
 
-`/mcp` est la seule route qui n'est pas du REST : le serveur MCP (`serveur-mcp`, port 8003) parle MCP en Streamable HTTP (`POST` JSON-RPC, réponse JSON ou `text/event-stream`, `GET` pour ouvrir un flux SSE, `DELETE` pour clore la session). Aucun document OpenAPI : les outils et leurs schémas sont renvoyés par `tools/list`.
+`/mcp` est la seule route qui n'est pas du REST : le serveur MCP (`serveur-mcp`, port 8003) parle MCP en Streamable HTTP (`POST` JSON-RPC, réponse JSON ou `text/event-stream`, `GET` pour ouvrir un flux SSE ; sans session côté serveur, `DELETE` n'est pas routé). Aucun document OpenAPI : les outils et leurs schémas sont renvoyés par `tools/list`.
 
 - **Autorisation à deux niveaux** : la gateway exige un jeton d'audience `mcp` (`Entra__Audiences__mcp__0`, `api://agentinsurflow-mcp`) avec le rôle `Gestionnaire` ; le serveur MCP revalide le jeton, puis les services appelés revalident le leur.
 - **Flux sans tampon** : YARP relaie les événements SSE au fil de l'eau (testé) ; `ActivityTimeout` de 5 min sur le cluster `mcp`. `traceparent` est relayé.

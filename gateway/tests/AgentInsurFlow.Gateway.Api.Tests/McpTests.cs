@@ -47,18 +47,16 @@ public sealed class McpTests(Backends backends) : IClassFixture<Backends>
         Assert.Empty(backends.Underwriting.LogEntries);
     }
 
-    [Theory]
-    [InlineData("GET")]
-    [InlineData("DELETE")]
-    public async Task Get_et_delete_mcp_routent_vers_le_backend_mcp(string verbe)
+    [Fact]
+    public async Task Get_mcp_route_vers_le_backend_mcp()
     {
         using var usine = backends.Gateway();
         using var client = usine.CreateClient();
 
-        var reponse = await Envoyer(client, verbe, "/mcp", JetonMcp());
+        var reponse = await Envoyer(client, "GET", "/mcp", JetonMcp());
 
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
-        Assert.Equal(verbe, Assert.Single(backends.Mcp.LogEntries).RequestMessage!.Method);
+        Assert.Equal("GET", Assert.Single(backends.Mcp.LogEntries).RequestMessage!.Method);
     }
 
     [Fact]

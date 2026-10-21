@@ -40,11 +40,11 @@ internal sealed class LigneSpan
     public string? ParentSpanId { get; set; }
     public string TraceState { get; set; } = "";
     public string Name { get; set; } = "";
-    public int Kind { get; set; }
+    public short Kind { get; set; } // smallint, comme la migration
     public long StartTimeUnixNano { get; set; }
     public long EndTimeUnixNano { get; set; }
     public double DureeMs { get; set; }
-    public int StatusCode { get; set; }
+    public short StatusCode { get; set; }
     public string StatusMessage { get; set; } = "";
     public string ServiceName { get; set; } = "";
     public string ResourceAttributes { get; set; } = "{}";

@@ -18,6 +18,7 @@ public sealed class ReglesTests
     [InlineData("75011", "75")]
     [InlineData("97411", "974")]
     [InlineData("98000", "980")]
+    [InlineData("97", "97")] // tronqué : borné comme la vue, sans exception
     [InlineData("2A004", "2A")]
     [InlineData("2B033", "2B")]
     public void Departement_depuis_code_postal(string codePostal, string attendu) =>

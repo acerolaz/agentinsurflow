@@ -21,10 +21,10 @@ fmt:
 lint:               ## porte 1 : style + typage
 	uv run ruff check .
 	uv run ruff format --check .
-	uv run mypy rag/agentinsurflow_rag tools
+	uv run mypy rag/agentinsurflow_rag serveur-mcp/agentinsurflow_mcp tools
 
-test:               ## TU, sans Docker (rag/tests/unit + outillage de la racine)
-	uv run pytest tests rag/tests/unit --no-cov
+test:               ## TU, sans Docker (rag + serveur-mcp, tests/unit + outillage de la racine)
+	uv run pytest tests rag/tests/unit serveur-mcp/tests/unit --no-cov
 
 test-integration:   ## porte 2 : TU + TI (PostgreSQL du compose), couverture >= 80 %
 	docker compose up -d --build --wait postgres

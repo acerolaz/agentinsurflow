@@ -14,8 +14,11 @@ from pathlib import Path
 
 # niveau → (dossiers pytest, motifs des projets de tests C# sous underwriting-admin/tests)
 NIVEAUX: dict[str, tuple[list[str], list[str]]] = {
-    "TU": (["rag/tests/unit"], ["*.Domain.Tests", "*.Application.Tests"]),
-    "TI": (["rag/tests/integration"], ["*.Infrastructure.Tests", "*.Api.Tests"]),
+    "TU": (["rag/tests/unit", "serveur-mcp/tests/unit"], ["*.Domain.Tests", "*.Application.Tests"]),
+    "TI": (
+        ["rag/tests/integration", "serveur-mcp/tests/integration"],
+        ["*.Infrastructure.Tests", "*.Api.Tests"],
+    ),
     "E2E": (["e2e"], []),
 }
 TESTS_CSHARP = "underwriting-admin/tests"

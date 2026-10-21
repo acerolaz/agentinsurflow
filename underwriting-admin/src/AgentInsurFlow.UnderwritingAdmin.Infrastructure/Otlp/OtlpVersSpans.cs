@@ -105,8 +105,6 @@ internal static class AnyValueJson
 
     public static string Attributs(IEnumerable<KeyValue>? attributs) => Ecrire(w => EcrireAttributs(w, attributs));
 
-    public static string Vers(AnyValue valeur) => Ecrire(w => EcrireValeur(w, valeur));
-
     public static void EcrireAttributs(Utf8JsonWriter w, IEnumerable<KeyValue>? attributs)
     {
         w.WriteStartObject();

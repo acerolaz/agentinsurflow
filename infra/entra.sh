@@ -37,6 +37,8 @@ spa=$(printf '%s\n' "${redirections[@]}" | jq -R . | jq -s .)
 # inscrire <nom> <id du scope> "<appId client>…" <rôle>=<id>… : crée l'inscription au besoin, puis impose
 # l'URI d'API, le scope access_as_user, les rôles, les redirections et la pré-autorisation sur ce scope
 # d'Azure CLI et des clients donnés (#47 : leur OBO se passe du consentement administrateur du tenant).
+# Deux URI d'API : api://<nom> (jetons du poste et de l'E2E) et api://<appId>, que l'OBO de rag et du
+# serveur MCP demande (sans elle : AADSTS500011, ressource introuvable).
 inscrire() {
   local nom=$1 scope=$2 clients app_id objet corps
   clients=$(printf '%s\n' "$CLI" $3 | jq -R . | jq -s .)
@@ -44,11 +46,12 @@ inscrire() {
   app_id=$(az ad app list --display-name "$nom" --query "[0].appId" -o tsv)
   [ -n "$app_id" ] || app_id=$(az ad app create --display-name "$nom" --sign-in-audience AzureADMyOrg --query appId -o tsv)
   objet=$(az ad app show --id "$app_id" --query id -o tsv)
-  corps=$(jq -n --arg uri "api://$nom" --arg scope "$scope" --argjson clients "$clients" --argjson spa "$spa" \
+  corps=$(jq -n --arg uri "api://$nom" --arg uri_id "api://$app_id" --arg scope "$scope" \
+    --argjson clients "$clients" --argjson spa "$spa" \
     --arg texte "Appeler $nom au nom de l'utilisateur connecté" \
     --argjson roles "$(printf '%s\n' "$@" | jq -R 'split("=") | {value: .[0], id: .[1], displayName: .[0],
       description: .[0], allowedMemberTypes: ["User", "Application"], isEnabled: true}' | jq -s .)" '{
-    identifierUris: [$uri], spa: {redirectUris: $spa}, appRoles: $roles,
+    identifierUris: [$uri, $uri_id], spa: {redirectUris: $spa}, appRoles: $roles,
     api: {requestedAccessTokenVersion: 2,
       oauth2PermissionScopes: [{id: $scope, value: "access_as_user", type: "User", isEnabled: true,
         adminConsentDisplayName: $texte, adminConsentDescription: $texte,

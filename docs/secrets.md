@@ -128,6 +128,11 @@ propriétaire de l'API, et le même mécanisme sert déjà à Azure CLI (jetons 
 rien : le gestionnaire doit toujours avoir le rôle `Gestionnaire` de l'API, et le contrôle BOLA s'applique à son
 identité.
 
+**Premier obstacle rencontré (22/10)** : avant tout contrôle de consentement, Entra répondait
+`AADSTS500011: The resource principal named api://<appId d'underwriting> was not found`. L'OBO demande la portée
+`api://<appId>/access_as_user` alors que l'API ne déclarait que `api://agentinsurflow-underwriting` : chaque API
+déclare désormais les deux URI (`identifierUris`).
+
 **Si Entra refuse encore** : rag et le serveur MCP journalisent le message exact (`jeton On-Behalf-Of refusé par
 Entra : AADSTS…`, sans le jeton) ; la réponse reste 503 `DOSSIERS_INDISPONIBLES`.
 

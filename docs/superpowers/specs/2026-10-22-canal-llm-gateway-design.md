@@ -13,13 +13,18 @@ Règles visées : OWASP API4 (consommation non bornée), API8 (configuration), A
 - Le canal LLM passe par la gateway ; la gateway **échange le jeton** ; Foundry n'accepte que l'identité de la gateway.
 - **rag sort de la Container App principale** : sa propre Container App, entrée interne, identité managée propre (même modèle que le serveur MCP, #69).
 - **Limite en nombre de requêtes** par appelant, **mesure des tokens** ; le **budget en tokens** bloquant viendra plus tard.
+- **Tout passe par la gateway, y compris en local** : aucun compte humain n'appelle Foundry en direct ; spec approuvée avec cette règle.
+
+### Trajectoire (Acerola, 22/10)
+
+À terme, **rag n'appelle plus le LLM conversationnel** : les agents vivent uniquement dans le cluster (#7) et y feront le chat par cette même route. rag garde les **embeddings** (question et ingestion) — *hypothèse de Claude, à confirmer*. Le chat encore présent dans rag est donc **transitoire** : aucun travail propre au chat n'y est ajouté ; le client `openai` partagé (chat + embeddings) suit le changement d'URL et de jeton.
 
 ## 3. Non-objectifs, anti-objectifs
 
 **Non-objectifs** : budget bloquant en tokens ; filtrage de contenu ou détection d'injection à la gateway (le garde-fou reste côté application) ; cache de réponses ; plusieurs modèles ou routage entre fournisseurs ; agents du cluster (#7, ils utiliseront la même route).
 
 **Anti-objectifs** (échec même si « ça marche ») :
-- une clé API Foundry encore active, ou une identité autre que la gateway (et le poste d'Acerola, § 6) capable d'appeler Foundry ;
+- une clé API Foundry encore active, ou une identité autre que la gateway (Azure ou locale) capable d'appeler Foundry ;
 - un prompt, une réponse, un jeton ou un `numero_contrat` dans une trace, une métrique ou un journal de la gateway ;
 - une réponse en streaming mise en tampon par la gateway.
 
@@ -37,8 +42,8 @@ flowchart LR
 - **Route** `llm` : `POST /api/llm/{**reste}` → `{FOUNDRY_ENDPOINT}/openai/{**reste}` (API v1 d'OpenAI sur Azure : `/openai/v1/chat/completions`, `/openai/v1/embeddings`). Politique `llm-appelant` : rôle d'application **`LLM`** + audience « llm » (`api://<appId>` et GUID, leçon de #64). Limite de débit nommée `llm`, **partitionnée par `azp`** (l'application appelante), réglable par configuration. Sans tampon (streaming transmis au fil de l'eau). Refus par défaut inchangé.
 - **Inscription Entra** `agentinsurflow-llm` : audience de la route, rôle d'application `LLM` attribué à rag (et aux agents de #7 quand ils existeront).
 - **Échange de jeton** : même mécanisme que la route `calcul` (`Azure.Identity` déjà présent) ; portée `https://cognitiveservices.azure.com/.default`. La transformation existante est généralisée en table « route → portée » plutôt que dupliquée.
-- **Identité de la gateway en local** : `DefaultAzureCredential` (identité managée en Azure, ton `az login` en local), pour que le canal LLM marche aussi depuis le poste ; le calcul local reste sans jeton (pas de portée configurée).
-- **Foundry** : `disableLocalAuth = true` (plus aucune clé) ; rôle « Cognitive Services OpenAI User » **retiré** des Container Apps et de la CI, attribué à la seule identité managée de la **Container App principale (gateway)** et à **ton compte** (poste de développement, traçable). Script `infra/llm.sh`, lancé à la main.
+- **Identité de la gateway en local** (décision d'Acerola : tout par la gateway, même en local) : inscription Entra dédiée `agentinsurflow-gateway-local` avec un **secret client dans le `.env`** (`GATEWAY_CLIENT_ID`, `GATEWAY_CLIENT_SECRET`, même modèle que `MCP_CLIENT_SECRET`) ; la gateway choisit `ClientSecretCredential` si le secret est présent, sinon l'identité managée (Azure). Le calcul local reste sans jeton (pas de portée configurée).
+- **Foundry** : `disableLocalAuth = true` (plus aucune clé) ; rôle « Cognitive Services OpenAI User » **retiré** de toute autre identité (Container Apps, CI, comptes humains), attribué **seulement** à l'identité managée de la **Container App principale (gateway)** et à l'inscription `agentinsurflow-gateway-local`. Script `infra/llm.sh`, lancé à la main. Limite de gouvernance : le propriétaire de la ressource peut toujours se réattribuer un rôle (hors périmètre technique).
 - **rag** : `AZURE_OPENAI_ENDPOINT` devient `${GATEWAY_URL}/api/llm` ; le client `openai` garde `base_url` + un fournisseur de jeton d'**application** (audience « llm », identité managée de rag en Azure, `az login` ou secret de l'inscription rag en local), jamais de clé. `AZURE_OPENAI_API_KEY` disparaît.
 - **Container App rag** : `infra/containerapp-rag.yaml`, entrée interne (port 8001), identité managée propre fédérée sur `agentinsurflow-rag` (OBO vers underwriting-admin conservé) ; le cluster `rag` de la gateway vise son adresse interne ; ses traces passent par la gateway (`/v1/traces`, rôle `Telemetrie`, comme le MCP) ; base vecteurs inchangée (PostgreSQL annexe, joignable depuis l'environnement : à vérifier par le constructeur, sinon le signaler).
 - **Évals et CI** : les évals passent déjà par `/api/reponses` (gateway → rag) ; la CI perd son accès direct à Foundry ; le job `evals-pr` (désactivé) devra passer par la gateway s'il est réactivé.

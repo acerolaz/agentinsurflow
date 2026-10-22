@@ -177,4 +177,11 @@ internal sealed class LigneVue
     public int Resiliations { get; set; }
     public string Formule { get; set; } = "";
     public DateTimeOffset MisAJour { get; set; }
+    public DateOnly DateEffet { get; set; }
+    public int? AnciennetePermisMois { get; set; }
+    public int? PuissanceFiscaleCv { get; set; }
+    public string? TypeUsage { get; set; }
+    public int NbSinistresTroisAns { get; set; }
+    public int NbSinistresResponsablesTroisAns { get; set; }
+    public bool RelevePresent { get; set; }
 }

@@ -15,8 +15,7 @@ from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ...domain.ports import ErreurDossiers
-
-PORTEE_FEDERATION = "api://AzureADTokenExchange/.default"
+from .application import PORTEE_FEDERATION
 
 
 class ConfigObo(BaseSettings):

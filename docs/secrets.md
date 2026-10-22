@@ -32,23 +32,36 @@ Apps** (`pg-*-password`), posés à la main par `make annexe` (`infra/postgres-a
 | `ACR_NAME` | Variable de repo | `ACR_NAME` | `ci-cd.yml` › build (push), `deploy.yml` (image) |
 | `APP_STAGING` | Variable de l'env. `staging` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
 | `APP_PRODUCTION` | Variable de l'env. `production` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
-| `AZURE_OPENAI_ENDPOINT` | Variable de **repo** | `AZURE_OPENAI_ENDPOINT` | `deploy.yml` → `infra/containerapp.yaml` (conteneur rag) ; `ci-cd.yml` › `evals-pr` (désactivé) |
+| `PG_APP_STAGING` / `PG_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `PG_APP_NAME` | `deploy.yml` : Container App de la base annexe (entrée **TCP interne** 5432), déployée **en premier** ; son nom est le `PG_HOST` de rag et d'underwriting-admin. Affiché par `make infra`. Sans VNet : seule l'entrée TCP *externe* en exige un (doc Microsoft), l'environnement actuel convient (vérifié le 22/10) |
+| `UW_APP_STAGING` / `UW_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `UW_APP_NAME` | `deploy.yml` : Container App d'underwriting-admin (entrée interne 8002), déployée après la base annexe et **avant** la gateway ; affiché par `make infra`. Son FQDN interne est lu par le workflow (`UNDERWRITING_APP_FQDN` : cluster `underwriting` et traces de la gateway) |
+| `RAG_APP_STAGING` / `RAG_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `RAG_APP_NAME` | `deploy.yml` : Container App de rag (entrée interne), déployée **après** la principale ; affiché par `make infra`. Son FQDN interne est lu par le workflow (`RAG_APP_FQDN`, cluster `rag` de la gateway) |
+| `MCP_APP_STAGING` / `MCP_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `MCP_APP_NAME` | `deploy.yml` : Container App du serveur MCP (entrée interne) ; affiché par `make infra`. Son FQDN interne (`<app>.internal.<domaine>`) est lu par le workflow, rien à reporter (`MCP_APP_FQDN`) |
+| `CALCUL_APP_STAGING` / `CALCUL_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `CALCUL_APP_NAME` | `deploy.yml` : déploiement de la Function de calcul ; affiché par `make calcul` |
+| (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_URL` | `deploy.yml` : fumée de la Function ; → `infra/containerapp.yaml` (cluster `calcul` de la gateway). Le serveur MCP n'appelle plus la Function : `CALCUL_URL` = `<gateway>/api/calcul` |
+| (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_AUDIENCE` | `deploy.yml` → gateway (`Entra__Audiences__calcul__0`, portée `Calcul__Portee` = `<audience>/.default`) et serveur MCP (`CALCUL_AUDIENCE`) ; `api://<appId agentinsurflow-calcul>` |
+| (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_API_CLIENT_ID` | `deploy.yml` (liste `envsubst`) → `infra/containerapp.yaml` (`Entra__Audiences__calcul__1`, GUID de l'application : `aud` des jetons v2) |
+| `AZURE_OPENAI_ENDPOINT` | Variable de **repo** | `AZURE_OPENAI_ENDPOINT` | **La gateway** : `https://<FQDN de la gateway>/api/llm` (jamais Foundry). `deploy.yml` ne la lit plus (il pose `${GATEWAY_URL}/api/llm` dans `infra/containerapp-rag.yaml`) ; seul `ci-cd.yml` › `evals-pr` (désactivé) l'utiliserait |
+| `LLM_AUDIENCE` | Variable de **repo** | `LLM_AUDIENCE` | `deploy.yml` (liste `envsubst`) → gateway (`Entra__Audiences__llm__0`) et rag (audience du jeton d'application) ; `api://<appId agentinsurflow-llm>`, affiché par `make llm` |
+| `LLM_API_CLIENT_ID` | Variable de **repo** | `LLM_API_CLIENT_ID` | `deploy.yml` → gateway (`Entra__Audiences__llm__1`, GUID : `aud` des jetons v2) ; affiché par `make llm` |
+| `FOUNDRY_ENDPOINT` | Variable de **repo** | `FOUNDRY_ENDPOINT` | `deploy.yml` → gateway : cluster `llm` (`https://<ressource>.openai.azure.com`, sans `/openai`) ; affiché par `make llm` |
 | `RAG_SEUIL` | Variable de **repo** | `RAG_SEUIL` | `deploy.yml` → conteneur rag (porte de pertinence ; vide → `/api/extraits` en 503) |
 | `RAG_API_CLIENT_ID` | Variable de **repo** | `RAG_API_CLIENT_ID` | `deploy.yml` → audiences de la gateway et de rag, connexion de la page Swagger |
-| `UNDERWRITING_API_CLIENT_ID` | Variable de **repo** | `UNDERWRITING_API_CLIENT_ID` | `deploy.yml` → audiences de la gateway |
+| `UNDERWRITING_API_CLIENT_ID` | Variable de **repo** | `UNDERWRITING_API_CLIENT_ID` | `deploy.yml` → audiences de la gateway et d'underwriting-admin, `Telemetrie__Audience` de la gateway (`api://<appId>`) |
 | `MCP_API_CLIENT_ID` | Variable de **repo** | `MCP_API_CLIENT_ID` | `deploy.yml` (liste `envsubst`) → audiences de la gateway et du serveur MCP ; affiché par `make entra` |
-| `MCP_AZP_ORCHESTRATEUR`, `MCP_AZP_REDACTEUR`, `MCP_AZP_ACTUAIRE` | Variable de **repo** | idem | `deploy.yml` → conteneur serveur-mcp : `azp` des agents (matrice d'accès) ; vides tant que #7 n'a pas inscrit les agents |
-| `AZURE_UAMI_CLIENT_ID` | Variable de **repo** | `AZURE_UAMI_CLIENT_ID` | `deploy.yml` → identité managée fédérée de rag et du serveur MCP (OBO sans secret) |
-| `SEED_GESTIONNAIRE_A`, `SEED_GESTIONNAIRE_B` | Variable de **repo** | idem | `deploy.yml` → conteneur underwriting-admin : `oid` (GUID) des gestionnaires du seed BOLA |
+| `MCP_AZP_ORCHESTRATEUR`, `MCP_AZP_REDACTEUR`, `MCP_AZP_ACTUAIRE` | Variable de **repo** | idem | `deploy.yml` → Container App du serveur MCP : `azp` des agents (matrice d'accès) ; vides tant que #7 n'a pas inscrit les agents |
+| `AZURE_UAMI_CLIENT_ID` | Variable de **repo** | `AZURE_UAMI_CLIENT_ID` | `deploy.yml` → identité managée de la **gateway** seule depuis #70 (`Calcul__IdentiteClientId`, jeton Foundry) ; c'est aussi la seule application admise par l'Easy Auth de la Function (`make calcul`) |
+| `AZURE_UAMI_RAG_CLIENT_ID` | Variable de **repo** | `AZURE_UAMI_RAG_CLIENT_ID` | `deploy.yml` → identité managée PROPRE de rag (`AZURE_UAMI_CLIENT_ID` de son conteneur) : OBO, jeton LLM et traces sans secret ; affiché par `make entra` |
+| `AZURE_UAMI_MCP_CLIENT_ID` | Variable de **repo** | `AZURE_UAMI_MCP_CLIENT_ID` | `deploy.yml` → identité managée PROPRE du serveur MCP (`AZURE_UAMI_CLIENT_ID` de son conteneur) : OBO et jetons d'application sans secret ; affiché par `make entra` |
+| `SEED_GESTIONNAIRE_A`, `SEED_GESTIONNAIRE_B` | Variable de **repo** | idem | `deploy.yml` → Container App d'underwriting-admin : `oid` (GUID) des gestionnaires du seed BOLA |
 | `E2E_CONTRAT_PROPRE` | Variable de **repo** | `E2E_CONTRAT_PROPRE` | `ci-cd.yml` › E2E : contrat du gestionnaire de la CI (témoin positif BOLA) |
 | — | Variable de l'env. `production` | `PROD_URL` | `deploy.yml` : URL publique de la production (domaine personnalisé, `make domaine`) ; la fumée vérifie aussi son certificat |
 | `AZURE_OPENAI_DEPLOYMENT` | — (**pas dans GitHub**) | — | Épinglé dans `llm.env`, versionné et copié dans l'image : le changer déclenche les evals |
 | `MCP_CLIENT_SECRET` 🔒 | — (**jamais dans GitHub**) | — | Local seulement (OBO du serveur MCP) ; en Azure, identité managée fédérée |
-| `AZURE_OPENAI_API_KEY` 🔒 | — (**jamais dans GitHub**) | — | Local seulement ; la CI et les Container Apps s'authentifient sans clé (§4) |
-| `PG_*_PASSWORD` 🔒 | — (**jamais dans GitHub**) | — | Secrets des Container Apps (`make annexe`) ; en local, `.env` |
+| `GATEWAY_CLIENT_ID`, `GATEWAY_CLIENT_SECRET` 🔒 | — (**jamais dans GitHub**) | — | Local seulement : identité de la gateway (`agentinsurflow-gateway-local`, `make llm`) ; en Azure, identité managée (§4) |
+| `PG_*_PASSWORD` 🔒 | — (**jamais dans GitHub**) | — | Secrets des Container Apps (`make annexe`) : les sept sur l'app postgres, quatre sur celle d'underwriting-admin, trois sur rag (plus aucun sur la principale) ; en local, `.env` |
 | `APP_ENV`, `LLM_DELAI_S` | — (non reporté) | — | `APP_ENV` est posé par `deploy.yml` ; `LLM_DELAI_S` garde sa valeur par défaut (30 s) |
-| `AZURE_LOCATION`, `CONTAINERAPPS_ENV`, `GITHUB_REPO` | — (non reporté) | — | Lus seulement par `make` en local |
-| `LEGIFRANCE_*`, `INGESTION_JETON`, `TELEMETRIE_JETON`, `RAG_CLIENT_SECRET` 🔒, `RAG_TOP_K`, `RAG_API_AUDIENCES`, `UNDERWRITING_API_AUDIENCES`, `UNDERWRITING_URL`, `MCP_API_AUDIENCES`, `GATEWAY_URL`, `OTEL_*`, `PG_HOST`, `PG_PORT` | — (non reporté) | — | Local seulement : `make extraire`, `make ingest`, compose ; en Azure, leurs valeurs viennent de `infra/containerapp.yaml` ou de leurs défauts |
+| `AZURE_LOCATION`, `CONTAINERAPPS_ENV`, `GITHUB_REPO`, `FOUNDRY_NAME`, `FOUNDRY_RESOURCE_GROUP` | — (non reporté) | — | Lus seulement par `make` en local |
+| `LEGIFRANCE_*`, `INGESTION_JETON`, `TELEMETRIE_JETON`, `RAG_CLIENT_SECRET` 🔒 (OBO et jeton LLM de rag), `RAG_TOP_K`, `RAG_API_AUDIENCES`, `UNDERWRITING_API_AUDIENCES`, `UNDERWRITING_URL`, `MCP_API_AUDIENCES`, `GATEWAY_URL`, `OTEL_*`, `PG_HOST`, `PG_PORT` | — (non reporté) | — | Local seulement : `make extraire`, `make ingest`, compose ; en Azure, leurs valeurs viennent de `infra/containerapp.yaml` ou de leurs défauts |
 
 Si tu préfères la ligne de commande à l'interface, chaque report a son équivalent `gh`, à taper toi-même :
 
@@ -67,7 +80,7 @@ La CI s'authentifie par **OIDC** : GitHub émet un jeton à courte durée de vie
 | `ref-refs-heads-main` | `repo:acerolaz@186313822/agentinsurflow@1420380073:ref:refs/heads/main` | `build` ; `evals` : jeton pour `api://agentinsurflow-rag` (rôle `Gestionnaire` de la CI, `make entra`) |
 | `environment-staging` | `…:environment:staging` | déploiement staging |
 | `environment-production` | `…:environment:production` | déploiement production, rollback |
-| `pull_request` | `…:pull_request` | `evals-pr` (⏸️ désactivé jusqu'à U5) : le jeton Entra sert aussi à **appeler le LLM, sans clé** |
+| `pull_request` | `…:pull_request` | `evals-pr` (⏸️ désactivé jusqu'à U5) : s'il est réactivé, il passera par la gateway (plus d'accès direct à Foundry) |
 
 Le préfixe du sujet dépend du repo : `make infra` le lit sur GitHub
 (`gh api repos/<repo>/actions/oidc/customization/sub`). `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` et
@@ -76,32 +89,45 @@ Le préfixe du sujet dépend du repo : `make infra` le lit sur GitHub
 > 🔁 **Analogie .NET** : c'est la *Workload Identity Federation* d'une *service connection* Azure DevOps, au lieu
 > d'un Service Principal avec mot de passe.
 
-## 4. Aucune clé pour le LLM : identités Entra ID
+## 4. Aucune clé pour le LLM : tout passe par la gateway (#70)
 
-Le dépôt et GitHub ne contiennent **aucun secret** : ni pour Azure, ni pour le modèle.
+Le dépôt et GitHub ne contiennent **aucun secret** : ni pour Azure, ni pour le modèle. Foundry a `disableLocalAuth = true`
+(plus aucune clé) et **seule la gateway** y est autorisée.
 
 ```mermaid
 flowchart LR
-    CI(["⚙️ Job evals-pr<br/>(désactivé jusqu'à U5)"]) -- "jeton OIDC<br/>app agentinsurflow" --> F(["🤖 Foundry svespuce-971<br/>Kimi-K2.5"])
-    CA(["🚀 Container Apps<br/>staging / production"]) -- "identité managée<br/>(sans secret)" --> F
-    DEV(["💻 Poste local"]) -. "clé du .env<br/>ou az login" .-> F
+    RAG(["📚 rag<br/>(sa Container App)"]) -- "jeton d'application<br/>rôle LLM, audience api://appId llm" --> GW(["🛡️ Gateway<br/>/api/llm"])
+    DEV(["💻 Poste local"]) -. "RAG_CLIENT_SECRET<br/>(jeton de rag)" .-> GW
+    GW -- "jeton de la gateway<br/>(identité managée ; en local : gateway-local)" --> F(["🤖 Foundry svespuce-971<br/>clés désactivées"])
     classDef plat fill:#1E3A8A,stroke:#1E3A8A,color:#fff
     classDef ok fill:#DCFCE7,stroke:#15803D,color:#14532D
-    class CI,CA plat
+    class RAG,GW plat
     class F,DEV ok
 ```
 
-| Qui appelle le modèle | Identité | Rôle requis sur `svespuce-971` |
+| Qui | Identité | Droit |
 |---|---|---|
-| Job `evals-pr` (désactivé jusqu'à U5) | application Entra `agentinsurflow` (OIDC) | *Cognitive Services User* |
-| `insurflow-staging`, `insurflow-production` (conteneur rag) | identité managée de chaque app | *Cognitive Services User* |
-| Toi, en local | clé du `.env`, ou ton compte (`az login`) | aucun avec la clé ; *Cognitive Services User* sans clé |
+| rag (Azure) | identité managée **propre** `uami-insurflow-rag-app`, fédérée sur `agentinsurflow-rag` | rôle d'application `LLM` de `agentinsurflow-llm` ; **aucun** accès à Foundry |
+| rag (local) | secret `RAG_CLIENT_SECRET` de `agentinsurflow-rag` | idem |
+| Gateway (Azure) | identité managée `uami-insurflow-rag` (nom conservé, voir ci-dessous) | *Cognitive Services OpenAI User* sur `svespuce-971` |
+| Gateway (local) | `agentinsurflow-gateway-local` + `GATEWAY_CLIENT_SECRET` du `.env` | *Cognitive Services OpenAI User* sur `svespuce-971` |
+| CI, Container Apps autres que la gateway, comptes humains | — | **retiré** par `make llm` ; les evals passent par `/api/reponses` (donc par la gateway) |
 
-> 🔁 **Analogie .NET** : c'est `DefaultAzureCredential` d'`Azure.Identity`, comme une Web App qui lit SQL avec
-> `Authentication=Active Directory Managed Identity` au lieu d'un mot de passe.
+`make llm` (`infra/llm.sh`, lancé à la main par Acerola) inscrit `agentinsurflow-llm` et `agentinsurflow-gateway-local`,
+désactive les clés de Foundry et réserve le rôle à la gateway. Limite de gouvernance : le propriétaire de la ressource
+peut toujours se réattribuer un rôle, et un rôle hérité d'un niveau supérieur échappe au script (il liste les autres
+rôles pour revue manuelle).
 
-Sans ce rôle, l'agent répond en mode dégradé (`REVUE_HUMAINE`) ; la fumée ne l'appelle pas, ce sont les **evals
-de staging** qui bloquent alors la release.
+> Le nom `uami-insurflow-rag` est **gardé** pour l'identité de la gateway : la Function de calcul (Easy Auth) et le
+> rôle Foundry y sont rattachés, la renommer demanderait de les refaire. À décider par Acerola ; rag, lui, a sa
+> nouvelle identité `uami-insurflow-rag-app`.
+
+> 🔁 **Analogie .NET** : c'est `DefaultAzureCredential` d'`Azure.Identity`, mais une seule application (la gateway) porte
+> le droit sur la ressource ; les autres demandent un jeton à la gateway, comme un service qui appelle une API interne
+> au lieu de la base.
+
+Sans le rôle `LLM`, ou si Foundry est inaccessible, rag répond `503` ProblemDetails `LLM_INDISPONIBLE` ; les **evals de
+staging** bloquent alors la release.
 
 ## 5. On-Behalf-Of sans consentement administrateur : la pré-autorisation (#47)
 
@@ -149,4 +175,8 @@ gh secret list -R acerolaz/agentinsurflow -e production   # noms seulement, jama
 ```
 
 **Reconstruire depuis le repo seul** : `git clone` → `cp .env.example .env` → remplir → `make infra` →
-`make entra` (avant le premier déploiement : il crée l'API du serveur MCP dont `MCP_API_CLIENT_ID` vient) → `make annexe` → `make domaine DOMAINE=…` → reporter dans GitHub (§2) → `git push`.
+`make entra` (après `make infra`, qui crée les Container Apps du serveur MCP ; avant le premier déploiement : il crée l'API du serveur MCP dont `MCP_API_CLIENT_ID` vient, et l'identité managée du MCP) → `make calcul` (Function de calcul ; après `make entra`, il lit `MCP_API_CLIENT_ID`) → `make annexe` → `make domaine DOMAINE=…` → reporter dans GitHub (§2 ; les variables `CALCUL_*`, par environnement, avant le prochain déploiement : sinon `deploy.yml` échoue) → `git push`.
+
+⚠️ `make entra` **remplace le credential fédéré du MCP** : déployer sans attendre. La première migration (MCP dans sa propre Container App) a une courte fenêtre où `/mcp` ou `/api/calcul` répondent en erreur.
+
+**Vérification manuelle en staging, après chaque déploiement** : la fumée de la CI n'est pas authentifiée (elle n'a volontairement pas le rôle `Calcul`). Faire un appel réel `evaluer_risque` (agent ou client MCP) sur un contrat seed, puis vérifier qu'une trace est visible (`GET /api/traces/{trace_id}`).

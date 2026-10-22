@@ -19,7 +19,7 @@ from opentelemetry.trace import Span
 from ..application import outils
 from ..domain.matrice import est_autorise, outils_autorises
 from ..domain.models import UNAUTHORIZED_TOOL, Appelant, ErreurOutil, Fiche, PrimeBrouillon
-from ..domain.ports import CorpusPort, DossiersPort, JetonsPort
+from ..domain.ports import CalculateurPort, CorpusPort, DossiersPort, JetonsPort
 from ..infrastructure.otel.telemetrie import echec, tracer
 from .securite import appelant_courant
 
@@ -40,6 +40,7 @@ class ServeurMcp(FastMCP):
         jetons: JetonsPort,
         corpus: CorpusPort,
         dossiers: DossiersPort,
+        calculateur: CalculateurPort,
         nom: str = "agentinsurflow-mcp",
     ) -> None:
         super().__init__(
@@ -73,6 +74,20 @@ class ServeurMcp(FastMCP):
             Lecture seule : ne modifie rien. Erreur CONTRAT_INTROUVABLE si le numéro est inconnu.
             """
             return await outils.get_contrat(appelant(), jetons, dossiers, numero_contrat)
+
+        @self.tool()
+        async def evaluer_risque(numero_contrat: str) -> dict[str, Any]:
+            """Évalue le risque d'un contrat avec le barème déterministe versionné : classe, décision proposée (ACCEPTE ou REFUSE), score (nombre de règles déclenchées) et règles déclenchées avec leur motif. Ne décide rien : la décision reste soumise au gestionnaire. Erreur CONTRAT_INTROUVABLE si le numéro est inconnu, DONNEE_HORS_BAREME si une donnée du contrat manque ou sort du barème (revue humaine), CALCUL_INDISPONIBLE si le calcul ne répond pas."""  # noqa: E501
+            return await outils.evaluer_risque(
+                appelant(), jetons, dossiers, calculateur, numero_contrat
+            )
+
+        @self.tool()
+        async def calculer_prime(numero_contrat: str) -> dict[str, Any]:
+            """Calcule la prime annuelle et mensuelle d'un contrat avec la formule versionnée, et le détail des coefficients. Montants en euros, en texte décimal. Erreur CONTRAT_INTROUVABLE si le numéro est inconnu, DONNEE_HORS_BAREME si une donnée du contrat manque ou sort de la formule (revue humaine), CALCUL_INDISPONIBLE si le calcul ne répond pas."""  # noqa: E501
+            return await outils.calculer_prime(
+                appelant(), jetons, dossiers, calculateur, numero_contrat
+            )
 
         @self.tool()
         async def enregistrer_brouillon(

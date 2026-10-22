@@ -1,28 +1,46 @@
 """Adaptateur Azure OpenAI du port ``ClientLLM`` (repris de Kaldera, ``llm.py``).
 
-Le SDK ``openai`` n'apparaît qu'ici. Authentification : la clé si elle est fournie, sinon Entra ID
-(``DefaultAzureCredential``) : identité OIDC dans la CI, identité managée dans Container Apps,
-``az login`` en local.
+Le SDK ``openai`` n'apparaît qu'ici. Aucune clé : rag appelle la gateway (``/api/llm``) avec un
+jeton d'application pour l'audience ``LLM_AUDIENCE`` (rôle ``LLM``) ; la gateway échange son propre
+jeton avec Foundry. Même ordre que l'OBO : ``RAG_CLIENT_SECRET`` en local, sinon identité managée
+fédérée.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from azure.core.exceptions import ClientAuthenticationError
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+from azure.identity import get_bearer_token_provider
 from openai import OpenAI, OpenAIError
 
 from ...domain.corpus import hash_contenu
 from ...domain.ports import ClientLLM, ErreurLLM
+from ..entra.application import credential_application
 from ..otel.telemetrie import tracer
-from .config import SCOPE_ENTRA, ConfigLLM
+from .config import ConfigLLM
+
+
+def _fournisseur_jeton(cfg: ConfigLLM) -> Callable[[], str]:
+    """Jeton d'application de rag pour l'audience du LLM (rafraîchi par le SDK azure-identity)."""
+    if not cfg.llm_audience:
+        raise ErreurLLM("LLM_AUDIENCE absente : audience du jeton d'application pour le LLM")
+    credential = credential_application(
+        cfg.azure_tenant_id,
+        cfg.rag_api_client_id,
+        cfg.rag_client_secret.get_secret_value(),
+        cfg.azure_uami_client_id,
+    )
+    if credential is None:
+        raise ErreurLLM("ni RAG_CLIENT_SECRET (local) ni AZURE_UAMI_CLIENT_ID (Azure)")
+    return get_bearer_token_provider(credential, f"{cfg.llm_audience}/.default")
 
 
 def client_openai(cfg: ConfigLLM) -> OpenAI:
-    """Client de l'API v1 d'Azure OpenAI (sans version d'API), partagé par LLM et embeddings."""
-    cle = cfg.azure_openai_api_key.get_secret_value()
+    """Client de l'API v1 par la gateway (``…/api/llm``), partagé par LLM et embeddings."""
     return OpenAI(
-        base_url=f"{cfg.azure_openai_endpoint.rstrip('/').removesuffix('/openai/v1')}/openai/v1/",
-        api_key=cle or get_bearer_token_provider(DefaultAzureCredential(), SCOPE_ENTRA),
+        base_url=f"{cfg.azure_openai_endpoint.rstrip('/')}/v1/",
+        api_key=_fournisseur_jeton(cfg),
         timeout=cfg.llm_delai_s,
         max_retries=0,
     )

@@ -62,7 +62,7 @@ public sealed class DossiersPostgresTests
         await Preparer();
 
         await using var db = DossiersDbContextFactory.Creer(Connexions().Migrateur);
-        Assert.Equal(4, (await db.Database.GetAppliedMigrationsAsync(TestContext.Current.CancellationToken)).Count());
+        Assert.Equal(5, (await db.Database.GetAppliedMigrationsAsync(TestContext.Current.CancellationToken)).Count());
         Assert.Empty(await db.Database.GetPendingMigrationsAsync(TestContext.Current.CancellationToken));
         var tables = await Lire(Connexions().Migrateur,
             "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '__EFMigrationsHistory'");
@@ -78,9 +78,113 @@ public sealed class DossiersPostgresTests
             "SELECT column_name FROM information_schema.columns WHERE table_name = 'vue_contrat_minimisee'");
 
         Assert.Equal(
-            ["anciennete_permis_ans", "crm_bonus_malus", "departement", "formule", "gestionnaire_id", "mis_a_jour",
-                "nb_sinistres", "numero_contrat", "resiliations", "suspensions", "tranche_age"],
+            ["anciennete_permis_ans", "anciennete_permis_mois", "crm_bonus_malus", "date_effet", "departement", "formule",
+                "gestionnaire_id", "mis_a_jour", "nb_sinistres", "nb_sinistres_responsables_trois_ans", "nb_sinistres_trois_ans",
+                "numero_contrat", "puissance_fiscale_cv", "releve_present", "resiliations", "suspensions", "tranche_age", "type_usage"],
             colonnes.Select(c => (string)c[0]).Order(StringComparer.Ordinal));
+    }
+
+    private static async Task<List<object[]>> LireDansTransactionAnnulee(string inserts, string sql)
+    {
+        await using var cx = new NpgsqlConnection(Connexions().Migrateur);
+        await cx.OpenAsync(TestContext.Current.CancellationToken);
+        await using var tx = await cx.BeginTransactionAsync(TestContext.Current.CancellationToken);
+        await using (var ecriture = new NpgsqlCommand(inserts, cx, tx))
+            await ecriture.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        await using var cmd = new NpgsqlCommand(sql, cx, tx);
+        await using var lecteur = await cmd.ExecuteReaderAsync(TestContext.Current.CancellationToken);
+        var lignes = new List<object[]>();
+        while (await lecteur.ReadAsync(TestContext.Current.CancellationToken))
+        {
+            var ligne = new object[lecteur.FieldCount];
+            lecteur.GetValues(ligne);
+            lignes.Add(ligne);
+        }
+        return lignes; // la transaction n'est pas validée : tout est annulé à la fermeture
+    }
+
+    private const string ContratSansVehicule = """
+        INSERT INTO souscripteur (id, nom, prenom, date_naissance, adresse, email, telephone, situation_familiale, permis_numero, permis_date_obtention, permis_pays, code_postal)
+        VALUES ('aaaaaaaa-0000-0000-0000-000000000001', 'N', 'P', '1990-01-01', 'a', 'e@exemple.invalid', '0', 'celibataire', 'PX', '2020-01-01', 'FR', '75001');
+        INSERT INTO contrat (id, numero_contrat, souscripteur_id, gestionnaire_id, date_effet, statut, formule, mis_a_jour)
+        VALUES ('aaaaaaaa-0000-0000-0000-000000000002', 'AIF-TEST-1', 'aaaaaaaa-0000-0000-0000-000000000001', 'g', '2026-01-01', 'actif', 'tous_risques', '2026-10-01T08:00:00Z');
+        INSERT INTO releve_information (id, contrat_id, crm_bonus_malus, nb_suspensions_permis, nb_resiliations)
+        VALUES ('aaaaaaaa-0000-0000-0000-000000000003', 'aaaaaaaa-0000-0000-0000-000000000002', 1, 0, 0);
+        """;
+
+    [Fact]
+    public async Task Vue_calcule_les_faits_du_calcul_a_la_date_d_effet()
+    {
+        await Preparer();
+        await Lire(Connexions().Migrateur, SeedDossiers.Sql(GestionnaireA, GestionnaireB));
+
+        var lignes = await Lire(Connexions().Migrateur,
+            "SELECT numero_contrat, anciennete_permis_mois, puissance_fiscale_cv, type_usage, nb_sinistres_trois_ans, nb_sinistres_responsables_trois_ans, date_effet " +
+            "FROM vue_contrat_minimisee WHERE numero_contrat IN ('AIF-2026-000001', 'AIF-2026-000004')");
+
+        var un = lignes.Single(l => (string)l[0] == "AIF-2026-000001");
+        Assert.Equal([91, 5, "prive", 0, 0], [un[1], un[2], un[3], un[4], un[5]]);
+        Assert.Equal(new DateOnly(2026, 1, 1), un[6]);
+        var quatre = lignes.Single(l => (string)l[0] == "AIF-2026-000004");
+        Assert.Equal([70, 2, 2], [quatre[1], quatre[4], quatre[5]]);
+    }
+
+    [Fact]
+    public async Task Vue_sans_vehicule_rend_puissance_et_usage_nuls()
+    {
+        await Preparer();
+
+        var lignes = await LireDansTransactionAnnulee(ContratSansVehicule,
+            "SELECT puissance_fiscale_cv, type_usage FROM vue_contrat_minimisee WHERE numero_contrat = 'AIF-TEST-1'");
+
+        Assert.Equal([DBNull.Value, DBNull.Value], lignes.Single());
+    }
+
+    [Theory]
+    [InlineData("20090", "2A")]
+    [InlineData("20200", "2B")]
+    public async Task Vue_derive_le_departement_corse_du_code_postal_comme_le_domaine(string codePostal, string attendu)
+    {
+        await Preparer();
+
+        var lignes = await LireDansTransactionAnnulee(ContratSansVehicule.Replace("'FR', '75001'", $"'FR', '{codePostal}'"),
+            "SELECT departement FROM vue_contrat_minimisee WHERE numero_contrat = 'AIF-TEST-1'");
+
+        Assert.Equal(attendu, lignes.Single()[0]);
+        Assert.Equal(attendu, Departement.Depuis(codePostal));
+    }
+
+    [Fact]
+    public async Task Vue_sans_releve_rend_releve_present_faux_et_le_seed_vrai()
+    {
+        await Preparer();
+        await Lire(Connexions().Migrateur, SeedDossiers.Sql(GestionnaireA, GestionnaireB));
+        var seed = await Lire(Connexions().Migrateur,
+            "SELECT releve_present FROM vue_contrat_minimisee WHERE numero_contrat = 'AIF-2026-000001'");
+        Assert.Equal(true, seed.Single()[0]);
+
+        var sansReleve = ContratSansVehicule[..ContratSansVehicule.IndexOf("INSERT INTO releve_information", StringComparison.Ordinal)];
+        var lignes = await LireDansTransactionAnnulee(sansReleve,
+            "SELECT releve_present FROM vue_contrat_minimisee WHERE numero_contrat = 'AIF-TEST-1'");
+
+        Assert.Equal(false, lignes.Single()[0]);
+    }
+
+    [Fact]
+    public async Task Vue_ne_compte_pas_un_sinistre_hors_des_trois_ans()
+    {
+        await Preparer();
+        const string sinistres = """
+            INSERT INTO sinistre (id, releve_information_id, date_sinistre, nature, taux_responsabilite) VALUES
+            ('bbbbbbbb-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000003', '2022-12-01', 'materiel', 100),
+            ('bbbbbbbb-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000003', '2026-01-01', 'materiel', 100),
+            ('bbbbbbbb-0000-0000-0000-000000000003', 'aaaaaaaa-0000-0000-0000-000000000003', '2025-06-01', 'materiel', 0);
+            """;
+
+        var lignes = await LireDansTransactionAnnulee(ContratSansVehicule + sinistres,
+            "SELECT nb_sinistres_trois_ans, nb_sinistres_responsables_trois_ans FROM vue_contrat_minimisee WHERE numero_contrat = 'AIF-TEST-1'");
+
+        Assert.Equal([1, 0], lignes.Single());
     }
 
     [Theory]

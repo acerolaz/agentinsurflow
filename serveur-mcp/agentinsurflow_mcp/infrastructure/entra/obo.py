@@ -17,8 +17,7 @@ from starlette.concurrency import run_in_threadpool
 
 from ...domain.models import DOSSIERS_INDISPONIBLES, Appelant, ErreurOutil
 from ..otel.telemetrie import echec, tracer
-
-PORTEE_FEDERATION = "api://AzureADTokenExchange/.default"
+from .application import PORTEE_FEDERATION
 
 
 class ConfigObo(BaseSettings):

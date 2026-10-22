@@ -17,13 +17,13 @@ Le cluster sera en place le 30/10 et c'est lui qui appelle le serveur MCP pendan
 - Chaque appel tracé dans la trace du dossier, sans donnée personnelle.
 
 **Non-objectifs**
-- Contenu métier de `evaluer_risque` (barème) et `calculer_prime` (formule) : **en attente de la réponse d'Acerola** (§ 5.3). D50 (245 règles) est **écartée**.
+- Contenu métier de `evaluer_risque` (barème) et `calculer_prime` (formule) : il vit dans la Function de calcul (§ 5.3, spec `2026-10-22-calcul-risque-prime-design.md`). D50 (245 règles) est **écartée**.
 - L'`interrupt()` avant décision (D9) : c'est le travail du cluster, pas du serveur MCP.
 - Resources et Prompts MCP : non exposés (toute lecture passe par un Tool, donc par la matrice et la trace).
 - Nouveau fournisseur d'identité, nouveau journal d'audit, nouvelle stack.
 
 **Anti-objectifs** (échec même si « ça marche »)
-- Un appel direct du serveur MCP vers rag, underwriting-admin ou PostgreSQL (hors export OTLP, § 7).
+- Un appel direct du serveur MCP vers rag, underwriting-admin ou PostgreSQL (l'export OTLP et la Function de calcul passent aussi par la gateway : plus aucune exception à D22, spec `2026-10-22-calcul-risque-prime-design.md` § 3.3).
 - Une décision `ACCEPTE`/`REFUSE` écrite sans validation du gestionnaire (D9).
 - Un refus ou une panne renvoyés comme une réponse normale que le LLM pourrait paraphraser.
 - Une donnée personnelle, un jeton ou un `numero_contrat` dans une trace.
@@ -50,7 +50,9 @@ flowchart LR
     MCP -->|"OBO → underwriting<br/>/api/contrats, écritures"| GW
     GW --> RAG["rag"]
     GW --> UW["underwriting-admin"]
-    MCP -. "OTLP (boucle locale)" .-> UW
+    MCP -. "OTLP /v1/traces<br/>(jeton d'application, rôle Telemetrie)" .-> GW
+    MCP -->|"/api/calcul<br/>jeton d'application (rôle Calcul)"| GW
+    GW -->|"jeton de la gateway<br/>(identité managée)"| FN["Function de calcul<br/>/api/evaluer, /api/calculer"]
 ```
 
 - **Langage et emplacement** : Python, architecture **hexagonale** (règle `~/.claude/rules/python-hexagonal.md`), dans `brief2/src/serveur-mcp/` à côté de `rag/` (`specs/03` ; pas `mcp/`, qui masquerait le paquet `mcp` du SDK). Paquet, `pyproject` et `Dockerfile` calqués sur rag.
@@ -69,9 +71,9 @@ flowchart LR
 | Outil | Appelé par (`azp`) | Cible (toujours via la gateway) | Nature |
 |---|---|---|---|
 | `get_contrat` | Orchestrateur (nœud `charger`) | `GET /api/contrats/{numero_contrat}` | lecture |
-| `evaluer_risque` | Orchestrateur (nœud `evaluer`) | **en attente** (§ 5.3) | calcul |
+| `evaluer_risque` | Orchestrateur (nœud `evaluer`) | Function de calcul `POST /api/evaluer` (par la gateway, `/api/calcul/evaluer`, § 5.3) | calcul |
 | `search_rag` | Agent Rédacteur (seul outil visible par un LLM, D59) | `GET /api/extraits` | lecture |
-| `calculer_prime` | Agent Actuaire | **en attente** (§ 5.3) | calcul |
+| `calculer_prime` | Agent Actuaire | Function de calcul `POST /api/calculer` (par la gateway, `/api/calcul/calculer`, § 5.3) | calcul |
 | `enregistrer_brouillon` | Orchestrateur (nœud `brouillon`) | **nouvel** endpoint underwriting-admin | écriture (brouillon seulement, D66) |
 | `update_statut_dossier` | Orchestrateur (nœuds `enregistrer` après `interrupt()`, et `revue_humaine`) | **nouvel** endpoint underwriting-admin | écriture (seul outil qui écrit une décision) |
 
@@ -87,14 +89,14 @@ Deux endpoints nouveaux dans underwriting-admin (Clean Architecture, comme `Cons
 Dans les deux cas, underwriting-admin **revalide le portefeuille** du gestionnaire (D36) et rend le même 404 pour un contrat absent ou hors portefeuille (BOLA), comme la lecture.
 
 Contrat de données (*choix de Claude*, aligné sur la V1) : les champs viennent **du cluster** en arguments d'outil ; le serveur MCP ne calcule rien.
-- `enregistrer_brouillon` reçoit le `numero_contrat`, la fiche (5 champs, D52, dont décision proposée et score du barème) et la prime (montant, périodicité, date d'effet, P18). Tant que `evaluer_risque` et `calculer_prime` sont en attente, les tests utilisent des valeurs fournies par le test.
+- `enregistrer_brouillon` reçoit le `numero_contrat`, la fiche (5 champs, D52, dont décision proposée et score du barème) et la prime (montant, périodicité, date d'effet, P18). Le score du barème et la prime viennent de `evaluer_risque` et `calculer_prime` (§ 5.3, spec `2026-10-22-calcul-risque-prime-design.md`) ; les tests d'écriture utilisent des valeurs fournies par le test.
 - `update_statut_dossier` reçoit le `numero_contrat`, le statut cible et, pour l'écriture après `/revue`, la validation (`VALIDEE` / `CORRIGEE`) avec la correction éventuelle. C'est le **même** outil pour `REVUE_HUMAINE` et pour la décision validée.
 
 Valeurs de statut (`brief1/dossier-conception-v1.md`) : `BROUILLON`, `EN_ANALYSE`, `REVUE_HUMAINE`, décision `ACCEPTE` / `REFUSE`, validation `VALIDEE` / `CORRIGEE`. Le serveur MCP **ne vérifie pas** que le gestionnaire a validé : il écrit ce qu'on lui envoie une fois les droits vérifiés (D9 reste porté par le cluster). Les chemins, méthodes HTTP et la machine d'états exacte des transitions sont laissés au constructeur, en s'alignant sur les transitions T0 → T12 de la V1.
 
-### 5.3 En attente
+### 5.3 Calcul
 
-`evaluer_risque` (barème déterministe versionné, D28) et `calculer_prime` (formule, D65 « à confirmer ») : **Acerola précise d'ici au 22/10** l'origine du barème et la formule de la prime. D'ici là, rien n'est écrit sur ces deux outils, ni dans le code ni dans la matrice au-delà de leur ligne d'accès.
+`evaluer_risque` et `calculer_prime` appellent la Function de calcul (barème et formule versionnés) : voir `docs/superpowers/specs/2026-10-22-calcul-risque-prime-design.md`.
 
 ## 6. Matrice d'accès
 
@@ -123,6 +125,8 @@ Tout échec métier est un résultat d'outil avec `isError: true`, un **code sta
 | `NOT_FOUND_IN_CORPUS` | rag ne trouve rien qui passe la porte (le cluster en fait `REVUE_HUMAINE`, D46) |
 | `CONTRAT_INTROUVABLE` | 404 d'underwriting-admin (absent ou hors portefeuille, indiscernables) |
 | `DOSSIERS_INDISPONIBLES` | OBO refusé ou backend en panne (même code que rag) |
+| `CALCUL_INDISPONIBLE` | Function de calcul injoignable, jeton refusé (401/403) ou requête malformée (400) |
+| `DONNEE_HORS_BAREME` | donnée absente ou inconnue du barème (422 de la Function) |
 
 Les erreurs de protocole (jeton absent, JSON-RPC invalide) restent des erreurs HTTP / JSON-RPC. Le nom `CONTRAT_INTROUVABLE` est un choix de Claude.
 
@@ -130,7 +134,7 @@ Les erreurs de protocole (jeton absent, JSON-RPC invalide) restent des erreurs H
 
 Même fonctionnement que rag.
 
-- **Export** : OTLP/HTTP vers underwriting-admin `/v1/traces` sur la boucle locale (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`), seule exception à D22 depuis C15. En Azure, le serveur MCP est un **5e conteneur de la même Container App** (`infra/containerapp.yaml` : les conteneurs partagent `localhost`), donc `http://localhost:8002/v1/traces` ; en local, `http://underwriting-admin:8002/v1/traces` comme rag dans le compose. Le port du serveur MCP (8003 par exemple) n'a jamais d'entrée externe. `OTEL_SDK_DISABLED=true` coupe tout.
+- **Export** : OTLP/HTTP vers la gateway `/v1/traces` (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`), avec un jeton d'application (rôle `Telemetrie` d'underwriting-admin, `TELEMETRIE_AUDIENCE`) : plus d'exception à D22 (amendement du 22/10, spec calcul § 3.3). En Azure, le serveur MCP a **sa propre Container App** (`infra/containerapp-mcp.yaml`), à entrée interne et identité managée propre ; ses traces vont à `${GATEWAY_URL}/v1/traces`. Son port 8003 n'a jamais d'entrée externe. `OTEL_SDK_DISABLED=true` coupe tout.
 - **Une trace par dossier** : le cluster envoie un `traceparent` sur `/mcp`, la gateway le transmet ; le serveur MCP s'y accroche et l'injecte à la main dans ses appels vers la gateway. Relecture : `GET /api/traces/{trace_id}`.
 
 | Span | Attributs |
@@ -160,7 +164,7 @@ Même fonctionnement que rag.
 - **Échéance** : examen blanc du 30/10. **Repli le 27/10 au soir** : si le serveur MCP n'est pas terminé, les agents appellent underwriting-admin en REST via la gateway. Conséquence pour l'ordre de construction : les endpoints d'écriture d'underwriting-admin et leurs routes gateway passent **en premier**, car ils servent dans les deux cas. **En repli, la perte du contrôle par `azp` (API5) est acceptée** (décision d'Acerola, 21/10) : la gateway ne contrôle que le rôle, aucune politique par `azp` n'y est ajoutée.
 - Stack inchangée (Python hexagonal, C# Clean Architecture, YARP, Entra, OTel → underwriting-admin).
 - Aucun changement de version sans accord d'Acerola ; un nouveau paquet (SDK MCP) est un ajout de dépendance à valider.
-- Déploiement par la chaîne existante, en **5e conteneur**, fumée verte.
+- Déploiement par la chaîne existante, dans **sa propre Container App** (entrée interne), fumée verte.
 - Contrat du monorepo (`brief2/src/CLAUDE.md`) :
   - le serveur MCP **revalide lui-même le jeton** (signature, émetteur, audience, rôle), même derrière la gateway ;
   - les inscriptions Entra des agents et du serveur MCP, et la pré-autorisation de leurs clients OBO (#47), sont **rédigés dans `infra/*.sh` et lancés à la main par Acerola**, jamais par un agent ;
@@ -180,9 +184,9 @@ Même fonctionnement que rag.
 - [ ] Tests WireMock de la route : routage, 401/403, 429
 - [ ] `gateway/README.md` : exception JSON-RPC documentée
 - [ ] Streamable HTTP sans tampon
-- [ ] Tests d'intégration couvrant chaque outil, résultats interprétés (les deux outils en attente quand leur contenu sera fixé)
+- [ ] Tests d'intégration couvrant chaque outil, résultats interprétés (les deux outils de calcul via la Function, spec `2026-10-22-calcul-risque-prime-design.md`)
 - [ ] Documentation : architecture, outils, authentification/autorisation, format accessible
-- [ ] Déployé (5e conteneur), fumée verte
+- [ ] Déployé (Container App propre, entrée interne), fumée verte
 
 ## 11. Laissé au constructeur
 

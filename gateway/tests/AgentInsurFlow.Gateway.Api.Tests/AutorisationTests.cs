@@ -28,6 +28,7 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
             .UseSetting("ReverseProxy:Clusters:rag:Destinations:d1:Address", backends.Rag.Url)
             .UseSetting("ReverseProxy:Clusters:underwriting:Destinations:d1:Address", backends.Underwriting.Url)
             .UseSetting("ReverseProxy:Clusters:mcp:Destinations:d1:Address", backends.Mcp.Url)
+            .UseSetting("ReverseProxy:Clusters:calcul:Destinations:d1:Address", backends.Calcul.Url)
             .AvecEntraDeTest());
         _client = _usine.CreateClient();
     }
@@ -207,6 +208,7 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
     [InlineData("/health/rag")]
     [InlineData("/health/underwriting")]
     [InlineData("/health/mcp")]
+    [InlineData("/health/calcul")]
     public async Task Documentation_et_sante_sans_jeton(string chemin)
     {
         var reponse = await Envoyer("GET", chemin);

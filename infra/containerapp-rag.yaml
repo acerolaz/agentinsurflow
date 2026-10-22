@@ -1,0 +1,43 @@
+# Container App de rag (#70) : modèle versionné, substitué par deploy.yml (envsubst) puis
+# `az containerapp update --yaml`. Seul `template` est fourni : l'entrée INTERNE (port 8001, posée par
+# infra/bootstrap.sh), le registre, l'identité managée (infra/entra.sh) et les secrets pg-* (infra/postgres-annexe.sh)
+# restent tels quels. Joignable seulement par la gateway ; elle-même joint la gateway par son FQDN (GATEWAY_URL)
+# et la base annexe par l'entrée TCP interne 5432 de sa Container App (PG_HOST = le nom de l'app postgres).
+properties:
+  template:
+    scale:
+      minReplicas: 1 # la gateway l'appelle à chaque question ; jamais à froid
+      maxReplicas: 1
+    containers:
+      - name: rag
+        image: ${IMAGE_RAG}
+        resources: { cpu: 0.5, memory: 1Gi }
+        probes:
+          # migrations de « vecteurs » avant uvicorn (demarrer.sh, 60 s au plus) : délai initial large
+          - { type: Liveness, httpGet: { path: /health, port: 8001 }, initialDelaySeconds: 30, periodSeconds: 10 }
+          - { type: Readiness, httpGet: { path: /health, port: 8001 }, initialDelaySeconds: 10, periodSeconds: 5 }
+        env:
+          # Aucune clé : le LLM et les dossiers passent par la gateway avec un jeton d'application de l'identité managée PROPRE de rag
+          - { name: APP_ENV, value: "${APP_ENV}" }
+          - { name: AZURE_TENANT_ID, value: "${AZURE_TENANT_ID}" }
+          - { name: RAG_API_CLIENT_ID, value: "${RAG_API_CLIENT_ID}" }
+          # même liste que la gateway (Entra__Audiences__rag__0 et __1)
+          - { name: RAG_API_AUDIENCES, value: "api://agentinsurflow-rag,${RAG_API_CLIENT_ID}" }
+          - { name: RAG_SEUIL, value: "${RAG_SEUIL}" } # vide → avertissement, /api/extraits en 503
+          # base annexe : Container App postgres (infra/containerapp-postgres.yaml), TCP interne 5432
+          - { name: PG_HOST, value: "${PG_HOST}" }
+          # migrateur : au démarrage seulement (demarrer.sh), retiré avant uvicorn
+          - { name: PG_MIGRATEUR_PASSWORD, secretRef: pg-migrateur-password }
+          - { name: PG_WRITER_PASSWORD, secretRef: pg-writer-password }
+          - { name: PG_READER_PASSWORD, secretRef: pg-reader-password }
+          # LLM et embeddings : par la gateway (rôle LLM, audience api://<appId llm>) ; jamais Foundry en direct
+          - { name: AZURE_OPENAI_ENDPOINT, value: "${GATEWAY_URL}/api/llm" }
+          - { name: LLM_AUDIENCE, value: "${LLM_AUDIENCE}" }
+          # dossiers : On-Behalf-Of, par la gateway (D22) ; identité managée PROPRE, fédérée sur agentinsurflow-rag
+          - { name: GATEWAY_URL, value: "${GATEWAY_URL}" }
+          - { name: UNDERWRITING_URL, value: "${GATEWAY_URL}" }
+          - { name: UNDERWRITING_API_CLIENT_ID, value: "${UNDERWRITING_API_CLIENT_ID}" }
+          - { name: AZURE_UAMI_CLIENT_ID, value: "${AZURE_UAMI_RAG_CLIENT_ID}" }
+          # traces : par la gateway (/v1/traces), jeton d'application, rôle Telemetrie d'underwriting-admin
+          - { name: TELEMETRIE_AUDIENCE, value: "api://${UNDERWRITING_API_CLIENT_ID}" }
+          - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: "${GATEWAY_URL}/v1/traces" }

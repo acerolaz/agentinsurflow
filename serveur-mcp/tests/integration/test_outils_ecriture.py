@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from fakes_mcp import FauxCorpus, FauxDossiers, FauxJetons
+from fakes_mcp import FauxCalculateur, FauxCorpus, FauxDossiers, FauxJetons
 from jetons_mcp_de_test import AZP_ORCHESTRATEUR, AZP_REDACTEUR, config_auth, creer
 from session_mcp import FauxJwks, session_mcp
 
@@ -25,7 +25,9 @@ FICHE = {
 
 
 def _app(dossiers: FauxDossiers) -> Any:
-    application = creer_app(ServeurMcp(FauxJetons(), FauxCorpus(), dossiers, "test"))
+    application = creer_app(
+        ServeurMcp(FauxJetons(), FauxCorpus(), dossiers, FauxCalculateur(), "test")
+    )
     application.state.config_auth = config_auth()
     application.state.jwks = FauxJwks()
     return application

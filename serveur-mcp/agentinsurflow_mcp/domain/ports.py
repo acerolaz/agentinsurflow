@@ -29,3 +29,13 @@ class DossiersPort(Protocol):
     async def changer_statut(
         self, jeton: str, numero_contrat: str, corps: dict[str, Any]
     ) -> None: ...
+
+
+class CalculateurPort(Protocol):
+    async def evaluer(self, faits: dict[str, Any]) -> dict[str, Any]:
+        """Évalue le risque ; lève ``ErreurOutil(DONNEE_HORS_BAREME | CALCUL_INDISPONIBLE)``."""
+        ...
+
+    async def calculer(self, faits: dict[str, Any]) -> dict[str, Any]:
+        """Calcule la prime ; mêmes erreurs que ``evaluer``."""
+        ...

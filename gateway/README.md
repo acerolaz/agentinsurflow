@@ -100,6 +100,14 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 - **Préfixe public transmis** : pour `GET /rag/openapi.json` et `GET /underwriting/openapi/v1.json`, la gateway retire le préfixe et l'envoie dans `X-Forwarded-Prefix`. Un `X-Forwarded-Prefix` fourni par le client est ignoré. Les documents des services ne déclarent **pas** de `servers` : le « Try it out » vise la gateway elle-même.
 - **Connexion Entra** (« Authorize ») en code d'autorisation + **PKCE**, avec un seul client public : `SWAGGER_CLIENT_ID` (l'application `agentinsurflow-rag`, qui a déjà la permission vers `underwriting` pour l'On-Behalf-Of).
 
+## Route `/api/llm/*` (Azure AI Foundry)
+
+`POST /api/llm/{**reste}` est réécrit en `/openai/{**reste}` vers le cluster `llm` (`ReverseProxy__Clusters__llm__Destinations__d1__Address` = endpoint Foundry). Politique `llm-appelant` : rôle `LLM` **et** audience `Entra__Audiences__llm__0` (`api://…`, plus le GUID en `__1`). Même échange de jeton que `calcul` (table route → portée) : portée `Llm__Portee` (`https://cognitiveservices.azure.com/.default`), jeton de la gateway ; échec : `502` `LLM_INDISPONIBLE`. Credential : `ClientSecretCredential` si `Gateway__ClientSecret` est défini (local, avec `Gateway__ClientId`), sinon identité managée. Débit : limite `llm` (`RateLimit__Llm__PermitLimit`, 30/min) partitionnée par application appelante (`azp`, repli `appid`). Les réponses en flux ne sont pas tamponnées. Mesure (#70) : sur le span serveur de la requête, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `gen_ai.response.model` (réponse JSON, nombres et nom de modèle seulement, jamais de texte) et `appelant.azp` ; à lire dans le référentiel des traces d'underwriting-admin. Réponse en flux : `gen_ai.usage.mesure=non_disponible` (non mesuré, à revoir avec `stream_options.include_usage` au moment du budget).
+
+## Route `/api/calcul/*` (Function de calcul)
+
+`POST /api/calcul/{**reste}` est réécrit en `/api/{**reste}` vers le cluster `calcul` (ex. `/api/calcul/evaluer` donne `/api/evaluer`) ; la gateway **échange le jeton** : le jeton entrant (application du serveur MCP, rôle `Calcul` **et** audience `calcul`, politique `calcul-mcp`, `Entra__Audiences__calcul__0`) n'est jamais relayé ; elle le remplace par son propre jeton d'application, obtenu avec son identité managée pour la portée `Calcul__Portee` (`Authorization: Bearer <jeton de la gateway>`). Sans portée (local), aucun `Authorization` n'est relayé. Échec d'obtention du jeton : `502` ProblemDetails `CALCUL_INDISPONIBLE`, sans détail. Les autres routes relaient toujours le jeton entrant tel quel ; `/health/calcul` n'échange rien. Débit : limite nommée `calcul` (`RateLimit__Calcul__PermitLimit`, 60 requêtes/min), partitionnée par `oid`, celui de l'application MCP : elle est donc **commune à tous les gestionnaires** (assumé en V1), en plus de la limite globale. « Seule la gateway » désigne l'identité managée de la **Container App principale**, qui ne contient plus que la gateway (#70) : rag a sa propre Container App et son identité (`uami-insurflow-rag-app`), underwriting-admin sa propre Container App sans identité utilisateur. `GET /health/calcul` est anonyme, sans limite de débit, et vise `/api/sante` de la Function.
+
 ## Configuration
 
 | Variable | Défaut | Rôle |
@@ -109,12 +117,16 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 | `Entra__TenantId` | **obligatoire** | Tenant Entra (émetteurs v1 et v2 acceptés) |
 | `Entra__Audiences__rag__0` | **obligatoire** | Audiences de `rag`, en liste « a, b » : la même valeur que `RAG_API_AUDIENCES`, lue par `rag` (`<ID client>,api://<ID client>`) |
 | `Entra__Audiences__underwriting__0` | **obligatoire** | Audiences d'`underwriting-admin`, en liste « a, b » (`UNDERWRITING_API_AUDIENCES`) |
-| `ReverseProxy__Clusters__mcp__Destinations__d1__Address` | `http://localhost:8003` | Adresse de `serveur-mcp` (compose : `http://serveur-mcp:8003`) |
+| `ReverseProxy__Clusters__mcp__Destinations__d1__Address` | `http://localhost:8003` | Adresse de `serveur-mcp` (compose : `http://serveur-mcp:8003` ; Azure : `https://<app MCP>.internal.<domaine de l'environnement>`, sa propre Container App à entrée interne) |
 | `Entra__Audiences__mcp__0` | `api://agentinsurflow-mcp` | Audiences de `serveur-mcp`, en liste « a, b » |
+| `ReverseProxy__Clusters__calcul__Destinations__d1__Address` | `http://localhost:7071` | Adresse de la Function de calcul (compose : `http://calcul:80` ; Azure : `${CALCUL_URL}`) |
+| `Calcul__Portee`, `Calcul__IdentiteClientId` | _(vide)_ | Portée du jeton de la gateway pour la Function (`api://<appId calcul>/.default`) et client id de son identité managée ; sans portée, aucun jeton relayé |
+| `Entra__Audiences__calcul__0` | `api://agentinsurflow-calcul` | Audiences de la Function de calcul, en liste « a, b » (compose : `CALCUL_API_AUDIENCES` ; Azure : `${CALCUL_AUDIENCE}`) |
 | `Proxy__EnvoyDevant` | `false` | `true` en Azure : IP réelle reprise de l'envoy |
-| `RateLimit__Global__PermitLimit`, `RateLimit__Reponses__PermitLimit`, `RateLimit__Mcp__PermitLimit`, `RateLimit__FenetreSecondes` | `120`, `10`, `60`, `60` | Limitation de débit |
+| `RateLimit__Global__PermitLimit`, `RateLimit__Reponses__PermitLimit`, `RateLimit__Mcp__PermitLimit`, `RateLimit__Calcul__PermitLimit`, `RateLimit__FenetreSecondes` | `120`, `10`, `60`, `60`, `60` | Limitation de débit |
 | `SWAGGER_CLIENT_ID` | vide | Client Entra public de la page Swagger |
-| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | `http://localhost:8002/v1/traces` | Récepteur OTLP des traces |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | `http://localhost:8002/v1/traces` | Récepteur OTLP des traces (Azure : `https://<FQDN interne d'underwriting-admin>/v1/traces`) |
+| `Telemetrie__Audience` | (vide) | `api://<appId underwriting>` : la gateway envoie ses traces avec un jeton d'application (portée `<audience>/.default`, rôle `Telemetrie`, même credential que `calcul` et `llm`). Vide (local, compose) : export sans jeton. Échec d'obtention du jeton : export sans en-tête (401 côté récepteur), jamais de blocage ni de jeton journalisé |
 | `APP_VERSION`, `APP_RELEASE` | `dev` | Versions servies par `/health` (gravées au build) |
 | `ASPNETCORE_HTTP_PORTS` | `8000` (image) | Port d'écoute |
 
@@ -170,9 +182,9 @@ gateway/
 
 ## Déploiement
 
-**Une Container App par environnement, 3 conteneurs** (G5, S3-19, S3-30), décrite par `infra/containerapp.yaml` : `gateway` (8000, **seule entrée externe**), `rag` (8001, interne) et l'annexe `postgres` (5432, base éphémère). `build` publie `agentinsurflow-{rag,gateway}:<sha>` ; `deploy.yml` substitue ces images et les variables dans le modèle, puis `az containerapp update --yaml`. **Rollback** : les 2 images du SHA de la révision précédente (lu sur l'image de sa gateway). U5 ajoute `underwriting-admin`.
+**Cinq Container Apps par environnement** : la principale (`infra/containerapp.yaml`, la gateway seule, 8000, **seule entrée externe**), celle d'underwriting-admin (`infra/containerapp-underwriting.yaml`, entrée interne 8002 ; cluster `underwriting` et traces de la gateway visent `https://<FQDN interne>`, lu par `deploy.yml`), la base annexe `postgres` (`infra/containerapp-postgres.yaml`, entrée TCP interne 5432, base éphémère), celle du serveur MCP (`infra/containerapp-mcp.yaml`) et celle de **rag** (`infra/containerapp-rag.yaml`, entrée interne 8001, identité managée propre). Le cluster `rag` de la gateway vise `https://<FQDN interne de rag>` (`deploy.yml` le lit) ; le cluster `llm` vise Foundry (`FOUNDRY_ENDPOINT`), joint seulement par la gateway avec son identité managée (`Calcul__IdentiteClientId`), `Llm__Portee` et les audiences `Entra__Audiences__llm__0/__1`. `deploy.yml` substitue les images et les variables dans chaque modèle, puis `az containerapp update --yaml` : base annexe, underwriting-admin, MCP, principale (gateway), puis rag (la base repart vide à chaque déploiement, ses clients y jouent leurs migrations ensuite). **Rollback** : les 4 images du SHA de la révision précédente (lu sur l'image de sa gateway).
 
-**Une fois, à la main (Acerola), avant le premier déploiement** : `make annexe` (image annexe + secrets PostgreSQL), `make entra DOMAINE=aibrokerflow.fr` (inscriptions `agentinsurflow-rag` et `agentinsurflow-underwriting`, rôles, redirections Swagger), puis les variables GitHub `RAG_API_CLIENT_ID` et `UNDERWRITING_API_CLIENT_ID` affichées.
+**Une fois, à la main (Acerola), avant le premier déploiement** : `make annexe` (image annexe + secrets PostgreSQL), `make entra DOMAINE=aibrokerflow.fr` (inscriptions `agentinsurflow-rag` et `agentinsurflow-underwriting`, rôles, redirections Swagger), `make llm` (canal LLM : inscriptions `agentinsurflow-llm` et `agentinsurflow-gateway-local`, Foundry sans clé), puis les variables GitHub affichées (`RAG_API_CLIENT_ID`, `UNDERWRITING_API_CLIENT_ID`, `LLM_AUDIENCE`, `LLM_API_CLIENT_ID`, `FOUNDRY_ENDPOINT`, `AZURE_UAMI_RAG_CLIENT_ID`…, voir `docs/secrets.md`).
 
 **Fumée (porte bloquante)**, par la gateway : `/health` et `/health/rag` donnent le SHA déployé ; `POST /api/reponses` sans jeton → 401.
 

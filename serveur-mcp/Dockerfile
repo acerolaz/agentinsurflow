@@ -9,6 +9,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 COPY rag/pyproject.toml rag/
 COPY serveur-mcp/pyproject.toml serveur-mcp/
+COPY fonction-calcul/pyproject.toml fonction-calcul/
 RUN uv sync --locked --no-dev --package agentinsurflow-mcp --no-install-workspace
 COPY serveur-mcp/agentinsurflow_mcp serveur-mcp/agentinsurflow_mcp
 RUN uv sync --locked --no-dev --package agentinsurflow-mcp

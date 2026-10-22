@@ -2,7 +2,7 @@
 
 Azure Function (Python 3.12, modèle v2) qui calcule, de façon déterministe, le risque d'un dossier
 (barème `evaluer`) et sa prime (formule `calculer`). Aucun LLM, aucune base : les mêmes faits
-donnent toujours le même résultat. La protection est Easy Auth (niveau `ANONYMOUS` côté Function).
+donnent toujours le même résultat. La protection est Easy Auth (niveau `ANONYMOUS` côté Function) : **seule la gateway** l'appelle (`/api/calcul/*`, rôle `Calcul`, jeton échangé contre celui de son identité managée) ; le serveur MCP passe par elle.
 
 Architecture hexagonale : `agentinsurflow_calcul/domain/` (stdlib seule) porte le barème et la
 formule ; `function_app.py` n'est que l'adaptateur HTTP.

@@ -1,6 +1,6 @@
 # AgentInsurFlow — contrat transverse du monorepo
 
-Trois projets, chacun avec son README : [`gateway/`](gateway/README.md) (C#, YARP, seule entrée publique), [`rag/`](rag/README.md) (Python, hexagonal) et [`underwriting-admin/`](underwriting-admin/README.md) (C#, Clean Architecture : dossiers et référentiel des traces). Les tests E2E vivent dans [`e2e/`](e2e/README.md).
+Chaque projet a son README : [`gateway/`](gateway/README.md) (C#, YARP, seule entrée publique ; porte aussi `/api/llm` vers Foundry et `/api/calcul` vers la Function), [`rag/`](rag/README.md) (Python, hexagonal), [`serveur-mcp/`](serveur-mcp/README.md) (Python, outils MCP), [`fonction-calcul/`](fonction-calcul/README.md) (Azure Function Python : risque et prime) et [`underwriting-admin/`](underwriting-admin/README.md) (C#, Clean Architecture : dossiers et référentiel des traces). En Azure, chacun (sauf la Function) a sa Container App, la gateway seule à entrée publique. Les tests E2E vivent dans [`e2e/`](e2e/README.md).
 
 ## Architectures
 

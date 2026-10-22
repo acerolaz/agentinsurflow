@@ -24,7 +24,8 @@ for ns in Microsoft.App Microsoft.OperationalInsights Microsoft.ContainerRegistr
     exit 1
   fi
 done
-az group create -n "$RG" -l "$AZURE_LOCATION" -o none
+# Groupe existant : gardé tel quel (sa région peut différer d'AZURE_LOCATION, qui ne sert qu'aux nouvelles ressources)
+existe az group show -n "$RG" || az group create -n "$RG" -l "$AZURE_LOCATION" -o none
 existe az acr show -n "$ACR_NAME" || az acr create -n "$ACR_NAME" -g "$RG" --sku Basic -o none
 existe az containerapp env show -n "$CONTAINERAPPS_ENV" -g "$RG" ||
   az containerapp env create -n "$CONTAINERAPPS_ENV" -g "$RG" -l "$AZURE_LOCATION" -o none

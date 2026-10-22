@@ -58,8 +58,10 @@ cat <<FIN
   Env. staging        CALCUL_APP_NAME=$CALCUL_APP_STAGING
                       CALCUL_URL=https://$(hote "$CALCUL_APP_STAGING")
                       CALCUL_AUDIENCE=api://$app_id
+                      CALCUL_API_CLIENT_ID=$app_id
   Env. production     CALCUL_APP_NAME=$CALCUL_APP_PRODUCTION
                       CALCUL_URL=https://$(hote "$CALCUL_APP_PRODUCTION")
                       CALCUL_AUDIENCE=api://$app_id
+                      CALCUL_API_CLIENT_ID=$app_id
   Le code part avec le prochain déploiement (deploy.yml).
 FIN

@@ -22,6 +22,7 @@ properties:
           - { name: Entra__Audiences__mcp__0, value: api://agentinsurflow-mcp }
           - { name: Entra__Audiences__mcp__1, value: "${MCP_API_CLIENT_ID}" }
           - { name: Entra__Audiences__calcul__0, value: "${CALCUL_AUDIENCE}" }
+          - { name: Entra__Audiences__calcul__1, value: "${CALCUL_API_CLIENT_ID}" }
           - { name: ReverseProxy__Clusters__calcul__Destinations__d1__Address, value: "${CALCUL_URL}" }
           # ponytail: la page Swagger se connecte avec l'inscription de rag (A3 : pas d'inscription gateway)
           - { name: SWAGGER_CLIENT_ID, value: "${RAG_API_CLIENT_ID}" }

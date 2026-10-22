@@ -33,6 +33,19 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
     }
 
     [Fact]
+    public async Task Audience_GUID_de_l_application_acceptee()
+    {
+        const string guid = "11111111-1111-1111-1111-111111111111";
+        using var usine = backends.Gateway(("Entra:Audiences:calcul:1", guid));
+        using var client = usine.CreateClient();
+
+        var reponse = await Envoyer(client, "/api/calcul/evaluer", Creer(guid, ["Calcul"]));
+
+        Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
+        Assert.Single(backends.Calcul.LogEntries);
+    }
+
+    [Fact]
     public async Task Sans_jeton_401()
     {
         using var usine = backends.Gateway();
@@ -77,9 +90,10 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         using var client = usine.CreateClient();
         var jeton = JetonCalcul();
 
-        await Envoyer(client, "/api/calcul/evaluer", jeton);
+        var premiere = await Envoyer(client, "/api/calcul/evaluer", jeton);
         var deuxieme = await Envoyer(client, "/api/calcul/evaluer", jeton);
 
+        Assert.Equal(HttpStatusCode.OK, premiere.StatusCode);
         Assert.Equal(HttpStatusCode.TooManyRequests, deuxieme.StatusCode);
         Assert.Equal("TROP_DE_REQUETES", await AutorisationTests.Code(deuxieme));
         Assert.Single(backends.Calcul.LogEntries);

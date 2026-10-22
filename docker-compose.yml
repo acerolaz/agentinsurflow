@@ -33,7 +33,9 @@ services:
       PG_MIGRATEUR_PASSWORD: ${PG_MIGRATEUR_PASSWORD} # au démarrage seulement (demarrer.sh)
       PG_WRITER_PASSWORD: ${PG_WRITER_PASSWORD}
       PG_READER_PASSWORD: ${PG_READER_PASSWORD}
-      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+      # LLM par la gateway, jeton d'application de rag (RAG_CLIENT_SECRET ci-dessous), aucune clé
+      AZURE_OPENAI_ENDPOINT: http://gateway:8000/api/llm
+      LLM_AUDIENCE: ${LLM_AUDIENCE:-}
       AZURE_TENANT_ID: ${AZURE_TENANT_ID}
       RAG_API_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
       # même liste que la gateway (Entra__Audiences__rag__0), même défaut

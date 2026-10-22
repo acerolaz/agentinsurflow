@@ -136,7 +136,7 @@ démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `d
 Prérequis : [uv](https://docs.astral.sh/uv/) et Docker.
 
 ```bash
-cp .env.example .env      # remplir AZURE_OPENAI_ENDPOINT (+ la clé, ou az login), AZURE_TENANT_ID, RAG_SEUIL, PG_*_PASSWORD…
+cp .env.example .env      # remplir LLM_AUDIENCE, RAG_CLIENT_SECRET, AZURE_TENANT_ID, RAG_SEUIL, PG_*_PASSWORD…
 make install              # dépendances figées par uv.lock
 make up                   # postgres + rag (:8001) + underwriting-admin (:8002) + gateway (:8000) → http://localhost:8000/ : Swagger unique
 make down                 # arrête tout et vide la base annexe
@@ -160,10 +160,11 @@ make calibrer URL=http://localhost:8000          # intervalle où choisir RAG_SE
 dossier-conception-v1.md, K5). Pour un article cité, `GET /api/documents/{doc_id}/attribution` donne ses mentions
 **Etalab 2.0** (concédant DILA, licence, date de l'instantané). Détails : [`rag/README.md`](rag/README.md).
 
-**Authentification au LLM** : **aucune clé hors de ton poste**. Le code utilise Entra ID
-(`DefaultAzureCredential`) : OIDC dans la CI, identité managée dans Container Apps (rôle *Cognitive Services
-User* sur `svespuce-971`). En local, la clé `AZURE_OPENAI_API_KEY` du `.env` reste possible, sinon `az login`.
-Le modèle est épinglé dans `rag/llm.env` ; l'endpoint est accepté avec ou sans le suffixe `/openai/v1`.
+**Authentification au LLM** : **aucune clé**. rag appelle le LLM **par la gateway** (`AZURE_OPENAI_ENDPOINT` =
+`${GATEWAY_URL}/api/llm`, `http://gateway:8000/api/llm` dans le compose) avec un jeton d'**application** pour
+l'audience `LLM_AUDIENCE` (rôle `LLM`) : secret de l'inscription rag (`RAG_CLIENT_SECRET`) en local, identité
+managée fédérée (`AZURE_UAMI_CLIENT_ID`) en Azure, comme l'OBO. La gateway échange son propre jeton avec Foundry.
+Le modèle est épinglé dans `rag/llm.env`.
 
 ## Tester
 

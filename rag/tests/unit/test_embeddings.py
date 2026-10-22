@@ -17,7 +17,7 @@ from agentinsurflow_rag.infrastructure.azure_openai.embeddings import (
 )
 from fakes import FakeEmbeddings
 
-ENDPOINT = "https://exemple.openai.azure.com"
+ENDPOINT = "http://gateway:8000/api/llm"
 
 
 def cos(a: list[float], b: list[float]) -> float:
@@ -48,7 +48,7 @@ def test_fake_embeddings_trace_les_appels() -> None:
 
 def _azure(repondre: Callable[[httpx.Request], httpx.Response]) -> AzureEmbeddings:
     client = OpenAI(
-        base_url=f"{ENDPOINT}/openai/v1/",
+        base_url=f"{ENDPOINT}/v1/",
         api_key="cle-de-test",
         max_retries=0,
         http_client=httpx.Client(transport=httpx.MockTransport(repondre)),
@@ -65,7 +65,7 @@ def test_azure_embeddings_rend_les_vecteurs_dans_l_ordre() -> None:
         return httpx.Response(200, json={"object": "list", "data": donnees, "model": "m"})
 
     assert _azure(repondre).vectoriser(["a", "b"]) == [[0.0] * 3, [1.0] * 3]
-    assert recu[0].url.path == "/openai/v1/embeddings"
+    assert recu[0].url.path == "/api/llm/v1/embeddings"
 
 
 def test_azure_embeddings_erreur_fournisseur_devient_erreur_embeddings() -> None:
@@ -77,7 +77,10 @@ def test_azure_embeddings_erreur_fournisseur_devient_erreur_embeddings() -> None
 def _config(**valeurs: str) -> ConfigLLM:
     defaut = {
         "azure_openai_endpoint": ENDPOINT,
-        "azure_openai_api_key": "cle-de-test",
+        "llm_audience": "api://llm-test",
+        "azure_tenant_id": "tenant-test",
+        "rag_api_client_id": "rag-test",
+        "rag_client_secret": "secret-local",
         "azure_openai_embedding_deployment": "text-embedding-3-small",
     }
     return ConfigLLM(_env_file=None, **{**defaut, **valeurs})  # type: ignore[arg-type]

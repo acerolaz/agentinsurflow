@@ -12,10 +12,11 @@ flowchart LR
     MCP -->|"OBO → underwriting<br/>/api/contrats, écritures"| GW
     GW --> RAG["rag"]
     GW --> UW["underwriting-admin"]
-    MCP -. "OTLP (boucle locale)" .-> UW
+    MCP -. "OTLP /v1/traces<br/>(jeton d'application, rôle Telemetrie)" .-> GW
+    MCP -->|"/api/calcul<br/>(jeton d'application, rôle Calcul)"| GW
 ```
 
-**Texte alternatif du diagramme.** Le cluster d'agents (orchestrateur, Rédacteur, Actuaire) envoie ses requêtes `POST` ou `GET` sur `/mcp` à la gateway, avec un jeton dont l'`azp` est celui de l'agent. La gateway contrôle le rôle, l'audience et le débit, puis transmet sans tampon (SSE) au serveur MCP. Le serveur MCP appelle `rag` (`/api/extraits`) et `underwriting-admin` (`/api/contrats` et les écritures) **en repassant par la gateway**, avec un jeton obtenu en On-Behalf-Of. Il exporte ses traces en OTLP vers `underwriting-admin`, sur la boucle locale, sans passer par la gateway.
+**Texte alternatif du diagramme.** Le cluster d'agents (orchestrateur, Rédacteur, Actuaire) envoie ses requêtes `POST` ou `GET` sur `/mcp` à la gateway, avec un jeton dont l'`azp` est celui de l'agent. La gateway contrôle le rôle, l'audience et le débit, puis transmet sans tampon (SSE) au serveur MCP. Le serveur MCP appelle `rag` (`/api/extraits`) et `underwriting-admin` (`/api/contrats` et les écritures) **en repassant par la gateway**, avec un jeton obtenu en On-Behalf-Of. Il exporte ses traces en OTLP par la gateway (`/v1/traces`, jeton d'application, rôle `Telemetrie`) et appelle la Function de calcul par la gateway (`/api/calcul`, rôle `Calcul`) : aucun appel direct.
 
 ### 1.1 Organisation du code
 
@@ -123,7 +124,7 @@ Sans `AZURE_TENANT_ID` ou `MCP_API_CLIENT_ID`, l'API démarre mais `/mcp` répon
 
 | Sujet | Valeur |
 |---|---|
-| Port | `8003` (gateway 8000, rag 8001, underwriting-admin 8002) ; **aucune entrée externe** |
+| Port | `8003` (gateway 8000, rag 8001, underwriting-admin 8002) ; **sa propre Container App, entrée interne seulement** (`infra/containerapp-mcp.yaml`) : la gateway l'appelle en `https://<app>.internal.<domaine de l'environnement>` (FQDN interne : TLS de la plateforme, jamais `http://<app>` en clair), lui joint la gateway par le FQDN de la sienne (`GATEWAY_URL`) ; identité managée propre (`AZURE_UAMI_CLIENT_ID`) |
 | Santé directe | `GET /health` : toujours 200, `version`, `release`, `environnement` |
 | Santé par la gateway | `GET /health/mcp` (anonyme, sans limite de débit) |
 | Sondes Container App | liveness et readiness sur `/health:8003` |

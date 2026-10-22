@@ -7,7 +7,7 @@
 set -euo pipefail
 
 for v in AZURE_SUBSCRIPTION_ID AZURE_LOCATION AZURE_RESOURCE_GROUP ACR_NAME CONTAINERAPPS_ENV \
-  APP_STAGING APP_PRODUCTION GITHUB_REPO; do
+  APP_STAGING APP_PRODUCTION MCP_APP_STAGING MCP_APP_PRODUCTION GITHUB_REPO; do
   [ -n "${!v:-}" ] || { echo "✘ $v manquant dans .env"; exit 1; }
 done
 RG=$AZURE_RESOURCE_GROUP
@@ -41,6 +41,14 @@ for app in "$APP_STAGING" "$APP_PRODUCTION"; do
       --image "$amorce" --registry-server "$ACR_NAME.azurecr.io" --registry-identity system \
       --ingress external --target-port 8000 --min-replicas 0 --max-replicas 1 -o none
 done
+# Serveur MCP : sa propre Container App, entrée INTERNE (port 8003) : joignable par la gateway seulement
+# (https://<app>.internal.<domaine de l'environnement>), jamais depuis Internet. Même image d'amorçage.
+for app in "$MCP_APP_STAGING" "$MCP_APP_PRODUCTION"; do
+  existe az containerapp show -n "$app" -g "$RG" ||
+    az containerapp create -n "$app" -g "$RG" --environment "$CONTAINERAPPS_ENV" \
+      --image "$amorce" --registry-server "$ACR_NAME.azurecr.io" --registry-identity system \
+      --ingress internal --target-port 8003 --min-replicas 0 --max-replicas 1 -o none
+done
 
 echo "③ Identité de la CI : application Entra + fédération OIDC (aucun secret)"
 nom_ci="$(basename "$GITHUB_REPO")"   # application Entra « agentinsurflow », déjà créée et fédérée
@@ -73,5 +81,8 @@ cat <<FIN
                       AZURE_RESOURCE_GROUP=$RG
                       ACR_NAME=$ACR_NAME
   Env. staging        CONTAINER_APP_NAME=$APP_STAGING
+                      MCP_APP_NAME=$MCP_APP_STAGING
   Env. production     CONTAINER_APP_NAME=$APP_PRODUCTION
+                      MCP_APP_NAME=$MCP_APP_PRODUCTION
+  (le FQDN interne du serveur MCP est lu par deploy.yml : rien à reporter)
 FIN

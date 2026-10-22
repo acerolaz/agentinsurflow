@@ -113,7 +113,7 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 | `Entra__TenantId` | **obligatoire** | Tenant Entra (émetteurs v1 et v2 acceptés) |
 | `Entra__Audiences__rag__0` | **obligatoire** | Audiences de `rag`, en liste « a, b » : la même valeur que `RAG_API_AUDIENCES`, lue par `rag` (`<ID client>,api://<ID client>`) |
 | `Entra__Audiences__underwriting__0` | **obligatoire** | Audiences d'`underwriting-admin`, en liste « a, b » (`UNDERWRITING_API_AUDIENCES`) |
-| `ReverseProxy__Clusters__mcp__Destinations__d1__Address` | `http://localhost:8003` | Adresse de `serveur-mcp` (compose : `http://serveur-mcp:8003`) |
+| `ReverseProxy__Clusters__mcp__Destinations__d1__Address` | `http://localhost:8003` | Adresse de `serveur-mcp` (compose : `http://serveur-mcp:8003` ; Azure : `https://<app MCP>.internal.<domaine de l'environnement>`, sa propre Container App à entrée interne) |
 | `Entra__Audiences__mcp__0` | `api://agentinsurflow-mcp` | Audiences de `serveur-mcp`, en liste « a, b » |
 | `ReverseProxy__Clusters__calcul__Destinations__d1__Address` | `http://localhost:7071` | Adresse de la Function de calcul (compose : `http://calcul:80` ; Azure : `${CALCUL_URL}`) |
 | `Calcul__Portee`, `Calcul__IdentiteClientId` | _(vide)_ | Portée du jeton de la gateway pour la Function (`api://<appId calcul>/.default`) et client id de son identité managée ; sans portée, aucun jeton relayé |

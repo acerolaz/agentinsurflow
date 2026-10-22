@@ -23,7 +23,7 @@ Le cluster sera en place le 30/10 et c'est lui qui appelle le serveur MCP pendan
 - Nouveau fournisseur d'identité, nouveau journal d'audit, nouvelle stack.
 
 **Anti-objectifs** (échec même si « ça marche »)
-- Un appel direct du serveur MCP vers rag, underwriting-admin ou PostgreSQL (hors export OTLP, § 7, **et appel de la Function de calcul**, spec `2026-10-22-calcul-risque-prime-design.md`).
+- Un appel direct du serveur MCP vers rag, underwriting-admin ou PostgreSQL (l'export OTLP et la Function de calcul passent aussi par la gateway : plus aucune exception à D22, spec `2026-10-22-calcul-risque-prime-design.md` § 3.3).
 - Une décision `ACCEPTE`/`REFUSE` écrite sans validation du gestionnaire (D9).
 - Un refus ou une panne renvoyés comme une réponse normale que le LLM pourrait paraphraser.
 - Une donnée personnelle, un jeton ou un `numero_contrat` dans une trace.
@@ -50,8 +50,9 @@ flowchart LR
     MCP -->|"OBO → underwriting<br/>/api/contrats, écritures"| GW
     GW --> RAG["rag"]
     GW --> UW["underwriting-admin"]
-    MCP -. "OTLP (boucle locale)" .-> UW
-    MCP -->|"appel direct HTTPS<br/>jeton de l'inscription MCP<br/>(assertion client de l'identité managée)"| FN["Function de calcul<br/>/api/evaluer, /api/calculer"]
+    MCP -. "OTLP /v1/traces<br/>(jeton d'application, rôle Telemetrie)" .-> GW
+    MCP -->|"/api/calcul<br/>jeton d'application (rôle Calcul)"| GW
+    GW -->|"jeton de la gateway<br/>(identité managée)"| FN["Function de calcul<br/>/api/evaluer, /api/calculer"]
 ```
 
 - **Langage et emplacement** : Python, architecture **hexagonale** (règle `~/.claude/rules/python-hexagonal.md`), dans `brief2/src/serveur-mcp/` à côté de `rag/` (`specs/03` ; pas `mcp/`, qui masquerait le paquet `mcp` du SDK). Paquet, `pyproject` et `Dockerfile` calqués sur rag.
@@ -67,12 +68,12 @@ flowchart LR
 
 ### 5.1 Catalogue
 
-| Outil | Appelé par (`azp`) | Cible (via la gateway, sauf le calcul : appel direct, exception à D22) | Nature |
+| Outil | Appelé par (`azp`) | Cible (toujours via la gateway) | Nature |
 |---|---|---|---|
 | `get_contrat` | Orchestrateur (nœud `charger`) | `GET /api/contrats/{numero_contrat}` | lecture |
-| `evaluer_risque` | Orchestrateur (nœud `evaluer`) | Function de calcul `POST /api/evaluer` (appel direct, exception à D22, § 5.3) | calcul |
+| `evaluer_risque` | Orchestrateur (nœud `evaluer`) | Function de calcul `POST /api/evaluer` (par la gateway, `/api/calcul/evaluer`, § 5.3) | calcul |
 | `search_rag` | Agent Rédacteur (seul outil visible par un LLM, D59) | `GET /api/extraits` | lecture |
-| `calculer_prime` | Agent Actuaire | Function de calcul `POST /api/calculer` (appel direct, exception à D22, § 5.3) | calcul |
+| `calculer_prime` | Agent Actuaire | Function de calcul `POST /api/calculer` (par la gateway, `/api/calcul/calculer`, § 5.3) | calcul |
 | `enregistrer_brouillon` | Orchestrateur (nœud `brouillon`) | **nouvel** endpoint underwriting-admin | écriture (brouillon seulement, D66) |
 | `update_statut_dossier` | Orchestrateur (nœuds `enregistrer` après `interrupt()`, et `revue_humaine`) | **nouvel** endpoint underwriting-admin | écriture (seul outil qui écrit une décision) |
 
@@ -133,7 +134,7 @@ Les erreurs de protocole (jeton absent, JSON-RPC invalide) restent des erreurs H
 
 Même fonctionnement que rag.
 
-- **Export** : OTLP/HTTP vers underwriting-admin `/v1/traces` sur la boucle locale (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`), seule exception à D22 depuis C15. En Azure, le serveur MCP est un **5e conteneur de la même Container App** (`infra/containerapp.yaml` : les conteneurs partagent `localhost`), donc `http://localhost:8002/v1/traces` ; en local, `http://underwriting-admin:8002/v1/traces` comme rag dans le compose. Le port du serveur MCP (8003 par exemple) n'a jamais d'entrée externe. `OTEL_SDK_DISABLED=true` coupe tout.
+- **Export** : OTLP/HTTP vers la gateway `/v1/traces` (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`), avec un jeton d'application (rôle `Telemetrie` d'underwriting-admin, `TELEMETRIE_AUDIENCE`) : plus d'exception à D22 (amendement du 22/10, spec calcul § 3.3). En Azure, le serveur MCP a **sa propre Container App** (`infra/containerapp-mcp.yaml`), à entrée interne et identité managée propre ; ses traces vont à `${GATEWAY_URL}/v1/traces`. Son port 8003 n'a jamais d'entrée externe. `OTEL_SDK_DISABLED=true` coupe tout.
 - **Une trace par dossier** : le cluster envoie un `traceparent` sur `/mcp`, la gateway le transmet ; le serveur MCP s'y accroche et l'injecte à la main dans ses appels vers la gateway. Relecture : `GET /api/traces/{trace_id}`.
 
 | Span | Attributs |
@@ -163,7 +164,7 @@ Même fonctionnement que rag.
 - **Échéance** : examen blanc du 30/10. **Repli le 27/10 au soir** : si le serveur MCP n'est pas terminé, les agents appellent underwriting-admin en REST via la gateway. Conséquence pour l'ordre de construction : les endpoints d'écriture d'underwriting-admin et leurs routes gateway passent **en premier**, car ils servent dans les deux cas. **En repli, la perte du contrôle par `azp` (API5) est acceptée** (décision d'Acerola, 21/10) : la gateway ne contrôle que le rôle, aucune politique par `azp` n'y est ajoutée.
 - Stack inchangée (Python hexagonal, C# Clean Architecture, YARP, Entra, OTel → underwriting-admin).
 - Aucun changement de version sans accord d'Acerola ; un nouveau paquet (SDK MCP) est un ajout de dépendance à valider.
-- Déploiement par la chaîne existante, en **5e conteneur**, fumée verte.
+- Déploiement par la chaîne existante, dans **sa propre Container App** (entrée interne), fumée verte.
 - Contrat du monorepo (`brief2/src/CLAUDE.md`) :
   - le serveur MCP **revalide lui-même le jeton** (signature, émetteur, audience, rôle), même derrière la gateway ;
   - les inscriptions Entra des agents et du serveur MCP, et la pré-autorisation de leurs clients OBO (#47), sont **rédigés dans `infra/*.sh` et lancés à la main par Acerola**, jamais par un agent ;
@@ -185,7 +186,7 @@ Même fonctionnement que rag.
 - [ ] Streamable HTTP sans tampon
 - [ ] Tests d'intégration couvrant chaque outil, résultats interprétés (les deux outils de calcul via la Function, spec `2026-10-22-calcul-risque-prime-design.md`)
 - [ ] Documentation : architecture, outils, authentification/autorisation, format accessible
-- [ ] Déployé (5e conteneur), fumée verte
+- [ ] Déployé (Container App propre, entrée interne), fumée verte
 
 ## 11. Laissé au constructeur
 

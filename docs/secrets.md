@@ -32,17 +32,19 @@ Apps** (`pg-*-password`), posés à la main par `make annexe` (`infra/postgres-a
 | `ACR_NAME` | Variable de repo | `ACR_NAME` | `ci-cd.yml` › build (push), `deploy.yml` (image) |
 | `APP_STAGING` | Variable de l'env. `staging` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
 | `APP_PRODUCTION` | Variable de l'env. `production` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
+| `MCP_APP_STAGING` / `MCP_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `MCP_APP_NAME` | `deploy.yml` : Container App du serveur MCP (entrée interne) ; affiché par `make infra`. Son FQDN interne (`<app>.internal.<domaine>`) est lu par le workflow, rien à reporter (`MCP_APP_FQDN`) |
 | `CALCUL_APP_STAGING` / `CALCUL_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `CALCUL_APP_NAME` | `deploy.yml` : déploiement de la Function de calcul ; affiché par `make calcul` |
-| (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_URL` | `deploy.yml` : fumée de la Function ; → `infra/containerapp.yaml` (`CALCUL_URL` du serveur MCP) |
-| (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_AUDIENCE` | `deploy.yml` → `infra/containerapp.yaml` (`api://<appId agentinsurflow-calcul>`) |
+| (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_URL` | `deploy.yml` : fumée de la Function ; → `infra/containerapp.yaml` (cluster `calcul` de la gateway). Le serveur MCP n'appelle plus la Function : `CALCUL_URL` = `<gateway>/api/calcul` |
+| (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_AUDIENCE` | `deploy.yml` → gateway (`Entra__Audiences__calcul__0`, portée `Calcul__Portee` = `<audience>/.default`) et serveur MCP (`CALCUL_AUDIENCE`) ; `api://<appId agentinsurflow-calcul>` |
 | (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_API_CLIENT_ID` | `deploy.yml` (liste `envsubst`) → `infra/containerapp.yaml` (`Entra__Audiences__calcul__1`, GUID de l'application : `aud` des jetons v2) |
 | `AZURE_OPENAI_ENDPOINT` | Variable de **repo** | `AZURE_OPENAI_ENDPOINT` | `deploy.yml` → `infra/containerapp.yaml` (conteneur rag) ; `ci-cd.yml` › `evals-pr` (désactivé) |
 | `RAG_SEUIL` | Variable de **repo** | `RAG_SEUIL` | `deploy.yml` → conteneur rag (porte de pertinence ; vide → `/api/extraits` en 503) |
 | `RAG_API_CLIENT_ID` | Variable de **repo** | `RAG_API_CLIENT_ID` | `deploy.yml` → audiences de la gateway et de rag, connexion de la page Swagger |
 | `UNDERWRITING_API_CLIENT_ID` | Variable de **repo** | `UNDERWRITING_API_CLIENT_ID` | `deploy.yml` → audiences de la gateway |
 | `MCP_API_CLIENT_ID` | Variable de **repo** | `MCP_API_CLIENT_ID` | `deploy.yml` (liste `envsubst`) → audiences de la gateway et du serveur MCP ; affiché par `make entra` |
-| `MCP_AZP_ORCHESTRATEUR`, `MCP_AZP_REDACTEUR`, `MCP_AZP_ACTUAIRE` | Variable de **repo** | idem | `deploy.yml` → conteneur serveur-mcp : `azp` des agents (matrice d'accès) ; vides tant que #7 n'a pas inscrit les agents |
-| `AZURE_UAMI_CLIENT_ID` | Variable de **repo** | `AZURE_UAMI_CLIENT_ID` | `deploy.yml` → identité managée fédérée de rag et du serveur MCP (OBO sans secret) |
+| `MCP_AZP_ORCHESTRATEUR`, `MCP_AZP_REDACTEUR`, `MCP_AZP_ACTUAIRE` | Variable de **repo** | idem | `deploy.yml` → Container App du serveur MCP : `azp` des agents (matrice d'accès) ; vides tant que #7 n'a pas inscrit les agents |
+| `AZURE_UAMI_CLIENT_ID` | Variable de **repo** | `AZURE_UAMI_CLIENT_ID` | `deploy.yml` → identité managée de rag et de la gateway (OBO de rag ; `Calcul__IdentiteClientId`) ; c'est aussi la seule application admise par l'Easy Auth de la Function (`make calcul`) |
+| `AZURE_UAMI_MCP_CLIENT_ID` | Variable de **repo** | `AZURE_UAMI_MCP_CLIENT_ID` | `deploy.yml` → identité managée PROPRE du serveur MCP (`AZURE_UAMI_CLIENT_ID` de son conteneur) : OBO et jetons d'application sans secret ; affiché par `make entra` |
 | `SEED_GESTIONNAIRE_A`, `SEED_GESTIONNAIRE_B` | Variable de **repo** | idem | `deploy.yml` → conteneur underwriting-admin : `oid` (GUID) des gestionnaires du seed BOLA |
 | `E2E_CONTRAT_PROPRE` | Variable de **repo** | `E2E_CONTRAT_PROPRE` | `ci-cd.yml` › E2E : contrat du gestionnaire de la CI (témoin positif BOLA) |
 | — | Variable de l'env. `production` | `PROD_URL` | `deploy.yml` : URL publique de la production (domaine personnalisé, `make domaine`) ; la fumée vérifie aussi son certificat |
@@ -153,4 +155,4 @@ gh secret list -R acerolaz/agentinsurflow -e production   # noms seulement, jama
 ```
 
 **Reconstruire depuis le repo seul** : `git clone` → `cp .env.example .env` → remplir → `make infra` →
-`make entra` (avant le premier déploiement : il crée l'API du serveur MCP dont `MCP_API_CLIENT_ID` vient) → `make calcul` (Function de calcul ; après `make entra`, il lit `MCP_API_CLIENT_ID`) → `make annexe` → `make domaine DOMAINE=…` → reporter dans GitHub (§2 ; les variables `CALCUL_*`, par environnement, avant le prochain déploiement : sinon `deploy.yml` échoue) → `git push`.
+`make entra` (après `make infra`, qui crée les Container Apps du serveur MCP ; avant le premier déploiement : il crée l'API du serveur MCP dont `MCP_API_CLIENT_ID` vient, et l'identité managée du MCP) → `make calcul` (Function de calcul ; après `make entra`, il lit `MCP_API_CLIENT_ID`) → `make annexe` → `make domaine DOMAINE=…` → reporter dans GitHub (§2 ; les variables `CALCUL_*`, par environnement, avant le prochain déploiement : sinon `deploy.yml` échoue) → `git push`.

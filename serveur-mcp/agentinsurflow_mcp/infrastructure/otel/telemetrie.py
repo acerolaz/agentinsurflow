@@ -28,7 +28,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from ..entra.application import credential_application
 
 SERVICE = "agentinsurflow-mcp"
-POINT_OTLP = "http://localhost:8002/v1/traces"
+POINT_OTLP = "http://localhost:8000/v1/traces"
 
 journal = logging.getLogger(__name__)
 tracer = trace.get_tracer("agentinsurflow")

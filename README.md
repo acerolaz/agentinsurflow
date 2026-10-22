@@ -61,8 +61,10 @@ d'ingestion, agent) dans [`rag/README.md`](rag/README.md). Tests : pyramide **70
 
 ### Architecture déployée
 
-Chaque environnement (staging, production) est **une Container App** à **quatre conteneurs** qui partagent
-`localhost` (modèle versionné : [`infra/containerapp.yaml`](infra/containerapp.yaml)) :
+Chaque environnement (staging, production) est **deux Container Apps** du même environnement : la principale, à **quatre conteneurs**
+qui partagent `localhost` (modèle versionné : [`infra/containerapp.yaml`](infra/containerapp.yaml)), et celle du **serveur MCP**
+([`infra/containerapp-mcp.yaml`](infra/containerapp-mcp.yaml)), à entrée interne et identité managée propre, que seule la gateway appelle.
+La Function de calcul (Azure Functions) n'accepte que la gateway :
 
 | Conteneur | Port | Rôle |
 |---|---|---|

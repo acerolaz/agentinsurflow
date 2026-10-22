@@ -17,7 +17,7 @@ Règles visées : OWASP API4 (consommation non bornée), API8 (configuration), A
 
 ### Trajectoire (Acerola, 22/10)
 
-À terme, **rag n'appelle plus le LLM conversationnel** : les agents vivent uniquement dans le cluster (#7) et y feront le chat par cette même route. rag garde les **embeddings** (question et ingestion) — *hypothèse de Claude, à confirmer*. Le chat encore présent dans rag est donc **transitoire** : aucun travail propre au chat n'y est ajouté ; le client `openai` partagé (chat + embeddings) suit le changement d'URL et de jeton.
+À terme, **rag n'appelle plus le LLM conversationnel** : les agents vivent uniquement dans le cluster (#7) et y feront le chat par cette même route. rag garde les **embeddings** (question et ingestion), confirmé par Acerola le 22/10. Le chat encore présent dans rag est donc **transitoire** : aucun travail propre au chat n'y est ajouté ; le client `openai` partagé (chat + embeddings) suit le changement d'URL et de jeton.
 
 ## 3. Non-objectifs, anti-objectifs
 

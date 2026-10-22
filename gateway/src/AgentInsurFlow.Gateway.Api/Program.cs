@@ -28,34 +28,44 @@ builder.Configuration.Sources.Insert(0, new JsonConfigurationSource
 
 // Échange de jeton (route calcul seulement) : la Function n'accepte que le jeton de la gateway (identité
 // managée), jamais celui du MCP. Source injectable (TokenCredential) pour que les tests la remplacent.
-var porteeCalcul = builder.Configuration["Calcul:Portee"];
-builder.Services.AddSingleton<TokenCredential>(_ => builder.Configuration["Calcul:IdentiteClientId"] is { Length: > 0 } id
-    ? new ManagedIdentityCredential(ManagedIdentityId.FromUserAssignedClientId(id))
-    : new ManagedIdentityCredential(ManagedIdentityId.SystemAssigned));
+// Route -> (portée, code d'erreur) ; une portée vide (local) désactive le jeton relayé.
+var echanges = new Dictionary<string, (string? Portee, string Code, string Titre)>
+{
+    ["calcul"] = (builder.Configuration["Calcul:Portee"], "CALCUL_INDISPONIBLE", "Service de calcul indisponible"),
+    ["llm"] = (builder.Configuration["Llm:Portee"], "LLM_INDISPONIBLE", "Service LLM indisponible"),
+};
+// Local : secret d'application de la gateway ; Azure : identité managée.
+builder.Services.AddSingleton<TokenCredential>(_ =>
+    builder.Configuration["Gateway:ClientSecret"] is { Length: > 0 } secret
+        ? new ClientSecretCredential(builder.Configuration["Entra:TenantId"], builder.Configuration["Gateway:ClientId"], secret)
+        : builder.Configuration["Calcul:IdentiteClientId"] is { Length: > 0 } id
+            ? new ManagedIdentityCredential(ManagedIdentityId.FromUserAssignedClientId(id))
+            : new ManagedIdentityCredential(ManagedIdentityId.SystemAssigned));
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
     .AddTransforms(ctx =>
     {
-        if (ctx.Route.RouteId != "calcul")
+        if (!echanges.TryGetValue(ctx.Route.RouteId, out var echange))
         {
             return;
         }
+        var (portee, code, titre) = echange;
         ctx.AddRequestTransform(async t =>
         {
             t.ProxyRequest.Headers.Authorization = null;
-            if (string.IsNullOrEmpty(porteeCalcul))
+            if (string.IsNullOrEmpty(portee))
             {
                 return; // local : aucun jeton relayé
             }
             try
             {
                 var credential = t.HttpContext.RequestServices.GetRequiredService<TokenCredential>();
-                var jeton = await credential.GetTokenAsync(new TokenRequestContext([porteeCalcul]), t.HttpContext.RequestAborted);
+                var jeton = await credential.GetTokenAsync(new TokenRequestContext([portee]), t.HttpContext.RequestAborted);
                 t.ProxyRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jeton.Token);
             }
             catch (Exception e) when (e is AuthenticationFailedException or RequestFailedException or HttpRequestException) // jamais de détail ni de jeton dans la réponse ou le journal
             {
-                await Probleme(502, "Service de calcul indisponible", "CALCUL_INDISPONIBLE").ExecuteAsync(t.HttpContext);
+                await Probleme(502, titre, code).ExecuteAsync(t.HttpContext);
             }
         });
     });
@@ -75,6 +85,7 @@ var audiencesRag = Audiences("rag");
 var audiencesUnderwriting = Audiences("underwriting");
 var audiencesMcp = Audiences("mcp");
 var audiencesCalcul = Audiences("calcul");
+var audiencesLlm = Audiences("llm");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -83,7 +94,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         o.MapInboundClaims = false;
         o.TokenValidationParameters.ValidIssuers =
             [$"https://login.microsoftonline.com/{tenant}/v2.0", $"https://sts.windows.net/{tenant}/"];
-        o.TokenValidationParameters.ValidAudiences = [.. audiencesRag, .. audiencesUnderwriting, .. audiencesMcp, .. audiencesCalcul];
+        o.TokenValidationParameters.ValidAudiences = [.. audiencesRag, .. audiencesUnderwriting, .. audiencesMcp, .. audiencesCalcul, .. audiencesLlm];
         o.TokenValidationParameters.RoleClaimType = "roles";
         o.TokenValidationParameters.NameClaimType = "oid";
         o.Events = new JwtBearerEvents
@@ -106,6 +117,7 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("underwriting-gestionnaire", p => p.RequireRole("Gestionnaire").RequireClaim("aud", audiencesUnderwriting))
     .AddPolicy("mcp-gestionnaire", p => p.RequireRole("Gestionnaire").RequireClaim("aud", audiencesMcp))
     .AddPolicy("calcul-mcp", p => p.RequireRole("Calcul").RequireClaim("aud", audiencesCalcul)) // jeton MCP entrant, remplacé par celui de la gateway
+    .AddPolicy("llm-appelant", p => p.RequireRole("LLM").RequireClaim("aud", audiencesLlm)) // jeton de l'appelant, remplacé par celui de la gateway
     .AddPolicy("underwriting-telemetrie", p => p.RequireRole("Telemetrie").RequireClaim("aud", audiencesUnderwriting))
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
@@ -129,6 +141,7 @@ var limiteGlobale = Limite("Global", 120);
 var limiteReponses = Limite("Reponses", 10);
 var limiteMcp = Limite("Mcp", 60);
 var limiteCalcul = Limite("Calcul", 60);
+var limiteLlm = Limite("Llm", 30);
 builder.Services.AddRateLimiter(o =>
 {
     o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
@@ -139,6 +152,8 @@ builder.Services.AddRateLimiter(o =>
         RateLimitPartition.GetFixedWindowLimiter(Partition(ctx), _ => FenetreFixe(limiteMcp, fenetre)));
     o.AddPolicy("calcul", ctx =>
         RateLimitPartition.GetFixedWindowLimiter(Partition(ctx), _ => FenetreFixe(limiteCalcul, fenetre)));
+    o.AddPolicy("llm", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(PartitionAppelant(ctx), _ => FenetreFixe(limiteLlm, fenetre)));
     o.OnRejected = (ctx, _) =>
     {
         if (ctx.Lease.TryGetMetadata(MetadataName.RetryAfter, out var attente))
@@ -214,6 +229,10 @@ static IResult Probleme(int statut, string titre, string code) =>
 
 static string Partition(HttpContext ctx) =>
     ctx.User.FindFirst("oid")?.Value is { } oid ? $"oid:{oid}" : $"ip:{ctx.Connection.RemoteIpAddress}";
+
+// Appelant de l'API LLM : l'application cliente (azp, ou appid d'un jeton v1), sinon repli sur l'utilisateur/IP.
+static string PartitionAppelant(HttpContext ctx) =>
+    (ctx.User.FindFirst("azp") ?? ctx.User.FindFirst("appid"))?.Value is { } app ? $"azp:{app}" : Partition(ctx);
 
 static FixedWindowRateLimiterOptions FenetreFixe(int limite, TimeSpan fenetre) =>
     new() { PermitLimit = limite, Window = fenetre, QueueLimit = 0 };

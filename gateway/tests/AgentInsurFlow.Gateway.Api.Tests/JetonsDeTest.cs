@@ -21,6 +21,7 @@ internal static class JetonsDeTest
     public const string AudienceUnderwriting = "api://agentinsurflow-underwriting";
     public const string AudienceMcp = "api://agentinsurflow-mcp";
     public const string AudienceCalcul = "api://agentinsurflow-calcul";
+    public const string AudienceLlm = "api://agentinsurflow-llm";
     public static readonly string[] TousLesRoles = ["Gestionnaire", "Ingestion", "Telemetrie"];
 
     public static readonly string EmetteurV2 = $"https://login.microsoftonline.com/{Tenant}/v2.0";
@@ -34,7 +35,7 @@ internal static class JetonsDeTest
 
     public static string Creer(
         string audience, string[] roles, string oid = "oid-a",
-        string? emetteur = null, DateTime? expire = null, SecurityKey? cle = null)
+        string? emetteur = null, DateTime? expire = null, SecurityKey? cle = null, string? azp = null)
     {
         var fin = expire ?? DateTime.UtcNow.AddMinutes(5);
         return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
@@ -44,7 +45,9 @@ internal static class JetonsDeTest
             NotBefore = fin.AddMinutes(-30),
             IssuedAt = fin.AddMinutes(-30),
             Expires = fin,
-            Claims = new Dictionary<string, object> { ["oid"] = oid, ["roles"] = roles },
+            Claims = azp is null
+                ? new Dictionary<string, object> { ["oid"] = oid, ["roles"] = roles }
+                : new Dictionary<string, object> { ["oid"] = oid, ["roles"] = roles, ["azp"] = azp },
             SigningCredentials = new SigningCredentials(cle ?? Cle, SecurityAlgorithms.RsaSha256),
         });
     }
@@ -56,6 +59,7 @@ internal static class JetonsDeTest
         .UseSetting("Entra:Audiences:underwriting:0", AudienceUnderwriting)
         .UseSetting("Entra:Audiences:mcp:0", AudienceMcp)
         .UseSetting("Entra:Audiences:calcul:0", AudienceCalcul)
+        .UseSetting("Entra:Audiences:llm:0", AudienceLlm)
         .ConfigureTestServices(s => s.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
         {
             var metadonnees = new OpenIdConnectConfiguration { Issuer = EmetteurV2 };

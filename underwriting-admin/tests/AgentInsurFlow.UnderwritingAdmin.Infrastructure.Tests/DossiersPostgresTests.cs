@@ -140,6 +140,20 @@ public sealed class DossiersPostgresTests
         Assert.Equal([DBNull.Value, DBNull.Value], lignes.Single());
     }
 
+    [Theory]
+    [InlineData("20090", "2A")]
+    [InlineData("20200", "2B")]
+    public async Task Vue_derive_le_departement_corse_du_code_postal_comme_le_domaine(string codePostal, string attendu)
+    {
+        await Preparer();
+
+        var lignes = await LireDansTransactionAnnulee(ContratSansVehicule.Replace("'FR', '75001'", $"'FR', '{codePostal}'"),
+            "SELECT departement FROM vue_contrat_minimisee WHERE numero_contrat = 'AIF-TEST-1'");
+
+        Assert.Equal(attendu, lignes.Single()[0]);
+        Assert.Equal(attendu, Departement.Depuis(codePostal));
+    }
+
     [Fact]
     public async Task Vue_sans_releve_rend_releve_present_faux_et_le_seed_vrai()
     {

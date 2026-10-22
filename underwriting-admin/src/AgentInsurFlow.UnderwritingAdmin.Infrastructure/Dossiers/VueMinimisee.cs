@@ -45,6 +45,7 @@ internal static class VueMinimisee
                     ELSE '60+' END AS tranche_age,
                date_part('year', age(current_date, s.permis_date_obtention))::int AS anciennete_permis_ans,
                CASE WHEN left(s.code_postal, 2) IN ('97', '98') THEN left(s.code_postal, 3)
+                    WHEN s.code_postal ~ '^20[0-9]{3}$' THEN CASE WHEN s.code_postal < '20200' THEN '2A' ELSE '2B' END
                     ELSE left(s.code_postal, 2) END AS departement,
                COALESCE(r.crm_bonus_malus, 1)::float8 AS crm_bonus_malus,
                (SELECT count(*) FROM sinistre si WHERE si.releve_information_id = r.id)::int AS nb_sinistres,

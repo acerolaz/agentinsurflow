@@ -82,8 +82,8 @@ Nouvelle migration EF Core qui **recrée** `vue_contrat_minimisee` (`migrationBu
 | `anciennete_permis_mois` | mois révolus entre `s.permis_date_obtention` et `c.date_effet` | R06, `k_permis` |
 | `puissance_fiscale_cv` | `v.puissance_fiscale_cv` | R06, `k_vehicule` |
 | `type_usage` | `v.type_usage` | `k_usage` |
-| `nb_sinistres_36m` | sinistres dont `date_sinistre` ∈ [`date_effet` − 36 mois, `date_effet`[ | R05 |
-| `nb_sinistres_responsables_36m` | idem, avec `taux_responsabilite > 0` | R04 |
+| `nb_sinistres_trois_ans` | sinistres dont `date_sinistre` ∈ [`date_effet` − 36 mois, `date_effet`[ | R05 |
+| `nb_sinistres_responsables_trois_ans` | idem, avec `taux_responsabilite > 0` | R04 |
 
 - Déjà dans la vue et dans `VueContrat`, sous ces noms JSON : `departement` (DOM sur 3 caractères), `crm_bonus_malus` (`COALESCE(…, 1)` : limite connue, un relevé absent vaut CRM 1), `suspensions`, `resiliations`, `formule`.
 - Jointure `vehicule` en `LEFT JOIN` ; les nouvelles colonnes sont **nullables** (contrat sans véhicule, permis sans date). Un véhicule par contrat dans les seeds. Si un contrat en avait plusieurs, le constructeur prend le plus puissant (cas défavorable) et le note.
@@ -103,8 +103,8 @@ Date de référence : **la date d'effet du contrat**, jamais la date du jour. To
 | `R01_SUSPENSION` | `suspensions ≥ 1` | `suspensions` | red flag « permis suspendu », adapté au champ existant |
 | `R02_RESILIATIONS` | `resiliations ≥ 2` | `resiliations` | red flag « résiliation », sans motif connu (*choix de Claude* : à ≥ 1, la moitié des seeds serait refusée) |
 | `R03_CRM` | `crm > 1,25` | `crm_bonus_malus` | règle B « CRM » |
-| `R04_SINISTRES_RESPONSABLES` | `nb_sinistres_responsables_36m > 2` | idem | règle B « sinistres responsables » |
-| `R05_SINISTRES_TOTAL` | `nb_sinistres_36m > 4` | idem | règle B « cumul » |
+| `R04_SINISTRES_RESPONSABLES` | `nb_sinistres_responsables_trois_ans > 2` | idem | règle B « sinistres responsables » |
+| `R05_SINISTRES_TOTAL` | `nb_sinistres_trois_ans > 4` | idem | règle B « cumul » |
 | `R06_JEUNE_PERMIS_PUISSANCE` | `anciennete_permis_mois < 36` **et** `puissance_fiscale_cv > 7` | idem | règle B, en CV seulement (la conversion « 90 kW ≈ 7 CV » des sources est fausse et abandonnée) |
 
 ### 5.2 Résultat

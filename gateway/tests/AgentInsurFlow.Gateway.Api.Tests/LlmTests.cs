@@ -197,6 +197,7 @@ public sealed class LlmTests(Backends backends) : IClassFixture<Backends>
         amont.MapPost("/openai/v1/chat/completions", async (HttpContext ctx) =>
         {
             ctx.Response.ContentType = type;
+            ctx.Response.ContentLength = Encoding.UTF8.GetByteCount(corps); // comme Foundry : réponse non découpée
             await ctx.Response.WriteAsync(corps, ctx.RequestAborted);
         });
         await amont.StartAsync(TestContext.Current.CancellationToken);
@@ -279,6 +280,19 @@ public sealed class LlmTests(Backends backends) : IClassFixture<Backends>
         Assert.Equal(corps, recu);
         Assert.Equal("non_disponible", attributs["gen_ai.usage.mesure"]);
         Assert.False(attributs.ContainsKey("gen_ai.usage.input_tokens"));
+    }
+
+    [Fact]
+    public async Task Corps_json_au_dela_du_plafond_non_lu_non_disponible_et_corps_intact()
+    {
+        var corps = "{\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":6},\"remplissage\":\"" + new string('x', 4 * 1024 * 1024) + "\"}";
+
+        var (recu, attributs) = await AppelMesure("application/json", corps, "app-mesure-gros");
+
+        Assert.Equal(corps.Length, recu.Length);
+        Assert.Equal("non_disponible", attributs["gen_ai.usage.mesure"]);
+        Assert.False(attributs.ContainsKey("gen_ai.usage.input_tokens"));
+        Assert.False(attributs.ContainsKey("gen_ai.usage.output_tokens"));
     }
 
     [Fact]

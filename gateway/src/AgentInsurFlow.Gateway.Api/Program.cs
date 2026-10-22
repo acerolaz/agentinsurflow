@@ -238,7 +238,10 @@ static string Partition(HttpContext ctx) =>
 
 // Appelant de l'API LLM : l'application cliente (azp, ou appid d'un jeton v1), sinon repli sur l'utilisateur/IP.
 static string PartitionAppelant(HttpContext ctx) =>
-    (ctx.User.FindFirst("azp") ?? ctx.User.FindFirst("appid"))?.Value is { } app ? $"azp:{app}" : Partition(ctx);
+    AzpOuAppid(ctx) is { } app ? $"azp:{app}" : Partition(ctx);
+
+static string? AzpOuAppid(HttpContext ctx) =>
+    (ctx.User.FindFirst("azp") ?? ctx.User.FindFirst("appid"))?.Value;
 
 // Tokens consommés (conventions GenAI d'OTel) posés sur le span de la requête. JSON : usage lu dans une copie
 // tamponnée (HttpContent relu tel quel ensuite) ; flux SSE : jamais lu, donc jamais tamponné.
@@ -251,11 +254,13 @@ static async Task MesurerTokens(HttpContext ctx, HttpResponseMessage? reponse)
     {
         return;
     }
-    if ((ctx.User.FindFirst("azp") ?? ctx.User.FindFirst("appid") ?? ctx.User.FindFirst("oid"))?.Value is { } appelant)
+    if ((AzpOuAppid(ctx) ?? ctx.User.FindFirst("oid")?.Value) is { } appelant)
     {
         span.SetTag("appelant.azp", appelant);
     }
-    if (type == "text/event-stream")
+    // Plafond : on ne tamponne que les corps de taille annoncée ; gros ou découpé = non lu (comme le flux).
+    const long plafond = 4 * 1024 * 1024;
+    if (type == "text/event-stream" || reponse.Content.Headers.ContentLength is not { } taille || taille > plafond)
     {
         span.SetTag("gen_ai.usage.mesure", "non_disponible");
         return;

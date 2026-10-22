@@ -57,7 +57,7 @@ Apps** (`pg-*-password`), posés à la main par `make annexe` (`infra/postgres-a
 | — | Variable de l'env. `production` | `PROD_URL` | `deploy.yml` : URL publique de la production (domaine personnalisé, `make domaine`) ; la fumée vérifie aussi son certificat |
 | `AZURE_OPENAI_DEPLOYMENT` | — (**pas dans GitHub**) | — | Épinglé dans `llm.env`, versionné et copié dans l'image : le changer déclenche les evals |
 | `MCP_CLIENT_SECRET` 🔒 | — (**jamais dans GitHub**) | — | Local seulement (OBO du serveur MCP) ; en Azure, identité managée fédérée |
-| `GATEWAY_CLIENT_ID`, `GATEWAY_CLIENT_SECRET` 🔒 | — (**jamais dans GitHub**) | — | Local seulement : identité de la gateway (`agentinsurflow-gateway-local`, `make llm`) ; en Azure, identité managée. Plus aucune clé `AZURE_OPENAI_API_KEY` nulle part (§4) |
+| `GATEWAY_CLIENT_ID`, `GATEWAY_CLIENT_SECRET` 🔒 | — (**jamais dans GitHub**) | — | Local seulement : identité de la gateway (`agentinsurflow-gateway-local`, `make llm`) ; en Azure, identité managée (§4) |
 | `PG_*_PASSWORD` 🔒 | — (**jamais dans GitHub**) | — | Secrets des Container Apps (`make annexe`) : les sept sur l'app postgres, quatre sur celle d'underwriting-admin, trois sur rag (plus aucun sur la principale) ; en local, `.env` |
 | `APP_ENV`, `LLM_DELAI_S` | — (non reporté) | — | `APP_ENV` est posé par `deploy.yml` ; `LLM_DELAI_S` garde sa valeur par défaut (30 s) |
 | `AZURE_LOCATION`, `CONTAINERAPPS_ENV`, `GITHUB_REPO`, `FOUNDRY_NAME`, `FOUNDRY_RESOURCE_GROUP` | — (non reporté) | — | Lus seulement par `make` en local |

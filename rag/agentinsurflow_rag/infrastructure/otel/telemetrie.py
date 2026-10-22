@@ -14,7 +14,7 @@ import logging
 import os
 from typing import Any
 
-import requests
+import requests  # transitif via l'exportateur OTLP/HTTP, comme le serveur MCP (non déclaré)
 from azure.core.exceptions import AzureError
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter

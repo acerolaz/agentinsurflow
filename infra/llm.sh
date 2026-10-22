@@ -6,7 +6,8 @@
 # Fait : inscription Entra agentinsurflow-llm (audience de la route /api/llm, rôle d'application LLM attribué à rag) ;
 # inscription agentinsurflow-gateway-local (secret client pour le .env, affiché une seule fois) ; Foundry sans clé
 # (disableLocalAuth) ; rôle « Cognitive Services OpenAI User » réservé à l'identité managée de la gateway et à
-# agentinsurflow-gateway-local, RETIRÉ de toute autre identité. Les rôles hérités d'un niveau supérieur et les
+# agentinsurflow-gateway-local, RETIRÉ de toute autre identité, ainsi que les rôles qui ouvrent aussi l'inférence ou
+# les clés (Cognitive Services User, OpenAI Contributor, Contributor). Les rôles hérités d'un niveau supérieur et les
 # propriétaires de la ressource échappent à ce script (limite de gouvernance, docs/secrets.md §4).
 set -euo pipefail
 
@@ -17,6 +18,8 @@ RG=$AZURE_RESOURCE_GROUP
 GRAPH=https://graph.microsoft.com/v1.0
 LLM_ROLE=4d7a1b20-5e3c-4f68-9a1d-7c0e2b3d4f01 # rôle d'application LLM : identifiant fixe, relancer ne le change pas
 ROLE_FOUNDRY="Cognitive Services OpenAI User"
+# Autres rôles qui ouvrent l'inférence (actions de données) ou permettent de rouvrir les clés : retirés aussi, hors gateway
+ROLES_RETIRES=("$ROLE_FOUNDRY" "Cognitive Services User" "Cognitive Services OpenAI Contributor" "Cognitive Services Contributor")
 UAMI=${UAMI:-uami-insurflow-rag} # même défaut que infra/entra.sh ⑤ et infra/calcul.sh : identité managée de la gateway
 existe() { "$@" -o none 2>/dev/null; }
 az account set -s "$AZURE_SUBSCRIPTION_ID"
@@ -76,19 +79,24 @@ attribuer_foundry() { # principal, type, libellé
 }
 attribuer_foundry "$gw_principal" ServicePrincipal "gateway ($UAMI)"
 attribuer_foundry "$sp_gw_local" ServicePrincipal "agentinsurflow-gateway-local"
-# Toute autre attribution de ce rôle, posée sur la ressource elle-même, est retirée (Container Apps, CI, comptes humains)
+# Toute autre attribution de ces rôles, posée sur la ressource elle-même, est retirée (Container Apps, CI, comptes humains).
+# La gateway garde OpenAI User seulement : ses autres rôles éventuels sur la ressource sont retirés aussi.
 retirees=0
-while IFS=$'\t' read -r id principal; do
-  [ -n "$id" ] || continue
-  [ "$principal" != "$gw_principal" ] && [ "$principal" != "$sp_gw_local" ] || continue
-  az role assignment delete --ids "$id" -o none
-  echo "   ✘ retiré : $principal"
-  retirees=$((retirees + 1))
-done < <(az role assignment list --scope "$foundry" --role "$ROLE_FOUNDRY" \
-  --query "[?scope=='$foundry'].[id, principalId]" -o tsv)
+for role in "${ROLES_RETIRES[@]}"; do
+  while IFS=$'\t' read -r id principal; do
+    [ -n "$id" ] || continue
+    if [ "$role" = "$ROLE_FOUNDRY" ]; then
+      [ "$principal" != "$gw_principal" ] && [ "$principal" != "$sp_gw_local" ] || continue
+    fi
+    az role assignment delete --ids "$id" -o none
+    echo "   ✘ retiré : $role / $principal"
+    retirees=$((retirees + 1))
+  done < <(az role assignment list --scope "$foundry" --role "$role" \
+    --query "[?scope=='$foundry'].[id, principalId]" -o tsv)
+done
 echo "   $retirees attribution(s) retirée(s)"
-echo "   Autres rôles sur la ressource (à vérifier à la main : un rôle de données autre que OpenAI User ouvre aussi le modèle) :"
-az role assignment list --scope "$foundry" --query "[?roleDefinitionName!='$ROLE_FOUNDRY'].{role:roleDefinitionName, principal:principalName, scope:scope}" -o table
+echo "   Rôles restants sur la ressource, hérités ou propriétaires compris (revue manuelle : ils échappent à ce script) :"
+az role assignment list --scope "$foundry" --include-inherited --query "[].{role:roleDefinitionName, principal:principalName, scope:scope}" -o table
 
 endpoint=$(az cognitiveservices account show -n "$FOUNDRY_NAME" -g "$FOUNDRY_RESOURCE_GROUP" \
   --query "properties.endpoints.\"OpenAI Language Model Instance API\"" -o tsv 2>/dev/null || true)

@@ -248,7 +248,7 @@ Exemple du sprint 2 : `eval/preuves/evals-local-2026-10-15.json`.
 
 Installation, à faire une seule fois (écritures Azure et Entra : lancées à la main par Acerola) :
 
-1. `make infra` crée le groupe de ressources, l'ACR, l'environnement Container Apps et huit apps (principale, serveur MCP, rag et base annexe, en staging et en production), reprend l'application Entra `agentinsurflow` et ses 4 fédérations OIDC (`main`, `staging`,
+1. `make infra` crée le groupe de ressources, l'ACR, l'environnement Container Apps et dix apps (cinq par environnement, staging et production : la principale, underwriting-admin, le serveur MCP, rag et la base annexe), reprend l'application Entra `agentinsurflow` et ses 4 fédérations OIDC (`main`, `staging`,
    `production`, `pull_request`), puis attribue les rôles. Il affiche les valeurs à reporter. Attribuer des rôles
    exige *Owner* ou *User Access Administrator*.
 2. `make entra` inscrit les API `agentinsurflow-rag` (rôles `Gestionnaire`, `Ingestion`) et

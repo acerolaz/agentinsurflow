@@ -8,7 +8,9 @@ from typing import Any
 import pytest
 import requests
 from azure.core.exceptions import ClientAuthenticationError
+from azure.identity import ClientAssertionCredential
 
+from agentinsurflow_rag.infrastructure.entra.application import credential_application
 from agentinsurflow_rag.infrastructure.otel import telemetrie
 
 JETON = "jeton-secret-xyz"
@@ -80,3 +82,25 @@ def test_avec_audience_et_secret_local_la_session_porte_l_auth(
     vus = _espion(monkeypatch)
     telemetrie.creer_exportateur("http://gateway:8000/v1/traces")
     assert callable(vus["session"].auth)
+
+
+def test_identite_managee_sans_secret_la_session_porte_l_auth(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for nom, valeur in {
+        "TELEMETRIE_AUDIENCE": "api://u",
+        "AZURE_TENANT_ID": "t",
+        "RAG_API_CLIENT_ID": "c",
+        "AZURE_UAMI_CLIENT_ID": "uami",
+    }.items():
+        monkeypatch.setenv(nom, valeur)
+    monkeypatch.delenv("RAG_CLIENT_SECRET", raising=False)
+    vus = _espion(monkeypatch)
+    telemetrie.creer_exportateur("http://gateway:8000/v1/traces")
+    assert callable(vus["session"].auth)
+    assert isinstance(credential_application("t", "c", None, "uami"), ClientAssertionCredential)
+
+
+def test_configuration_incomplete_pas_de_credential() -> None:
+    assert credential_application(None, "c", "s", None) is None
+    assert credential_application("t", "c", None, None) is None

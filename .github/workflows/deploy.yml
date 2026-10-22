@@ -58,6 +58,16 @@ jobs:
 
       - name: Garde-fou — variables requises présentes avant toute mise à jour
         env:
+          # injectées dans les modèles : vides, elles donneraient des audiences vides ou `api://` après des mises à jour déjà faites
+          ACR_NAME: ${{ vars.ACR_NAME }}
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          RAG_API_CLIENT_ID: ${{ vars.RAG_API_CLIENT_ID }}
+          UNDERWRITING_API_CLIENT_ID: ${{ vars.UNDERWRITING_API_CLIENT_ID }}
+          MCP_API_CLIENT_ID: ${{ vars.MCP_API_CLIENT_ID }}
+          SEED_GESTIONNAIRE_A: ${{ vars.SEED_GESTIONNAIRE_A }}
+          SEED_GESTIONNAIRE_B: ${{ vars.SEED_GESTIONNAIRE_B }}
           UW_APP_NAME: ${{ vars.UW_APP_NAME }}
           MCP_APP_NAME: ${{ vars.MCP_APP_NAME }}
           RAG_APP_NAME: ${{ vars.RAG_APP_NAME }}
@@ -74,7 +84,8 @@ jobs:
           FOUNDRY_ENDPOINT: ${{ vars.FOUNDRY_ENDPOINT }}
         run: |
           manque=0
-          for v in CALCUL_APP_NAME CALCUL_URL CALCUL_AUDIENCE CALCUL_API_CLIENT_ID UW_APP_NAME MCP_APP_NAME RAG_APP_NAME PG_APP_NAME AZURE_UAMI_CLIENT_ID AZURE_UAMI_MCP_CLIENT_ID AZURE_UAMI_RAG_CLIENT_ID LLM_AUDIENCE LLM_API_CLIENT_ID FOUNDRY_ENDPOINT; do
+          # facultatives (non contrôlées) : MCP_AZP_* (vides tant que #7 n'a pas inscrit les agents), RAG_SEUIL (vide : /api/extraits en 503), PROD_URL
+          for v in ACR_NAME AZURE_RESOURCE_GROUP CONTAINER_APP_NAME AZURE_TENANT_ID RAG_API_CLIENT_ID UNDERWRITING_API_CLIENT_ID MCP_API_CLIENT_ID SEED_GESTIONNAIRE_A SEED_GESTIONNAIRE_B CALCUL_APP_NAME CALCUL_URL CALCUL_AUDIENCE CALCUL_API_CLIENT_ID UW_APP_NAME MCP_APP_NAME RAG_APP_NAME PG_APP_NAME AZURE_UAMI_CLIENT_ID AZURE_UAMI_MCP_CLIENT_ID AZURE_UAMI_RAG_CLIENT_ID LLM_AUDIENCE LLM_API_CLIENT_ID FOUNDRY_ENDPOINT; do
             [ -n "${!v}" ] || { echo "::error::variable $v vide pour cet environnement (docs/secrets.md) : aucune mise à jour lancée"; manque=1; }
           done
           exit "$manque"

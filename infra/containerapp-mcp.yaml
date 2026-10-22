@@ -1,4 +1,4 @@
-# Container App du serveur MCP (T9 #64) : modèle versionné, substitué par deploy.yml (envsubst) puis
+# Container App du serveur MCP (#69) : modèle versionné, substitué par deploy.yml (envsubst) puis
 # `az containerapp update --yaml`. Seul `template` est fourni : l'entrée INTERNE (port 8003, posée par
 # infra/bootstrap.sh), le registre et l'identité managée (infra/entra.sh) restent tels quels.
 # Joignable seulement par la gateway, par l'adresse interne de l'environnement

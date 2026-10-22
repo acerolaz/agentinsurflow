@@ -10,9 +10,12 @@ contrat) : le ``traceparent`` est injecté à la main. ``OTEL_SDK_DISABLED=true`
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
 
+import requests
+from azure.core.exceptions import AzureError
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
@@ -27,6 +30,7 @@ from ..entra.application import credential_application
 SERVICE = "agentinsurflow-mcp"
 POINT_OTLP = "http://localhost:8002/v1/traces"
 
+journal = logging.getLogger(__name__)
 tracer = trace.get_tracer("agentinsurflow")
 
 
@@ -40,20 +44,21 @@ class ConfigTelemetrie(BaseSettings):
     azure_uami_client_id: str | None = None
 
 
-class ExportateurAuthentifie(OTLPSpanExporter):
-    """Pose le jeton d'application (rôle ``Telemetrie``) à chaque export ; jamais journalisé."""
+def session_authentifiee(credential: Any, audience: str) -> requests.Session:
+    """Session dont ``auth`` pose le jeton d'application (rôle ``Telemetrie``) à chaque export."""
+    portee = f"{audience}/.default"
 
-    def __init__(self, credential: Any, audience: str, **kw: Any) -> None:
-        super().__init__(**kw)
-        self._cred, self._portee = credential, f"{audience}/.default"
-
-    def export(self, spans: Any) -> Any:
+    def poser(requete: requests.PreparedRequest) -> requests.PreparedRequest:
         try:
-            jeton = self._cred.get_token(self._portee).token
-            self._client._headers["Authorization"] = f"Bearer {jeton}"
-        except Exception:  # noqa: BLE001  # ponytail: sans jeton l'export échoue en 401, spans perdus
-            self._client._headers.pop("Authorization", None)
-        return super().export(spans)
+            requete.headers["Authorization"] = f"Bearer {credential.get_token(portee).token}"
+        except AzureError as exc:
+            # ponytail: sans jeton l'export part en 401 (spans perdus), jamais de blocage
+            journal.warning("jeton de télémétrie indisponible (%s)", type(exc).__name__)
+        return requete
+
+    session = requests.Session()
+    session.auth = poser
+    return session
 
 
 def creer_exportateur(point: str) -> OTLPSpanExporter:
@@ -64,7 +69,8 @@ def creer_exportateur(point: str) -> OTLPSpanExporter:
             cfg.azure_tenant_id, cfg.mcp_api_client_id, secret, cfg.azure_uami_client_id
         )
         if cred is not None:
-            return ExportateurAuthentifie(cred, cfg.telemetrie_audience, endpoint=point)
+            session = session_authentifiee(cred, cfg.telemetrie_audience)
+            return OTLPSpanExporter(endpoint=point, session=session)
     return OTLPSpanExporter(endpoint=point)
 
 

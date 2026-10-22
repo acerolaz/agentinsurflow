@@ -114,7 +114,7 @@ Aucune valeur dans le dépôt : clés dans `.env.example`, déploiement dans `do
 | `CALCUL_URL`, `CALCUL_AUDIENCE` | Gateway `…/api/calcul` (la base inclut `/api/calcul` ; l'adaptateur appelle `/evaluer`, `/calculer`) et audience `api://<appId agentinsurflow-calcul>` du jeton d'application (rôle `Calcul`) ; sans audience ou sans identité Entra : `CALCUL_INDISPONIBLE`, aucun appel | `.env` | variables GitHub par environnement (`make calcul` les affiche) |
 | `TELEMETRIE_AUDIENCE` | Audience `api://<appId underwriting>` du jeton d'application (rôle `Telemetrie`) posé sur chaque export OTLP vers la gateway ; absent = export sans jeton | `.env` | variables GitHub |
 | `AZURE_UAMI_CLIENT_ID` | Identité managée fédérée (OBO sans secret) | — | variable GitHub |
-| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Récepteur OTLP | `http://underwriting-admin:8002/v1/traces` | `http://localhost:8002/v1/traces` |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Récepteur OTLP : la gateway (jeton d'application si `TELEMETRIE_AUDIENCE`) | `http://gateway:8000/v1/traces` | `http://localhost:8000/v1/traces` |
 | `APP_VERSION`, `APP_RELEASE`, `APP_ENV` | Versions gravées au build, environnement | build-args, `local` | build-args de la chaîne, `staging` ou `production` |
 
 Sans `AZURE_TENANT_ID` ou `MCP_API_CLIENT_ID`, l'API démarre mais `/mcp` répond 503 ; sans configuration OBO, les outils répondent en erreur.

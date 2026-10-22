@@ -88,7 +88,7 @@ def test_appelle_le_deploiement_et_rend_le_texte() -> None:
     assert [m["role"] for m in corps["messages"]] == ["system", "user"]
 
 
-def test_jeton_entra_envoye_en_bearer() -> None:
+def test_jeton_application_envoye_en_bearer() -> None:
     recu: list[httpx.Request] = []
 
     def repondre(requete: httpx.Request) -> httpx.Response:
@@ -100,7 +100,7 @@ def test_jeton_entra_envoye_en_bearer() -> None:
     assert recu[0].headers["authorization"] == "Bearer jeton-entra"
 
 
-def test_echec_d_authentification_entra_leve_erreur_llm() -> None:
+def test_echec_d_authentification_application_leve_erreur_llm() -> None:
     def sans_identite() -> str:
         raise ClientAuthenticationError("aucune identité disponible")
 
@@ -181,3 +181,21 @@ def test_sans_audience_erreur_explicite() -> None:
 def test_sans_identite_erreur_explicite() -> None:
     with pytest.raises(ErreurLLM, match="RAG_CLIENT_SECRET"):
         client_openai(_config(rag_client_secret=""))
+
+
+def test_erreur_llm_est_un_503_problemdetails_sans_detail() -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from agentinsurflow_rag.api.erreurs import installer_gestionnaires
+
+    app = FastAPI()
+    installer_gestionnaires(app)
+
+    @app.get("/t")
+    def _() -> None:
+        raise ErreurLLM("LLM_AUDIENCE absente (détail interne)")
+
+    r = TestClient(app).get("/t")
+    assert r.status_code == 503 and r.json()["code"] == "LLM_INDISPONIBLE"
+    assert "LLM_AUDIENCE" not in r.text

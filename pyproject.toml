@@ -30,7 +30,7 @@ dev = [
 # tests/ : outillage de la racine (tools/) ; rag/tests : le service rag (unit = TU, integration = TI)
 testpaths = ["tests", "rag/tests", "serveur-mcp/tests", "fonction-calcul/tests"]
 pythonpath = [".", "fonction-calcul", "rag/tests", "serveur-mcp/tests", "fonction-calcul/tests"]
-addopts = "--cov=agentinsurflow_rag --cov=agentinsurflow_mcp --cov=agentinsurflow_calcul --cov-report=term-missing"
+addopts = "--cov=agentinsurflow_rag --cov=agentinsurflow_mcp --cov=agentinsurflow_calcul --cov=function_app --cov-report=term-missing"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"

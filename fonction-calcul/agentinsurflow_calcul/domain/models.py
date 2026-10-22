@@ -45,6 +45,15 @@ class DonneeHorsBareme(Exception):
         self.champ = champ  # le nom du champ, jamais sa valeur
 
 
+CRM_MIN, CRM_MAX = Decimal("0.50"), Decimal("3.50")  # bornes légales du bonus-malus
+
+
+def verifier_crm(crm: Decimal | None) -> Decimal:
+    if crm is None or not CRM_MIN <= crm <= CRM_MAX:
+        raise DonneeHorsBareme("crm")
+    return crm
+
+
 @dataclass(frozen=True)
 class FaitsPrime:
     """Les faits utiles à la formule de prime ; ``None`` = donnée absente."""

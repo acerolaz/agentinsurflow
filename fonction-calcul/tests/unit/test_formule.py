@@ -147,3 +147,28 @@ def test_donnee_hors_bareme(surcharge, champ):
     with pytest.raises(DonneeHorsBareme) as exc:
         calculer(faits(**surcharge))
     assert exc.value.champ == champ
+
+
+@pytest.mark.parametrize("crm", ["0.49", "3.51", "0", "-1"])
+def test_crm_hors_bornes_legales_refuse(crm):
+    with pytest.raises(DonneeHorsBareme) as exc:
+        calculer(faits(crm=Decimal(crm)))
+    assert exc.value.champ == "crm"
+
+
+@pytest.mark.parametrize("crm", ["0.50", "3.50"])
+def test_crm_bornes_legales_incluses(crm):
+    calculer(faits(crm=Decimal(crm)))
+
+
+@pytest.mark.parametrize(
+    ("surcharge", "champ"),
+    [
+        ({"anciennete_permis_mois": -1}, "anciennete_permis_mois"),
+        ({"puissance_fiscale_cv": 0}, "puissance_fiscale_cv"),
+    ],
+)
+def test_gardes_negatives(surcharge, champ):
+    with pytest.raises(DonneeHorsBareme) as exc:
+        calculer(faits(**surcharge))
+    assert exc.value.champ == champ

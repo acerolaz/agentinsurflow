@@ -108,12 +108,12 @@ jobs:
           attendu: ${{ steps.image.outputs.tag }}
         run: |
           for _ in $(seq 1 30); do
-            version=$(curl -fsS "$CALCUL_URL/api/sante" | jq -r .version) || version=""
+            version=$(curl -fsS --max-time 10 "$CALCUL_URL/api/sante" | jq -r .version) || version=""
             [ "$version" = "$attendu" ] && break
             sleep 5
           done
           [ "$version" = "$attendu" ] || { echo "::error::Function de calcul : version '$version' ≠ '$attendu'"; exit 1; }
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$CALCUL_URL/api/evaluer" -H 'content-type: application/json' -d '{}')
+          code=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' -X POST "$CALCUL_URL/api/evaluer" -H 'content-type: application/json' -d '{}')
           [ "$code" = 401 ] || { echo "::error::POST /api/evaluer sans jeton : $code ≠ 401"; exit 1; }
           echo "✔ Function de calcul en $attendu, /api/evaluer fermée sans jeton"
 

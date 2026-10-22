@@ -68,7 +68,7 @@ internal static class VueMinimisee
         JOIN souscripteur s ON s.id = c.souscripteur_id
         LEFT JOIN releve_information r ON r.contrat_id = c.id
         LEFT JOIN LATERAL (SELECT puissance_fiscale_cv, type_usage FROM vehicule
-                           WHERE contrat_id = c.id ORDER BY puissance_fiscale_cv DESC LIMIT 1) v ON true
+                           WHERE contrat_id = c.id ORDER BY puissance_fiscale_cv DESC, id LIMIT 1) v ON true
         """;
 
     public const string Droits = """

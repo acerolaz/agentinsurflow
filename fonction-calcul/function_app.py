@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import json
 import os
-from decimal import Decimal, InvalidOperation
+import re
+from collections.abc import Callable
+from decimal import Decimal
 from typing import Any
 
 import azure.functions as func
@@ -19,24 +21,24 @@ from agentinsurflow_calcul.domain.models import DonneeHorsBareme, FaitsPrime, Fa
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
-_ENTIER, _CHAINE, _DECIMAL = "entier", "chaine", "decimal"
-_CHAMPS_RISQUE = {
-    "suspensions": _ENTIER,
-    "resiliations": _ENTIER,
-    "crm": _DECIMAL,
-    "nb_sinistres_responsables_trois_ans": _ENTIER,
-    "nb_sinistres_trois_ans": _ENTIER,
-    "anciennete_permis_mois": _ENTIER,
-    "puissance_fiscale_cv": _ENTIER,
+_CHAMPS_RISQUE: dict[str, type] = {
+    "suspensions": int,
+    "resiliations": int,
+    "crm": Decimal,
+    "nb_sinistres_responsables_trois_ans": int,
+    "nb_sinistres_trois_ans": int,
+    "anciennete_permis_mois": int,
+    "puissance_fiscale_cv": int,
 }
-_CHAMPS_PRIME = {
-    "formule": _CHAINE,
-    "anciennete_permis_mois": _ENTIER,
-    "departement": _CHAINE,
-    "puissance_fiscale_cv": _ENTIER,
-    "type_usage": _CHAINE,
-    "crm": _DECIMAL,
+_CHAMPS_PRIME: dict[str, type] = {
+    "formule": str,
+    "anciennete_permis_mois": int,
+    "departement": str,
+    "puissance_fiscale_cv": int,
+    "type_usage": str,
+    "crm": Decimal,
 }
+_DECIMAL_STRICT = re.compile(r"[0-9]+(\.[0-9]+)?")  # ni exposant, espace, signe, NaN
 
 
 class _RequeteInvalide(Exception):
@@ -47,24 +49,19 @@ def _json(statut: int, corps: dict[str, Any]) -> func.HttpResponse:
     return func.HttpResponse(json.dumps(corps), status_code=statut, mimetype="application/json")
 
 
-def _valeur(type_attendu: str, valeur: object) -> object:
+def _valeur(type_attendu: type, valeur: object) -> object:
     if valeur is None:
         return None
-    if type_attendu == _ENTIER and isinstance(valeur, int) and not isinstance(valeur, bool):
+    if type_attendu is int and isinstance(valeur, int) and not isinstance(valeur, bool):
         return valeur
-    if type_attendu == _CHAINE and isinstance(valeur, str):
+    if type_attendu is str and isinstance(valeur, str):
         return valeur
-    if type_attendu == _DECIMAL and isinstance(valeur, str):
-        try:
-            decimal = Decimal(valeur)
-        except InvalidOperation:
-            raise _RequeteInvalide from None
-        if decimal.is_finite():
-            return decimal
+    if type_attendu is Decimal and isinstance(valeur, str) and _DECIMAL_STRICT.fullmatch(valeur):
+        return Decimal(valeur)
     raise _RequeteInvalide
 
 
-def _faits(req: func.HttpRequest, champs: dict[str, str]) -> dict[str, object]:
+def _faits(req: func.HttpRequest, champs: dict[str, type]) -> dict[str, object]:
     """Corps JSON strict : un objet avec exactement ``champs``, du bon type ou ``null``."""
     try:
         corps = json.loads(req.get_body())
@@ -75,47 +72,53 @@ def _faits(req: func.HttpRequest, champs: dict[str, str]) -> dict[str, object]:
     return {nom: _valeur(type_attendu, corps[nom]) for nom, type_attendu in champs.items()}
 
 
-@app.function_name(name="evaluer")
-@app.route(route="evaluer", methods=["POST"])
-def evaluer_route(req: func.HttpRequest) -> func.HttpResponse:
+def _executer(
+    req: func.HttpRequest,
+    champs: dict[str, type],
+    traiter: Callable[[dict[str, object]], dict[str, Any]],
+) -> func.HttpResponse:
+    """400 si le corps n'est pas conforme, 422 si une donnée est hors barème, sinon 200."""
     try:
-        resultat = evaluer(FaitsRisque(**_faits(req, _CHAMPS_RISQUE)))  # type: ignore[arg-type]
+        return _json(200, traiter(_faits(req, champs)))
     except _RequeteInvalide:
         return _json(400, {"code": "REQUETE_INVALIDE"})
     except DonneeHorsBareme as e:
         return _json(422, {"code": "DONNEE_HORS_BAREME", "champ": e.champ})
-    return _json(
-        200,
-        {
-            "version_bareme": resultat.version_bareme,
-            "classe": resultat.classe,
-            "decision": resultat.decision,
-            "score": resultat.score,
-            "regles": [{"regle_id": r.regle_id, "motif": r.motif} for r in resultat.regles],
-        },
-    )
+
+
+def _risque(faits: dict[str, object]) -> dict[str, Any]:
+    resultat = evaluer(FaitsRisque(**faits))  # type: ignore[arg-type]
+    return {
+        "version_bareme": resultat.version_bareme,
+        "classe": resultat.classe,
+        "decision": resultat.decision,
+        "score": resultat.score,
+        "regles": [{"regle_id": r.regle_id, "motif": r.motif} for r in resultat.regles],
+    }
+
+
+def _prime(faits: dict[str, object]) -> dict[str, Any]:
+    resultat = calculer(FaitsPrime(**faits))  # type: ignore[arg-type]
+    return {
+        "version_formule": resultat.version_formule,
+        "prime_ht": str(resultat.prime_ht),
+        "montant_taxes": str(resultat.montant_taxes),
+        "prime_ttc_annuelle": str(resultat.prime_ttc_annuelle),
+        "prime_mensuelle": str(resultat.prime_mensuelle),
+        "coefficients": {k: str(v) for k, v in resultat.coefficients.items()},
+    }
+
+
+@app.function_name(name="evaluer")
+@app.route(route="evaluer", methods=["POST"])
+def evaluer_route(req: func.HttpRequest) -> func.HttpResponse:
+    return _executer(req, _CHAMPS_RISQUE, _risque)
 
 
 @app.function_name(name="calculer")
 @app.route(route="calculer", methods=["POST"])
 def calculer_route(req: func.HttpRequest) -> func.HttpResponse:
-    try:
-        resultat = calculer(FaitsPrime(**_faits(req, _CHAMPS_PRIME)))  # type: ignore[arg-type]
-    except _RequeteInvalide:
-        return _json(400, {"code": "REQUETE_INVALIDE"})
-    except DonneeHorsBareme as e:
-        return _json(422, {"code": "DONNEE_HORS_BAREME", "champ": e.champ})
-    return _json(
-        200,
-        {
-            "version_formule": resultat.version_formule,
-            "prime_ht": str(resultat.prime_ht),
-            "montant_taxes": str(resultat.montant_taxes),
-            "prime_ttc_annuelle": str(resultat.prime_ttc_annuelle),
-            "prime_mensuelle": str(resultat.prime_mensuelle),
-            "coefficients": {k: str(v) for k, v in resultat.coefficients.items()},
-        },
-    )
+    return _executer(req, _CHAMPS_PRIME, _prime)
 
 
 @app.function_name(name="sante")

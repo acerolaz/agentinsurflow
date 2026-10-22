@@ -43,7 +43,7 @@ auth=$(jq -n --arg client "$app_id" --arg tenant "$AZURE_TENANT_ID" --arg mcp "$
     excludedPaths: ["/api/sante"]},
   identityProviders: {azureActiveDirectory: {enabled: true,
     registration: {clientId: $client, openIdIssuer: ("https://login.microsoftonline.com/" + $tenant + "/v2.0")},
-    validation: {allowedAudiences: [("api://" + $client)],
+    validation: {allowedAudiences: [("api://" + $client), $client],
       defaultAuthorizationPolicy: {allowedApplications: [$mcp]}}}}}}')
 for app in "$CALCUL_APP_STAGING" "$CALCUL_APP_PRODUCTION"; do
   id=$(az functionapp show -n "$app" -g "$RG" --query id -o tsv)

@@ -9,6 +9,7 @@ from agentinsurflow_calcul.domain.models import (
     FaitsRisque,
     RegleDeclenchee,
     ResultatRisque,
+    verifier_crm,
 )
 
 VERSION_BAREME = "bareme-2026.10-v1"
@@ -22,8 +23,7 @@ def evaluer(faits: FaitsRisque) -> ResultatRisque:
         raise DonneeHorsBareme("suspensions")
     if faits.resiliations is None:
         raise DonneeHorsBareme("resiliations")
-    if faits.crm is None:
-        raise DonneeHorsBareme("crm")
+    crm = verifier_crm(faits.crm)
     if faits.nb_sinistres_responsables_trois_ans is None:
         raise DonneeHorsBareme("nb_sinistres_responsables_trois_ans")
     if faits.nb_sinistres_trois_ans is None:
@@ -44,7 +44,7 @@ def evaluer(faits: FaitsRisque) -> ResultatRisque:
             "R02_RESILIATIONS",
             "Le relevé d'information mentionne au moins deux résiliations.",
         ),
-        (faits.crm > _SEUIL_CRM, "R03_CRM", "Le coefficient bonus-malus dépasse 1,25."),
+        (crm > _SEUIL_CRM, "R03_CRM", "Le coefficient bonus-malus dépasse 1,25."),
         (
             faits.nb_sinistres_responsables_trois_ans > 2,
             "R04_SINISTRES_RESPONSABLES",

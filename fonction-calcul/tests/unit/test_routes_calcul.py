@@ -110,6 +110,13 @@ def test_donnee_hors_bareme_422(nom, faits, champ):
         ("calculer", {"corps": {**FAITS_PRIME, "departement": 75}}),
         ("calculer", {"corps": {**FAITS_PRIME, "puissance_fiscale_cv": True}}),
         ("calculer", {"corps": {**FAITS_PRIME, "crm": 0.9}}),
+        ("evaluer", {"brut": b"null"}),
+        ("calculer", {"brut": b"null"}),
+        *[
+            (nom, {"corps": {**faits, "crm": crm}})
+            for nom, faits in (("evaluer", FAITS_RISQUE), ("calculer", FAITS_PRIME))
+            for crm in ("1E999999", "NaN", "Infinity", " 1.0", "1_0", "-1", "", "+1", "1.", "١")
+        ],
     ],
 )
 def test_requete_invalide_400(nom, kwargs):

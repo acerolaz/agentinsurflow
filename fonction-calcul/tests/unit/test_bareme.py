@@ -133,3 +133,15 @@ def test_donnee_absente_leve_donnee_hors_bareme(champ):
 def test_motif_sans_valeur_du_dossier():
     motif = evaluer(faits(crm=Decimal("1.37"))).regles[0].motif
     assert motif == "Le coefficient bonus-malus dépasse 1,25."
+
+
+@pytest.mark.parametrize("crm", ["0.49", "3.51", "0", "-1"])
+def test_crm_hors_bornes_legales_refuse(crm):
+    with pytest.raises(DonneeHorsBareme) as exc:
+        evaluer(faits(crm=Decimal(crm)))
+    assert exc.value.champ == "crm"
+
+
+@pytest.mark.parametrize("crm", ["0.50", "3.50"])
+def test_crm_bornes_legales_incluses(crm):
+    evaluer(faits(crm=Decimal(crm)))

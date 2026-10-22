@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal
 
-from agentinsurflow_calcul.domain.models import DonneeHorsBareme, FaitsPrime, ResultatPrime
+from agentinsurflow_calcul.domain.models import (
+    DonneeHorsBareme,
+    FaitsPrime,
+    ResultatPrime,
+    verifier_crm,
+)
 
 VERSION_FORMULE = "formule-2026.10-v1"
 
@@ -75,10 +80,9 @@ def calculer(faits: FaitsPrime) -> ResultatPrime:
     if faits.type_usage is None or faits.type_usage not in _K_USAGE:
         raise DonneeHorsBareme("type_usage")
     k_usage = _K_USAGE[faits.type_usage]
-    if faits.crm is None:
-        raise DonneeHorsBareme("crm")
+    crm = verifier_crm(faits.crm)
 
-    ht = base * k_permis * k_zone * k_vehicule * k_usage * faits.crm
+    ht = base * k_permis * k_zone * k_vehicule * k_usage * crm
     ttc = ht * (1 + TAUX_TAXE)
     prime_ht, prime_ttc = _centime(ht), _centime(ttc)
     return ResultatPrime(
@@ -93,7 +97,7 @@ def calculer(faits: FaitsPrime) -> ResultatPrime:
             "k_zone": k_zone,
             "k_vehicule": k_vehicule,
             "k_usage": k_usage,
-            "crm": faits.crm,
+            "crm": crm,
             "taux_taxe": TAUX_TAXE,
         },
     )

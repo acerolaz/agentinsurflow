@@ -1,18 +1,20 @@
 [project]
 name = "agentinsurflow"
-version = "0.5.0" # version de la solution (tools/version.py → tag de release vX.Y.Z)
+version = "0.6.0" # version de la solution (tools/version.py → tag de release vX.Y.Z)
 description = "AgentInsurFlow (monorepo) : gateway, rag, underwriting-admin, et leur chaîne."
 requires-python = ">=3.12,<3.13"
-dependencies = ["agentinsurflow-rag"]
+dependencies = ["agentinsurflow-rag", "agentinsurflow-mcp", "agentinsurflow-calcul"]
 
 [tool.uv]
 package = false # racine de l'espace de travail : outillage commun (tools/, e2e/), pas de paquet
 
 [tool.uv.workspace]
-members = ["rag"]
+members = ["rag", "serveur-mcp", "fonction-calcul"]
 
 [tool.uv.sources]
 agentinsurflow-rag = { workspace = true }
+agentinsurflow-mcp = { workspace = true }
+agentinsurflow-calcul = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -26,9 +28,9 @@ dev = [
 
 [tool.pytest.ini_options]
 # tests/ : outillage de la racine (tools/) ; rag/tests : le service rag (unit = TU, integration = TI)
-testpaths = ["tests", "rag/tests"]
-pythonpath = [".", "rag/tests"]
-addopts = "--cov=agentinsurflow_rag --cov-report=term-missing"
+testpaths = ["tests", "rag/tests", "serveur-mcp/tests", "fonction-calcul/tests"]
+pythonpath = [".", "fonction-calcul", "rag/tests", "serveur-mcp/tests", "fonction-calcul/tests"]
+addopts = "--cov=agentinsurflow_rag --cov=agentinsurflow_mcp --cov=agentinsurflow_calcul --cov=function_app --cov-report=term-missing"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
@@ -47,6 +49,8 @@ select = ["E", "F", "I", "B", "UP"]
 [tool.ruff.lint.isort]
 known-first-party = [
     "agentinsurflow_rag",
+    "agentinsurflow_mcp",
+    "agentinsurflow_calcul",
     "tools",
     "fakes",
     "jetons_de_test",

@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.exc import DBAPIError
 
-from ..domain.ports import ContratIntrouvable, ErreurDossiers, ErreurEmbeddings
+from ..domain.ports import ContratIntrouvable, ErreurDossiers, ErreurEmbeddings, ErreurLLM
 
 
 class ErreurApi(Exception):
@@ -47,7 +47,7 @@ def reponses(*statuts: int) -> dict[int | str, dict[str, Any]]:
         403: "Rôle d'app manquant (ROLE_MANQUANT)",
         404: "Ressource introuvable (CONTRAT_INTROUVABLE, DOCUMENT_INTROUVABLE…)",
         409: "Conflit avec un lot concurrent (CONFLIT_INGESTION) : rejouer le lot",
-        503: "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+        503: "Dépendance indisponible (LLM_INDISPONIBLE, EMBEDDINGS_INDISPONIBLES…)",
     }
     return {
         s: {
@@ -65,6 +65,7 @@ async def _gerer(request: Request, exc: Exception) -> JSONResponse:
 
 
 ERREURS_CONNUES: dict[type[Exception], tuple[int, str, str]] = {
+    ErreurLLM: (503, "LLM_INDISPONIBLE", "Le modèle de langage ne répond pas"),
     ErreurEmbeddings: (503, "EMBEDDINGS_INDISPONIBLES", "Le modèle d'embeddings ne répond pas"),
     ErreurDossiers: (503, "DOSSIERS_INDISPONIBLES", "Les dossiers ne sont pas joignables"),
     # même réponse pour un contrat absent et un contrat d'un autre gestionnaire (BOLA)

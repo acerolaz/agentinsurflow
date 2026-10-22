@@ -36,6 +36,6 @@ internal static class ContratsEndpoints
             .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
     }
 
-    private static string? Oid(ClaimsPrincipal u) =>
+    internal static string? Oid(ClaimsPrincipal u) =>
         u.FindFirst("oid")?.Value is { Length: > 0 } v ? v : null;
 }

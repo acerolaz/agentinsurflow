@@ -286,11 +286,249 @@
           }
         }
       }
+    },
+    "/api/contrats/{numero_contrat}/brouillon": {
+      "put": {
+        "tags": [
+          "Contrats"
+        ],
+        "summary": "Enregistre (ou remplace) la fiche et la prime en brouillon, sans changer le statut",
+        "operationId": "EnregistrerBrouillon",
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrouillonCorps"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contrats/{numero_contrat}/statut": {
+      "put": {
+        "tags": [
+          "Contrats"
+        ],
+        "summary": "Change le statut ; ACCEPTE/REFUSE exigent une validation (VALIDEE ou CORRIGEE)",
+        "operationId": "ChangerStatut",
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatutCorps"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "BrouillonCorps": {
+        "required": [
+          "fiche",
+          "prime"
+        ],
+        "type": "object",
+        "properties": {
+          "fiche": {
+            "$ref": "#/components/schemas/FicheBrouillon"
+          },
+          "prime": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PrimeBrouillon"
+              }
+            ]
+          }
+        }
+      },
+      "FicheBrouillon": {
+        "required": [
+          "decision",
+          "contrat_type",
+          "score",
+          "version_bareme",
+          "regle_ids",
+          "motifs",
+          "citations"
+        ],
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string"
+          },
+          "contrat_type": {
+            "type": "string"
+          },
+          "score": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "version_bareme": {
+            "type": "string"
+          },
+          "regle_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "motifs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "JsonElement": { },
+      "PrimeBrouillon": {
+        "required": [
+          "prime_ttc",
+          "periodicite",
+          "date_effet"
+        ],
+        "type": "object",
+        "properties": {
+          "prime_ttc": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "periodicite": {
+            "type": "string"
+          },
+          "date_effet": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -457,6 +695,27 @@
           "recu_le": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "StatutCorps": {
+        "required": [
+          "statut",
+          "validation"
+        ],
+        "type": "object",
+        "properties": {
+          "statut": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "validation": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

@@ -1,0 +1,38 @@
+# Container App du serveur MCP (#69) : modèle versionné, substitué par deploy.yml (envsubst) puis
+# `az containerapp update --yaml`. Seul `template` est fourni : l'entrée INTERNE (port 8003, posée par
+# infra/bootstrap.sh), le registre et l'identité managée (infra/entra.sh) restent tels quels.
+# Joignable seulement par la gateway, par l'adresse interne de l'environnement
+# (https://<app>.internal.<domaine par défaut>) ; elle-même joint la gateway par son FQDN (GATEWAY_URL).
+properties:
+  template:
+    scale:
+      minReplicas: 1 # sans état, mais jamais à froid : la gateway l'appelle à chaque outil
+      maxReplicas: 1
+    containers:
+      - name: serveur-mcp
+        image: ${IMAGE_MCP}
+        resources: { cpu: 0.5, memory: 1Gi }
+        probes:
+          - { type: Liveness, httpGet: { path: /health, port: 8003 }, initialDelaySeconds: 10, periodSeconds: 10 }
+          - { type: Readiness, httpGet: { path: /health, port: 8003 }, initialDelaySeconds: 5, periodSeconds: 5 }
+        env:
+          # Aucun secret : OBO et jetons d'application par l'identité managée PROPRE du serveur MCP, jamais MCP_CLIENT_SECRET
+          - { name: APP_ENV, value: "${APP_ENV}" }
+          - { name: AZURE_TENANT_ID, value: "${AZURE_TENANT_ID}" }
+          - { name: MCP_API_CLIENT_ID, value: "${MCP_API_CLIENT_ID}" }
+          # même liste que la gateway (Entra__Audiences__mcp__0 et __1)
+          - { name: MCP_API_AUDIENCES, value: "api://agentinsurflow-mcp,${MCP_API_CLIENT_ID}" }
+          # azp des agents (matrice d'accès) : inscriptions de #7, à poser en variables GitHub ensuite
+          - { name: MCP_AZP_ORCHESTRATEUR, value: "${MCP_AZP_ORCHESTRATEUR}" }
+          - { name: MCP_AZP_REDACTEUR, value: "${MCP_AZP_REDACTEUR}" }
+          - { name: MCP_AZP_ACTUAIRE, value: "${MCP_AZP_ACTUAIRE}" }
+          - { name: RAG_API_CLIENT_ID, value: "${RAG_API_CLIENT_ID}" }
+          - { name: UNDERWRITING_API_CLIENT_ID, value: "${UNDERWRITING_API_CLIENT_ID}" }
+          - { name: AZURE_UAMI_CLIENT_ID, value: "${AZURE_UAMI_MCP_CLIENT_ID}" }
+          # rag, dossiers et calcul : TOUJOURS par la gateway (D22, plus d'exception)
+          - { name: GATEWAY_URL, value: "${GATEWAY_URL}" }
+          - { name: CALCUL_URL, value: "${GATEWAY_URL}/api/calcul" }
+          - { name: CALCUL_AUDIENCE, value: "${CALCUL_AUDIENCE}" }
+          # traces : par la gateway (/v1/traces), jeton d'application, rôle Telemetrie d'underwriting-admin
+          - { name: TELEMETRIE_AUDIENCE, value: "api://${UNDERWRITING_API_CLIENT_ID}" }
+          - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: "${GATEWAY_URL}/v1/traces" }

@@ -180,3 +180,50 @@ def test_ip_client_reelle_dans_les_spans(
         if "gateway" in s["service_name"].lower()
     }
     assert ip in adresses, f"client.address = {adresses}, attendu {ip}"
+
+
+ENTETES_MCP = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
+
+
+def _jsonrpc(r: httpx.Response) -> dict:
+    """Réponse Streamable HTTP : JSON direct ou flux SSE (une ligne ``data:``)."""
+    assert r.status_code == 200, r.text[:300]
+    if r.headers["content-type"].startswith("text/event-stream"):
+        ligne = next(ln for ln in r.text.splitlines() if ln.startswith("data:"))
+        return json.loads(ligne.removeprefix("data:"))
+    return r.json()
+
+
+def _mcp(client, jeton: str, methode: str, params: dict | None = None, id_: int = 1) -> dict:
+    corps = {"jsonrpc": "2.0", "id": id_, "method": methode, "params": params or {}}
+    return _jsonrpc(client.post("/mcp", json=corps, headers={**ENTETES_MCP, **bearer(jeton)}))
+
+
+def test_mcp_sante_anonyme_par_la_gateway(client):
+    r = client.get("/health/mcp")
+    assert r.status_code == 200
+    assert r.json()["version"]
+
+
+def test_mcp_sans_jeton_401(client):
+    r = client.post(
+        "/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "initialize"}, headers=ENTETES_MCP
+    )
+    assert r.status_code == 401
+
+
+def test_mcp_liste_filtree_et_refus_type(client, jeton_mcp):
+    """Un jeton d'utilisateur n'est l'azp d'aucun agent : liste vide, outil refusé (matrice)."""
+    init = _mcp(
+        client, jeton_mcp, "initialize",
+        {"protocolVersion": "2025-06-18", "capabilities": {},
+         "clientInfo": {"name": "e2e", "version": "0"}},
+    )  # fmt: skip
+    assert init["result"]["serverInfo"]["name"]
+    assert _mcp(client, jeton_mcp, "tools/list", id_=2)["result"]["tools"] == []
+    appel = _mcp(
+        client, jeton_mcp, "tools/call",
+        {"name": "search_rag", "arguments": {"question": QUESTION_COUVERTE}}, id_=3,
+    )  # fmt: skip
+    assert appel["result"]["isError"] is True
+    assert appel["result"]["structuredContent"]["code"] == "UNAUTHORIZED_TOOL"

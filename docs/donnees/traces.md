@@ -18,16 +18,17 @@ La conformité OpenTelemetry repose sur le **protocole** OTLP/HTTP protobuf (tou
 
 ```mermaid
 flowchart LR
-    GW(["🚪 gateway"]) -- "OTLP · localhost" --> RX{{"📡 POST /v1/traces<br/>underwriting-admin"}}
-    RAG(["🐍 rag"]) -- "OTLP · localhost" --> RX
+    GW(["🚪 gateway"]) -- "OTLP · jeton d'application (Azure) / direct (local)" --> RX{{"📡 POST /v1/traces<br/>underwriting-admin"}}
+    RAG(["🐍 rag"]) -- "OTLP · via la gateway (Azure) / direct (local)" --> RX
     UA(["🟣 underwriting-admin"]) -- "OTLP · localhost" --> RX
+    MCP(["🧩 serveur MCP · local"]) -- "OTLP · direct" --> RX
     CLI(["⌨️ CLI ingest"]) -- "via la gateway · rôle Telemetrie" --> RX
     RX --> CONV(["OtlpVersSpans<br/>protobuf → Span"]) --> TR[("🗄️ traces.span<br/>traces_writer")]
     TR --> Q(["🔎 GET /api/traces/{trace_id}<br/>traces_reader · rôle Gestionnaire"])
 ```
 
-*Lecture : les trois services de la Container App exportent sur `localhost:8002` ; la CLI passe par la gateway
-avec un jeton. Le récepteur convertit la requête protobuf en lignes `span`, relues par `trace_id`.*
+*Lecture : underwriting-admin exporte sur sa boucle locale (`localhost:8002`, sans jeton) ; **en Azure** (Container Apps séparées, #70) la gateway exporte directement vers l'adresse interne d'underwriting-admin avec un jeton d'application (`Telemetrie__Audience`, rôle `Telemetrie`), et rag passe par la gateway (`/v1/traces`) comme le MCP ; **en local (compose)** rag et la gateway exportent directement sans jeton ; le serveur MCP exporte **en local directement** sur `underwriting-admin:8002` (comme rag) ; **en Azure** (sa propre Container App) il passe par la gateway (`/v1/traces`) avec un jeton d'application, rôle `Telemetrie`. La CLI passe toujours par la gateway (jeton d'application ou utilisateur).
+Le récepteur convertit la requête protobuf en lignes `span`, relues par `trace_id`.*
 
 ## Règle d'accès à `POST /v1/traces` (S3-21)
 

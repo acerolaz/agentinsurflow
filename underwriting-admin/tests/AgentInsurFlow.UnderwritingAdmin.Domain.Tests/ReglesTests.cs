@@ -21,6 +21,10 @@ public sealed class ReglesTests
     [InlineData("97", "97")] // tronqué : borné comme la vue, sans exception
     [InlineData("2A004", "2A")]
     [InlineData("2B033", "2B")]
+    [InlineData("20000", "2A")] // code postal corse réel : 200xx-201xx Corse-du-Sud
+    [InlineData("20199", "2A")]
+    [InlineData("20200", "2B")] // 202xx et au-delà : Haute-Corse
+    [InlineData("20600", "2B")]
     public void Departement_depuis_code_postal(string codePostal, string attendu) =>
         Assert.Equal(attendu, Departement.Depuis(codePostal));
 

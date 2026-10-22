@@ -1,7 +1,7 @@
 # Solution en local : make up (tout) · make test-integration (postgres seul).
 # Mots de passe et identifiants lus dans .env (jamais versionné ; clés dans .env.example).
 # Swagger unique : http://localhost:8000/ (gateway) ; rag seul : http://localhost:8001/
-# underwriting-admin (:8002) : joignable par la gateway (/api/contrats, /api/traces, /v1/traces).
+# serveur-mcp (:8003) : joignable par la gateway (/mcp). underwriting-admin (:8002) : joignable par la gateway (/api/contrats, /api/traces, /v1/traces).
 name: agentinsurflow
 
 x-mots-de-passe: &mots-de-passe
@@ -33,7 +33,9 @@ services:
       PG_MIGRATEUR_PASSWORD: ${PG_MIGRATEUR_PASSWORD} # au démarrage seulement (demarrer.sh)
       PG_WRITER_PASSWORD: ${PG_WRITER_PASSWORD}
       PG_READER_PASSWORD: ${PG_READER_PASSWORD}
-      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+      # LLM par la gateway, jeton d'application de rag (RAG_CLIENT_SECRET ci-dessous), aucune clé
+      AZURE_OPENAI_ENDPOINT: http://gateway:8000/api/llm
+      LLM_AUDIENCE: ${LLM_AUDIENCE:-}
       AZURE_TENANT_ID: ${AZURE_TENANT_ID}
       RAG_API_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
       # même liste que la gateway (Entra__Audiences__rag__0), même défaut
@@ -48,6 +50,34 @@ services:
     ports: ["8001:8001"]
     depends_on:
       postgres: { condition: service_healthy }
+
+  serveur-mcp:
+    build: { context: ., dockerfile: serveur-mcp/Dockerfile }
+    environment:
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      MCP_API_CLIENT_ID: ${MCP_API_CLIENT_ID:-}
+      # même liste que la gateway (Entra__Audiences__mcp__0), même défaut
+      MCP_API_AUDIENCES: ${MCP_API_AUDIENCES:-api://agentinsurflow-mcp}
+      # azp des agents (matrice d'accès) : vides tant que les inscriptions de #7 n'existent pas
+      MCP_AZP_ORCHESTRATEUR: ${MCP_AZP_ORCHESTRATEUR:-}
+      MCP_AZP_REDACTEUR: ${MCP_AZP_REDACTEUR:-}
+      MCP_AZP_ACTUAIRE: ${MCP_AZP_ACTUAIRE:-}
+      # rag et dossiers en On-Behalf-Of, par la gateway (D22) ; secret : .env local seulement
+      RAG_API_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
+      UNDERWRITING_API_CLIENT_ID: ${UNDERWRITING_API_CLIENT_ID:-}
+      GATEWAY_URL: http://gateway:8000
+      CALCUL_URL: http://gateway:8000/api/calcul  # via la gateway : jeton d'application (rôle Calcul)
+      CALCUL_AUDIENCE: ${CALCUL_AUDIENCE:-}
+      MCP_CLIENT_SECRET: ${MCP_CLIENT_SECRET:-}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces  # direct en local (comme rag) ; Azure : par la gateway, rôle Telemetrie
+      APP_ENV: local
+    ports: ["8003:8003"]
+
+  # Function de calcul (barème + formule) : réseau interne seulement, aucun port publié
+  calcul:
+    build: { context: ., dockerfile: fonction-calcul/Dockerfile }
+    environment:
+      APP_VERSION: dev
 
   underwriting-admin:
     build: { context: ., dockerfile: underwriting-admin/Dockerfile }
@@ -78,14 +108,25 @@ services:
     environment:
       ReverseProxy__Clusters__rag__Destinations__d1__Address: http://rag:8001
       ReverseProxy__Clusters__underwriting__Destinations__d1__Address: http://underwriting-admin:8002
+      ReverseProxy__Clusters__mcp__Destinations__d1__Address: http://serveur-mcp:8003
+      ReverseProxy__Clusters__calcul__Destinations__d1__Address: http://calcul:80
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
       Entra__TenantId: ${AZURE_TENANT_ID:?AZURE_TENANT_ID manquant (.env)}
       # une liste « a, b » par service, la même que celle lue par le service lui-même
       Entra__Audiences__rag__0: ${RAG_API_AUDIENCES:-api://agentinsurflow-rag}
       Entra__Audiences__underwriting__0: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
+      Entra__Audiences__mcp__0: ${MCP_API_AUDIENCES:-api://agentinsurflow-mcp}
+      Entra__Audiences__calcul__0: ${CALCUL_API_AUDIENCES:-api://agentinsurflow-calcul}
+      Entra__Audiences__calcul__1: ${CALCUL_API_CLIENT_ID:-}
+      Entra__Audiences__llm__0: ${LLM_API_AUDIENCES:-api://agentinsurflow-llm}
+      Entra__Audiences__llm__1: ${LLM_API_CLIENT_ID:-}
+      # Foundry : endpoint, et secret d'application de la gateway (local) ; vide = identité managée
+      ReverseProxy__Clusters__llm__Destinations__d1__Address: ${FOUNDRY_ENDPOINT:-http://localhost:8010}
+      Gateway__ClientId: ${GATEWAY_CLIENT_ID:-}
+      Gateway__ClientSecret: ${GATEWAY_CLIENT_SECRET:-}
       SWAGGER_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
     ports: ["8000:8000"]
-    depends_on: [rag, underwriting-admin]
+    depends_on: [rag, underwriting-admin, serveur-mcp]
 
 # Réseau interne à plage fixe : c'est celle que /v1/traces accepte sans jeton (Otlp__SourcesSansJeton)
 networks:

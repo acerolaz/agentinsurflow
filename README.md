@@ -1,4 +1,4 @@
-# AgentInsurFlow — monorepo (sprint 3, v0.5.0)
+# AgentInsurFlow — monorepo (sprint 3, v0.6.0)
 
 Assistant des **gestionnaires d'assurance auto** : une **gateway** (seule entrée publique) devant deux services,
 **underwriting-admin** (dossiers minimisés et référentiel SQL des traces) et **rag**, qui ingère le **Code des assurances** depuis Légifrance, le cherche (recherche hybride pgvector) et répond par un
@@ -49,8 +49,8 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 > **Pyramide au 20/10** : ≈ 52 % TU / 46 % TI / 2 % E2E, hors seuils ; le job `pyramide` est **informatif** en CI
 > (décision d'Acerola) jusqu'à une tâche dédiée aux tests unitaires.
 
-> **Production** : **`v0.5.0`** (`057b7ab`, 4 conteneurs) depuis le 21/10, corpus ingéré (110 chunks), manifeste
-> `0.4.0-build.43` ; `/health`, `/health/rag` et `/health/underwriting` servent la même release.
+> **Production** : **`v0.5.2`** (`bb18876`) au 22/10 ; **`v0.6.0`** à la fusion de `feat/mcp` (#66 : serveur MCP,
+> calcul, canal LLM, une Container App par service). `/health` et les `/health/*` des services servent la même release.
 > Evals de staging passées à **81,8 %** (9/11, porte 80 %) : marge d'un cas, deux échecs connus (réponse trop
 > longue sur `reference-exacte-l211-1`, annexe bonus-malus d'A121-1 absente de l'instantané).
 
@@ -61,15 +61,18 @@ d'ingestion, agent) dans [`rag/README.md`](rag/README.md). Tests : pyramide **70
 
 ### Architecture déployée
 
-Chaque environnement (staging, production) est **une Container App** à **quatre conteneurs** qui partagent
-`localhost` (modèle versionné : [`infra/containerapp.yaml`](infra/containerapp.yaml)) :
+Chaque environnement (staging, production) est **cinq Container Apps** du même environnement : la principale, qui ne contient que la **gateway**
+([`infra/containerapp.yaml`](infra/containerapp.yaml)), celle d'**underwriting-admin** ([`infra/containerapp-underwriting.yaml`](infra/containerapp-underwriting.yaml), entrée interne), celle du **serveur MCP**
+([`infra/containerapp-mcp.yaml`](infra/containerapp-mcp.yaml)) celle de **rag** ([`infra/containerapp-rag.yaml`](infra/containerapp-rag.yaml)), à entrée interne et identité managée propre, que seule la gateway appelle, et celle de la **base PostgreSQL annexe** ([`infra/containerapp-postgres.yaml`](infra/containerapp-postgres.yaml)), à entrée TCP interne 5432.
+**Foundry n'est joint que par la gateway** (route `/api/llm`, clés désactivées) : rag lui demande le modèle avec un jeton d'application (rôle `LLM`).
+La Function de calcul (Azure Functions) n'accepte que la gateway :
 
 | Conteneur | Port | Rôle |
 |---|---|---|
 | `gateway` | 8000 | **seul exposé** (entrée de la Container App) ; valide jeton et rôle, puis transmet |
-| `rag` | 8001 | API du corpus et de l'agent ; revalide le jeton ; migrations de la base au démarrage (`rag/demarrer.sh`) |
-| `underwriting-admin` | 8002 | Dossiers (`/api/contrats`, BOLA) et traces (`/v1/traces`, `/api/traces/{trace_id}`) ; revalide le jeton ; migrations EF Core au démarrage |
-| `postgres` | 5432 | **base annexe éphémère** (pgvector) : bases `vecteurs`, `dossiers`, `traces` ; une réplique, sans volume |
+| `rag` | 8001 | **sa propre Container App** (interne) : API du corpus et de l'agent ; revalide le jeton ; migrations de la base au démarrage (`rag/demarrer.sh`) ; joint la base annexe (sa Container App, TCP interne 5432), le modèle et les dossiers par la gateway |
+| `underwriting-admin` | 8002 | **sa propre Container App** (interne, sans identité managée utilisateur) : dossiers (`/api/contrats`, BOLA) et traces (`/v1/traces`, `/api/traces/{trace_id}`) ; revalide le jeton ; migrations EF Core au démarrage |
+| `postgres` | 5432 | **sa propre Container App** (TCP interne) : **base annexe éphémère** (pgvector) : bases `vecteurs`, `dossiers`, `traces` ; une réplique, sans volume |
 
 Documentation des données : [`docs/donnees/`](docs/donnees/) — [sources](docs/donnees/sources.md),
 [pipeline](docs/donnees/pipeline.md), [modèle Merise](docs/donnees/modele.md), [SQL](docs/donnees/requetes-sql.md),
@@ -101,7 +104,11 @@ démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `d
 │   └── deploy.yml             # déploiement (modèle containerapp.yaml) + fumée ; lancé à la main = rollback
 ├── infra/
 │   ├── bootstrap.sh           # make infra : groupe de ressources, ACR, Container Apps, OIDC (idempotent)
-│   ├── containerapp.yaml      # modèle des Container Apps : gateway + rag + underwriting-admin + postgres
+│   ├── containerapp.yaml      # modèle de la Container App principale : la gateway seule
+│   ├── containerapp-underwriting.yaml  # modèle de la Container App d'underwriting-admin (interne, 8002)
+│   ├── containerapp-postgres.yaml  # modèle de la base annexe (TCP interne 5432)
+│   ├── containerapp-rag.yaml  # modèle de la Container App de rag (interne, identité propre) ; idem containerapp-mcp.yaml
+│   ├── llm.sh                 # make llm : Entra llm + gateway-local, Foundry sans clé, rôle réservé à la gateway
 │   ├── domaine.sh             # make domaine : domaine personnalisé de la production (certificat managé)
 │   ├── entra.sh               # make entra : inscriptions Entra des API et rôles d'application
 │   ├── postgres/ · postgres-annexe.sh  # make annexe : image PostgreSQL annexe et secrets des Container Apps
@@ -113,7 +120,7 @@ démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `d
 │   ├── preuves/               # journaux de chaîne, rapports d'evals et d'ingestion versionnés
 │   └── ateliers/              # grille de l'atelier croisé n°2
 ├── Makefile                   # orchestre : lint, test, up, ingest, eval, infra… ; gateway-<cible> → gateway/
-├── pyproject.toml · uv.lock   # espace de travail uv (membre : rag) ; version de la solution (0.5.0)
+├── pyproject.toml · uv.lock   # espace de travail uv (membres : rag, serveur-mcp, fonction-calcul) ; version de la solution (0.6.0)
 ├── global.json · Directory.Build.props  # SDK .NET 10 et règles communes des projets C#
 ├── .python-version
 └── .env.example               # toutes les clés, sans valeurs
@@ -134,7 +141,7 @@ démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `d
 Prérequis : [uv](https://docs.astral.sh/uv/) et Docker.
 
 ```bash
-cp .env.example .env      # remplir AZURE_OPENAI_ENDPOINT (+ la clé, ou az login), AZURE_TENANT_ID, RAG_SEUIL, PG_*_PASSWORD…
+cp .env.example .env      # remplir LLM_AUDIENCE, RAG_CLIENT_SECRET, AZURE_TENANT_ID, RAG_SEUIL, PG_*_PASSWORD…
 make install              # dépendances figées par uv.lock
 make up                   # postgres + rag (:8001) + underwriting-admin (:8002) + gateway (:8000) → http://localhost:8000/ : Swagger unique
 make down                 # arrête tout et vide la base annexe
@@ -158,10 +165,11 @@ make calibrer URL=http://localhost:8000          # intervalle où choisir RAG_SE
 dossier-conception-v1.md, K5). Pour un article cité, `GET /api/documents/{doc_id}/attribution` donne ses mentions
 **Etalab 2.0** (concédant DILA, licence, date de l'instantané). Détails : [`rag/README.md`](rag/README.md).
 
-**Authentification au LLM** : **aucune clé hors de ton poste**. Le code utilise Entra ID
-(`DefaultAzureCredential`) : OIDC dans la CI, identité managée dans Container Apps (rôle *Cognitive Services
-User* sur `svespuce-971`). En local, la clé `AZURE_OPENAI_API_KEY` du `.env` reste possible, sinon `az login`.
-Le modèle est épinglé dans `rag/llm.env` ; l'endpoint est accepté avec ou sans le suffixe `/openai/v1`.
+**Authentification au LLM** : **aucune clé**. rag appelle le LLM **par la gateway** (`AZURE_OPENAI_ENDPOINT` =
+`${GATEWAY_URL}/api/llm`, `http://gateway:8000/api/llm` dans le compose) avec un jeton d'**application** pour
+l'audience `LLM_AUDIENCE` (rôle `LLM`) : secret de l'inscription rag (`RAG_CLIENT_SECRET`) en local, identité
+managée fédérée (`AZURE_UAMI_CLIENT_ID`) en Azure, comme l'OBO. La gateway échange son propre jeton avec Foundry.
+Le modèle est épinglé dans `rag/llm.env`.
 
 ## Tester
 
@@ -240,14 +248,14 @@ Exemple du sprint 2 : `eval/preuves/evals-local-2026-10-15.json`.
 
 Installation, à faire une seule fois (écritures Azure et Entra : lancées à la main par Acerola) :
 
-1. `make infra` crée le groupe de ressources, l'ACR, l'environnement Container Apps et deux apps (staging,
-   production), reprend l'application Entra `agentinsurflow` et ses 4 fédérations OIDC (`main`, `staging`,
+1. `make infra` crée le groupe de ressources, l'ACR, l'environnement Container Apps et dix apps (cinq par environnement, staging et production : la principale, underwriting-admin, le serveur MCP, rag et la base annexe), reprend l'application Entra `agentinsurflow` et ses 4 fédérations OIDC (`main`, `staging`,
    `production`, `pull_request`), puis attribue les rôles. Il affiche les valeurs à reporter. Attribuer des rôles
    exige *Owner* ou *User Access Administrator*.
 2. `make entra` inscrit les API `agentinsurflow-rag` (rôles `Gestionnaire`, `Ingestion`) et
    `agentinsurflow-underwriting` (`Gestionnaire`, `Telemetrie`), et attribue les rôles (toi, la CI, un 2ᵉ gestionnaire).
 3. `make annexe` construit l'image PostgreSQL annexe (`agentinsurflow-postgres:1`) et pose les mots de passe en
-   **secrets des Container Apps**.
+   **secrets des Container Apps** (chacune ceux dont elle se sert).
+   `make llm` (après `make entra`) inscrit `agentinsurflow-llm` et `agentinsurflow-gateway-local`, désactive les clés de Foundry et réserve l'accès à la gateway.
 4. `make domaine DOMAINE=…` lie le domaine personnalisé à la production (certificat managé), puis poser `PROD_URL`.
 5. Reporter à la main les variables dans GitHub en suivant [docs/secrets.md](docs/secrets.md).
 6. `git push`, puis `make proteger` : `main` n'accepte plus que des commits dont `lint`, `test`, `gateway` et
@@ -258,12 +266,12 @@ Ensuite, chaque **merge sur `main`** déclenche toute la chaîne, sans action ma
 | Version | Forme | Désigne | Où la lire |
 |---|---|---|---|
 | Release | `vX.Y.Z` (ex. `v0.2.0`) | le commit livré en production, tagué juste avant | `/health` → `release`, tags Git, résumé du run |
-| Image | SHA du commit | les trois images (`agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`), même tag | `/health` (gateway), `/health/rag` et `/health/underwriting` → `version` |
+| Image | SHA du commit | les quatre images (`agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`, `agentinsurflow-mcp`), même tag | `/health` (gateway), `/health/rag` et `/health/underwriting` → `version` |
 | Manifeste | `X.Y.Z-build.N` (ex. `0.4.0-build.35`) | ce qui a été évalué : modèle, prompts, jeux d'évaluation | `/health/rag` → `manifeste`, rapport d'évaluation, tag `manifeste-…` |
 
-Les trois sont calculées par le job `changements` puis **gravées dans les images** : un rollback restaure aussi
-les versions affichées. X.Y se choisissent à la main dans `pyproject.toml` (`version`, fixée par Acerola : 0.5.0
-depuis la release v0.5.0 ; `rag/pyproject.toml` reste en 0.4.0).
+Les trois versions sont calculées par le job `changements` puis **gravées dans les images** : un rollback restaure aussi
+les versions affichées. X.Y se choisissent à la main dans `pyproject.toml` (`version`, fixée par Acerola : 0.6.0
+depuis `feat/mcp`, release v0.6.0 ; `rag/pyproject.toml` reste en 0.4.0).
 
 - **Release** : Z est calculé par `tools/version.py` d'après les tags (`v0.1.0`, puis `v0.1.1`…) ; passer le
   pyproject à `0.2.0` donne `v0.2.0`. En staging, `release` est la **candidate** : le tag n'est posé qu'après
@@ -285,8 +293,8 @@ ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le L
 | Groupe de ressources | `svespuceRG` (`swedencentral`) | ✅ |
 | Registre d'images | `acerolazacr` : `agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting` (tag = SHA), `agentinsurflow-postgres:1` | ✅ |
 | Environnement Container Apps | `cae-insurflow` | ✅ |
-| Container App staging | `insurflow-staging` (4 conteneurs) → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ reçoit chaque merge |
-| Container App production | `insurflow-production` (4 conteneurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.5.0` |
+| Container App staging | `insurflow-staging` (principale ; rag et MCP ont les leurs) → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ reçoit chaque merge |
+| Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.5.2` ; `v0.6.0` à la fusion de #66 |
 | Modèles | `Kimi-K2.5` et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971` | ✅ |
 | Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag` et `agentinsurflow-underwriting` | ✅ |
 | Rôles (Contributor, AcrPush, AcrPull, Cognitive Services User) | — | ✅ attribués |

@@ -21,10 +21,11 @@ fmt:
 lint:               ## porte 1 : style + typage
 	uv run ruff check .
 	uv run ruff format --check .
-	uv run mypy rag/agentinsurflow_rag tools
+	uv run mypy rag/agentinsurflow_rag serveur-mcp/agentinsurflow_mcp fonction-calcul/agentinsurflow_calcul fonction-calcul/function_app.py tools
+	uv export --package agentinsurflow-calcul --no-emit-workspace --no-dev --no-hashes | diff - fonction-calcul/requirements.txt
 
-test:               ## TU, sans Docker (rag/tests/unit + outillage de la racine)
-	uv run pytest tests rag/tests/unit --no-cov
+test:               ## TU, sans Docker (rag + serveur-mcp, tests/unit + outillage de la racine)
+	uv run pytest tests rag/tests/unit serveur-mcp/tests/unit fonction-calcul/tests/unit --no-cov
 
 test-integration:   ## porte 2 : TU + TI (PostgreSQL du compose), couverture >= 80 %
 	docker compose up -d --build --wait postgres
@@ -85,6 +86,12 @@ domaine:            ## G4 : lie DOMAINE=… à la Container App de production (c
 
 entra:              ## G5 : inscriptions Entra des API + rôles [DOMAINE=…] [DEMO_USER_ID=…]
 	bash infra/entra.sh
+
+calcul:             ## Function de calcul : stockage, Function Apps, Entra, Easy Auth
+	bash infra/calcul.sh
+
+llm:                ## canal LLM (#70) : Entra llm + gateway-local, Foundry sans clé, rôle réservé à la gateway
+	bash infra/llm.sh
 
 annexe:             ## G5 : image PostgreSQL annexe + secrets des Container Apps
 	bash infra/postgres-annexe.sh

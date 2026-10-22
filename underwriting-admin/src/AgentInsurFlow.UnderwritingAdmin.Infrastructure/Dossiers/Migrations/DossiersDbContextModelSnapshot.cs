@@ -246,9 +246,17 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("anciennete_permis_ans");
 
+                    b.Property<int?>("AnciennetePermisMois")
+                        .HasColumnType("integer")
+                        .HasColumnName("anciennete_permis_mois");
+
                     b.Property<double>("CrmBonusMalus")
                         .HasColumnType("double precision")
                         .HasColumnName("crm_bonus_malus");
+
+                    b.Property<DateOnly>("DateEffet")
+                        .HasColumnType("date")
+                        .HasColumnName("date_effet");
 
                     b.Property<string>("Departement")
                         .IsRequired()
@@ -273,10 +281,26 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("nb_sinistres");
 
+                    b.Property<int>("NbSinistresResponsablesTroisAns")
+                        .HasColumnType("integer")
+                        .HasColumnName("nb_sinistres_responsables_trois_ans");
+
+                    b.Property<int>("NbSinistresTroisAns")
+                        .HasColumnType("integer")
+                        .HasColumnName("nb_sinistres_trois_ans");
+
                     b.Property<string>("NumeroContrat")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("numero_contrat");
+
+                    b.Property<int?>("PuissanceFiscaleCv")
+                        .HasColumnType("integer")
+                        .HasColumnName("puissance_fiscale_cv");
+
+                    b.Property<bool>("RelevePresent")
+                        .HasColumnType("boolean")
+                        .HasColumnName("releve_present");
 
                     b.Property<int>("Resiliations")
                         .HasColumnType("integer")
@@ -290,6 +314,10 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("tranche_age");
+
+                    b.Property<string>("TypeUsage")
+                        .HasColumnType("text")
+                        .HasColumnName("type_usage");
 
                     b.ToTable((string)null);
 

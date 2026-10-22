@@ -25,9 +25,11 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
         _backends = backends;
         _backends.Rag.ResetLogEntries();
         _backends.Underwriting.ResetLogEntries();
+        _backends.Mcp.ResetLogEntries();
         _usine = new WebApplicationFactory<Program>().WithWebHostBuilder(b => b
             .UseSetting("ReverseProxy:Clusters:rag:Destinations:d1:Address", backends.Rag.Url)
             .UseSetting("ReverseProxy:Clusters:underwriting:Destinations:d1:Address", backends.Underwriting.Url)
+            .UseSetting("ReverseProxy:Clusters:mcp:Destinations:d1:Address", backends.Mcp.Url)
             .UseSetting("APP_VERSION", "abc123")
             .UseSetting("APP_RELEASE", "v0.2.0")
             .AvecEntraDeTest());
@@ -159,30 +161,40 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     [Theory]
     [InlineData("/health/rag", "rag")]
     [InlineData("/health/underwriting", "underwriting")]
+    [InlineData("/health/mcp", "mcp")]
     public async Task Health_des_services_route_vers_leur_health(string chemin, string backend)
     {
         await _client.GetAsync(new Uri(chemin, UriKind.Relative), TestContext.Current.CancellationToken);
 
-        var vise = backend == "rag" ? _backends.Rag : _backends.Underwriting;
+        var vise = backend switch { "rag" => _backends.Rag, "mcp" => _backends.Mcp, _ => _backends.Underwriting };
         Assert.Equal("/health", Assert.Single(vise.LogEntries).RequestMessage!.Path);
     }
 }
 
-/// <summary>Deux faux backends partagés par les tests de la classe ; ils répondent 200 à tout.</summary>
+/// <summary>Trois faux backends partagés par les tests de la classe ; ils répondent 200 à tout.</summary>
 public sealed class Backends : IDisposable
 {
     public WireMockServer Rag { get; } = Demarrer();
     public WireMockServer Underwriting { get; } = Demarrer();
+    public WireMockServer Mcp { get; } = Demarrer();
+    public WireMockServer Calcul { get; } = Demarrer();
+    public WireMockServer Llm { get; } = Demarrer();
 
     /// <summary>Une gateway devant ces backends, avec Entra de test et des réglages propres au test.</summary>
     public WebApplicationFactory<Program> Gateway(params (string Cle, string Valeur)[] reglages)
     {
         Rag.ResetLogEntries();
         Underwriting.ResetLogEntries();
+        Mcp.ResetLogEntries();
+        Calcul.ResetLogEntries();
+        Llm.ResetLogEntries();
         return new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseSetting("ReverseProxy:Clusters:rag:Destinations:d1:Address", Rag.Url)
                 .UseSetting("ReverseProxy:Clusters:underwriting:Destinations:d1:Address", Underwriting.Url)
+                .UseSetting("ReverseProxy:Clusters:mcp:Destinations:d1:Address", Mcp.Url)
+                .UseSetting("ReverseProxy:Clusters:calcul:Destinations:d1:Address", Calcul.Url)
+                .UseSetting("ReverseProxy:Clusters:llm:Destinations:d1:Address", Llm.Url)
                 .AvecEntraDeTest();
             foreach (var (cle, valeur) in reglages)
             {
@@ -202,5 +214,8 @@ public sealed class Backends : IDisposable
     {
         Rag.Stop();
         Underwriting.Stop();
+        Mcp.Stop();
+        Calcul.Stop();
+        Llm.Stop();
     }
 }

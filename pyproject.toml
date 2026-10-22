@@ -1,6 +1,6 @@
 [project]
 name = "agentinsurflow"
-version = "0.5.0" # version de la solution (tools/version.py → tag de release vX.Y.Z)
+version = "0.6.0" # version de la solution (tools/version.py → tag de release vX.Y.Z)
 description = "AgentInsurFlow (monorepo) : gateway, rag, underwriting-admin, et leur chaîne."
 requires-python = ">=3.12,<3.13"
 dependencies = ["agentinsurflow-rag", "agentinsurflow-mcp", "agentinsurflow-calcul"]

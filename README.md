@@ -1,4 +1,4 @@
-# AgentInsurFlow — monorepo (sprint 3, v0.5.0)
+# AgentInsurFlow — monorepo (sprint 3, v0.6.0)
 
 Assistant des **gestionnaires d'assurance auto** : une **gateway** (seule entrée publique) devant deux services,
 **underwriting-admin** (dossiers minimisés et référentiel SQL des traces) et **rag**, qui ingère le **Code des assurances** depuis Légifrance, le cherche (recherche hybride pgvector) et répond par un
@@ -49,8 +49,8 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 > **Pyramide au 20/10** : ≈ 52 % TU / 46 % TI / 2 % E2E, hors seuils ; le job `pyramide` est **informatif** en CI
 > (décision d'Acerola) jusqu'à une tâche dédiée aux tests unitaires.
 
-> **Production** : **`v0.5.0`** (`057b7ab`, 4 conteneurs) depuis le 21/10, corpus ingéré (110 chunks), manifeste
-> `0.4.0-build.43` ; `/health`, `/health/rag` et `/health/underwriting` servent la même release.
+> **Production** : **`v0.5.2`** (`bb18876`) au 22/10 ; **`v0.6.0`** à la fusion de `feat/mcp` (#66 : serveur MCP,
+> calcul, canal LLM, une Container App par service). `/health` et les `/health/*` des services servent la même release.
 > Evals de staging passées à **81,8 %** (9/11, porte 80 %) : marge d'un cas, deux échecs connus (réponse trop
 > longue sur `reference-exacte-l211-1`, annexe bonus-malus d'A121-1 absente de l'instantané).
 
@@ -120,7 +120,7 @@ démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `d
 │   ├── preuves/               # journaux de chaîne, rapports d'evals et d'ingestion versionnés
 │   └── ateliers/              # grille de l'atelier croisé n°2
 ├── Makefile                   # orchestre : lint, test, up, ingest, eval, infra… ; gateway-<cible> → gateway/
-├── pyproject.toml · uv.lock   # espace de travail uv (membre : rag) ; version de la solution (0.5.0)
+├── pyproject.toml · uv.lock   # espace de travail uv (membres : rag, serveur-mcp, fonction-calcul) ; version de la solution (0.6.0)
 ├── global.json · Directory.Build.props  # SDK .NET 10 et règles communes des projets C#
 ├── .python-version
 └── .env.example               # toutes les clés, sans valeurs
@@ -270,8 +270,8 @@ Ensuite, chaque **merge sur `main`** déclenche toute la chaîne, sans action ma
 | Manifeste | `X.Y.Z-build.N` (ex. `0.4.0-build.35`) | ce qui a été évalué : modèle, prompts, jeux d'évaluation | `/health/rag` → `manifeste`, rapport d'évaluation, tag `manifeste-…` |
 
 Les trois versions sont calculées par le job `changements` puis **gravées dans les images** : un rollback restaure aussi
-les versions affichées. X.Y se choisissent à la main dans `pyproject.toml` (`version`, fixée par Acerola : 0.5.0
-depuis la release v0.5.0 ; `rag/pyproject.toml` reste en 0.4.0).
+les versions affichées. X.Y se choisissent à la main dans `pyproject.toml` (`version`, fixée par Acerola : 0.6.0
+depuis `feat/mcp`, release v0.6.0 ; `rag/pyproject.toml` reste en 0.4.0).
 
 - **Release** : Z est calculé par `tools/version.py` d'après les tags (`v0.1.0`, puis `v0.1.1`…) ; passer le
   pyproject à `0.2.0` donne `v0.2.0`. En staging, `release` est la **candidate** : le tag n'est posé qu'après
@@ -294,7 +294,7 @@ ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le L
 | Registre d'images | `acerolazacr` : `agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting` (tag = SHA), `agentinsurflow-postgres:1` | ✅ |
 | Environnement Container Apps | `cae-insurflow` | ✅ |
 | Container App staging | `insurflow-staging` (principale ; rag et MCP ont les leurs) → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ reçoit chaque merge |
-| Container App production | `insurflow-production` (principale ; rag et MCP ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.5.0` |
+| Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.5.2` ; `v0.6.0` à la fusion de #66 |
 | Modèles | `Kimi-K2.5` et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971` | ✅ |
 | Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag` et `agentinsurflow-underwriting` | ✅ |
 | Rôles (Contributor, AcrPush, AcrPull, Cognitive Services User) | — | ✅ attribués |

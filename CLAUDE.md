@@ -21,4 +21,4 @@ Chaque projet a son README : [`gateway/`](gateway/README.md) (C#, YARP, seule en
 
 `make install` · `make lint` · `make test` (TU) · `make test-integration` (TU + TI, PostgreSQL du compose) · `make pyramide` · `make up` / `make down` (solution en local, Swagger unique sur `http://localhost:8000/`) · `make run` · `make build` · `make gateway-test` (et toute cible de `gateway/Makefile` en `gateway-<cible>`).
 
-**Versions** (`pyproject.toml` racine et `rag/pyproject.toml`) : fixées par Acerola, jamais relevées d'office. R0 → 0.3.0, R1 → 0.4.0 (R2 → R8 restent en 0.4.0) ; **release v0.5.0** pour `feat/underwriting-admin` (racine seulement, `rag/pyproject.toml` reste en 0.4.0).
+**Versions** (`pyproject.toml` racine et `rag/pyproject.toml`) : fixées par Acerola, jamais relevées d'office. R0 → 0.3.0, R1 → 0.4.0 (R2 → R8 restent en 0.4.0) ; **release v0.5.0** pour `feat/underwriting-admin` (racine seulement, `rag/pyproject.toml` reste en 0.4.0) ; **release v0.6.0** pour `feat/mcp` (racine seulement : serveur MCP, calcul, canal LLM, une Container App par service).

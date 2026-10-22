@@ -1,5 +1,11 @@
 using System.Net;
 using System.Text;
+using Azure;
+using Azure.Core;
+using Azure.Identity;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using static AgentInsurFlow.Gateway.Api.Tests.JetonsDeTest;
 
 namespace AgentInsurFlow.Gateway.Api.Tests;
@@ -16,10 +22,34 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         return await client.SendAsync(requete, TestContext.Current.CancellationToken);
     }
 
-    [Fact]
-    public async Task Post_calcul_evaluer_arrive_en_api_evaluer_avec_Authorization()
+    private const string Portee = "api://calcul-test/.default";
+    private const string JetonGateway = "jeton-de-la-gateway";
+
+    private sealed class FauxCredential(Exception? echec = null) : TokenCredential
     {
-        using var usine = backends.Gateway();
+        public List<string[]> Portees { get; } = [];
+
+        public override AccessToken GetToken(TokenRequestContext c, CancellationToken ct) =>
+            GetTokenAsync(c, ct).AsTask().GetAwaiter().GetResult();
+
+        public override ValueTask<AccessToken> GetTokenAsync(TokenRequestContext c, CancellationToken ct)
+        {
+            Portees.Add(c.Scopes);
+            return echec is null
+                ? new(new AccessToken(JetonGateway, DateTimeOffset.UtcNow.AddHours(1)))
+                : throw echec;
+        }
+    }
+
+    private WebApplicationFactory<Program> GatewayAvecCredential(FauxCredential credential, bool avecPortee = true) =>
+        (avecPortee ? backends.Gateway(("Calcul:Portee", Portee)) : backends.Gateway())
+            .WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddSingleton<TokenCredential>(credential)));
+
+    [Fact]
+    public async Task Post_calcul_evaluer_arrive_en_api_evaluer_avec_le_jeton_de_la_gateway()
+    {
+        var credential = new FauxCredential();
+        using var usine = GatewayAvecCredential(credential);
         using var client = usine.CreateClient();
         var jeton = JetonCalcul();
 
@@ -28,8 +58,59 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
         var recu = Assert.Single(backends.Calcul.LogEntries).RequestMessage!;
         Assert.Equal("/api/evaluer", recu.Path);
-        Assert.Equal($"Bearer {jeton}", Assert.Single(recu.Headers!["Authorization"]));
+        Assert.Equal($"Bearer {JetonGateway}", Assert.Single(recu.Headers!["Authorization"]));
+        Assert.Equal(Portee, Assert.Single(Assert.Single(credential.Portees)));
         Assert.Empty(backends.Mcp.LogEntries);
+    }
+
+    [Fact]
+    public async Task Sans_portee_configuree_aucun_Authorization_relaye()
+    {
+        var credential = new FauxCredential();
+        using var usine = GatewayAvecCredential(credential, avecPortee: false);
+        using var client = usine.CreateClient();
+
+        var reponse = await Envoyer(client, "/api/calcul/evaluer", JetonCalcul());
+
+        Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
+        var recu = Assert.Single(backends.Calcul.LogEntries).RequestMessage!;
+        Assert.False(recu.Headers!.ContainsKey("Authorization"));
+        Assert.Empty(credential.Portees);
+    }
+
+    [Fact]
+    public async Task Credential_en_echec_502_CALCUL_INDISPONIBLE_sans_detail_du_jeton()
+    {
+        var credential = new FauxCredential(new AuthenticationFailedException("secret-interne"));
+        using var usine = GatewayAvecCredential(credential);
+        using var client = usine.CreateClient();
+        var jeton = JetonCalcul();
+
+        var reponse = await Envoyer(client, "/api/calcul/evaluer", jeton);
+
+        Assert.Equal(HttpStatusCode.BadGateway, reponse.StatusCode);
+        Assert.Equal("CALCUL_INDISPONIBLE", await AutorisationTests.Code(reponse));
+        var corps = await reponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.DoesNotContain("secret-interne", corps, StringComparison.Ordinal);
+        Assert.DoesNotContain(jeton, corps, StringComparison.Ordinal);
+        Assert.Empty(backends.Calcul.LogEntries);
+    }
+
+    [Fact]
+    public async Task Health_calcul_et_autres_routes_ne_declenchent_aucun_echange()
+    {
+        var credential = new FauxCredential();
+        using var usine = GatewayAvecCredential(credential);
+        using var client = usine.CreateClient();
+
+        await client.GetAsync(new Uri("/health/calcul", UriKind.Relative), TestContext.Current.CancellationToken);
+        var jeton = Creer(AudienceMcp, ["Gestionnaire"]);
+        using var requete = Requete("POST", "/mcp", jeton);
+        await client.SendAsync(requete, TestContext.Current.CancellationToken);
+
+        Assert.Empty(credential.Portees);
+        var recu = Assert.Single(backends.Mcp.LogEntries).RequestMessage!;
+        Assert.Equal($"Bearer {jeton}", Assert.Single(recu.Headers!["Authorization"]));
     }
 
     [Fact]

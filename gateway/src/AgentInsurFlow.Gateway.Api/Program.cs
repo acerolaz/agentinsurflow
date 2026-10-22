@@ -2,7 +2,10 @@
 // Routage déclaré dans appsettings.Routes.json ; jeton Entra validé et rôle exigé par route (S3-25).
 // Première barrière seulement : chaque service revalide le jeton qu'on lui transmet tel quel.
 using System.Globalization;
+using System.Net.Http.Headers;
 using System.Threading.RateLimiting;
+using Azure.Core;
+using Azure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -10,6 +13,7 @@ using Microsoft.Extensions.Configuration.Json;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 // Routes en PREMIÈRE source (la moins prioritaire) : variables d'environnement et réglages
@@ -21,7 +25,39 @@ builder.Configuration.Sources.Insert(0, new JsonConfigurationSource
     ReloadOnChange = true,
 });
 
-builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+// Échange de jeton (route calcul seulement) : la Function n'accepte que le jeton de la gateway (identité
+// managée), jamais celui du MCP. Source injectable (TokenCredential) pour que les tests la remplacent.
+var porteeCalcul = builder.Configuration["Calcul:Portee"];
+builder.Services.AddSingleton<TokenCredential>(_ => builder.Configuration["Calcul:IdentiteClientId"] is { Length: > 0 } id
+    ? new ManagedIdentityCredential(ManagedIdentityId.FromUserAssignedClientId(id))
+    : new ManagedIdentityCredential(ManagedIdentityId.SystemAssigned));
+builder.Services.AddReverseProxy()
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .AddTransforms(ctx =>
+    {
+        if (ctx.Route.RouteId != "calcul")
+        {
+            return;
+        }
+        ctx.AddRequestTransform(async t =>
+        {
+            t.ProxyRequest.Headers.Authorization = null;
+            if (string.IsNullOrEmpty(porteeCalcul))
+            {
+                return; // local : aucun jeton relayé
+            }
+            try
+            {
+                var credential = t.HttpContext.RequestServices.GetRequiredService<TokenCredential>();
+                var jeton = await credential.GetTokenAsync(new TokenRequestContext([porteeCalcul]), t.HttpContext.RequestAborted);
+                t.ProxyRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jeton.Token);
+            }
+            catch (AuthenticationFailedException) // jamais de détail ni de jeton dans la réponse ou le journal
+            {
+                await Probleme(502, "Service de calcul indisponible", "CALCUL_INDISPONIBLE").ExecuteAsync(t.HttpContext);
+            }
+        });
+    });
 builder.Services.AddOpenApi();
 
 // Entra ID (S3-25) : sans tenant ni audiences, la gateway refuse de démarrer plutôt que de s'ouvrir.
@@ -68,7 +104,7 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("rag-ingestion", p => p.RequireRole("Ingestion").RequireClaim("aud", audiencesRag))
     .AddPolicy("underwriting-gestionnaire", p => p.RequireRole("Gestionnaire").RequireClaim("aud", audiencesUnderwriting))
     .AddPolicy("mcp-gestionnaire", p => p.RequireRole("Gestionnaire").RequireClaim("aud", audiencesMcp))
-    .AddPolicy("calcul-mcp", p => p.RequireRole("Calcul").RequireClaim("aud", audiencesCalcul)) // jeton d'application du serveur MCP
+    .AddPolicy("calcul-mcp", p => p.RequireRole("Calcul").RequireClaim("aud", audiencesCalcul)) // jeton MCP entrant, remplacé par celui de la gateway
     .AddPolicy("underwriting-telemetrie", p => p.RequireRole("Telemetrie").RequireClaim("aud", audiencesUnderwriting))
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 

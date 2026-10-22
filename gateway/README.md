@@ -102,7 +102,7 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 
 ## Route `/api/calcul/*` (Function de calcul)
 
-`POST /api/calcul/{**reste}` est réécrit en `/api/{**reste}` vers le cluster `calcul` (ex. `/api/calcul/evaluer` donne `/api/evaluer`) ; l'en-tête `Authorization` est relayé tel quel. Politique `calcul-mcp` : jeton d'application (celui du serveur MCP) avec le rôle `Calcul` **et** une audience `calcul` (`Entra__Audiences__calcul__0`). Débit : limite nommée `calcul` (`RateLimit__Calcul__PermitLimit`, 60 requêtes/min par partition), en plus de la limite globale. `GET /health/calcul` est anonyme, sans limite de débit, et vise `/api/sante` de la Function.
+`POST /api/calcul/{**reste}` est réécrit en `/api/{**reste}` vers le cluster `calcul` (ex. `/api/calcul/evaluer` donne `/api/evaluer`) ; la gateway **échange le jeton** : le jeton entrant (application du serveur MCP, rôle `Calcul` **et** audience `calcul`, politique `calcul-mcp`, `Entra__Audiences__calcul__0`) n'est jamais relayé ; elle le remplace par son propre jeton d'application, obtenu avec son identité managée pour la portée `Calcul__Portee` (`Authorization: Bearer <jeton de la gateway>`). Sans portée (local), aucun `Authorization` n'est relayé. Échec d'obtention du jeton : `502` ProblemDetails `CALCUL_INDISPONIBLE`, sans détail. Les autres routes relaient toujours le jeton entrant tel quel ; `/health/calcul` n'échange rien. Débit : limite nommée `calcul` (`RateLimit__Calcul__PermitLimit`, 60 requêtes/min par partition), en plus de la limite globale. `GET /health/calcul` est anonyme, sans limite de débit, et vise `/api/sante` de la Function.
 
 ## Configuration
 
@@ -116,6 +116,7 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 | `ReverseProxy__Clusters__mcp__Destinations__d1__Address` | `http://localhost:8003` | Adresse de `serveur-mcp` (compose : `http://serveur-mcp:8003`) |
 | `Entra__Audiences__mcp__0` | `api://agentinsurflow-mcp` | Audiences de `serveur-mcp`, en liste « a, b » |
 | `ReverseProxy__Clusters__calcul__Destinations__d1__Address` | `http://localhost:7071` | Adresse de la Function de calcul (compose : `http://calcul:80` ; Azure : `${CALCUL_URL}`) |
+| `Calcul__Portee`, `Calcul__IdentiteClientId` | _(vide)_ | Portée du jeton de la gateway pour la Function (`api://<appId calcul>/.default`) et client id de son identité managée ; sans portée, aucun jeton relayé |
 | `Entra__Audiences__calcul__0` | `api://agentinsurflow-calcul` | Audiences de la Function de calcul, en liste « a, b » (compose : `CALCUL_API_AUDIENCES` ; Azure : `${CALCUL_AUDIENCE}`) |
 | `Proxy__EnvoyDevant` | `false` | `true` en Azure : IP réelle reprise de l'envoy |
 | `RateLimit__Global__PermitLimit`, `RateLimit__Reponses__PermitLimit`, `RateLimit__Mcp__PermitLimit`, `RateLimit__Calcul__PermitLimit`, `RateLimit__FenetreSecondes` | `120`, `10`, `60`, `60`, `60` | Limitation de débit |

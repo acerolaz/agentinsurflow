@@ -35,7 +35,8 @@ public sealed class ContratsTests : IDisposable
     }
 
     private static VueContrat Vue(string numero) =>
-        new(numero, "25-39", 4, "75", 0.9, 1, 0, 0, "tous_risques", new DateTimeOffset(2026, 10, 1, 8, 0, 0, TimeSpan.Zero));
+        new(numero, "25-39", 4, "75", 0.9, 1, 0, 0, "tous_risques", new DateTimeOffset(2026, 10, 1, 8, 0, 0, TimeSpan.Zero),
+            new DateOnly(2026, 1, 1), 91, 5, "prive", 0, 0);
 
     private readonly WebApplicationFactory<Program> _usine = JetonsDeTest.Usine(b => b.ConfigureTestServices(s =>
     {
@@ -73,15 +74,18 @@ public sealed class ContratsTests : IDisposable
     }
 
     [Fact]
-    public async Task Contrat_porte_exactement_les_dix_champs_lus_par_rag()
+    public async Task Contrat_porte_exactement_les_seize_champs_dont_les_faits_du_calcul()
     {
         var (statut, corps) = await Get("/api/contrats/AIF-A1", GestionnaireA, "Gestionnaire");
 
         Assert.Equal(HttpStatusCode.OK, statut);
         Assert.Equal(
-            ["anciennete_permis_ans", "crm_bonus_malus", "departement", "formule", "mis_a_jour", "nb_sinistres",
-                "numero_contrat", "resiliations", "suspensions", "tranche_age"],
+            ["anciennete_permis_ans", "anciennete_permis_mois", "crm_bonus_malus", "date_effet", "departement", "formule",
+                "mis_a_jour", "nb_sinistres", "nb_sinistres_responsables_trois_ans", "nb_sinistres_trois_ans",
+                "numero_contrat", "puissance_fiscale_cv", "resiliations", "suspensions", "tranche_age", "type_usage"],
             corps.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
+        Assert.Equal("2026-01-01", corps.GetProperty("date_effet").GetString());
+        Assert.Equal(91, corps.GetProperty("anciennete_permis_mois").GetInt32());
     }
 
     [Fact]

@@ -11,14 +11,14 @@ from typing import Any
 
 import httpx
 from azure.core.exceptions import AzureError
-from azure.identity import ClientAssertionCredential, ManagedIdentityCredential
 from opentelemetry import propagate
 from opentelemetry.trace import Span
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from starlette.concurrency import run_in_threadpool
 
 from ...domain.models import CALCUL_INDISPONIBLE, DONNEE_HORS_BAREME, ErreurOutil
-from ..entra.obo import PORTEE_FEDERATION
+from ..entra.application import credential_application
 from ..otel.telemetrie import echec, tracer
 
 journal = logging.getLogger(__name__)
@@ -29,45 +29,41 @@ DELAI = 10.0
 class ConfigCalcul(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
 
-    calcul_url: str = "http://localhost:7071"
-    calcul_audience: str | None = None  # absent en local : la Function est jointe sans jeton
+    calcul_url: str = "http://localhost:8000/api/calcul"  # via la gateway (D22)
+    calcul_audience: str | None = None  # api://<appId calcul> : absent = calcul indisponible
+    mcp_client_secret: SecretStr | None = None  # 🔒 .env local seulement
     azure_tenant_id: str | None = None
     mcp_api_client_id: str | None = None
     azure_uami_client_id: str | None = None
-
-
-def _credential(cfg: ConfigCalcul) -> ClientAssertionCredential:
-    """Même assertion fédérée que l'OBO : l'identité managée prouve l'identité de l'app MCP."""
-    if not (cfg.azure_tenant_id and cfg.mcp_api_client_id and cfg.azure_uami_client_id):
-        raise ErreurOutil(CALCUL_INDISPONIBLE, "Calcul non configuré (identité Entra absente)")
-    identite = ManagedIdentityCredential(client_id=cfg.azure_uami_client_id)
-    return ClientAssertionCredential(
-        cfg.azure_tenant_id,
-        cfg.mcp_api_client_id,
-        lambda: identite.get_token(PORTEE_FEDERATION).token,
-    )
 
 
 class ClientCalcul:
     def __init__(self, http: httpx.AsyncClient, cfg: ConfigCalcul) -> None:
         self._http, self._cfg = http, cfg
         self._base = cfg.calcul_url.rstrip("/")
-        self._credential: ClientAssertionCredential | None = None
+        self._credential: Any = None
 
     async def evaluer(self, faits: dict[str, Any]) -> dict[str, Any]:
-        return await self._appeler("/api/evaluer", "version_bareme", "bareme.version", faits)
+        return await self._appeler("/evaluer", "version_bareme", "bareme.version", faits)
 
     async def calculer(self, faits: dict[str, Any]) -> dict[str, Any]:
-        return await self._appeler("/api/calculer", "version_formule", "formule.version", faits)
+        return await self._appeler("/calculer", "version_formule", "formule.version", faits)
 
-    async def _jeton(self) -> str | None:
-        if not self._cfg.calcul_audience:
-            return None
+    async def _jeton(self) -> str:
+        cfg = self._cfg
+        if not cfg.calcul_audience:
+            raise ErreurOutil(CALCUL_INDISPONIBLE, "Calcul non configuré (audience absente)")
+        if self._credential is None:
+            secret = cfg.mcp_client_secret.get_secret_value() if cfg.mcp_client_secret else None
+            self._credential = credential_application(
+                cfg.azure_tenant_id, cfg.mcp_api_client_id, secret, cfg.azure_uami_client_id
+            )
+        if self._credential is None:
+            raise ErreurOutil(CALCUL_INDISPONIBLE, "Calcul non configuré (identité Entra absente)")
         try:
-            if self._credential is None:
-                self._credential = _credential(self._cfg)
-            portee = f"{self._cfg.calcul_audience}/.default"
-            return (await run_in_threadpool(self._credential.get_token, portee)).token
+            portee = f"{cfg.calcul_audience}/.default"
+            jeton: str = (await run_in_threadpool(self._credential.get_token, portee)).token
+            return jeton
         except AzureError as exc:
             raise ErreurOutil(CALCUL_INDISPONIBLE, "Jeton du calcul refusé") from exc
 
@@ -93,9 +89,7 @@ class ClientCalcul:
             return resultat
 
     async def _envoyer(self, route: str, faits: dict[str, Any], span: Span) -> dict[str, Any]:
-        entetes: dict[str, str] = {}
-        if (jeton := await self._jeton()) is not None:
-            entetes["Authorization"] = f"Bearer {jeton}"
+        entetes = {"Authorization": f"Bearer {await self._jeton()}"}
         propagate.inject(entetes)
         try:
             reponse = await self._http.post(

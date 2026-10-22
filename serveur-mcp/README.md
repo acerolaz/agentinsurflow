@@ -81,7 +81,7 @@ La matrice est un dictionnaire du domaine (`domain/matrice.py`), versionné par 
 
 ## 5. Traces
 
-Export OTLP/HTTP vers `underwriting-admin` `/v1/traces` (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`). Le `traceparent` entrant est repris et propagé vers la gateway : une trace par dossier, relue par `GET /api/traces/{trace_id}`. `OTEL_SDK_DISABLED=true` coupe tout.
+Export OTLP/HTTP vers la gateway `/v1/traces` (jeton d'application, rôle `Telemetrie`, jamais journalisé) (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`). Le `traceparent` entrant est repris et propagé vers la gateway : une trace par dossier, relue par `GET /api/traces/{trace_id}`. `OTEL_SDK_DISABLED=true` coupe tout.
 
 | Span | Attributs |
 |---|---|
@@ -111,7 +111,8 @@ Aucune valeur dans le dépôt : clés dans `.env.example`, déploiement dans `do
 | `RAG_API_CLIENT_ID`, `UNDERWRITING_API_CLIENT_ID` | Cibles de l'OBO | `.env` | variables GitHub |
 | `GATEWAY_URL` | Adresse par laquelle rag et underwriting sont joints | `http://gateway:8000` | `http://localhost:8000` |
 | `MCP_CLIENT_SECRET` | Secret de l'OBO, **local seulement** | `.env` | jamais |
-| `CALCUL_URL`, `CALCUL_AUDIENCE` | URL de la Function de calcul et audience `api://<appId agentinsurflow-calcul>` du jeton | `.env` | variables GitHub par environnement (`make calcul` les affiche) |
+| `CALCUL_URL`, `CALCUL_AUDIENCE` | Gateway `…/api/calcul` (la base inclut `/api/calcul` ; l'adaptateur appelle `/evaluer`, `/calculer`) et audience `api://<appId agentinsurflow-calcul>` du jeton d'application (rôle `Calcul`) ; sans audience ou sans identité Entra : `CALCUL_INDISPONIBLE`, aucun appel | `.env` | variables GitHub par environnement (`make calcul` les affiche) |
+| `TELEMETRIE_AUDIENCE` | Audience `api://<appId underwriting>` du jeton d'application (rôle `Telemetrie`) posé sur chaque export OTLP vers la gateway ; absent = export sans jeton | `.env` | variables GitHub |
 | `AZURE_UAMI_CLIENT_ID` | Identité managée fédérée (OBO sans secret) | — | variable GitHub |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Récepteur OTLP | `http://underwriting-admin:8002/v1/traces` | `http://localhost:8002/v1/traces` |
 | `APP_VERSION`, `APP_RELEASE`, `APP_ENV` | Versions gravées au build, environnement | build-args, `local` | build-args de la chaîne, `staging` ou `production` |

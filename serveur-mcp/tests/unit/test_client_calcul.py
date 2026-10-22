@@ -16,6 +16,20 @@ FAITS = {"crm": "0.9", "suspensions": 0}
 RESULTAT = {"decision": "ACCEPTE", "version_bareme": "bareme-2026.10-v1", "prime": "819.73"}
 
 
+class _Jeton:
+    token = "jeton-fonction"
+
+
+class _Credential:
+    def get_token(self, portee: str) -> _Jeton:
+        return _Jeton()
+
+
+@pytest.fixture(autouse=True)
+def _credential_factice(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(module, "credential_application", lambda *a, **k: _Credential())
+
+
 def client(
     reponse: httpx.Response | Exception,
     vues: list[httpx.Request] | None = None,
@@ -29,7 +43,10 @@ def client(
         return reponse
 
     http = httpx.AsyncClient(transport=httpx.MockTransport(gerer))
-    return ClientCalcul(http, ConfigCalcul(calcul_url="http://calcul/", **cfg))
+    return ClientCalcul(
+        http,
+        ConfigCalcul(calcul_url="http://calcul/", **{"calcul_audience": "api://calcul", **cfg}),
+    )
 
 
 @pytest.mark.parametrize("route", ["evaluer", "calculer"])
@@ -37,7 +54,7 @@ async def test_200_renvoie_le_json_et_poste_les_faits(route: str) -> None:
     vues: list[httpx.Request] = []
     calc = client(httpx.Response(200, json=RESULTAT), vues)
     assert await getattr(calc, route)(FAITS) == RESULTAT
-    assert (vues[0].method, str(vues[0].url)) == ("POST", f"http://calcul/api/{route}")
+    assert (vues[0].method, str(vues[0].url)) == ("POST", f"http://calcul/{route}")
     assert json.loads(vues[0].content) == FAITS
 
 
@@ -73,36 +90,38 @@ async def test_400_est_journalise_sans_corps(caplog: pytest.LogCaptureFixture) -
     assert "0.9" not in caplog.text
 
 
-async def test_sans_audience_aucun_authorization() -> None:
+async def test_sans_audience_calcul_indisponible_sans_appel_http() -> None:
     vues: list[httpx.Request] = []
-    await client(httpx.Response(200, json=RESULTAT), vues).evaluer(FAITS)
-    assert "authorization" not in vues[0].headers
+    with pytest.raises(ErreurOutil) as exc:
+        await client(httpx.Response(200, json=RESULTAT), vues, calcul_audience=None).evaluer(FAITS)
+    assert exc.value.code == "CALCUL_INDISPONIBLE"
+    assert vues == []
 
 
 async def test_avec_audience_bearer_du_fournisseur(monkeypatch: pytest.MonkeyPatch) -> None:
     portees: list[str] = []
 
-    class Jeton:
-        token = "jeton-fonction"
-
     class Credential:
-        def get_token(self, portee: str) -> Jeton:
+        def get_token(self, portee: str) -> _Jeton:
             portees.append(portee)
-            return Jeton()
+            return _Jeton()
 
-    monkeypatch.setattr(module, "_credential", lambda cfg: Credential())
+    monkeypatch.setattr(module, "credential_application", lambda *a, **k: Credential())
     vues: list[httpx.Request] = []
-    calc = client(httpx.Response(200, json=RESULTAT), vues, calcul_audience="api://calcul")
-    await calc.evaluer(FAITS)
+    await client(httpx.Response(200, json=RESULTAT), vues).evaluer(FAITS)
     assert vues[0].headers["authorization"] == "Bearer jeton-fonction"
     assert portees == ["api://calcul/.default"]
 
 
-async def test_audience_sans_configuration_entra_calcul_indisponible() -> None:
-    calc = client(httpx.Response(200, json=RESULTAT), calcul_audience="api://calcul")
+async def test_sans_configuration_entra_calcul_indisponible(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.undo()  # vraie fabrique : aucune identité configurée
+    vues: list[httpx.Request] = []
     with pytest.raises(ErreurOutil) as exc:
-        await calc.evaluer(FAITS)
+        await client(httpx.Response(200, json=RESULTAT), vues).evaluer(FAITS)
     assert exc.value.code == "CALCUL_INDISPONIBLE"
+    assert vues == []
 
 
 async def test_delai_de_10_secondes() -> None:

@@ -11,6 +11,7 @@ contrat) : le ``traceparent`` est injecté à la main. ``OTEL_SDK_DISABLED=true`
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -18,11 +19,53 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import Span, Status, StatusCode
+from pydantic import SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from ..entra.application import credential_application
 
 SERVICE = "agentinsurflow-mcp"
 POINT_OTLP = "http://localhost:8002/v1/traces"
 
 tracer = trace.get_tracer("agentinsurflow")
+
+
+class ConfigTelemetrie(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
+
+    telemetrie_audience: str | None = None  # api://<appId underwriting> : absent = sans jeton
+    azure_tenant_id: str | None = None
+    mcp_api_client_id: str | None = None
+    mcp_client_secret: SecretStr | None = None
+    azure_uami_client_id: str | None = None
+
+
+class ExportateurAuthentifie(OTLPSpanExporter):
+    """Pose le jeton d'application (rôle ``Telemetrie``) à chaque export ; jamais journalisé."""
+
+    def __init__(self, credential: Any, audience: str, **kw: Any) -> None:
+        super().__init__(**kw)
+        self._cred, self._portee = credential, f"{audience}/.default"
+
+    def export(self, spans: Any) -> Any:
+        try:
+            jeton = self._cred.get_token(self._portee).token
+            self._client._headers["Authorization"] = f"Bearer {jeton}"
+        except Exception:  # noqa: BLE001  # ponytail: sans jeton l'export échoue en 401, spans perdus
+            self._client._headers.pop("Authorization", None)
+        return super().export(spans)
+
+
+def creer_exportateur(point: str) -> OTLPSpanExporter:
+    cfg = ConfigTelemetrie()
+    if cfg.telemetrie_audience:
+        secret = cfg.mcp_client_secret.get_secret_value() if cfg.mcp_client_secret else None
+        cred = credential_application(
+            cfg.azure_tenant_id, cfg.mcp_api_client_id, secret, cfg.azure_uami_client_id
+        )
+        if cred is not None:
+            return ExportateurAuthentifie(cred, cfg.telemetrie_audience, endpoint=point)
+    return OTLPSpanExporter(endpoint=point)
 
 
 def configurer_telemetrie(version: str) -> None:
@@ -38,7 +81,7 @@ def configurer_telemetrie(version: str) -> None:
     )
     point = os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", POINT_OTLP)
     # ponytail: une perte des spans (underwriting-admin en panne) ne bloque jamais une réponse
-    fournisseur.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=point)))
+    fournisseur.add_span_processor(BatchSpanProcessor(creer_exportateur(point)))
     trace.set_tracer_provider(fournisseur)
 
 

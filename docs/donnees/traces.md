@@ -26,8 +26,8 @@ flowchart LR
     TR --> Q(["🔎 GET /api/traces/{trace_id}<br/>traces_reader · rôle Gestionnaire"])
 ```
 
-*Lecture : les trois services de la Container App exportent sur `localhost:8002` ; la CLI passe par la gateway
-avec un jeton. Le récepteur convertit la requête protobuf en lignes `span`, relues par `trace_id`.*
+*Lecture : rag, la gateway et underwriting-admin exportent sur `localhost:8002` ; le serveur MCP (sa propre Container App) et la CLI passent par la gateway (`/v1/traces`) avec un jeton d'application ou utilisateur (le MCP : rôle `Telemetrie`).
+Le récepteur convertit la requête protobuf en lignes `span`, relues par `trace_id`.*
 
 ## Règle d'accès à `POST /v1/traces` (S3-21)
 

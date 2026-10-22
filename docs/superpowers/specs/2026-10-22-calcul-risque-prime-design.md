@@ -8,7 +8,7 @@ Sources : `matrice_d_valuation_du_risque_d_terministe.md` et `formule_de_calcul_
 
 Débloquer les deux outils MCP en attente : `evaluer_risque` (barème déterministe versionné, D28) et `calculer_prime` (formule, D65). Le LLM ne calcule jamais un score ni une prime : il reçoit un résultat calculé par du code pur, avec son détail (règles déclenchées, coefficients), qu'il explique.
 
-Le calcul vit dans une **Azure Function** Python (choix d'Acerola), appelée **directement** par le serveur MCP, qui reste le 5e conteneur de la Container App.
+Le calcul vit dans une **Azure Function** Python (choix d'Acerola), appelée **par la gateway**, qui échange le jeton (§ 3.3) ; le serveur MCP, dans sa propre Container App à entrée interne, passe par la gateway.
 
 ## 2. Objectifs, non-objectifs, anti-objectifs
 
@@ -37,7 +37,7 @@ Le calcul vit dans une **Azure Function** Python (choix d'Acerola), appelée **d
 ```mermaid
 flowchart LR
     CL["Cluster d'agents"] -->|"/mcp via gateway"| GW["Gateway YARP"]
-    GW --> MCP["Serveur MCP<br/>(5e conteneur)"]
+    GW --> MCP["Serveur MCP<br/>(Container App propre, interne)"]
     MCP -->|"OBO → underwriting<br/>GET /api/contrats/{n}"| GW
     GW --> UW["underwriting-admin<br/>vue_contrat_minimisee"]
     MCP -->|"POST /api/calcul/{evaluer,calculer}<br/>jeton app MCP (rôle Calcul)"| GW
@@ -230,7 +230,7 @@ Une requête **malformée** (champ manquant, mauvais type) est un bug du serveur
 - [ ] Erreurs `CALCUL_INDISPONIBLE` et `DONNEE_HORS_BAREME` testées ; aucune donnée de contrat dans les spans (test)
 - [ ] Function dans le compose ; parcours local orchestrateur → `evaluer_risque` sur un seed
 - [ ] Scripts `infra/` de la Function App et d'Easy Auth rédigés ; déployée par la chaîne existante, fumée verte
-- [ ] Spec MCP mise à jour (§ 2, § 4, § 5.1, § 5.3, § 6) et exception à D22 documentée
+- [ ] Spec MCP mise à jour (§ 2, § 4, § 5.1, § 5.3, § 6) ; plus d'exception à D22 (§ 3.3)
 - [ ] README de `fonction-calcul/` : barème, formule, taux fictif, versionnement
 
 ## 12. Piste hors T9 : ingestion Légifrance planifiée

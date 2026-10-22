@@ -115,7 +115,7 @@ az rest --method PATCH --uri "$GRAPH/applications/$rag_objet" --headers content-
   --body "{\"requiredResourceAccess\": $acces}" -o none
 
 echo "⑤ Identité managée attribuée par l'utilisateur (A7) : rattachée aux Container Apps principales (rag, gateway), fédérée à rag"
-UAMI=uami-insurflow-rag
+UAMI=${UAMI:-uami-insurflow-rag} # même défaut dans infra/calcul.sh (identité de la gateway)
 az identity show -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" -o none 2>/dev/null ||
   az identity create -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" -o none
 uami_id=$(az identity show -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" --query id -o tsv)

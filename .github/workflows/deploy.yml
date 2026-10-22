@@ -145,8 +145,9 @@ jobs:
           fqdn=$(az containerapp show -n "$MCP_APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
           test -n "$fqdn" || { echo "::error::FQDN interne de $MCP_APP introuvable"; exit 1; }
           echo "fqdn=$fqdn" >> "$GITHUB_OUTPUT"
+          [ -n "$AZURE_UAMI_MCP_CLIENT_ID" ] || { echo "::error::variable AZURE_UAMI_MCP_CLIENT_ID vide (make entra l'affiche ; docs/secrets.md)"; exit 1; }
           mcp=$(az containerapp show -n "$MCP_APP" -g "$RG" -o json)
-          jq -e --arg u "$AZURE_UAMI_MCP_CLIENT_ID" '[.identity.userAssignedIdentities // {} | .[] | .clientId] | index($u)' <<<"$mcp" > /dev/null ||
+          jq -e --arg u "$AZURE_UAMI_MCP_CLIENT_ID" '[.identity.userAssignedIdentities // {} | .[] | .clientId | ascii_downcase] | index($u | ascii_downcase)' <<<"$mcp" > /dev/null ||
             { echo "::error::identité managée $AZURE_UAMI_MCP_CLIENT_ID absente de $MCP_APP après l'update (OBO du serveur MCP impossible)"; exit 1; }
           jq -e '.properties.configuration.ingress.external == false' <<<"$mcp" > /dev/null ||
             { echo "::error::$MCP_APP exposé hors de l'environnement : l'entrée doit rester interne"; exit 1; }

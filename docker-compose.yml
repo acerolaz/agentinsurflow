@@ -66,9 +66,8 @@ services:
       GATEWAY_URL: http://gateway:8000
       CALCUL_URL: http://gateway:8000/api/calcul  # via la gateway : jeton d'application (rôle Calcul)
       CALCUL_AUDIENCE: ${CALCUL_AUDIENCE:-}
-      TELEMETRIE_AUDIENCE: ${TELEMETRIE_AUDIENCE:-}  # api://<appId underwriting> (rôle Telemetrie)
       MCP_CLIENT_SECRET: ${MCP_CLIENT_SECRET:-}
-      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://gateway:8000/v1/traces
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces  # direct en local (comme rag) ; Azure : par la gateway, rôle Telemetrie
       APP_ENV: local
     ports: ["8003:8003"]
 

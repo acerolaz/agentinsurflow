@@ -16,10 +16,10 @@ On peut aussi passer par l'interface : Actions › **deploy** › *Run workflow*
 
 1. `deploy.yml` lit les révisions de la Container App et retient le **SHA de l'avant-dernière révision**, lu sur
    l'image de son conteneur `gateway`.
-2. Il crée une nouvelle révision depuis `infra/containerapp.yaml` avec les **trois images à ce SHA**
-   (`agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`) ; l'image PostgreSQL annexe (`agentinsurflow-postgres:1`), les
+2. Il crée une nouvelle révision depuis `infra/containerapp.yaml` avec les **images à ce SHA**
+   (`agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`, et `agentinsurflow-mcp` pour la Container App du serveur MCP, déployée d'abord) ; l'image PostgreSQL annexe (`agentinsurflow-postgres:1`), les
    variables et les secrets des Container Apps restent identiques.
-3. Le **test de fumée**, par la gateway, vérifie que `/health`, `/health/rag` et `/health/underwriting` renvoient ce SHA et que
+3. Le **test de fumée**, par la gateway, vérifie que `/health`, `/health/rag`, `/health/underwriting`, `/health/mcp` et `/health/calcul` renvoient ce SHA et que
    `/api/reponses` répond 401 sans jeton.
 4. Le run reste dans le journal Actions : c'est la trace du rollback.
 
@@ -58,10 +58,10 @@ Durée mesurée : `🔴 À MESURER` à la répétition. Ne pas annoncer de chiff
 | Versions avant / après | `curl -s …/health` avant et après, collés dans le fichier | `eval/preuves/rollback-AAAA-MM-JJ.md` |
 | Capture du run | capture d'écran | `eval/preuves/rollback-AAAA-MM-JJ.png` |
 
-## Limite : les trois images du SHA
+## Limite : les quatre images du SHA
 
 Le serveur MCP a sa propre Container App : `deploy.yml` la redéploie d'abord, au même SHA, puis la principale. Si la principale échoue après la mise à jour du MCP, il n'y a pas de retour automatique : les deux apps sont alors à des SHA différents ; relancer le déploiement, ou `make rollback`. Un rollback vers une révision antérieure à cette séparation exige que `MCP_APP_NAME` existe (`make infra`).
 
-Un déploiement ou un rollback pose les **quatre** images (`rag`, `underwriting`, `gateway`, `agentinsurflow-mcp`) au même SHA, lu sur la gateway de la révision visée. `deploy.yml` vérifie dans l'ACR (lecture seule) qu'elles existent toutes avant de toucher à l'application, sinon il échoue sans rien déployer. Conséquence : un rollback vers une révision **antérieure à U5** est refusé (`agentinsurflow-underwriting:<ancien SHA>` n'a jamais été construite). De même, un rollback vers un SHA **antérieur à `feat/mcp`** est refusé : aucune image `agentinsurflow-mcp:<SHA>` n'existe. Le premier rollback possible est vers la première révision à 4 images ; au-delà, redéployer à la main un SHA précis (`make rollback TAG=<sha>`).
+Un déploiement ou un rollback pose les **quatre** images (`rag`, `underwriting`, `gateway`, `agentinsurflow-mcp`) au même SHA, lu sur la gateway de la révision visée. `deploy.yml` vérifie dans l'ACR (lecture seule) qu'elles existent toutes avant de toucher à l'application, sinon il échoue sans rien déployer. Conséquence : un rollback vers une révision **antérieure à U5** est refusé (`agentinsurflow-underwriting:<ancien SHA>` n'a jamais été construite). De même, un rollback vers un SHA **antérieur à `feat/mcp`** est refusé : aucune image `agentinsurflow-mcp:<SHA>` n'existe. Le premier rollback possible est vers la première révision à 4 images (fail-closed : un rollback vers un SHA antérieur à la séparation du MCP n'est **pas pris en charge**) ; au-delà, redéployer à la main un SHA précis (`make rollback TAG=<sha>`).
 
 Un rollback vers un commit antérieur à `fonction-calcul/` (avant T9) échoue au déploiement de la Function : fail-closed, redéployer une version ≥ T9.

@@ -12,11 +12,11 @@ flowchart LR
     MCP -->|"OBO → underwriting<br/>/api/contrats, écritures"| GW
     GW --> RAG["rag"]
     GW --> UW["underwriting-admin"]
-    MCP -. "OTLP /v1/traces<br/>(jeton d'application, rôle Telemetrie)" .-> GW
+    MCP -. "OTLP /v1/traces<br/>(Azure : jeton d'application, rôle Telemetrie)" .-> GW
     MCP -->|"/api/calcul<br/>(jeton d'application, rôle Calcul)"| GW
 ```
 
-**Texte alternatif du diagramme.** Le cluster d'agents (orchestrateur, Rédacteur, Actuaire) envoie ses requêtes `POST` ou `GET` sur `/mcp` à la gateway, avec un jeton dont l'`azp` est celui de l'agent. La gateway contrôle le rôle, l'audience et le débit, puis transmet sans tampon (SSE) au serveur MCP. Le serveur MCP appelle `rag` (`/api/extraits`) et `underwriting-admin` (`/api/contrats` et les écritures) **en repassant par la gateway**, avec un jeton obtenu en On-Behalf-Of. Il exporte ses traces en OTLP par la gateway (`/v1/traces`, jeton d'application, rôle `Telemetrie`) et appelle la Function de calcul par la gateway (`/api/calcul`, rôle `Calcul`) : aucun appel direct.
+**Texte alternatif du diagramme.** Le cluster d'agents (orchestrateur, Rédacteur, Actuaire) envoie ses requêtes `POST` ou `GET` sur `/mcp` à la gateway, avec un jeton dont l'`azp` est celui de l'agent. La gateway contrôle le rôle, l'audience et le débit, puis transmet sans tampon (SSE) au serveur MCP. Le serveur MCP appelle `rag` (`/api/extraits`) et `underwriting-admin` (`/api/contrats` et les écritures) **en repassant par la gateway**, avec un jeton obtenu en On-Behalf-Of. En Azure, il exporte ses traces en OTLP par la gateway (`/v1/traces`, jeton d'application, rôle `Telemetrie` ; en local, export direct vers underwriting-admin) et appelle la Function de calcul par la gateway (`/api/calcul`, rôle `Calcul`) : aucun appel direct.
 
 ### 1.1 Organisation du code
 
@@ -39,10 +39,10 @@ Les outils sont déclarés avec le SDK MCP officiel ; la docstring de chacun est
 | `get_contrat` | `numero_contrat` | Contrat : profil du conducteur, historique, formule (`GET /api/contrats/{numero}`) | Lecture |
 | `enregistrer_brouillon` | `numero_contrat`, `fiche` (`decision`, `contrat_type`, `score`, `version_bareme`, `regle_ids`, `motifs`, `citations`), `prime` facultative (`prime_ttc`, `periodicite`, `date_effet` AAAA-MM-JJ) | `{"ecrit": true}` | Écriture, brouillon seulement, idempotente |
 | `update_statut_dossier` | `numero_contrat`, `statut` (ex. `REVUE_HUMAINE`, `ACCEPTE`, `REFUSE`), `validation` (`VALIDEE` ou `CORRIGEE`, exigée avec `ACCEPTE` et `REFUSE`) | `{"ecrit": true}` | Écriture, seul outil qui écrit une décision |
-| `evaluer_risque` | faits du contrat | Score, classe et règles déclenchées, versions du barème | Calcul (Function de calcul, `POST /api/evaluer`) |
-| `calculer_prime` | faits du contrat et de la formule | Prime détaillée, version de la formule | Calcul (Function de calcul, `POST /api/calculer`) |
+| `evaluer_risque` | faits du contrat | Score, classe et règles déclenchées, versions du barème | Calcul (Function de calcul, par la gateway : `POST /api/calcul/evaluer`) |
+| `calculer_prime` | faits du contrat et de la formule | Prime détaillée, version de la formule | Calcul (Function de calcul, par la gateway : `POST /api/calcul/calculer`) |
 
-Les deux outils appellent directement la Function de calcul (spec `2026-10-22-calcul-risque-prime-design.md`), avec un jeton de l'inscription MCP, obtenu par assertion client de l'identité managée fédérée.
+Les deux outils appellent la Function de calcul **par la gateway** (`${GATEWAY_URL}/api/calcul/{evaluer,calculer}`, spec `2026-10-22-calcul-risque-prime-design.md`), avec un jeton d'application de l'inscription MCP (rôle `Calcul`). La gateway ne relaie pas ce jeton : elle l'échange contre le sien (identité managée) avant d'atteindre la Function.
 
 ### 2.2 Codes d'erreur
 
@@ -82,7 +82,7 @@ La matrice est un dictionnaire du domaine (`domain/matrice.py`), versionné par 
 
 ## 5. Traces
 
-Export OTLP/HTTP vers la gateway `/v1/traces` (jeton d'application, rôle `Telemetrie`, jamais journalisé) (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`). Le `traceparent` entrant est repris et propagé vers la gateway : une trace par dossier, relue par `GET /api/traces/{trace_id}`. `OTEL_SDK_DISABLED=true` coupe tout.
+Export OTLP/HTTP (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) : en local, **direct** vers `http://underwriting-admin:8002/v1/traces` (comme rag, sans jeton) ; en Azure, par la gateway `/v1/traces` (jeton d'application, rôle `Telemetrie`, jamais journalisé). Le `traceparent` entrant est repris et propagé vers la gateway : une trace par dossier, relue par `GET /api/traces/{trace_id}`. `OTEL_SDK_DISABLED=true` coupe tout.
 
 | Span | Attributs |
 |---|---|
@@ -113,9 +113,9 @@ Aucune valeur dans le dépôt : clés dans `.env.example`, déploiement dans `do
 | `GATEWAY_URL` | Adresse par laquelle rag et underwriting sont joints | `http://gateway:8000` | `http://localhost:8000` |
 | `MCP_CLIENT_SECRET` | Secret de l'OBO, **local seulement** | `.env` | jamais |
 | `CALCUL_URL`, `CALCUL_AUDIENCE` | Gateway `…/api/calcul` (la base inclut `/api/calcul` ; l'adaptateur appelle `/evaluer`, `/calculer`) et audience `api://<appId agentinsurflow-calcul>` du jeton d'application (rôle `Calcul`) ; sans audience ou sans identité Entra : `CALCUL_INDISPONIBLE`, aucun appel | `.env` | variables GitHub par environnement (`make calcul` les affiche) |
-| `TELEMETRIE_AUDIENCE` | Audience `api://<appId underwriting>` du jeton d'application (rôle `Telemetrie`) posé sur chaque export OTLP vers la gateway ; absent = export sans jeton | `.env` | variables GitHub |
+| `TELEMETRIE_AUDIENCE` | Audience `api://<appId underwriting>` du jeton d'application (rôle `Telemetrie`) posé sur chaque export OTLP vers la gateway (Azure seulement) ; absent = export sans jeton (local : direct) | `.env` | variables GitHub |
 | `AZURE_UAMI_CLIENT_ID` | Identité managée fédérée (OBO sans secret) | — | variable GitHub |
-| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Récepteur OTLP : la gateway (jeton d'application si `TELEMETRIE_AUDIENCE`) | `http://gateway:8000/v1/traces` | `http://localhost:8000/v1/traces` |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Récepteur OTLP : direct en local, la gateway en Azure (jeton d'application si `TELEMETRIE_AUDIENCE`) | `http://underwriting-admin:8002/v1/traces` | `http://localhost:8000/v1/traces` |
 | `APP_VERSION`, `APP_RELEASE`, `APP_ENV` | Versions gravées au build, environnement | build-args, `local` | build-args de la chaîne, `staging` ou `production` |
 
 Sans `AZURE_TENANT_ID` ou `MCP_API_CLIENT_ID`, l'API démarre mais `/mcp` répond 503 ; sans configuration OBO, les outils répondent en erreur.

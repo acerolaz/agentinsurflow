@@ -53,6 +53,22 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Garde-fou — variables requises présentes avant toute mise à jour
+        env:
+          MCP_APP_NAME: ${{ vars.MCP_APP_NAME }}
+          CALCUL_APP_NAME: ${{ vars.CALCUL_APP_NAME }}
+          CALCUL_URL: ${{ vars.CALCUL_URL }}
+          CALCUL_AUDIENCE: ${{ vars.CALCUL_AUDIENCE }}
+          CALCUL_API_CLIENT_ID: ${{ vars.CALCUL_API_CLIENT_ID }}
+          AZURE_UAMI_CLIENT_ID: ${{ vars.AZURE_UAMI_CLIENT_ID }}
+          AZURE_UAMI_MCP_CLIENT_ID: ${{ vars.AZURE_UAMI_MCP_CLIENT_ID }}
+        run: |
+          manque=0
+          for v in CALCUL_APP_NAME CALCUL_URL CALCUL_AUDIENCE CALCUL_API_CLIENT_ID MCP_APP_NAME AZURE_UAMI_CLIENT_ID AZURE_UAMI_MCP_CLIENT_ID; do
+            [ -n "${!v}" ] || { echo "::error::variable $v vide pour cet environnement (docs/secrets.md) : aucune mise à jour lancée"; manque=1; }
+          done
+          exit "$manque"
+
       - uses: actions/checkout@v4 # infra/containerapp.yaml
 
       - name: Choisir le SHA des images
@@ -145,7 +161,6 @@ jobs:
           fqdn=$(az containerapp show -n "$MCP_APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
           test -n "$fqdn" || { echo "::error::FQDN interne de $MCP_APP introuvable"; exit 1; }
           echo "fqdn=$fqdn" >> "$GITHUB_OUTPUT"
-          [ -n "$AZURE_UAMI_MCP_CLIENT_ID" ] || { echo "::error::variable AZURE_UAMI_MCP_CLIENT_ID vide (make entra l'affiche ; docs/secrets.md)"; exit 1; }
           mcp=$(az containerapp show -n "$MCP_APP" -g "$RG" -o json)
           jq -e --arg u "$AZURE_UAMI_MCP_CLIENT_ID" '[.identity.userAssignedIdentities // {} | .[] | .clientId | ascii_downcase] | index($u | ascii_downcase)' <<<"$mcp" > /dev/null ||
             { echo "::error::identité managée $AZURE_UAMI_MCP_CLIENT_ID absente de $MCP_APP après l'update (OBO du serveur MCP impossible)"; exit 1; }

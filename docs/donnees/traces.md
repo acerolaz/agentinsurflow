@@ -21,12 +21,13 @@ flowchart LR
     GW(["🚪 gateway"]) -- "OTLP · localhost" --> RX{{"📡 POST /v1/traces<br/>underwriting-admin"}}
     RAG(["🐍 rag"]) -- "OTLP · localhost" --> RX
     UA(["🟣 underwriting-admin"]) -- "OTLP · localhost" --> RX
+    MCP(["🧩 serveur MCP · local"]) -- "OTLP · direct" --> RX
     CLI(["⌨️ CLI ingest"]) -- "via la gateway · rôle Telemetrie" --> RX
     RX --> CONV(["OtlpVersSpans<br/>protobuf → Span"]) --> TR[("🗄️ traces.span<br/>traces_writer")]
     TR --> Q(["🔎 GET /api/traces/{trace_id}<br/>traces_reader · rôle Gestionnaire"])
 ```
 
-*Lecture : rag, la gateway et underwriting-admin exportent sur `localhost:8002` ; le serveur MCP (sa propre Container App) et la CLI passent par la gateway (`/v1/traces`) avec un jeton d'application ou utilisateur (le MCP : rôle `Telemetrie`).
+*Lecture : rag, la gateway et underwriting-admin exportent sur `localhost:8002` ; le serveur MCP exporte **en local directement** sur `underwriting-admin:8002` (comme rag) ; **en Azure** (sa propre Container App) il passe par la gateway (`/v1/traces`) avec un jeton d'application, rôle `Telemetrie`. La CLI passe toujours par la gateway (jeton d'application ou utilisateur).
 Le récepteur convertit la requête protobuf en lignes `span`, relues par `trace_id`.*
 
 ## Règle d'accès à `POST /v1/traces` (S3-21)

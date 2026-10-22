@@ -87,6 +87,9 @@ domaine:            ## G4 : lie DOMAINE=… à la Container App de production (c
 entra:              ## G5 : inscriptions Entra des API + rôles [DOMAINE=…] [DEMO_USER_ID=…]
 	bash infra/entra.sh
 
+calcul:             ## Function de calcul : stockage, Function Apps, Entra, Easy Auth
+	bash infra/calcul.sh
+
 annexe:             ## G5 : image PostgreSQL annexe + secrets des Container Apps
 	bash infra/postgres-annexe.sh
 

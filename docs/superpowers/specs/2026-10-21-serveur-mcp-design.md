@@ -23,7 +23,7 @@ Le cluster sera en place le 30/10 et c'est lui qui appelle le serveur MCP pendan
 - Nouveau fournisseur d'identité, nouveau journal d'audit, nouvelle stack.
 
 **Anti-objectifs** (échec même si « ça marche »)
-- Un appel direct du serveur MCP vers rag, underwriting-admin ou PostgreSQL (hors export OTLP, § 7).
+- Un appel direct du serveur MCP vers rag, underwriting-admin ou PostgreSQL (hors export OTLP, § 7, **et appel de la Function de calcul**, spec `2026-10-22-calcul-risque-prime-design.md`).
 - Une décision `ACCEPTE`/`REFUSE` écrite sans validation du gestionnaire (D9).
 - Un refus ou une panne renvoyés comme une réponse normale que le LLM pourrait paraphraser.
 - Une donnée personnelle, un jeton ou un `numero_contrat` dans une trace.
@@ -51,6 +51,7 @@ flowchart LR
     GW --> RAG["rag"]
     GW --> UW["underwriting-admin"]
     MCP -. "OTLP (boucle locale)" .-> UW
+    MCP -->|"appel direct HTTPS<br/>jeton identité managée"| FN["Function de calcul<br/>/api/evaluer, /api/calculer"]
 ```
 
 - **Langage et emplacement** : Python, architecture **hexagonale** (règle `~/.claude/rules/python-hexagonal.md`), dans `brief2/src/serveur-mcp/` à côté de `rag/` (`specs/03` ; pas `mcp/`, qui masquerait le paquet `mcp` du SDK). Paquet, `pyproject` et `Dockerfile` calqués sur rag.
@@ -69,9 +70,9 @@ flowchart LR
 | Outil | Appelé par (`azp`) | Cible (toujours via la gateway) | Nature |
 |---|---|---|---|
 | `get_contrat` | Orchestrateur (nœud `charger`) | `GET /api/contrats/{numero_contrat}` | lecture |
-| `evaluer_risque` | Orchestrateur (nœud `evaluer`) | **en attente** (§ 5.3) | calcul |
+| `evaluer_risque` | Orchestrateur (nœud `evaluer`) | Function de calcul `POST /api/evaluer` (appel direct, § 5.3) | calcul |
 | `search_rag` | Agent Rédacteur (seul outil visible par un LLM, D59) | `GET /api/extraits` | lecture |
-| `calculer_prime` | Agent Actuaire | **en attente** (§ 5.3) | calcul |
+| `calculer_prime` | Agent Actuaire | Function de calcul `POST /api/calculer` (appel direct, § 5.3) | calcul |
 | `enregistrer_brouillon` | Orchestrateur (nœud `brouillon`) | **nouvel** endpoint underwriting-admin | écriture (brouillon seulement, D66) |
 | `update_statut_dossier` | Orchestrateur (nœuds `enregistrer` après `interrupt()`, et `revue_humaine`) | **nouvel** endpoint underwriting-admin | écriture (seul outil qui écrit une décision) |
 
@@ -92,9 +93,9 @@ Contrat de données (*choix de Claude*, aligné sur la V1) : les champs viennent
 
 Valeurs de statut (`brief1/dossier-conception-v1.md`) : `BROUILLON`, `EN_ANALYSE`, `REVUE_HUMAINE`, décision `ACCEPTE` / `REFUSE`, validation `VALIDEE` / `CORRIGEE`. Le serveur MCP **ne vérifie pas** que le gestionnaire a validé : il écrit ce qu'on lui envoie une fois les droits vérifiés (D9 reste porté par le cluster). Les chemins, méthodes HTTP et la machine d'états exacte des transitions sont laissés au constructeur, en s'alignant sur les transitions T0 → T12 de la V1.
 
-### 5.3 En attente
+### 5.3 Calcul
 
-`evaluer_risque` (barème déterministe versionné, D28) et `calculer_prime` (formule, D65 « à confirmer ») : **Acerola précise d'ici au 22/10** l'origine du barème et la formule de la prime. D'ici là, rien n'est écrit sur ces deux outils, ni dans le code ni dans la matrice au-delà de leur ligne d'accès.
+`evaluer_risque` et `calculer_prime` appellent la Function de calcul (barème et formule versionnés) : voir `docs/superpowers/specs/2026-10-22-calcul-risque-prime-design.md`.
 
 ## 6. Matrice d'accès
 
@@ -123,6 +124,8 @@ Tout échec métier est un résultat d'outil avec `isError: true`, un **code sta
 | `NOT_FOUND_IN_CORPUS` | rag ne trouve rien qui passe la porte (le cluster en fait `REVUE_HUMAINE`, D46) |
 | `CONTRAT_INTROUVABLE` | 404 d'underwriting-admin (absent ou hors portefeuille, indiscernables) |
 | `DOSSIERS_INDISPONIBLES` | OBO refusé ou backend en panne (même code que rag) |
+| `CALCUL_INDISPONIBLE` | Function de calcul injoignable, jeton refusé (401/403) ou requête malformée (400) |
+| `DONNEE_HORS_BAREME` | donnée absente ou inconnue du barème (422 de la Function) |
 
 Les erreurs de protocole (jeton absent, JSON-RPC invalide) restent des erreurs HTTP / JSON-RPC. Le nom `CONTRAT_INTROUVABLE` est un choix de Claude.
 

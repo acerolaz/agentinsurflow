@@ -70,6 +70,9 @@ properties:
           - { name: AZURE_UAMI_CLIENT_ID, value: "${AZURE_UAMI_CLIENT_ID}" }
           # rag et dossiers : PAR LA GATEWAY (D22)
           - { name: GATEWAY_URL, value: "http://localhost:8000" }
+          # calcul : appel direct de la Function (jeton de l'identité managée), seconde exception à D22
+          - { name: CALCUL_URL, value: "${CALCUL_URL}" }
+          - { name: CALCUL_AUDIENCE, value: "${CALCUL_AUDIENCE}" }
           - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: "http://localhost:8002/v1/traces" }
       - name: underwriting-admin
         image: ${IMAGE_UNDERWRITING}

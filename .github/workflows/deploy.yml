@@ -87,6 +87,36 @@ jobs:
           sante=$(curl -fsS "$url/health") || { echo "::error::$url/health injoignable : release en service inconnue"; exit 1; }
           python3 tools/version.py --verifier "$(echo "$sante" | jq -r '.release // empty')" "$RELEASE"
 
+      - uses: actions/checkout@v4 # code de la Function du même commit que les images (rollback cohérent)
+        with:
+          ref: ${{ steps.image.outputs.tag }}
+          path: calcul-src
+
+      - name: Déployer la Function de calcul
+        env:
+          CALCUL_APP_NAME: ${{ vars.CALCUL_APP_NAME }}
+          TAG: ${{ steps.image.outputs.tag }}
+        run: |
+          (cd calcul-src/fonction-calcul && zip -qr "$RUNNER_TEMP/calcul.zip" function_app.py host.json requirements.txt agentinsurflow_calcul \
+            -x '*/__pycache__/*')
+          az functionapp config appsettings set -g "$RG" -n "$CALCUL_APP_NAME" --settings "APP_VERSION=$TAG" -o none
+          az functionapp deployment source config-zip -g "$RG" -n "$CALCUL_APP_NAME" --src "$RUNNER_TEMP/calcul.zip" --build-remote true -o none
+
+      - name: Fumée de la Function — bonne version, API fermée sans jeton (porte bloquante)
+        env:
+          CALCUL_URL: ${{ vars.CALCUL_URL }}
+          attendu: ${{ steps.image.outputs.tag }}
+        run: |
+          for _ in $(seq 1 30); do
+            version=$(curl -fsS "$CALCUL_URL/api/sante" | jq -r .version) || version=""
+            [ "$version" = "$attendu" ] && break
+            sleep 5
+          done
+          [ "$version" = "$attendu" ] || { echo "::error::Function de calcul : version '$version' ≠ '$attendu'"; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$CALCUL_URL/api/evaluer" -H 'content-type: application/json' -d '{}')
+          [ "$code" = 401 ] || { echo "::error::POST /api/evaluer sans jeton : $code ≠ 401"; exit 1; }
+          echo "✔ Function de calcul en $attendu, /api/evaluer fermée sans jeton"
+
       - name: Déployer (modèle infra/containerapp.yaml, nouvelle révision)
         id: deployer
         env:
@@ -109,9 +139,11 @@ jobs:
           AZURE_UAMI_CLIENT_ID: ${{ vars.AZURE_UAMI_CLIENT_ID }}
           SEED_GESTIONNAIRE_A: ${{ vars.SEED_GESTIONNAIRE_A }}
           SEED_GESTIONNAIRE_B: ${{ vars.SEED_GESTIONNAIRE_B }}
+          CALCUL_URL: ${{ vars.CALCUL_URL }}
+          CALCUL_AUDIENCE: ${{ vars.CALCUL_AUDIENCE }}
         run: |
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
-          envsubst '$IMAGE_GATEWAY $IMAGE_RAG $IMAGE_UNDERWRITING $IMAGE_MCP $IMAGE_POSTGRES $APP_ENV $AZURE_OPENAI_ENDPOINT $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $MCP_API_CLIENT_ID $MCP_AZP_ORCHESTRATEUR $MCP_AZP_REDACTEUR $MCP_AZP_ACTUAIRE $RAG_SEUIL $AZURE_UAMI_CLIENT_ID $SEED_GESTIONNAIRE_A $SEED_GESTIONNAIRE_B' \
+          envsubst '$IMAGE_GATEWAY $IMAGE_RAG $IMAGE_UNDERWRITING $IMAGE_MCP $IMAGE_POSTGRES $APP_ENV $AZURE_OPENAI_ENDPOINT $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $MCP_API_CLIENT_ID $MCP_AZP_ORCHESTRATEUR $MCP_AZP_REDACTEUR $MCP_AZP_ACTUAIRE $RAG_SEUIL $AZURE_UAMI_CLIENT_ID $SEED_GESTIONNAIRE_A $SEED_GESTIONNAIRE_B $CALCUL_URL $CALCUL_AUDIENCE' \
             < infra/containerapp.yaml > "$RUNNER_TEMP/containerapp.yaml"
           az containerapp update -n "$APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp.yaml" -o none
           # Production : le domaine personnalisé (G4, #12) dès que PROD_URL est posée ; la fumée

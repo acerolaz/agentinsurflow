@@ -38,8 +38,10 @@ Les outils sont déclarés avec le SDK MCP officiel ; la docstring de chacun est
 | `get_contrat` | `numero_contrat` | Contrat : profil du conducteur, historique, formule (`GET /api/contrats/{numero}`) | Lecture |
 | `enregistrer_brouillon` | `numero_contrat`, `fiche` (`decision`, `contrat_type`, `score`, `version_bareme`, `regle_ids`, `motifs`, `citations`), `prime` facultative (`prime_ttc`, `periodicite`, `date_effet` AAAA-MM-JJ) | `{"ecrit": true}` | Écriture, brouillon seulement, idempotente |
 | `update_statut_dossier` | `numero_contrat`, `statut` (ex. `REVUE_HUMAINE`, `ACCEPTE`, `REFUSE`), `validation` (`VALIDEE` ou `CORRIGEE`, exigée avec `ACCEPTE` et `REFUSE`) | `{"ecrit": true}` | Écriture, seul outil qui écrit une décision |
+| `evaluer_risque` | faits du contrat | Score, classe et règles déclenchées, versions du barème | Calcul (Function de calcul, `POST /api/evaluer`) |
+| `calculer_prime` | faits du contrat et de la formule | Prime détaillée, version de la formule | Calcul (Function de calcul, `POST /api/calculer`) |
 
-`evaluer_risque` (orchestrateur) et `calculer_prime` (Actuaire) figurent dans la matrice mais ne sont **pas implémentés** : leur barème et leur formule sont en attente (conception § 5.3).
+Les deux outils appellent directement la Function de calcul (spec `2026-10-22-calcul-risque-prime-design.md`), jeton de l'identité managée.
 
 ### 2.2 Codes d'erreur
 
@@ -49,6 +51,8 @@ Les outils sont déclarés avec le SDK MCP officiel ; la docstring de chacun est
 | `NOT_FOUND_IN_CORPUS` | Aucun extrait ne passe la porte de pertinence de rag | `search_rag` |
 | `CONTRAT_INTROUVABLE` | 404 d'underwriting-admin : contrat absent **ou** hors portefeuille (indiscernables) | `get_contrat`, `enregistrer_brouillon`, `update_statut_dossier` |
 | `DOSSIERS_INDISPONIBLES` | OBO refusé, backend en panne ou réponse inattendue | tous |
+| `CALCUL_INDISPONIBLE` | Function de calcul injoignable, jeton refusé ou requête malformée | `evaluer_risque`, `calculer_prime` |
+| `DONNEE_HORS_BAREME` | Donnée absente ou inconnue du barème (422) | `evaluer_risque`, `calculer_prime` |
 | `ARGUMENTS_INVALIDES` | Le backend refuse la fiche, la prime ou le statut (ex. `ACCEPTE` sans `validation`) | écritures |
 
 Les erreurs de protocole restent des erreurs HTTP ou JSON-RPC : 401 `JETON_ABSENT` ou `JETON_INVALIDE`, 403 `ROLE_MANQUANT`, 503 si Entra n'est pas configuré (ProblemDetails avec `code`).
@@ -107,6 +111,7 @@ Aucune valeur dans le dépôt : clés dans `.env.example`, déploiement dans `do
 | `RAG_API_CLIENT_ID`, `UNDERWRITING_API_CLIENT_ID` | Cibles de l'OBO | `.env` | variables GitHub |
 | `GATEWAY_URL` | Adresse par laquelle rag et underwriting sont joints | `http://gateway:8000` | `http://localhost:8000` |
 | `MCP_CLIENT_SECRET` | Secret de l'OBO, **local seulement** | `.env` | jamais |
+| `CALCUL_URL`, `CALCUL_AUDIENCE` | URL de la Function de calcul et audience `api://<appId agentinsurflow-calcul>` du jeton | `.env` | variables GitHub par environnement (`make calcul` les affiche) |
 | `AZURE_UAMI_CLIENT_ID` | Identité managée fédérée (OBO sans secret) | — | variable GitHub |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Récepteur OTLP | `http://underwriting-admin:8002/v1/traces` | `http://localhost:8002/v1/traces` |
 | `APP_VERSION`, `APP_RELEASE`, `APP_ENV` | Versions gravées au build, environnement | build-args, `local` | build-args de la chaîne, `staging` ou `production` |

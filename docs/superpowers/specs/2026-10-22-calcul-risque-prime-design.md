@@ -40,10 +40,11 @@ flowchart LR
     GW --> MCP["Serveur MCP<br/>(5e conteneur)"]
     MCP -->|"OBO → underwriting<br/>GET /api/contrats/{n}"| GW
     GW --> UW["underwriting-admin<br/>vue_contrat_minimisee"]
-    MCP -->|"appel direct HTTPS<br/>jeton identité managée"| FN["Function App calcul<br/>/api/evaluer, /api/calculer"]
+    MCP -->|"POST /api/calcul/{evaluer,calculer}<br/>jeton app MCP (rôle Calcul)"| GW
+    GW -->|"HTTPS, même jeton<br/>revalidé par Easy Auth"| FN["Function App calcul<br/>/api/evaluer, /api/calculer"]
 ```
 
-- **Appel direct MCP → Function** : décision d'Acerola (22/10). C'est une **exception à D22**, au même titre que l'export OTLP, à écrire dans le journal des décisions et dans la spec MCP (§ 2 « Anti-objectifs » et § 4). Raison : la Function ne sert que le serveur MCP, elle ne lit ni n'écrit aucune donnée, elle reçoit des faits et rend un calcul.
+- **MCP → gateway → Function** (décision d'Acerola, 22/10, au nom des règles OWASP) : **remplace** l'appel direct décidé plus tôt le même jour. **Plus aucune exception à D22** pour le calcul (§ 3.3).
 - **Le serveur MCP garde tout le reste**, dans l'ordre :
   1. matrice d'accès (orchestrateur → `evaluer_risque`, actuaire → `calculer_prime`, déjà en place) ;
   2. lecture du contrat par la gateway en OBO (même chemin que `get_contrat`, donc BOLA par underwriting-admin) ;
@@ -65,6 +66,14 @@ flowchart LR
 - **Azure** : authentification App Service (Easy Auth) activée sur la Function App, fournisseur Entra, une inscription d'application « calcul » (`api://<appId>`). Seule l'identité managée du serveur MCP est autorisée (liste des applications clientes autorisées). Le serveur MCP obtient un jeton pour cette audience avec son identité managée (`azure-identity`, déjà utilisé par l'OBO du serveur MCP en Azure : à vérifier par le constructeur). Toute requête sans jeton valide reçoit 401 de la plateforme, avant le code.
 - **Local** : la Function tourne dans le compose (service `calcul`, image officielle Azure Functions Python, `CALCUL_URL=http://calcul:80`), sans Easy Auth, joignable seulement sur le réseau du compose (aucun port publié). L'adaptateur n'ajoute de jeton que si `CALCUL_AUDIENCE` est défini.
 - L'inscription « calcul » et le réglage Easy Auth sont **rédigés dans `infra/*.sh` et lancés à la main par Acerola**, comme `infra/entra.sh`.
+
+### 3.3 Passage par la gateway (amendement du 22/10)
+
+Décision d'Acerola : le canal MCP → Function passe par la gateway, comme rag et underwriting-admin (D22, OWASP API4 limitation de débit, API8 configuration, API9 inventaire). *Le reste est un choix de Claude.*
+- **Route gateway** `calcul` : `POST /api/calcul/{**reste}` → cluster `calcul` (destination = URL de la Function, par variable d'environnement), chemin réécrit en `/api/{**reste}` ; politique `calcul-mcp` = rôle **`Calcul`** + audience `Entra:Audiences:calcul` ; limite de débit dédiée ; refus par défaut inchangé. Route anonyme `GET /health/calcul` → `/api/sante` de la Function (fumée par la gateway, comme `/health/mcp`).
+- **Jeton** : jeton *application* de l'inscription MCP (client credentials), audience `api://<appId calcul>`, portant le rôle d'application **`Calcul`** (nouveau rôle de l'inscription « calcul », attribué au seul principal de service du serveur MCP, sur le modèle `attribuer()` d'`infra/entra.sh`). La gateway relaie le jeton tel quel ; la Function le **revalide** (Easy Auth, `allowedApplications = [MCP]`) : la gateway n'est pas la seule défense.
+- **Serveur MCP** : `CALCUL_URL` vise la gateway (`http://localhost:8000/api/calcul` en Azure, `http://gateway:8000/api/calcul` en local). Le jeton est **toujours** demandé : identité managée fédérée en Azure, `MCP_CLIENT_SECRET` en local (même repli que l'OBO). Sans configuration Entra : `CALCUL_INDISPONIBLE`.
+- **Limite connue (assumée)** : le serveur MCP et la gateway partagent la Container App (même identité managée, même IP de sortie). Rien de cryptographique ni de réseau n'empêche le MCP d'appeler la Function en direct : comme pour rag et underwriting-admin sur `localhost`, le passage par la gateway est une **règle d'architecture** (code + revue), pas une barrière. La fermer vraiment demanderait un composant hors de la Container App ou une identité distincte par conteneur : hors périmètre.
 
 ### 3.2 Déploiement
 

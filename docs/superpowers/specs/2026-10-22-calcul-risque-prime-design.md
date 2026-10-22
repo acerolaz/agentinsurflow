@@ -85,7 +85,8 @@ Nouvelle migration EF Core qui **recrée** `vue_contrat_minimisee` (`migrationBu
 | `nb_sinistres_trois_ans` | sinistres dont `date_sinistre` ∈ [`date_effet` − 36 mois, `date_effet`[ | R05 |
 | `nb_sinistres_responsables_trois_ans` | idem, avec `taux_responsabilite > 0` | R04 |
 
-- Déjà dans la vue et dans `VueContrat`, sous ces noms JSON : `departement` (DOM sur 3 caractères), `crm_bonus_malus` (`COALESCE(…, 1)` : limite connue, un relevé absent vaut CRM 1), `suspensions`, `resiliations`, `formule`.
+- Déjà dans la vue et dans `VueContrat`, sous ces noms JSON : `departement` (DOM sur 3 caractères), `crm_bonus_malus`, `suspensions`, `resiliations` (`COALESCE` conservés : lus par rag), `formule`.
+- **Relevé d'information absent : jamais accepté** (décision d'Acerola, 22/10). La vue gagne en dernière colonne `releve_present` (`r.id IS NOT NULL`, JSON `releve_present`). Si elle n'est pas `true`, le serveur MCP envoie `None` pour les faits issus du relevé (`suspensions`, `resiliations`, `crm`, `nb_sinistres_trois_ans`, `nb_sinistres_responsables_trois_ans`) ; la Function rend 422 `DONNEE_HORS_BAREME` et le cluster en fait `REVUE_HUMAINE`. Les relances (jusqu'à 3) relèvent du cluster d'agents (issue #7).
 - Jointure `vehicule` en `LEFT JOIN` ; les nouvelles colonnes sont **nullables** (contrat sans véhicule, permis sans date). Un véhicule par contrat dans les seeds. Si un contrat en avait plusieurs, le constructeur prend le plus puissant (cas défavorable) et le note.
 - **Donnée absente** (`NULL`) nécessaire à une règle ou à un coefficient : la Function rend `DONNEE_HORS_BAREME`, jamais une règle « non déclenchée » ni un coefficient par défaut (*choix de Claude* : on ne peut pas accepter un dossier faute d'information).
 - `anciennete_permis_ans` et `nb_sinistres` existants restent tels quels (rag les lit) ; aucun nom JSON ne change.

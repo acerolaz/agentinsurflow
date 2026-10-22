@@ -48,6 +48,7 @@ VUE_SEED_1: dict[str, Any] = {
     "type_usage": "prive",
     "nb_sinistres_trois_ans": 0,
     "nb_sinistres_responsables_trois_ans": 0,
+    "releve_present": True,
 }
 
 

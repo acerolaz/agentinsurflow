@@ -298,6 +298,10 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("puissance_fiscale_cv");
 
+                    b.Property<bool>("RelevePresent")
+                        .HasColumnType("boolean")
+                        .HasColumnName("releve_present");
+
                     b.Property<int>("Resiliations")
                         .HasColumnType("integer")
                         .HasColumnName("resiliations");

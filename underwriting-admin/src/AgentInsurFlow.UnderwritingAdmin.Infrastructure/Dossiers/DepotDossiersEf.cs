@@ -26,5 +26,6 @@ internal sealed class DepotDossiersEf(DossiersDbContext db) : IDepotDossiers
 
     private static VueContrat Vers(LigneVue l) => new(l.NumeroContrat, l.TrancheAge, l.AnciennetePermisAns, l.Departement,
         l.CrmBonusMalus, l.NbSinistres, l.Suspensions, l.Resiliations, l.Formule, l.MisAJour,
-        l.DateEffet, l.AnciennetePermisMois, l.PuissanceFiscaleCv, l.TypeUsage, l.NbSinistresTroisAns, l.NbSinistresResponsablesTroisAns);
+        l.DateEffet, l.AnciennetePermisMois, l.PuissanceFiscaleCv, l.TypeUsage, l.NbSinistresTroisAns, l.NbSinistresResponsablesTroisAns,
+        l.RelevePresent);
 }

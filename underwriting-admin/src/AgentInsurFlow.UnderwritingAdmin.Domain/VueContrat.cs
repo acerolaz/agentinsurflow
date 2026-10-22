@@ -2,8 +2,9 @@ namespace AgentInsurFlow.UnderwritingAdmin.Domain;
 
 /// <summary>
 /// Vue minimisée d'un contrat (D39) : aucune donnée directement identifiante. Les noms JSON (snake_case)
-/// sont ceux que lit <c>rag</c> ; ne pas les changer sans toucher son client. Les six derniers champs sont les faits
-/// du calcul de risque/prime, évalués à la date d'effet (noms sans chiffre : snake_case prévisible).
+/// sont ceux que lit <c>rag</c> ; ne pas les changer sans toucher son client. Les sept derniers champs sont les faits
+/// du calcul de risque/prime, évalués à la date d'effet (noms sans chiffre : snake_case prévisible) ;
+/// <c>releve_present</c> faux = contrat sans relevé d'information : les faits du relevé n'ont alors aucune valeur.
 /// </summary>
 public sealed record VueContrat(
     string NumeroContrat,
@@ -21,4 +22,5 @@ public sealed record VueContrat(
     int? PuissanceFiscaleCv,
     string? TypeUsage,
     int NbSinistresTroisAns,
-    int NbSinistresResponsablesTroisAns);
+    int NbSinistresResponsablesTroisAns,
+    bool RelevePresent);

@@ -43,6 +43,22 @@ def test_fait_absent_ou_none_vaut_none(avec_none: bool) -> None:
     assert faits_prime(vue)["type_usage"] is None
 
 
+@pytest.mark.parametrize("etat", ["faux", "absent"])
+def test_releve_absent_met_les_faits_du_releve_a_none(etat: str) -> None:
+    vue = {k: v for k, v in VUE_SEED_1.items() if k != "releve_present"}
+    if etat == "faux":
+        vue["releve_present"] = False
+    risque = faits_risque(vue)
+    cles = ("suspensions", "resiliations", "crm", "nb_sinistres_trois_ans")
+    for cle in (*cles, "nb_sinistres_responsables_trois_ans"):
+        assert risque[cle] is None
+    assert (risque["anciennete_permis_mois"], risque["puissance_fiscale_cv"]) == (91, 5)
+    prime = faits_prime(vue)
+    assert prime["crm"] is None
+    autres = (prime["formule"], prime["departement"], prime["type_usage"])
+    assert autres == ("tous_risques", "75", "prive")
+
+
 def test_crm_absent_reste_none() -> None:
     assert faits_risque({})["crm"] is None
     assert faits_prime({"crm_bonus_malus": None})["crm"] is None

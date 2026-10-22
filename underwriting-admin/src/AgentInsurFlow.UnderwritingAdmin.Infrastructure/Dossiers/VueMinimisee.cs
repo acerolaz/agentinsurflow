@@ -63,7 +63,8 @@ internal static class VueMinimisee
                (SELECT count(*) FROM sinistre si WHERE si.releve_information_id = r.id
                   AND si.date_sinistre >= c.date_effet - interval '36 months'
                   AND si.date_sinistre < c.date_effet
-                  AND si.taux_responsabilite > 0)::int AS nb_sinistres_responsables_trois_ans
+                  AND si.taux_responsabilite > 0)::int AS nb_sinistres_responsables_trois_ans,
+               (r.id IS NOT NULL) AS releve_present
         FROM contrat c
         JOIN souscripteur s ON s.id = c.souscripteur_id
         LEFT JOIN releve_information r ON r.contrat_id = c.id

@@ -80,7 +80,7 @@ public sealed class DossiersPostgresTests
         Assert.Equal(
             ["anciennete_permis_ans", "anciennete_permis_mois", "crm_bonus_malus", "date_effet", "departement", "formule",
                 "gestionnaire_id", "mis_a_jour", "nb_sinistres", "nb_sinistres_responsables_trois_ans", "nb_sinistres_trois_ans",
-                "numero_contrat", "puissance_fiscale_cv", "resiliations", "suspensions", "tranche_age", "type_usage"],
+                "numero_contrat", "puissance_fiscale_cv", "releve_present", "resiliations", "suspensions", "tranche_age", "type_usage"],
             colonnes.Select(c => (string)c[0]).Order(StringComparer.Ordinal));
     }
 
@@ -138,6 +138,22 @@ public sealed class DossiersPostgresTests
             "SELECT puissance_fiscale_cv, type_usage FROM vue_contrat_minimisee WHERE numero_contrat = 'AIF-TEST-1'");
 
         Assert.Equal([DBNull.Value, DBNull.Value], lignes.Single());
+    }
+
+    [Fact]
+    public async Task Vue_sans_releve_rend_releve_present_faux_et_le_seed_vrai()
+    {
+        await Preparer();
+        await Lire(Connexions().Migrateur, SeedDossiers.Sql(GestionnaireA, GestionnaireB));
+        var seed = await Lire(Connexions().Migrateur,
+            "SELECT releve_present FROM vue_contrat_minimisee WHERE numero_contrat = 'AIF-2026-000001'");
+        Assert.Equal(true, seed.Single()[0]);
+
+        var sansReleve = ContratSansVehicule[..ContratSansVehicule.IndexOf("INSERT INTO releve_information", StringComparison.Ordinal)];
+        var lignes = await LireDansTransactionAnnulee(sansReleve,
+            "SELECT releve_present FROM vue_contrat_minimisee WHERE numero_contrat = 'AIF-TEST-1'");
+
+        Assert.Equal(false, lignes.Single()[0]);
     }
 
     [Fact]

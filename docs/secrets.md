@@ -103,7 +103,44 @@ flowchart LR
 Sans ce rôle, l'agent répond en mode dégradé (`REVUE_HUMAINE`) ; la fumée ne l'appelle pas, ce sont les **evals
 de staging** qui bloquent alors la release.
 
-## 5. Vérifier
+## 5. On-Behalf-Of sans consentement administrateur : la pré-autorisation (#47)
+
+rag lit les dossiers chez underwriting **au nom du gestionnaire connecté** (OBO), et le serveur MCP fait de même
+vers rag et underwriting : le contrôle BOLA s'applique à l'identité réelle. Entra n'émet ce jeton que si le client a
+le consentement pour la portée `access_as_user` de l'API.
+
+| | Consentement administrateur | Pré-autorisation (retenue) |
+|---|---|---|
+| Qui le donne | un administrateur du tenant Simplon | le propriétaire de l'API (Acerola), dans `make entra` |
+| Portée | **tous les utilisateurs du tenant** (`consentType: AllPrincipals`) | un client nommé, une portée nommée, sur une API |
+| Droit requis | élevé (`Authorization_RequestDenied` pour Acerola) | aucun au-delà de la propriété des inscriptions |
+| Où c'est écrit | dans le tenant, hors du dépôt | `api.preAuthorizedApplications` de chaque API, versionné dans `infra/entra.sh` |
+
+| API | Clients pré-autorisés sur `access_as_user` |
+|---|---|
+| `agentinsurflow-underwriting` | Azure CLI, `agentinsurflow-rag`, `agentinsurflow-mcp` |
+| `agentinsurflow-rag` | Azure CLI, `agentinsurflow-mcp` |
+| `agentinsurflow-mcp` | Azure CLI |
+
+**Pourquoi ce choix** : un consentement administrateur accorde la permission pour **tout le tenant**, pas seulement
+pour le gestionnaire qui teste ; la pré-autorisation est le plus petit droit qui débloque l'OBO, décidé par le
+propriétaire de l'API, et le même mécanisme sert déjà à Azure CLI (jetons de la CI et du poste). Elle ne contourne
+rien : le gestionnaire doit toujours avoir le rôle `Gestionnaire` de l'API, et le contrôle BOLA s'applique à son
+identité.
+
+**Premier obstacle rencontré (22/10)** : avant tout contrôle de consentement, Entra répondait
+`AADSTS500011: The resource principal named api://<appId d'underwriting> was not found`. L'OBO demande la portée
+`api://<appId>/access_as_user` alors que l'API ne déclarait que `api://agentinsurflow-underwriting` : chaque API
+déclare désormais les deux URI (`identifierUris`).
+
+**Si Entra refuse encore** : `azure-identity` journalise le refus avec son message exact
+(`OnBehalfOfCredential.get_token failed: … AADSTS…`, sans le jeton) ; la réponse reste 503 `DOSSIERS_INDISPONIBLES`.
+
+```bash
+az containerapp logs show -n "$APP_PRODUCTION" -g "$AZURE_RESOURCE_GROUP" --container rag --tail 200 | grep AADSTS
+```
+
+## 6. Vérifier
 
 ```bash
 git ls-files | grep -E '^\.env$' && echo "✘ .env versionné !" || echo "✔ .env hors dépôt"

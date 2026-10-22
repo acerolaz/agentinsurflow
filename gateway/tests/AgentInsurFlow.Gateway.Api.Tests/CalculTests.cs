@@ -97,6 +97,38 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
     }
 
     [Fact]
+    public async Task Credential_RequestFailed_502_CALCUL_INDISPONIBLE_sans_message()
+    {
+        var credential = new FauxCredential(new RequestFailedException("imds-detail-interne"));
+        using var usine = GatewayAvecCredential(credential);
+        using var client = usine.CreateClient();
+
+        var reponse = await Envoyer(client, "/api/calcul/evaluer", JetonCalcul());
+
+        Assert.Equal(HttpStatusCode.BadGateway, reponse.StatusCode);
+        Assert.Equal("CALCUL_INDISPONIBLE", await AutorisationTests.Code(reponse));
+        var corps = await reponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.DoesNotContain("imds-detail-interne", corps, StringComparison.Ordinal);
+        Assert.Empty(backends.Calcul.LogEntries);
+    }
+
+    [Fact]
+    public async Task Refuses_401_et_403_n_appellent_ni_le_credential_ni_le_backend()
+    {
+        var credential = new FauxCredential();
+        using var usine = GatewayAvecCredential(credential);
+        using var client = usine.CreateClient();
+
+        var sansJeton = await Envoyer(client, "/api/calcul/evaluer", null);
+        var sansRole = await Envoyer(client, "/api/calcul/evaluer", JetonCalcul(["Gestionnaire"]));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, sansJeton.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, sansRole.StatusCode);
+        Assert.Empty(credential.Portees);
+        Assert.Empty(backends.Calcul.LogEntries);
+    }
+
+    [Fact]
     public async Task Health_calcul_et_autres_routes_ne_declenchent_aucun_echange()
     {
         var credential = new FauxCredential();

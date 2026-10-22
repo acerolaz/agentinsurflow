@@ -4,6 +4,7 @@
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Threading.RateLimiting;
+using Azure;
 using Azure.Core;
 using Azure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -52,7 +53,7 @@ builder.Services.AddReverseProxy()
                 var jeton = await credential.GetTokenAsync(new TokenRequestContext([porteeCalcul]), t.HttpContext.RequestAborted);
                 t.ProxyRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jeton.Token);
             }
-            catch (AuthenticationFailedException) // jamais de détail ni de jeton dans la réponse ou le journal
+            catch (Exception e) when (e is AuthenticationFailedException or RequestFailedException or HttpRequestException) // jamais de détail ni de jeton dans la réponse ou le journal
             {
                 await Probleme(502, "Service de calcul indisponible", "CALCUL_INDISPONIBLE").ExecuteAsync(t.HttpContext);
             }

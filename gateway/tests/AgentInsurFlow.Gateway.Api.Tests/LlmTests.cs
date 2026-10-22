@@ -296,6 +296,46 @@ public sealed class LlmTests(Backends backends) : IClassFixture<Backends>
     }
 
     [Fact]
+    public async Task Amont_sans_Accept_Encoding_et_reponse_encodee_non_mesuree()
+    {
+        var recus = new ConcurrentBag<string>();
+        var constructeur = WebApplication.CreateSlimBuilder();
+        constructeur.WebHost.UseUrls("http://127.0.0.1:0");
+        await using var amont = constructeur.Build();
+        var octets = new byte[] { 1, 2, 3, 4 }; // contenu opaque déclaré gzip : jamais lu
+        amont.MapPost("/openai/v1/chat/completions", async (HttpContext ctx) =>
+        {
+            recus.Add(ctx.Request.Headers.AcceptEncoding.ToString());
+            ctx.Response.ContentType = "application/json";
+            ctx.Response.Headers.ContentEncoding = "gzip";
+            ctx.Response.ContentLength = octets.Length;
+            await ctx.Response.Body.WriteAsync(octets, ctx.RequestAborted);
+        });
+        await amont.StartAsync(TestContext.Current.CancellationToken);
+        var adresse = amont.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
+        var spans = new ConcurrentBag<Activity>();
+        using var ecoute = new ActivityListener
+        {
+            ShouldListenTo = s => s.Name == "Microsoft.AspNetCore",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = spans.Add,
+        };
+        ActivitySource.AddActivityListener(ecoute);
+        using var usine = Gateway(new FauxCredential(), ("ReverseProxy:Clusters:llm:Destinations:d1:Address", adresse));
+        using var client = usine.CreateClient();
+        using var requete = Requete("POST", Chemin, JetonLlm(azp: "app-mesure-gzip"));
+        requete.Headers.AcceptEncoding.ParseAdd("gzip");
+        requete.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
+
+        Assert.Equal(string.Empty, Assert.Single(recus));
+        Assert.Equal(octets, await reponse.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
+        var span = Assert.Single(spans, a => a.GetTagItem("appelant.azp") as string == "app-mesure-gzip");
+        Assert.Equal("non_disponible", span.GetTagItem("gen_ai.usage.mesure"));
+    }
+
+    [Fact]
     public async Task Sans_azp_ni_appid_repli_sur_oid()
     {
         var jeton = Creer(AudienceLlm, ["LLM"], oid: "oid-mesure-repli");

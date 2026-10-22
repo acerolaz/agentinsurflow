@@ -3,6 +3,7 @@
 // Première barrière seulement : chaque service revalide le jeton qu'on lui transmet tel quel.
 using System.Globalization;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using Azure;
 using Azure.Core;
@@ -49,6 +50,11 @@ builder.Services.AddReverseProxy()
         if (ctx.Route.RouteId == "llm")
         {
             // Mesure des tokens (#70) : attributs du span serveur, jamais de texte. Le corps relayé reste identique.
+            ctx.AddRequestTransform(t =>
+            {
+                t.ProxyRequest.Headers.AcceptEncoding.Clear(); // amont non compressé : le JSON reste lisible
+                return default;
+            });
             ctx.AddResponseTransform(async t => await MesurerTokens(t.HttpContext, t.ProxyResponse));
         }
         if (!echanges.TryGetValue(ctx.Route.RouteId, out var echange))
@@ -245,12 +251,14 @@ static string? AzpOuAppid(HttpContext ctx) =>
 
 // Tokens consommés (conventions GenAI d'OTel) posés sur le span de la requête. JSON : usage lu dans une copie
 // tamponnée (HttpContent relu tel quel ensuite) ; flux SSE : jamais lu, donc jamais tamponné.
-// ponytail: réponse JSON compressée non lue (aucun attribut de nombre) ; décompresser si Foundry en renvoie.
+// Réponse encodée (gzip…) : non lue ; la gateway ne demande pas de compression à l'amont (Accept-Encoding retiré).
+static bool Est(string? type, string attendu) => string.Equals(type, attendu, StringComparison.OrdinalIgnoreCase);
+
 static async Task MesurerTokens(HttpContext ctx, HttpResponseMessage? reponse)
 {
     var span = ctx.Features.Get<IHttpActivityFeature>()?.Activity;
     var type = reponse?.Content.Headers.ContentType?.MediaType;
-    if (span is null || reponse is null || type is not ("application/json" or "text/event-stream"))
+    if (span is null || reponse is null || !(Est(type, "application/json") || Est(type, "text/event-stream")))
     {
         return;
     }
@@ -260,7 +268,7 @@ static async Task MesurerTokens(HttpContext ctx, HttpResponseMessage? reponse)
     }
     // Plafond : on ne tamponne que les corps de taille annoncée ; gros ou découpé = non lu (comme le flux).
     const long plafond = 4 * 1024 * 1024;
-    if (type == "text/event-stream" || reponse.Content.Headers.ContentLength is not { } taille || taille > plafond)
+    if (Est(type, "text/event-stream") || reponse.Content.Headers.ContentEncoding.Count > 0 || reponse.Content.Headers.ContentLength is not { } taille || taille > plafond)
     {
         span.SetTag("gen_ai.usage.mesure", "non_disponible");
         return;
@@ -268,10 +276,10 @@ static async Task MesurerTokens(HttpContext ctx, HttpResponseMessage? reponse)
     try
     {
         var octets = await reponse.Content.ReadAsByteArrayAsync(ctx.RequestAborted);
-        using var json = System.Text.Json.JsonDocument.Parse(octets);
+        using var json = JsonDocument.Parse(octets);
         var racine = json.RootElement;
-        if (racine.ValueKind != System.Text.Json.JsonValueKind.Object || !racine.TryGetProperty("usage", out var usage)
-            || usage.ValueKind != System.Text.Json.JsonValueKind.Object)
+        if (racine.ValueKind != JsonValueKind.Object || !racine.TryGetProperty("usage", out var usage)
+            || usage.ValueKind != JsonValueKind.Object)
         {
             return;
         }
@@ -283,12 +291,12 @@ static async Task MesurerTokens(HttpContext ctx, HttpResponseMessage? reponse)
         {
             span.SetTag("gen_ai.usage.output_tokens", nbSortie);
         }
-        if (racine.TryGetProperty("model", out var modele) && modele.ValueKind == System.Text.Json.JsonValueKind.String)
+        if (racine.TryGetProperty("model", out var modele) && modele.ValueKind == JsonValueKind.String)
         {
             span.SetTag("gen_ai.response.model", modele.GetString());
         }
     }
-    catch (System.Text.Json.JsonException)
+    catch (JsonException)
     {
         // JSON invalide : rien à mesurer, le client reçoit quand même la réponse d'amont
     }

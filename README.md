@@ -61,18 +61,18 @@ d'ingestion, agent) dans [`rag/README.md`](rag/README.md). Tests : pyramide **70
 
 ### Architecture déployée
 
-Chaque environnement (staging, production) est **trois Container Apps** du même environnement : la principale, à **trois conteneurs**
-(`gateway`, `underwriting-admin`, `postgres` : ils partagent `localhost` ; modèle versionné : [`infra/containerapp.yaml`](infra/containerapp.yaml)), celle du **serveur MCP**
-([`infra/containerapp-mcp.yaml`](infra/containerapp-mcp.yaml)) et celle de **rag** ([`infra/containerapp-rag.yaml`](infra/containerapp-rag.yaml)), à entrée interne et identité managée propre, que seule la gateway appelle.
+Chaque environnement (staging, production) est **quatre Container Apps** du même environnement : la principale, à **deux conteneurs**
+(`gateway`, `underwriting-admin` : ils partagent `localhost` ; modèle versionné : [`infra/containerapp.yaml`](infra/containerapp.yaml)), celle du **serveur MCP**
+([`infra/containerapp-mcp.yaml`](infra/containerapp-mcp.yaml)) celle de **rag** ([`infra/containerapp-rag.yaml`](infra/containerapp-rag.yaml)), à entrée interne et identité managée propre, que seule la gateway appelle, et celle de la **base PostgreSQL annexe** ([`infra/containerapp-postgres.yaml`](infra/containerapp-postgres.yaml)), à entrée TCP interne 5432.
 **Foundry n'est joint que par la gateway** (route `/api/llm`, clés désactivées) : rag lui demande le modèle avec un jeton d'application (rôle `LLM`).
 La Function de calcul (Azure Functions) n'accepte que la gateway :
 
 | Conteneur | Port | Rôle |
 |---|---|---|
 | `gateway` | 8000 | **seul exposé** (entrée de la Container App) ; valide jeton et rôle, puis transmet |
-| `rag` | 8001 | **sa propre Container App** (interne) : API du corpus et de l'agent ; revalide le jeton ; migrations de la base au démarrage (`rag/demarrer.sh`) ; joint la base annexe par le port TCP interne 5432 de la principale, le modèle et les dossiers par la gateway |
+| `rag` | 8001 | **sa propre Container App** (interne) : API du corpus et de l'agent ; revalide le jeton ; migrations de la base au démarrage (`rag/demarrer.sh`) ; joint la base annexe (sa Container App, TCP interne 5432), le modèle et les dossiers par la gateway |
 | `underwriting-admin` | 8002 | Dossiers (`/api/contrats`, BOLA) et traces (`/v1/traces`, `/api/traces/{trace_id}`) ; revalide le jeton ; migrations EF Core au démarrage |
-| `postgres` | 5432 | **base annexe éphémère** (pgvector) : bases `vecteurs`, `dossiers`, `traces` ; une réplique, sans volume |
+| `postgres` | 5432 | **sa propre Container App** (TCP interne) : **base annexe éphémère** (pgvector) : bases `vecteurs`, `dossiers`, `traces` ; une réplique, sans volume |
 
 Documentation des données : [`docs/donnees/`](docs/donnees/) — [sources](docs/donnees/sources.md),
 [pipeline](docs/donnees/pipeline.md), [modèle Merise](docs/donnees/modele.md), [SQL](docs/donnees/requetes-sql.md),
@@ -104,7 +104,8 @@ démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `d
 │   └── deploy.yml             # déploiement (modèle containerapp.yaml) + fumée ; lancé à la main = rollback
 ├── infra/
 │   ├── bootstrap.sh           # make infra : groupe de ressources, ACR, Container Apps, OIDC (idempotent)
-│   ├── containerapp.yaml      # modèle de la Container App principale : gateway + underwriting-admin + postgres
+│   ├── containerapp.yaml      # modèle de la Container App principale : gateway + underwriting-admin
+│   ├── containerapp-postgres.yaml  # modèle de la base annexe (TCP interne 5432)
 │   ├── containerapp-rag.yaml  # modèle de la Container App de rag (interne, identité propre) ; idem containerapp-mcp.yaml
 │   ├── llm.sh                 # make llm : Entra llm + gateway-local, Foundry sans clé, rôle réservé à la gateway
 │   ├── domaine.sh             # make domaine : domaine personnalisé de la production (certificat managé)
@@ -246,13 +247,13 @@ Exemple du sprint 2 : `eval/preuves/evals-local-2026-10-15.json`.
 
 Installation, à faire une seule fois (écritures Azure et Entra : lancées à la main par Acerola) :
 
-1. `make infra` crée le groupe de ressources, l'ACR, l'environnement Container Apps et six apps (principale, serveur MCP et rag, en staging et en production), reprend l'application Entra `agentinsurflow` et ses 4 fédérations OIDC (`main`, `staging`,
+1. `make infra` crée le groupe de ressources, l'ACR, l'environnement Container Apps et huit apps (principale, serveur MCP, rag et base annexe, en staging et en production), reprend l'application Entra `agentinsurflow` et ses 4 fédérations OIDC (`main`, `staging`,
    `production`, `pull_request`), puis attribue les rôles. Il affiche les valeurs à reporter. Attribuer des rôles
    exige *Owner* ou *User Access Administrator*.
 2. `make entra` inscrit les API `agentinsurflow-rag` (rôles `Gestionnaire`, `Ingestion`) et
    `agentinsurflow-underwriting` (`Gestionnaire`, `Telemetrie`), et attribue les rôles (toi, la CI, un 2ᵉ gestionnaire).
 3. `make annexe` construit l'image PostgreSQL annexe (`agentinsurflow-postgres:1`) et pose les mots de passe en
-   **secrets des Container Apps** (ceux de rag, trois comptes, dans sa propre app).
+   **secrets des Container Apps** (chacune ceux dont elle se sert).
    `make llm` (après `make entra`) inscrit `agentinsurflow-llm` et `agentinsurflow-gateway-local`, désactive les clés de Foundry et réserve l'accès à la gateway.
 4. `make domaine DOMAINE=…` lie le domaine personnalisé à la production (certificat managé), puis poser `PROD_URL`.
 5. Reporter à la main les variables dans GitHub en suivant [docs/secrets.md](docs/secrets.md).

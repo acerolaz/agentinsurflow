@@ -2,7 +2,7 @@
 # `az containerapp update --yaml`. Seul `template` est fourni : l'entrée INTERNE (port 8001, posée par
 # infra/bootstrap.sh), le registre, l'identité managée (infra/entra.sh) et les secrets pg-* (infra/postgres-annexe.sh)
 # restent tels quels. Joignable seulement par la gateway ; elle-même joint la gateway par son FQDN (GATEWAY_URL)
-# et la base annexe par le port TCP interne 5432 de la Container App principale (PG_HOST = son nom).
+# et la base annexe par l'entrée TCP interne 5432 de sa Container App (PG_HOST = le nom de l'app postgres).
 properties:
   template:
     scale:
@@ -24,7 +24,7 @@ properties:
           # même liste que la gateway (Entra__Audiences__rag__0 et __1)
           - { name: RAG_API_AUDIENCES, value: "api://agentinsurflow-rag,${RAG_API_CLIENT_ID}" }
           - { name: RAG_SEUIL, value: "${RAG_SEUIL}" } # vide → avertissement, /api/extraits en 503
-          # base annexe : port TCP interne de la Container App principale
+          # base annexe : Container App postgres (infra/containerapp-postgres.yaml), TCP interne 5432
           - { name: PG_HOST, value: "${PG_HOST}" }
           # migrateur : au démarrage seulement (demarrer.sh), retiré avant uvicorn
           - { name: PG_MIGRATEUR_PASSWORD, secretRef: pg-migrateur-password }

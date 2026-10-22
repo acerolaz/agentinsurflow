@@ -32,6 +32,7 @@ Apps** (`pg-*-password`), posés à la main par `make annexe` (`infra/postgres-a
 | `ACR_NAME` | Variable de repo | `ACR_NAME` | `ci-cd.yml` › build (push), `deploy.yml` (image) |
 | `APP_STAGING` | Variable de l'env. `staging` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
 | `APP_PRODUCTION` | Variable de l'env. `production` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
+| `PG_APP_STAGING` / `PG_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `PG_APP_NAME` | `deploy.yml` : Container App de la base annexe (entrée **TCP interne** 5432), déployée **en premier** ; son nom est le `PG_HOST` de rag et d'underwriting-admin. Affiché par `make infra`. ⚠ L'entrée TCP interne peut exiger un environnement intégré à un VNet : à vérifier avant `make infra` (`az containerapp env show … --query properties.vnetConfiguration`) |
 | `RAG_APP_STAGING` / `RAG_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `RAG_APP_NAME` | `deploy.yml` : Container App de rag (entrée interne), déployée **après** la principale ; affiché par `make infra`. Son FQDN interne est lu par le workflow (`RAG_APP_FQDN`, cluster `rag` de la gateway) |
 | `MCP_APP_STAGING` / `MCP_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `MCP_APP_NAME` | `deploy.yml` : Container App du serveur MCP (entrée interne) ; affiché par `make infra`. Son FQDN interne (`<app>.internal.<domaine>`) est lu par le workflow, rien à reporter (`MCP_APP_FQDN`) |
 | `CALCUL_APP_STAGING` / `CALCUL_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `CALCUL_APP_NAME` | `deploy.yml` : déploiement de la Function de calcul ; affiché par `make calcul` |
@@ -56,7 +57,7 @@ Apps** (`pg-*-password`), posés à la main par `make annexe` (`infra/postgres-a
 | `AZURE_OPENAI_DEPLOYMENT` | — (**pas dans GitHub**) | — | Épinglé dans `llm.env`, versionné et copié dans l'image : le changer déclenche les evals |
 | `MCP_CLIENT_SECRET` 🔒 | — (**jamais dans GitHub**) | — | Local seulement (OBO du serveur MCP) ; en Azure, identité managée fédérée |
 | `GATEWAY_CLIENT_ID`, `GATEWAY_CLIENT_SECRET` 🔒 | — (**jamais dans GitHub**) | — | Local seulement : identité de la gateway (`agentinsurflow-gateway-local`, `make llm`) ; en Azure, identité managée. Plus aucune clé `AZURE_OPENAI_API_KEY` nulle part (§4) |
-| `PG_*_PASSWORD` 🔒 | — (**jamais dans GitHub**) | — | Secrets des Container Apps (`make annexe`) ; en local, `.env` |
+| `PG_*_PASSWORD` 🔒 | — (**jamais dans GitHub**) | — | Secrets des Container Apps (`make annexe`) : les sept sur l'app postgres, quatre sur la principale (underwriting-admin), trois sur rag ; en local, `.env` |
 | `APP_ENV`, `LLM_DELAI_S` | — (non reporté) | — | `APP_ENV` est posé par `deploy.yml` ; `LLM_DELAI_S` garde sa valeur par défaut (30 s) |
 | `AZURE_LOCATION`, `CONTAINERAPPS_ENV`, `GITHUB_REPO`, `FOUNDRY_NAME`, `FOUNDRY_RESOURCE_GROUP` | — (non reporté) | — | Lus seulement par `make` en local |
 | `LEGIFRANCE_*`, `INGESTION_JETON`, `TELEMETRIE_JETON`, `RAG_CLIENT_SECRET` 🔒 (OBO et jeton LLM de rag), `RAG_TOP_K`, `RAG_API_AUDIENCES`, `UNDERWRITING_API_AUDIENCES`, `UNDERWRITING_URL`, `MCP_API_AUDIENCES`, `GATEWAY_URL`, `OTEL_*`, `PG_HOST`, `PG_PORT` | — (non reporté) | — | Local seulement : `make extraire`, `make ingest`, compose ; en Azure, leurs valeurs viennent de `infra/containerapp.yaml` ou de leurs défauts |

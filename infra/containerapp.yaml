@@ -2,16 +2,10 @@
 # puis `az containerapp update --yaml`. Seul `template` est fourni : l'entrée (port 8000, gateway),
 # le registre et les secrets posés à la main (infra/postgres-annexe.sh) restent tels quels
 # (🔴 Z4 : conservation des secrets à vérifier au premier déploiement en staging).
-# Les conteneurs partagent localhost : gateway 8000 (seule exposée), underwriting-admin 8002 (interne), postgres 5432.
-# Le serveur MCP et rag ne sont plus ici : chacun a sa Container App (infra/containerapp-mcp.yaml, infra/containerapp-rag.yaml),
-# entrée interne. rag joint la base annexe par le port TCP interne 5432 de cette app (additionalPortMappings, jamais externe).
-# 🔴 Z4 : ce bloc `configuration.ingress` ne porte QUE le port additionnel ; à vérifier en staging que `update --yaml`
-# garde l'entrée externe 8000 (le garde-fou de deploy.yml échoue sinon, avant la production).
+# Les conteneurs partagent localhost : gateway 8000 (seule exposée), underwriting-admin 8002 (interne).
+# Le serveur MCP, rag et la base annexe ne sont plus ici : chacun a sa Container App, entrée interne
+# (infra/containerapp-mcp.yaml, infra/containerapp-rag.yaml, infra/containerapp-postgres.yaml).
 properties:
-  configuration:
-    ingress:
-      additionalPortMappings:
-        - { external: false, targetPort: 5432, exposedPort: 5432 }
   template:
     scale:
       minReplicas: 1 # base annexe éphémère : une seule réplique, toujours allumée
@@ -62,7 +56,7 @@ properties:
           - { name: Entra__Audiences__underwriting__0, value: "api://agentinsurflow-underwriting,${UNDERWRITING_API_CLIENT_ID}" }
           # schémas et seed au démarrage (migrateur) ; Otlp__SourcesSansJeton : défaut, loopback seule
           - { name: Migrations__AuDemarrage, value: "true" }
-          - { name: PG_HOST, value: localhost }
+          - { name: PG_HOST, value: "${PG_HOST}" } # nom de la Container App postgres (TCP interne 5432)
           - { name: PG_MIGRATEUR_PASSWORD, secretRef: pg-migrateur-password }
           - { name: PG_DOSSIERS_PASSWORD, secretRef: pg-dossiers-password }
           - { name: PG_TRACES_WRITER_PASSWORD, secretRef: pg-traces-writer-password }
@@ -70,14 +64,3 @@ properties:
           # oid des deux gestionnaires de test (variables GitHub, pas des secrets)
           - { name: SEED_GESTIONNAIRE_A, value: "${SEED_GESTIONNAIRE_A}" }
           - { name: SEED_GESTIONNAIRE_B, value: "${SEED_GESTIONNAIRE_B}" }
-      - name: postgres
-        image: ${IMAGE_POSTGRES}
-        resources: { cpu: 0.5, memory: 1Gi }
-        env:
-          - { name: POSTGRES_PASSWORD, secretRef: pg-postgres-password }
-          - { name: PG_MIGRATEUR_PASSWORD, secretRef: pg-migrateur-password }
-          - { name: PG_WRITER_PASSWORD, secretRef: pg-writer-password }
-          - { name: PG_READER_PASSWORD, secretRef: pg-reader-password }
-          - { name: PG_DOSSIERS_PASSWORD, secretRef: pg-dossiers-password }
-          - { name: PG_TRACES_WRITER_PASSWORD, secretRef: pg-traces-writer-password }
-          - { name: PG_TRACES_READER_PASSWORD, secretRef: pg-traces-reader-password }

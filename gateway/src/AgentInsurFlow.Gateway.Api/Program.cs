@@ -8,6 +8,7 @@ using System.Threading.RateLimiting;
 using Azure;
 using Azure.Core;
 using Azure.Identity;
+using AgentInsurFlow.Gateway.Api;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
@@ -177,8 +178,11 @@ builder.Services.AddRateLimiter(o =>
     };
 });
 
-// Traces OTLP vers le référentiel SQL d'underwriting-admin (même réplique, localhost : S3-21)
+// Traces OTLP vers le référentiel SQL d'underwriting-admin (sa Container App, adresse interne) avec un jeton
+// d'application (rôle Telemetrie, audience Telemetrie:Audience) ; sans audience (local, compose) : sans jeton (S3-21).
 var otlp = builder.Configuration["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] ?? "http://localhost:8002/v1/traces";
+var audienceTelemetrie = builder.Configuration["Telemetrie:Audience"];
+IServiceProvider? fournisseur = null; // posé après Build : l'exporteur n'est créé qu'au démarrage de l'hôte
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService(
         "agentinsurflow-gateway", serviceVersion: builder.Configuration["APP_VERSION"] ?? "dev"))
@@ -196,9 +200,15 @@ builder.Services.AddOpenTelemetry()
         {
             o.Endpoint = new Uri(otlp);
             o.Protocol = OtlpExportProtocol.HttpProtobuf;
+            // le TokenCredential vient du conteneur de services (les tests le remplacent), lu au premier export
+            o.HttpClientFactory = () => new HttpClient(new JetonOtlpHandler(
+                () => fournisseur!.GetRequiredService<TokenCredential>(),
+                string.IsNullOrEmpty(audienceTelemetrie) ? null : $"{audienceTelemetrie}/.default")
+            { InnerHandler = new HttpClientHandler() });
         }));
 
 var app = builder.Build();
+fournisseur = app.Services;
 
 if (envoyDevant)
 {

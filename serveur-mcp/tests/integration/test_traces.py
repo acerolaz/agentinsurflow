@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 import pytest
+from fakes_mcp import FauxCalculateur
 from jetons_mcp_de_test import AZP_ORCHESTRATEUR, AZP_REDACTEUR, config_auth, creer
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -44,7 +45,9 @@ def _app(gateway: Gateway, *, jetons: Any = None) -> Any:
     client = ClientGateway(
         httpx.AsyncClient(transport=httpx.MockTransport(gateway)), "http://gateway"
     )
-    serveur = ServeurMcp(jetons or JetonsEntra(_cfg_obo()), client, client, "test")
+    serveur = ServeurMcp(
+        jetons or JetonsEntra(_cfg_obo()), client, client, FauxCalculateur(), "test"
+    )
     application = creer_app(serveur)
     application.state.config_auth = config_auth()
     application.state.jwks = FauxJwks()
@@ -80,7 +83,7 @@ async def test_lister_les_outils_est_trace(spans: InMemorySpanExporter) -> None:
         await s.list_tools()
     attributs = _un(spans, "mcp.lister_outils")
     assert attributs["appelant.azp"] == AZP_ORCHESTRATEUR
-    assert attributs["outils.nombre"] == 3  # evaluer_risque n'existe pas encore
+    assert attributs["outils.nombre"] == 4
 
 
 async def test_search_rag_trace_la_question_par_son_empreinte(spans: InMemorySpanExporter) -> None:

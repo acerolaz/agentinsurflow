@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from fakes_mcp import FauxCorpus, FauxDossiers, FauxJetons
+from fakes_mcp import FauxCalculateur, FauxCorpus, FauxDossiers, FauxJetons
 from jetons_mcp_de_test import AZP_ORCHESTRATEUR, AZP_REDACTEUR, config_auth, creer
 from session_mcp import FauxJwks, session_mcp
 
@@ -15,7 +15,7 @@ from agentinsurflow_mcp.domain.models import ErreurOutil
 
 
 def _app(corpus: FauxCorpus, dossiers: FauxDossiers) -> Any:
-    application = creer_app(ServeurMcp(FauxJetons(), corpus, dossiers, "test"))
+    application = creer_app(ServeurMcp(FauxJetons(), corpus, dossiers, FauxCalculateur(), "test"))
     application.state.config_auth = config_auth()
     application.state.jwks = FauxJwks()
     return application

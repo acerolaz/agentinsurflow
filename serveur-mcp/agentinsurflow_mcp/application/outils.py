@@ -5,8 +5,9 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any, Literal
 
+from ..domain.faits import faits_prime, faits_risque
 from ..domain.models import Appelant, Fiche, PrimeBrouillon
-from ..domain.ports import CorpusPort, DossiersPort, JetonsPort
+from ..domain.ports import CalculateurPort, CorpusPort, DossiersPort, JetonsPort
 
 
 async def search_rag(
@@ -59,3 +60,25 @@ async def update_statut_dossier(
         jeton, numero_contrat, {"statut": statut, "validation": validation}
     )
     return {"ecrit": True}
+
+
+async def evaluer_risque(
+    appelant: Appelant,
+    jetons: JetonsPort,
+    dossiers: DossiersPort,
+    calculateur: CalculateurPort,
+    numero_contrat: str,
+) -> dict[str, Any]:
+    contrat = await get_contrat(appelant, jetons, dossiers, numero_contrat)
+    return await calculateur.evaluer(faits_risque(contrat))
+
+
+async def calculer_prime(
+    appelant: Appelant,
+    jetons: JetonsPort,
+    dossiers: DossiersPort,
+    calculateur: CalculateurPort,
+    numero_contrat: str,
+) -> dict[str, Any]:
+    contrat = await get_contrat(appelant, jetons, dossiers, numero_contrat)
+    return await calculateur.calculer(faits_prime(contrat))

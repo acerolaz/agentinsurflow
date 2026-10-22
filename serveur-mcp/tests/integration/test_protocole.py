@@ -7,7 +7,7 @@ from contextlib import AbstractAsyncContextManager
 from typing import Any
 
 import pytest
-from fakes_mcp import FauxCorpus, FauxDossiers, FauxJetons
+from fakes_mcp import FauxCalculateur, FauxCorpus, FauxDossiers, FauxJetons
 from jetons_mcp_de_test import AZP_ORCHESTRATEUR, AZP_REDACTEUR, config_auth, creer
 from jwt import PyJWKClientConnectionError
 from mcp import ClientSession
@@ -25,7 +25,7 @@ def dossiers() -> FauxDossiers:
 
 @pytest.fixture
 def app(dossiers: FauxDossiers) -> Any:
-    serveur = ServeurMcp(FauxJetons(), FauxCorpus(), dossiers, "test")
+    serveur = ServeurMcp(FauxJetons(), FauxCorpus(), dossiers, FauxCalculateur(), "test")
     application = creer_app(serveur)
     application.state.config_auth = config_auth()
     application.state.jwks = FauxJwks()
@@ -97,6 +97,7 @@ async def test_orchestrateur_voit_ses_outils(ouvrir: Ouvrir) -> None:
             "update_statut_dossier",
             "enregistrer_brouillon",
             "get_contrat",
+            "evaluer_risque",
         }
 
 

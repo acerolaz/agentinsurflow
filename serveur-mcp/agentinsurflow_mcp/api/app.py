@@ -16,6 +16,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ..infrastructure.entra.jetons import ConfigAuth
 from ..infrastructure.entra.obo import ConfigObo, JetonsEntra
+from ..infrastructure.fonction_calcul.client import ClientCalcul, ConfigCalcul
 from ..infrastructure.gateway.client import ClientGateway
 from ..infrastructure.otel.telemetrie import configurer_telemetrie
 from .securite import GardeMcp
@@ -89,7 +90,8 @@ def _serveur_reel() -> ServeurMcp:
     gateway = ClientGateway(
         httpx.AsyncClient(), cfg.gateway_url if cfg else "http://localhost:8000"
     )
-    return ServeurMcp(JetonsEntra(cfg), gateway, gateway)
+    calcul = ClientCalcul(httpx.AsyncClient(), ConfigCalcul())
+    return ServeurMcp(JetonsEntra(cfg), gateway, gateway, calcul)
 
 
 app = creer_app(_serveur_reel())

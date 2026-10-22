@@ -64,6 +64,7 @@ services:
       RAG_API_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
       UNDERWRITING_API_CLIENT_ID: ${UNDERWRITING_API_CLIENT_ID:-}
       GATEWAY_URL: http://gateway:8000
+      CALCUL_URL: http://calcul:80
       MCP_CLIENT_SECRET: ${MCP_CLIENT_SECRET:-}
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
       APP_ENV: local

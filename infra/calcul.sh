@@ -69,7 +69,14 @@ for app in "$CALCUL_APP_STAGING" "$CALCUL_APP_PRODUCTION"; do
     --body "$auth" -o none
 done
 
-hote() { az functionapp show -n "$1" -g "$RG" --query defaultHostName -o tsv; }
+# Flex Consumption : le nom d'hôte peut n'être que sous properties (selon la version d'az) ; vide = échec explicite
+hote() {
+  local h
+  h=$(az functionapp show -n "$1" -g "$RG" -o tsv \
+    --query "defaultHostName || properties.defaultHostName || hostNames[0] || properties.hostNames[0]")
+  [ -n "$h" ] || { echo "✘ nom d'hôte de $1 introuvable (az functionapp show)" >&2; exit 1; }
+  echo "$h"
+}
 cat <<FIN
 
 ✔ Function de calcul prête. À reporter À LA MAIN dans GitHub (procédure : docs/secrets.md) :

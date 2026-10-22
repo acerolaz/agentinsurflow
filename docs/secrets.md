@@ -133,11 +133,11 @@ identité.
 `api://<appId>/access_as_user` alors que l'API ne déclarait que `api://agentinsurflow-underwriting` : chaque API
 déclare désormais les deux URI (`identifierUris`).
 
-**Si Entra refuse encore** : rag et le serveur MCP journalisent le message exact (`jeton On-Behalf-Of refusé par
-Entra : AADSTS…`, sans le jeton) ; la réponse reste 503 `DOSSIERS_INDISPONIBLES`.
+**Si Entra refuse encore** : `azure-identity` journalise le refus avec son message exact
+(`OnBehalfOfCredential.get_token failed: … AADSTS…`, sans le jeton) ; la réponse reste 503 `DOSSIERS_INDISPONIBLES`.
 
 ```bash
-az containerapp logs show -n "$APP_PRODUCTION" -g "$AZURE_RESOURCE_GROUP" --tail 200 | grep AADSTS
+az containerapp logs show -n "$APP_PRODUCTION" -g "$AZURE_RESOURCE_GROUP" --container rag --tail 200 | grep AADSTS
 ```
 
 ## 6. Vérifier

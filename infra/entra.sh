@@ -112,9 +112,6 @@ acces=$(az ad app show --id "$rag" --query "requiredResourceAccess" -o json |
     'map(select(.resourceAppId != $api)) + [{resourceAppId: $api, resourceAccess: [{id: $scope, type: "Scope"}]}]')
 az rest --method PATCH --uri "$GRAPH/applications/$rag_objet" --headers content-type=application/json \
   --body "{\"requiredResourceAccess\": $acces}" -o none
-# Consentement pour tout le tenant : facultatif depuis la pré-autorisation (#47), tenté si le compte le peut
-az ad app permission admin-consent --id "$rag" -o none ||
-  echo "⚠ consentement administrateur refusé : sans effet, l'OBO de rag est pré-autorisé par underwriting (#47)"
 
 echo "⑤ Identité managée attribuée par l'utilisateur (A7) : rattachée aux Container Apps, fédérée à rag"
 UAMI=uami-insurflow-rag
@@ -147,8 +144,6 @@ acces=$(az ad app show --id "$mcp" --query "requiredResourceAccess" -o json |
       {resourceAppId: $uw, resourceAccess: [{id: $us, type: "Scope"}]}]')
 az rest --method PATCH --uri "$GRAPH/applications/$mcp_objet" --headers content-type=application/json \
   --body "{\"requiredResourceAccess\": $acces}" -o none
-az ad app permission admin-consent --id "$mcp" -o none ||
-  echo "⚠ consentement administrateur refusé : sans effet, l'OBO de mcp est pré-autorisé par rag et underwriting (#47)"
 # même identité managée que rag (⑤) : elle prouve aussi l'identité du serveur MCP, sans secret client
 if [ "$(az ad app federated-credential list --id "$mcp" --query "length([?name=='uami-mcp'])" -o tsv)" = 0 ]; then
   az ad app federated-credential create --id "$mcp" -o none --parameters "{

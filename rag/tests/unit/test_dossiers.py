@@ -162,10 +162,7 @@ def test_obo_sans_secret_ni_identite_erreur_dossiers() -> None:
         obo.jeton_obo(_config(rag_client_secret=""), "jeton-utilisateur")
 
 
-def test_obo_refuse_erreur_dossiers(caplog: pytest.LogCaptureFixture) -> None:
-    _Credential.erreur = ClientAuthenticationError("AADSTS65001: consentement manquant")
+def test_obo_refuse_erreur_dossiers() -> None:
+    _Credential.erreur = ClientAuthenticationError("consentement manquant")
     with pytest.raises(ErreurDossiers):
         obo.jeton_obo(_config(), "jeton-utilisateur")
-    # #47 : le message Entra exact est journalisé, jamais le jeton du gestionnaire
-    assert "AADSTS65001: consentement manquant" in caplog.text
-    assert "jeton-utilisateur" not in caplog.text

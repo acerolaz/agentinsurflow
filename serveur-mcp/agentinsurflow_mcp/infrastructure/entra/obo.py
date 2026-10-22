@@ -7,7 +7,6 @@ comme identifiant fédéré. En local seulement : ``MCP_CLIENT_SECRET``.
 
 from __future__ import annotations
 
-import logging
 from typing import Any, Literal
 
 from azure.core.exceptions import AzureError
@@ -20,7 +19,6 @@ from ...domain.models import DOSSIERS_INDISPONIBLES, Appelant, ErreurOutil
 from ..otel.telemetrie import echec, tracer
 
 PORTEE_FEDERATION = "api://AzureADTokenExchange/.default"
-logger = logging.getLogger(__name__)
 
 
 class ConfigObo(BaseSettings):
@@ -52,8 +50,6 @@ def _jeton_obo(cfg: ConfigObo, jeton_utilisateur: str, client_cible: str) -> str
     try:
         return credential.get_token(f"api://{client_cible}/access_as_user").token
     except AzureError as exc:
-        # #47 : code AADSTS et identifiants de corrélation d'Entra ; jamais le jeton
-        logger.warning("jeton On-Behalf-Of refusé par Entra : %s", exc)
         raise ErreurOutil(DOSSIERS_INDISPONIBLES, "Jeton On-Behalf-Of refusé") from exc
 
 

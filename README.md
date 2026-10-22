@@ -37,20 +37,23 @@ Un merge sur `main` relance `lint`, `test` et `gateway` avant `build`. Les evals
 p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané du corpus ou la version du LLM changent
 (voir *Évaluer l'agent*). Le job `evals-pr` (avant merge) est **désactivé jusqu'à U5** : voir le tableau des jobs.
 
-## État au 20/10
+## État au 22/10 (v0.6.0)
 
 | Projet | Langage | Rôle | État |
 |---|---|---|---|
-| [`gateway/`](gateway/README.md) | C# · YARP · .NET 10 | **Seule entrée publique** : routage, jeton Entra + rôle par route, limitation de débit, Swagger unique | ✅ déployée (staging, production) ; domaine personnalisé en production |
+| [`gateway/`](gateway/README.md) | C# · YARP · .NET 10 | **Seule entrée publique** : routage, jeton Entra + rôle par route, limitation de débit, Swagger unique ; échange de jeton vers la Function de calcul (`/api/calcul`) et Foundry (`/api/llm`, tokens mesurés) | ✅ déployée (staging, production), seule dans la Container App principale ; domaine personnalisé en production |
 | [`rag/`](rag/README.md) | Python · hexagonal | Corpus Légifrance (ingestion, dédup, versions), recherche hybride, agent à 3 verrous, attribution Etalab 2.0 | ✅ déployé ; Code des assurances (instantané du 20/10, 119 articles lus, 107 insérés, [preuves](eval/preuves/)) réingéré à chaque déploiement |
-| [`underwriting-admin/`](underwriting-admin/README.md) | C# · Clean Architecture · .NET 10 | Dossiers (vue minimisée, BOLA) et référentiel SQL des traces OpenTelemetry (`/v1/traces`, `/api/traces/{trace_id}`) | ✅ mergé (PR #35, release v0.5.0, epic #5 terminée) ; OBO `rag` → underwriting en Azure en attente du consentement administrateur Entra |
+| [`underwriting-admin/`](underwriting-admin/README.md) | C# · Clean Architecture · .NET 10 | Dossiers (vue minimisée, BOLA) et référentiel SQL des traces OpenTelemetry (`/v1/traces`, `/api/traces/{trace_id}`) | ✅ déployé dans sa Container App (entrée interne) ; écritures brouillon/statut pour le serveur MCP (#66) ; OBO pré-autorisé (#47, vérification en production à faire) |
+| [`serveur-mcp/`](serveur-mcp/README.md) | Python · hexagonal | Outils MCP du cluster d'agents (`search_rag`, `get_contrat`, `evaluer_risque`, `calculer_prime`, `enregistrer_brouillon`, `update_statut_dossier`), matrice `azp` × outil | ✅ déployé dans sa Container App (entrée interne, identité propre), v0.6.0 (#15, #66) |
+| [`fonction-calcul/`](fonction-calcul/README.md) | Python · Azure Functions | Risque (`bareme-2026.10-v1`) et prime (`formule-2026.10-v1`) déterministes ; n'accepte que la gateway | ✅ déployée (Flex Consumption, staging et production), v0.6.0 (#64, #74) |
 | [`e2e/`](e2e/README.md) | Python · pytest | Parcours bout en bout par la gateway (compose ou staging) | ✅ ; job `e2e-staging` bloquant avant la release |
 
 > **Pyramide au 20/10** : ≈ 52 % TU / 46 % TI / 2 % E2E, hors seuils ; le job `pyramide` est **informatif** en CI
 > (décision d'Acerola) jusqu'à une tâche dédiée aux tests unitaires.
 
-> **Production** : **`v0.5.2`** (`bb18876`) au 22/10 ; **`v0.6.0`** à la fusion de `feat/mcp` (#66 : serveur MCP,
-> calcul, canal LLM, une Container App par service). `/health` et les `/health/*` des services servent la même release.
+> **Production** : **`v0.6.0`** (`13874fd`) depuis le 22/10 (#66 : serveur MCP, calcul, canal LLM, une Container App
+> par service) ; `/health` et `/health/{rag,underwriting,mcp}` servent la même release, `/health/calcul` le barème et la
+> formule. Vérifications restantes en production : OBO (#47), mesure des tokens (#71).
 > Evals de staging passées à **81,8 %** (9/11, porte 80 %) : marge d'un cas, deux échecs connus (réponse trop
 > longue sur `reference-exacte-l211-1`, annexe bonus-malus d'A121-1 absente de l'instantané).
 
@@ -290,14 +293,17 @@ ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le L
 
 | Ressource | Nom | État |
 |---|---|---|
-| Groupe de ressources | `svespuceRG` (`swedencentral`) | ✅ |
-| Registre d'images | `acerolazacr` : `agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting` (tag = SHA), `agentinsurflow-postgres:1` | ✅ |
-| Environnement Container Apps | `cae-insurflow` | ✅ |
-| Container App staging | `insurflow-staging` (principale ; rag et MCP ont les leurs) → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ reçoit chaque merge |
-| Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.5.2` ; `v0.6.0` à la fusion de #66 |
-| Modèles | `Kimi-K2.5` et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971` | ✅ |
-| Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag` et `agentinsurflow-underwriting` | ✅ |
-| Rôles (Contributor, AcrPush, AcrPull, Cognitive Services User) | — | ✅ attribués |
+| Groupe de ressources | `svespuceRG` (créé en `francecentral` ; ressources en `swedencentral`) | ✅ |
+| Registre d'images | `acerolazacr` : `agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`, `agentinsurflow-mcp` (tag = SHA), `agentinsurflow-postgres:1` | ✅ |
+| Environnement Container Apps | `cae-insurflow` (profils de charge, sans VNet : l'entrée TCP interne de PostgreSQL n'en exige pas) | ✅ |
+| Container App staging | `insurflow-staging` (principale = gateway seule) → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ reçoit chaque merge |
+| Container Apps par service | `insurflow-{uw,mcp,rag,pg}-{staging,production}` : entrée interne (PostgreSQL en TCP 5432, base éphémère) | ✅ |
+| Function de calcul | `acerolaz-calcul-{staging,production}` (Flex Consumption, Python 3.12), stockage `acerolazcalcul` ; Easy Auth : la gateway seule | ✅ |
+| Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.6.0` |
+| Modèles | `Kimi-K2.5` et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971`, **sans clé** (`disableLocalAuth`) : appelée par la gateway seule (`/api/llm`) | ✅ |
+| Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag`, `-underwriting`, `-mcp`, `-calcul`, `-llm` ; `agentinsurflow-gateway-local` (secret dans le `.env` local seulement) | ✅ |
+| Identités managées | gateway `uami-insurflow-rag` (nom historique), rag `uami-insurflow-rag-app`, serveur MCP `uami-insurflow-mcp` ; underwriting-admin sans identité Azure | ✅ |
+| Rôles | CI : Contributor, AcrPush, AcrPull ; « Cognitive Services OpenAI User » sur Foundry : gateway et `gateway-local` **seulement** (`make llm` retire les autres) | ✅ attribués |
 
 ## Rollback
 

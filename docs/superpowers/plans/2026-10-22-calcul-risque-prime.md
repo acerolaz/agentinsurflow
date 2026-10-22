@@ -56,39 +56,100 @@
 def test_seed_1_accepte_score_0():
     r = evaluer(faits())
     assert (r.version_bareme, r.classe, r.decision, r.score, r.regles) == (
-        "bareme-2026.10-v1", "acceptable", "ACCEPTE", 0.0, ())
+        "bareme-2026.10-v1",
+        "acceptable",
+        "ACCEPTE",
+        0.0,
+        (),
+    )
+
 
 def test_seed_4_refuse_par_la_suspension_seule():  # CRM 1,25 et 2 responsables ne déclenchent pas
-    r = evaluer(faits(suspensions=1, crm=Decimal("1.25"), nb_sinistres_responsables_trois_ans=2,
-                      nb_sinistres_trois_ans=2, anciennete_permis_mois=70))
+    r = evaluer(
+        faits(
+            suspensions=1,
+            crm=Decimal("1.25"),
+            nb_sinistres_responsables_trois_ans=2,
+            nb_sinistres_trois_ans=2,
+            anciennete_permis_mois=70,
+        )
+    )
     assert [x.regle_id for x in r.regles] == ["R01_SUSPENSION"]
     assert (r.classe, r.decision, r.score) == ("refus", "REFUSE", 1.0)
+
 
 def test_seed_6_refuse_par_deux_resiliations():
     assert [x.regle_id for x in evaluer(faits(resiliations=2)).regles] == ["R02_RESILIATIONS"]
 
-def test_une_resiliation_ne_suffit_pas():  # seed 2
-    assert evaluer(faits(resiliations=1, nb_sinistres_trois_ans=1, nb_sinistres_responsables_trois_ans=1)).decision == "ACCEPTE"
 
-@pytest.mark.parametrize("surcharge, regle, declenchee", [
-    ({"crm": Decimal("1.25")}, "R03_CRM", False),
-    ({"crm": Decimal("1.26")}, "R03_CRM", True),
-    ({"nb_sinistres_responsables_trois_ans": 2, "nb_sinistres_trois_ans": 2}, "R04_SINISTRES_RESPONSABLES", False),
-    ({"nb_sinistres_responsables_trois_ans": 3, "nb_sinistres_trois_ans": 3}, "R04_SINISTRES_RESPONSABLES", True),
-    ({"nb_sinistres_trois_ans": 4}, "R05_SINISTRES_TOTAL", False),
-    ({"nb_sinistres_trois_ans": 5}, "R05_SINISTRES_TOTAL", True),
-    ({"anciennete_permis_mois": 35, "puissance_fiscale_cv": 7}, "R06_JEUNE_PERMIS_PUISSANCE", False),
-    ({"anciennete_permis_mois": 35, "puissance_fiscale_cv": 8}, "R06_JEUNE_PERMIS_PUISSANCE", True),
-    ({"anciennete_permis_mois": 36, "puissance_fiscale_cv": 8}, "R06_JEUNE_PERMIS_PUISSANCE", False),
-])
+def test_une_resiliation_ne_suffit_pas():  # seed 2
+    assert (
+        evaluer(
+            faits(resiliations=1, nb_sinistres_trois_ans=1, nb_sinistres_responsables_trois_ans=1)
+        ).decision
+        == "ACCEPTE"
+    )
+
+
+@pytest.mark.parametrize(
+    "surcharge, regle, declenchee",
+    [
+        ({"crm": Decimal("1.25")}, "R03_CRM", False),
+        ({"crm": Decimal("1.26")}, "R03_CRM", True),
+        (
+            {"nb_sinistres_responsables_trois_ans": 2, "nb_sinistres_trois_ans": 2},
+            "R04_SINISTRES_RESPONSABLES",
+            False,
+        ),
+        (
+            {"nb_sinistres_responsables_trois_ans": 3, "nb_sinistres_trois_ans": 3},
+            "R04_SINISTRES_RESPONSABLES",
+            True,
+        ),
+        ({"nb_sinistres_trois_ans": 4}, "R05_SINISTRES_TOTAL", False),
+        ({"nb_sinistres_trois_ans": 5}, "R05_SINISTRES_TOTAL", True),
+        (
+            {"anciennete_permis_mois": 35, "puissance_fiscale_cv": 7},
+            "R06_JEUNE_PERMIS_PUISSANCE",
+            False,
+        ),
+        (
+            {"anciennete_permis_mois": 35, "puissance_fiscale_cv": 8},
+            "R06_JEUNE_PERMIS_PUISSANCE",
+            True,
+        ),
+        (
+            {"anciennete_permis_mois": 36, "puissance_fiscale_cv": 8},
+            "R06_JEUNE_PERMIS_PUISSANCE",
+            False,
+        ),
+    ],
+)
 def test_bornes(surcharge, regle, declenchee): ...  # regle in ids == declenchee
 
+
 def test_toutes_les_regles_declenchees_dans_l_ordre():
-    r = evaluer(faits(suspensions=1, resiliations=2, crm=Decimal("1.5"), nb_sinistres_responsables_trois_ans=3,
-                      nb_sinistres_trois_ans=5, anciennete_permis_mois=10, puissance_fiscale_cv=9))
-    assert [x.regle_id for x in r.regles] == ["R01_SUSPENSION", "R02_RESILIATIONS", "R03_CRM",
-        "R04_SINISTRES_RESPONSABLES", "R05_SINISTRES_TOTAL", "R06_JEUNE_PERMIS_PUISSANCE"]
+    r = evaluer(
+        faits(
+            suspensions=1,
+            resiliations=2,
+            crm=Decimal("1.5"),
+            nb_sinistres_responsables_trois_ans=3,
+            nb_sinistres_trois_ans=5,
+            anciennete_permis_mois=10,
+            puissance_fiscale_cv=9,
+        )
+    )
+    assert [x.regle_id for x in r.regles] == [
+        "R01_SUSPENSION",
+        "R02_RESILIATIONS",
+        "R03_CRM",
+        "R04_SINISTRES_RESPONSABLES",
+        "R05_SINISTRES_TOTAL",
+        "R06_JEUNE_PERMIS_PUISSANCE",
+    ]
     assert r.score == 6.0
+
 
 @pytest.mark.parametrize("champ", [f.name for f in dataclasses.fields(FaitsRisque)])
 def test_donnee_absente_leve_donnee_hors_bareme(champ):
@@ -96,8 +157,12 @@ def test_donnee_absente_leve_donnee_hors_bareme(champ):
         evaluer(faits(**{champ: None}))
     assert exc.value.champ == champ
 
+
 def test_motif_sans_valeur_du_dossier():
-    assert evaluer(faits(crm=Decimal("1.37"))).regles[0].motif == "Le coefficient bonus-malus dépasse 1,25."
+    assert (
+        evaluer(faits(crm=Decimal("1.37"))).regles[0].motif
+        == "Le coefficient bonus-malus dépasse 1,25."
+    )
 ```
 
 - [ ] **Step 3: Vérifier l'échec** — `uv run pytest fonction-calcul/tests/unit/test_bareme.py --no-cov -q` → erreurs d'import.
@@ -131,21 +196,55 @@ def test_motif_sans_valeur_du_dossier():
 ```python
 def test_seed_1():
     r = calculer(faits())
-    assert (r.version_formule, r.prime_ht, r.montant_taxes, r.prime_ttc_annuelle, r.prime_mensuelle) == (
-        "formule-2026.10-v1", Decimal("694.69"), Decimal("125.04"), Decimal("819.73"), Decimal("68.31"))
-    assert r.coefficients == {"prime_base": Decimal("650"), "k_permis": Decimal("1.00"), "k_zone": Decimal("1.25"),
-        "k_vehicule": Decimal("1.00"), "k_usage": Decimal("0.95"), "crm": Decimal("0.90"), "taux_taxe": Decimal("0.18")}
+    assert (
+        r.version_formule,
+        r.prime_ht,
+        r.montant_taxes,
+        r.prime_ttc_annuelle,
+        r.prime_mensuelle,
+    ) == (
+        "formule-2026.10-v1",
+        Decimal("694.69"),
+        Decimal("125.04"),
+        Decimal("819.73"),
+        Decimal("68.31"),
+    )
+    assert r.coefficients == {
+        "prime_base": Decimal("650"),
+        "k_permis": Decimal("1.00"),
+        "k_zone": Decimal("1.25"),
+        "k_vehicule": Decimal("1.00"),
+        "k_usage": Decimal("0.95"),
+        "crm": Decimal("0.90"),
+        "taux_taxe": Decimal("0.18"),
+    }
+
 
 def test_exemple_des_sources_corrige():
-    r = calculer(faits(anciennete_permis_mois=18, puissance_fiscale_cv=6, type_usage="prive_trajet", crm=Decimal("0.85")))
+    r = calculer(
+        faits(
+            anciennete_permis_mois=18,
+            puissance_fiscale_cv=6,
+            type_usage="prive_trajet",
+            crm=Decimal("0.85"),
+        )
+    )
     assert (r.prime_ht, r.montant_taxes, r.prime_ttc_annuelle, r.prime_mensuelle) == (
-        Decimal("1035.94"), Decimal("186.47"), Decimal("1222.41"), Decimal("101.87"))
+        Decimal("1035.94"),
+        Decimal("186.47"),
+        Decimal("1222.41"),
+        Decimal("101.87"),
+    )
+
 
 def test_taxes_plus_ht_egale_ttc(): ...  # sur une dizaine de combinaisons : prime_ht + montant_taxes == prime_ttc_annuelle
 
+
 def test_demi_centime_arrondi_vers_le_haut():
     # tiers 250 × k_permis 1,00 × zone B 1,00 × 5 CV 1,00 × prive 0,95 × crm 0,51 = 121,125 → 121,13
-    assert calculer(faits(formule="tiers", departement="69", crm=Decimal("0.51"))).prime_ht == Decimal("121.13")
+    assert calculer(
+        faits(formule="tiers", departement="69", crm=Decimal("0.51"))
+    ).prime_ht == Decimal("121.13")
 ```
 Plus des tests paramétrés : chaque `prime_base` (`tiers` 250, `tiers_etendu` 400, `tous_risques` 650) ; chaque palier `k_permis` (11→2,00 ; 12→1,50 ; 23→1,50 ; 24→1,25 ; 35→1,25 ; 36→1,00) ; `k_zone` (`75`,`92`,`93`,`94`,`13`→1,25 ; `15`,`48`,`23`→0,90 ; `69`,`2A`,`2B`,`974`,`971`→1,00) ; `k_vehicule` (4→0,90 ; 5→1,00 ; 7→1,00 ; 8→1,30 ; 10→1,30 ; 11→1,60) ; `k_usage` (`prive` 0,95, `prive_trajet` 1,00, `professionnel` 1,35) ; `DonneeHorsBareme` avec le bon `champ` pour `formule="tiers_simple"`, `type_usage="PROMENADE"`, `departement` ∈ {`"20"`, `"96"`, `"977"`, `"00"`, `""`}, et chaque champ à `None`.
 
@@ -184,7 +283,9 @@ prime_mensuelle = _centime(ttc / 12)
 - [ ] **Step 1: Écrire les tests qui échouent** — appel direct des fonctions du modèle v2 :
 
 ```python
-def appeler(nom: str, corps: object = None, methode: str = "POST", brut: bytes | None = None) -> func.HttpResponse:
+def appeler(
+    nom: str, corps: object = None, methode: str = "POST", brut: bytes | None = None
+) -> func.HttpResponse:
     fn = next(f for f in app.get_functions() if f.get_function_name() == nom)
     body = brut if brut is not None else (b"" if corps is None else json.dumps(corps).encode())
     return fn.get_user_function()(func.HttpRequest(methode, f"/api/{nom}", body=body))

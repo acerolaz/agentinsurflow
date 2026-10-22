@@ -43,3 +43,25 @@ class DonneeHorsBareme(Exception):
     def __init__(self, champ: str) -> None:
         super().__init__(champ)
         self.champ = champ  # le nom du champ, jamais sa valeur
+
+
+@dataclass(frozen=True)
+class FaitsPrime:
+    """Les faits utiles à la formule de prime ; ``None`` = donnée absente."""
+
+    formule: str | None
+    anciennete_permis_mois: int | None
+    departement: str | None
+    puissance_fiscale_cv: int | None
+    type_usage: str | None
+    crm: Decimal | None
+
+
+@dataclass(frozen=True)
+class ResultatPrime:
+    version_formule: str
+    prime_ht: Decimal
+    montant_taxes: Decimal
+    prime_ttc_annuelle: Decimal
+    prime_mensuelle: Decimal
+    coefficients: dict[str, Decimal]

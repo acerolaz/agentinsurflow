@@ -11,13 +11,13 @@ from azure.core.exceptions import ClientAuthenticationError
 from openai import OpenAI
 
 from agentinsurflow_rag.domain.ports import ErreurLLM
-from agentinsurflow_rag.infrastructure.azure_openai import llm as module_llm
 from agentinsurflow_rag.infrastructure.azure_openai.config import ConfigLLM
 from agentinsurflow_rag.infrastructure.azure_openai.llm import (
     AzureLLM,
     client_openai,
     fabrique_llm,
 )
+from agentinsurflow_rag.infrastructure.entra import application as module_llm
 
 ENDPOINT = "http://gateway:8000/api/llm"
 

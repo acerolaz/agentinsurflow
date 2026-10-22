@@ -11,17 +11,12 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from azure.core.exceptions import ClientAuthenticationError
-from azure.identity import (
-    ClientAssertionCredential,
-    ClientSecretCredential,
-    ManagedIdentityCredential,
-    get_bearer_token_provider,
-)
+from azure.identity import get_bearer_token_provider
 from openai import OpenAI, OpenAIError
 
 from ...domain.corpus import hash_contenu
 from ...domain.ports import ClientLLM, ErreurLLM
-from ..entra.obo import PORTEE_FEDERATION
+from ..entra.application import credential_application
 from ..otel.telemetrie import tracer
 from .config import ConfigLLM
 
@@ -30,18 +25,13 @@ def _fournisseur_jeton(cfg: ConfigLLM) -> Callable[[], str]:
     """Jeton d'application de rag pour l'audience du LLM (rafraîchi par le SDK azure-identity)."""
     if not cfg.llm_audience:
         raise ErreurLLM("LLM_AUDIENCE absente : audience du jeton d'application pour le LLM")
-    secret = cfg.rag_client_secret.get_secret_value()
-    credential: ClientSecretCredential | ClientAssertionCredential
-    if secret:
-        credential = ClientSecretCredential(cfg.azure_tenant_id, cfg.rag_api_client_id, secret)
-    elif cfg.azure_uami_client_id:
-        identite = ManagedIdentityCredential(client_id=cfg.azure_uami_client_id)
-        credential = ClientAssertionCredential(
-            cfg.azure_tenant_id,
-            cfg.rag_api_client_id,
-            lambda: identite.get_token(PORTEE_FEDERATION).token,
-        )
-    else:
+    credential = credential_application(
+        cfg.azure_tenant_id,
+        cfg.rag_api_client_id,
+        cfg.rag_client_secret.get_secret_value(),
+        cfg.azure_uami_client_id,
+    )
+    if credential is None:
         raise ErreurLLM("ni RAG_CLIENT_SECRET (local) ni AZURE_UAMI_CLIENT_ID (Azure)")
     return get_bearer_token_provider(credential, f"{cfg.llm_audience}/.default")
 

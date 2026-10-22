@@ -177,6 +177,7 @@ public sealed class Backends : IDisposable
     public WireMockServer Rag { get; } = Demarrer();
     public WireMockServer Underwriting { get; } = Demarrer();
     public WireMockServer Mcp { get; } = Demarrer();
+    public WireMockServer Calcul { get; } = Demarrer();
 
     /// <summary>Une gateway devant ces backends, avec Entra de test et des réglages propres au test.</summary>
     public WebApplicationFactory<Program> Gateway(params (string Cle, string Valeur)[] reglages)
@@ -184,11 +185,13 @@ public sealed class Backends : IDisposable
         Rag.ResetLogEntries();
         Underwriting.ResetLogEntries();
         Mcp.ResetLogEntries();
+        Calcul.ResetLogEntries();
         return new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseSetting("ReverseProxy:Clusters:rag:Destinations:d1:Address", Rag.Url)
                 .UseSetting("ReverseProxy:Clusters:underwriting:Destinations:d1:Address", Underwriting.Url)
                 .UseSetting("ReverseProxy:Clusters:mcp:Destinations:d1:Address", Mcp.Url)
+                .UseSetting("ReverseProxy:Clusters:calcul:Destinations:d1:Address", Calcul.Url)
                 .AvecEntraDeTest();
             foreach (var (cle, valeur) in reglages)
             {
@@ -209,5 +212,6 @@ public sealed class Backends : IDisposable
         Rag.Stop();
         Underwriting.Stop();
         Mcp.Stop();
+        Calcul.Stop();
     }
 }

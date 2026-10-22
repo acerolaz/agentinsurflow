@@ -100,6 +100,10 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 - **Préfixe public transmis** : pour `GET /rag/openapi.json` et `GET /underwriting/openapi/v1.json`, la gateway retire le préfixe et l'envoie dans `X-Forwarded-Prefix`. Un `X-Forwarded-Prefix` fourni par le client est ignoré. Les documents des services ne déclarent **pas** de `servers` : le « Try it out » vise la gateway elle-même.
 - **Connexion Entra** (« Authorize ») en code d'autorisation + **PKCE**, avec un seul client public : `SWAGGER_CLIENT_ID` (l'application `agentinsurflow-rag`, qui a déjà la permission vers `underwriting` pour l'On-Behalf-Of).
 
+## Route `/api/calcul/*` (Function de calcul)
+
+`POST /api/calcul/{**reste}` est réécrit en `/api/{**reste}` vers le cluster `calcul` (ex. `/api/calcul/evaluer` donne `/api/evaluer`) ; l'en-tête `Authorization` est relayé tel quel. Politique `calcul-mcp` : jeton d'application (celui du serveur MCP) avec le rôle `Calcul` **et** une audience `calcul` (`Entra__Audiences__calcul__0`). Débit : limite nommée `calcul` (`RateLimit__Calcul__PermitLimit`, 60 requêtes/min par partition), en plus de la limite globale. `GET /health/calcul` est anonyme, sans limite de débit, et vise `/api/sante` de la Function.
+
 ## Configuration
 
 | Variable | Défaut | Rôle |
@@ -111,8 +115,10 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 | `Entra__Audiences__underwriting__0` | **obligatoire** | Audiences d'`underwriting-admin`, en liste « a, b » (`UNDERWRITING_API_AUDIENCES`) |
 | `ReverseProxy__Clusters__mcp__Destinations__d1__Address` | `http://localhost:8003` | Adresse de `serveur-mcp` (compose : `http://serveur-mcp:8003`) |
 | `Entra__Audiences__mcp__0` | `api://agentinsurflow-mcp` | Audiences de `serveur-mcp`, en liste « a, b » |
+| `ReverseProxy__Clusters__calcul__Destinations__d1__Address` | `http://localhost:7071` | Adresse de la Function de calcul (compose : `http://calcul:80` ; Azure : `${CALCUL_URL}`) |
+| `Entra__Audiences__calcul__0` | `api://agentinsurflow-calcul` | Audiences de la Function de calcul, en liste « a, b » (compose : `CALCUL_API_AUDIENCES` ; Azure : `${CALCUL_AUDIENCE}`) |
 | `Proxy__EnvoyDevant` | `false` | `true` en Azure : IP réelle reprise de l'envoy |
-| `RateLimit__Global__PermitLimit`, `RateLimit__Reponses__PermitLimit`, `RateLimit__Mcp__PermitLimit`, `RateLimit__FenetreSecondes` | `120`, `10`, `60`, `60` | Limitation de débit |
+| `RateLimit__Global__PermitLimit`, `RateLimit__Reponses__PermitLimit`, `RateLimit__Mcp__PermitLimit`, `RateLimit__Calcul__PermitLimit`, `RateLimit__FenetreSecondes` | `120`, `10`, `60`, `60`, `60` | Limitation de débit |
 | `SWAGGER_CLIENT_ID` | vide | Client Entra public de la page Swagger |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | `http://localhost:8002/v1/traces` | Récepteur OTLP des traces |
 | `APP_VERSION`, `APP_RELEASE` | `dev` | Versions servies par `/health` (gravées au build) |

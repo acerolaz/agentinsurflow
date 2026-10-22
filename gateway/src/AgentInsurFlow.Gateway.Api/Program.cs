@@ -37,6 +37,7 @@ string[] Audiences(string service) =>
 var audiencesRag = Audiences("rag");
 var audiencesUnderwriting = Audiences("underwriting");
 var audiencesMcp = Audiences("mcp");
+var audiencesCalcul = Audiences("calcul");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -45,7 +46,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         o.MapInboundClaims = false;
         o.TokenValidationParameters.ValidIssuers =
             [$"https://login.microsoftonline.com/{tenant}/v2.0", $"https://sts.windows.net/{tenant}/"];
-        o.TokenValidationParameters.ValidAudiences = [.. audiencesRag, .. audiencesUnderwriting, .. audiencesMcp];
+        o.TokenValidationParameters.ValidAudiences = [.. audiencesRag, .. audiencesUnderwriting, .. audiencesMcp, .. audiencesCalcul];
         o.TokenValidationParameters.RoleClaimType = "roles";
         o.TokenValidationParameters.NameClaimType = "oid";
         o.Events = new JwtBearerEvents
@@ -67,6 +68,7 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("rag-ingestion", p => p.RequireRole("Ingestion").RequireClaim("aud", audiencesRag))
     .AddPolicy("underwriting-gestionnaire", p => p.RequireRole("Gestionnaire").RequireClaim("aud", audiencesUnderwriting))
     .AddPolicy("mcp-gestionnaire", p => p.RequireRole("Gestionnaire").RequireClaim("aud", audiencesMcp))
+    .AddPolicy("calcul-mcp", p => p.RequireRole("Calcul").RequireClaim("aud", audiencesCalcul)) // jeton d'application du serveur MCP
     .AddPolicy("underwriting-telemetrie", p => p.RequireRole("Telemetrie").RequireClaim("aud", audiencesUnderwriting))
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
@@ -89,6 +91,7 @@ int Limite(string nom, int defaut) => builder.Configuration.GetValue($"RateLimit
 var limiteGlobale = Limite("Global", 120);
 var limiteReponses = Limite("Reponses", 10);
 var limiteMcp = Limite("Mcp", 60);
+var limiteCalcul = Limite("Calcul", 60);
 builder.Services.AddRateLimiter(o =>
 {
     o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
@@ -97,6 +100,8 @@ builder.Services.AddRateLimiter(o =>
         RateLimitPartition.GetFixedWindowLimiter(Partition(ctx), _ => FenetreFixe(limiteReponses, fenetre)));
     o.AddPolicy("mcp", ctx =>
         RateLimitPartition.GetFixedWindowLimiter(Partition(ctx), _ => FenetreFixe(limiteMcp, fenetre)));
+    o.AddPolicy("calcul", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(Partition(ctx), _ => FenetreFixe(limiteCalcul, fenetre)));
     o.OnRejected = (ctx, _) =>
     {
         if (ctx.Lease.TryGetMetadata(MetadataName.RetryAfter, out var attente))

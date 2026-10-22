@@ -20,6 +20,7 @@ internal static class JetonsDeTest
     public const string AudienceRag = "api://agentinsurflow-rag";
     public const string AudienceUnderwriting = "api://agentinsurflow-underwriting";
     public const string AudienceMcp = "api://agentinsurflow-mcp";
+    public const string AudienceCalcul = "api://agentinsurflow-calcul";
     public static readonly string[] TousLesRoles = ["Gestionnaire", "Ingestion", "Telemetrie"];
 
     public static readonly string EmetteurV2 = $"https://login.microsoftonline.com/{Tenant}/v2.0";
@@ -54,6 +55,7 @@ internal static class JetonsDeTest
         .UseSetting("Entra:Audiences:rag:0", AudienceRag)
         .UseSetting("Entra:Audiences:underwriting:0", AudienceUnderwriting)
         .UseSetting("Entra:Audiences:mcp:0", AudienceMcp)
+        .UseSetting("Entra:Audiences:calcul:0", AudienceCalcul)
         .ConfigureTestServices(s => s.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
         {
             var metadonnees = new OpenIdConnectConfiguration { Issuer = EmetteurV2 };

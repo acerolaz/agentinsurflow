@@ -47,7 +47,7 @@ public sealed class IpClientTests(Backends backends) : IClassFixture<Backends>
 
         await Envoyer(client, "/rag/openapi.json", "10.0.0.1, 203.0.113.42");
 
-        Assert.Contains("203.0.113.42", adresses);
+        await Attente.Unique(adresses, a => a == "203.0.113.42");
     }
 
     [Fact]

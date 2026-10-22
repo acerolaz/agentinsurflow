@@ -225,7 +225,7 @@ public sealed class LlmTests(Backends backends) : IClassFixture<Backends>
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
         var recu = await reponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         // listener global (tests en parallèle) : le span de CET appel, retrouvé par son appelant, unique par test
-        var span = Assert.Single(spans, a => a.GetTagItem("appelant.azp") as string == azpAttendu);
+        var span = await Attente.Unique(spans, a => a.GetTagItem("appelant.azp") as string == azpAttendu);
         return (recu, span.TagObjects.ToDictionary(t => t.Key, t => t.Value));
     }
 
@@ -331,7 +331,7 @@ public sealed class LlmTests(Backends backends) : IClassFixture<Backends>
 
         Assert.Equal(string.Empty, Assert.Single(recus));
         Assert.Equal(octets, await reponse.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
-        var span = Assert.Single(spans, a => a.GetTagItem("appelant.azp") as string == "app-mesure-gzip");
+        var span = await Attente.Unique(spans, a => a.GetTagItem("appelant.azp") as string == "app-mesure-gzip");
         Assert.Equal("non_disponible", span.GetTagItem("gen_ai.usage.mesure"));
     }
 

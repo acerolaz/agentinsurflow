@@ -19,9 +19,13 @@ def test_defaut_du_code_vise_la_gateway():
 
 
 def test_azure_vise_la_gateway():
-    modele = yaml.safe_load((RACINE / "infra/containerapp.yaml").read_text())
+    # #70 : rag a sa Container App et joint la gateway par son FQDN
+    modele = yaml.safe_load((RACINE / "infra/containerapp-rag.yaml").read_text())
     rag = next(c for c in modele["properties"]["template"]["containers"] if c["name"] == "rag")
-    assert _env(rag, "UNDERWRITING_URL") == "http://localhost:8000"
+    assert _env(rag, "UNDERWRITING_URL") == "${GATEWAY_URL}"
+    assert _env(rag, "AZURE_OPENAI_ENDPOINT") == "${GATEWAY_URL}/api/llm"
+    principale = yaml.safe_load((RACINE / "infra/containerapp.yaml").read_text())
+    assert all(c["name"] != "rag" for c in principale["properties"]["template"]["containers"])
 
 
 def test_compose_vise_la_gateway():

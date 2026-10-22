@@ -7,7 +7,7 @@
 set -euo pipefail
 
 for v in AZURE_SUBSCRIPTION_ID AZURE_LOCATION AZURE_RESOURCE_GROUP ACR_NAME CONTAINERAPPS_ENV \
-  APP_STAGING APP_PRODUCTION MCP_APP_STAGING MCP_APP_PRODUCTION GITHUB_REPO; do
+  APP_STAGING APP_PRODUCTION MCP_APP_STAGING MCP_APP_PRODUCTION RAG_APP_STAGING RAG_APP_PRODUCTION GITHUB_REPO; do
   [ -n "${!v:-}" ] || { echo "✘ $v manquant dans .env"; exit 1; }
 done
 RG=$AZURE_RESOURCE_GROUP
@@ -29,7 +29,7 @@ existe az acr show -n "$ACR_NAME" || az acr create -n "$ACR_NAME" -g "$RG" --sku
 existe az containerapp env show -n "$CONTAINERAPPS_ENV" -g "$RG" ||
   az containerapp env create -n "$CONTAINERAPPS_ENV" -g "$RG" -l "$AZURE_LOCATION" -o none
 
-echo "② Image d'amorçage + deux Container Apps (staging, production)"
+echo "② Image d'amorçage + Container Apps principales, serveur MCP et rag (staging, production)"
 amorce="$ACR_NAME.azurecr.io/agentinsurflow:amorce"
 az acr login -n "$ACR_NAME"
 docker build --platform linux/amd64 -f rag/Dockerfile --build-arg APP_VERSION=amorce -t "$amorce" .
@@ -48,6 +48,14 @@ for app in "$MCP_APP_STAGING" "$MCP_APP_PRODUCTION"; do
     az containerapp create -n "$app" -g "$RG" --environment "$CONTAINERAPPS_ENV" \
       --image "$amorce" --registry-server "$ACR_NAME.azurecr.io" --registry-identity system \
       --ingress internal --target-port 8003 --min-replicas 0 --max-replicas 1 -o none
+done
+# rag (#70) : sa propre Container App, entrée INTERNE (port 8001), identité managée propre (infra/entra.sh).
+# Il joint la base annexe par le port TCP interne 5432 de la principale (infra/containerapp.yaml).
+for app in "$RAG_APP_STAGING" "$RAG_APP_PRODUCTION"; do
+  existe az containerapp show -n "$app" -g "$RG" ||
+    az containerapp create -n "$app" -g "$RG" --environment "$CONTAINERAPPS_ENV" \
+      --image "$amorce" --registry-server "$ACR_NAME.azurecr.io" --registry-identity system \
+      --ingress internal --target-port 8001 --min-replicas 0 --max-replicas 1 -o none
 done
 
 echo "③ Identité de la CI : application Entra + fédération OIDC (aucun secret)"
@@ -82,7 +90,9 @@ cat <<FIN
                       ACR_NAME=$ACR_NAME
   Env. staging        CONTAINER_APP_NAME=$APP_STAGING
                       MCP_APP_NAME=$MCP_APP_STAGING
+                      RAG_APP_NAME=$RAG_APP_STAGING
   Env. production     CONTAINER_APP_NAME=$APP_PRODUCTION
                       MCP_APP_NAME=$MCP_APP_PRODUCTION
-  (le FQDN interne du serveur MCP est lu par deploy.yml : rien à reporter)
+                      RAG_APP_NAME=$RAG_APP_PRODUCTION
+  (les FQDN internes du serveur MCP et de rag sont lus par deploy.yml : rien à reporter)
 FIN

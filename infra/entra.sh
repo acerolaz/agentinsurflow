@@ -7,10 +7,14 @@
 # #47 : chaque API pré-autorise ses clients OBO (preAuthorizedApplications) : aucun consentement
 # administrateur, qui vaudrait pour tous les utilisateurs du tenant, n'est nécessaire.
 # ⑥ (#15, T9 #64) : serveur MCP agentinsurflow-mcp, dans sa propre Container App, identité managée propre.
-# Les inscriptions des agents (azp) relèvent de #7. Prérequis : `make infra` (Container Apps MCP).
+# ⑦ (#70) : rag dans sa propre Container App, identité managée propre uami-insurflow-rag-app (fédérée sur agentinsurflow-rag,
+# rôle Telemetrie). L'identité partagée uami-insurflow-rag ne reste qu'à la Container App principale (gateway) : son nom
+# est gardé (la Function de calcul et le rôle Foundry y sont rattachés) ; la renommer est une décision d'Acerola.
+# Le rôle LLM de rag et l'accès Foundry relèvent de infra/llm.sh. Les inscriptions des agents (azp) relèvent de #7.
+# Prérequis : `make infra` (Container Apps MCP et rag).
 set -euo pipefail
 
-for v in AZURE_RESOURCE_GROUP APP_STAGING APP_PRODUCTION MCP_APP_STAGING MCP_APP_PRODUCTION AZURE_CLIENT_ID; do
+for v in AZURE_RESOURCE_GROUP APP_STAGING APP_PRODUCTION MCP_APP_STAGING MCP_APP_PRODUCTION RAG_APP_STAGING RAG_APP_PRODUCTION AZURE_CLIENT_ID; do
   [ -n "${!v:-}" ] || { echo "✘ $v manquant dans .env"; exit 1; }
 done
 GRAPH=https://graph.microsoft.com/v1.0
@@ -114,23 +118,17 @@ acces=$(az ad app show --id "$rag" --query "requiredResourceAccess" -o json |
 az rest --method PATCH --uri "$GRAPH/applications/$rag_objet" --headers content-type=application/json \
   --body "{\"requiredResourceAccess\": $acces}" -o none
 
-echo "⑤ Identité managée attribuée par l'utilisateur (A7) : rattachée aux Container Apps principales (rag, gateway), fédérée à rag"
+echo "⑤ Identité managée attribuée par l'utilisateur (A7) : rattachée aux Container Apps principales (gateway, underwriting-admin)"
 UAMI=${UAMI:-uami-insurflow-rag} # même défaut dans infra/calcul.sh (identité de la gateway)
 az identity show -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" -o none 2>/dev/null ||
   az identity create -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" -o none
 uami_id=$(az identity show -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" --query id -o tsv)
 uami_client=$(az identity show -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" --query clientId -o tsv)
-uami_principal=$(az identity show -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" --query principalId -o tsv)
 for app in "$APP_STAGING" "$APP_PRODUCTION"; do
   # `assign` ajoute l'identité sans toucher à l'identité système (AcrPull) ; sans effet si déjà posée
   az containerapp identity assign -n "$app" -g "$AZURE_RESOURCE_GROUP" --user-assigned "$uami_id" -o none
 done
-# Identifiant fédéré : l'identité managée prouve l'identité de agentinsurflow-rag, sans secret client
-if [ "$(az ad app federated-credential list --id "$rag" --query "length([?name=='uami-rag'])" -o tsv)" = 0 ]; then
-  az ad app federated-credential create --id "$rag" -o none --parameters "{
-    \"name\": \"uami-rag\", \"issuer\": \"https://login.microsoftonline.com/$(az account show --query tenantId -o tsv)/v2.0\",
-    \"subject\": \"$uami_principal\", \"audiences\": [\"api://AzureADTokenExchange\"]}"
-fi
+# (la fédération sur agentinsurflow-rag n'est plus ici : rag a son identité propre, ⑦)
 
 echo "⑥ Serveur MCP agentinsurflow-mcp (inscrit en ②) : rôles, permissions déléguées mcp → rag et underwriting, identité managée propre"
 attribuer "$mcp" "$MCP_GESTIONNAIRE" "$moi" "toi → Gestionnaire (mcp)"
@@ -168,9 +166,31 @@ if [ "$sujet_mcp" != "$uami_mcp_principal" ]; then
     \"subject\": \"$uami_mcp_principal\", \"audiences\": [\"api://AzureADTokenExchange\"]}"
 fi
 
+echo "⑦ rag (sa Container App) : identité managée propre fédérée sur agentinsurflow-rag, rôle Telemetrie"
+UAMI_RAG=uami-insurflow-rag-app
+az identity show -n "$UAMI_RAG" -g "$AZURE_RESOURCE_GROUP" -o none 2>/dev/null ||
+  az identity create -n "$UAMI_RAG" -g "$AZURE_RESOURCE_GROUP" -o none
+uami_rag_id=$(az identity show -n "$UAMI_RAG" -g "$AZURE_RESOURCE_GROUP" --query id -o tsv)
+uami_rag_client=$(az identity show -n "$UAMI_RAG" -g "$AZURE_RESOURCE_GROUP" --query clientId -o tsv)
+uami_rag_principal=$(az identity show -n "$UAMI_RAG" -g "$AZURE_RESOURCE_GROUP" --query principalId -o tsv)
+for app in "$RAG_APP_STAGING" "$RAG_APP_PRODUCTION"; do
+  az containerapp identity assign -n "$app" -g "$AZURE_RESOURCE_GROUP" --user-assigned "$uami_rag_id" -o none
+done
+# Identifiant fédéré uami-rag : remplace celui de l'identité partagée (avant #70) : la gateway ne peut plus se faire passer pour rag
+sujet_rag=$(az ad app federated-credential list --id "$rag" --query "[?name=='uami-rag'].subject | [0]" -o tsv)
+if [ "$sujet_rag" != "$uami_rag_principal" ]; then
+  [ -z "$sujet_rag" ] || az ad app federated-credential delete --id "$rag" --federated-credential-id uami-rag
+  az ad app federated-credential create --id "$rag" -o none --parameters "{
+    \"name\": \"uami-rag\", \"issuer\": \"https://login.microsoftonline.com/$(az account show --query tenantId -o tsv)/v2.0\",
+    \"subject\": \"$uami_rag_principal\", \"audiences\": [\"api://AzureADTokenExchange\"]}"
+fi
+# rag envoie ses traces à la gateway (/v1/traces) avec un jeton d'application : rôle Telemetrie d'underwriting-admin
+attribuer "$uw" "$UW_TELEMETRIE" "$(az ad sp show --id "$rag" --query id -o tsv)" "rag → Telemetrie (underwriting)"
+
 echo "✔ Variables GitHub du repo à poser :"
 echo "   RAG_API_CLIENT_ID=$rag"
 echo "   UNDERWRITING_API_CLIENT_ID=$uw"
 echo "   MCP_API_CLIENT_ID=$mcp"
-echo "   AZURE_UAMI_CLIENT_ID=$uami_client   (rag et gateway ; Easy Auth de la Function : make calcul)"
+echo "   AZURE_UAMI_CLIENT_ID=$uami_client   (gateway seule depuis #70 ; Easy Auth de la Function : make calcul)"
+echo "   AZURE_UAMI_RAG_CLIENT_ID=$uami_rag_client   (rag seul)"
 echo "   AZURE_UAMI_MCP_CLIENT_ID=$uami_mcp_client   (serveur MCP seul)"

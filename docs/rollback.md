@@ -17,10 +17,10 @@ On peut aussi passer par l'interface : Actions › **deploy** › *Run workflow*
 1. `deploy.yml` lit les révisions de la Container App et retient le **SHA de l'avant-dernière révision**, lu sur
    l'image de son conteneur `gateway`.
 2. Il crée une nouvelle révision depuis `infra/containerapp.yaml` avec les **images à ce SHA**
-   (`agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`, et `agentinsurflow-mcp` pour la Container App du serveur MCP, déployée d'abord) ; l'image PostgreSQL annexe (`agentinsurflow-postgres:1`), les
+   (`agentinsurflow-gateway` et `agentinsurflow-underwriting` pour la principale, `agentinsurflow-mcp` pour la Container App du serveur MCP, déployée d'abord, `agentinsurflow-rag` pour celle de rag, déployée en dernier) ; l'image PostgreSQL annexe (`agentinsurflow-postgres:1`), les
    variables et les secrets des Container Apps restent identiques.
 3. Le **test de fumée**, par la gateway, vérifie que `/health`, `/health/rag`, `/health/underwriting`, `/health/mcp` et `/health/calcul` renvoient ce SHA et que
-   `/api/reponses` répond 401 sans jeton.
+   `/api/reponses`, `/api/calcul/evaluer` et `/api/llm/v1/chat/completions` répondent 401 sans jeton.
 4. Le run reste dans le journal Actions : c'est la trace du rollback.
 
 Aucune reconstruction : les images sont **immuables** (tag = SHA) et déjà dans l'ACR. Le prompt et la version
@@ -60,7 +60,7 @@ Durée mesurée : `🔴 À MESURER` à la répétition. Ne pas annoncer de chiff
 
 ## Limite : les quatre images du SHA
 
-Le serveur MCP a sa propre Container App : `deploy.yml` la redéploie d'abord, au même SHA, puis la principale. Si la principale échoue après la mise à jour du MCP, il n'y a pas de retour automatique : les deux apps sont alors à des SHA différents ; relancer le déploiement, ou `make rollback`. Un rollback vers une révision antérieure à cette séparation exige que `MCP_APP_NAME` existe (`make infra`).
+Le serveur MCP et rag ont chacun leur Container App : `deploy.yml` redéploie le MCP d'abord, puis la principale, puis rag, tous au même SHA. Ordre voulu : la base annexe est éphémère et repart vide avec la nouvelle révision de la principale ; rag y joue ses migrations à son démarrage, donc il vient après. Si une étape échoue en cours de route, il n'y a pas de retour automatique : les apps sont alors à des SHA différents ; relancer le déploiement, ou `make rollback`. Un rollback vers une révision antérieure à ces séparations exige que `MCP_APP_NAME` et `RAG_APP_NAME` existent (`make infra`). Un rollback vers une révision **antérieure à #70** (rag encore dans la principale) laisse la gateway sans cluster `llm` et rag sur son ancien câblage : à éviter, redéployer plutôt une version ≥ #70.
 
 Un déploiement ou un rollback pose les **quatre** images (`rag`, `underwriting`, `gateway`, `agentinsurflow-mcp`) au même SHA, lu sur la gateway de la révision visée. `deploy.yml` vérifie dans l'ACR (lecture seule) qu'elles existent toutes avant de toucher à l'application, sinon il échoue sans rien déployer. Conséquence : un rollback vers une révision **antérieure à U5** est refusé (`agentinsurflow-underwriting:<ancien SHA>` n'a jamais été construite). De même, un rollback vers un SHA **antérieur à `feat/mcp`** est refusé : aucune image `agentinsurflow-mcp:<SHA>` n'existe. Le premier rollback possible est vers la première révision à 4 images (fail-closed : un rollback vers un SHA antérieur à la séparation du MCP n'est **pas pris en charge**) ; au-delà, redéployer à la main un SHA précis (`make rollback TAG=<sha>`).
 

@@ -51,8 +51,8 @@ if [ "$(az rest --uri "$GRAPH/servicePrincipals/$sp_calcul/appRoleAssignedTo" \
 fi
 
 echo "③ Easy Auth : seule la gateway entre (son identité managée), /api/sante reste anonyme"
-# identité managée partagée rag/gateway, créée par `make entra` ; son client id est l'appid du jeton qu'elle obtient
-UAMI=${UAMI:-uami-insurflow-rag} # même défaut que infra/entra.sh ⑤ : identité partagée rag + gateway
+# identité managée de la gateway (nom historique), créée par `make entra` ; son client id est l'appid du jeton qu'elle obtient
+UAMI=${UAMI:-uami-insurflow-rag} # même défaut que infra/entra.sh ⑤ : identité de la gateway (rag a la sienne depuis #70)
 gateway_client=$(az identity show -n "$UAMI" -g "$RG" --query clientId -o tsv)
 [ -n "$gateway_client" ] || { echo "✘ identité $UAMI absente : lancer make entra d'abord"; exit 1; }
 auth=$(jq -n --arg client "$app_id" --arg tenant "$AZURE_TENANT_ID" --arg gateway "$gateway_client" '{properties: {

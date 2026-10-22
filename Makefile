@@ -90,6 +90,9 @@ entra:              ## G5 : inscriptions Entra des API + rôles [DOMAINE=…] [D
 calcul:             ## Function de calcul : stockage, Function Apps, Entra, Easy Auth
 	bash infra/calcul.sh
 
+llm:                ## canal LLM (#70) : Entra llm + gateway-local, Foundry sans clé, rôle réservé à la gateway
+	bash infra/llm.sh
+
 annexe:             ## G5 : image PostgreSQL annexe + secrets des Container Apps
 	bash infra/postgres-annexe.sh
 

@@ -45,6 +45,7 @@ jobs:
     env:
       APP: ${{ vars.CONTAINER_APP_NAME }}
       MCP_APP: ${{ vars.MCP_APP_NAME }}
+      RAG_APP: ${{ vars.RAG_APP_NAME }}
       RG: ${{ vars.AZURE_RESOURCE_GROUP }}
     steps:
       - uses: azure/login@v2
@@ -56,15 +57,20 @@ jobs:
       - name: Garde-fou — variables requises présentes avant toute mise à jour
         env:
           MCP_APP_NAME: ${{ vars.MCP_APP_NAME }}
+          RAG_APP_NAME: ${{ vars.RAG_APP_NAME }}
           CALCUL_APP_NAME: ${{ vars.CALCUL_APP_NAME }}
           CALCUL_URL: ${{ vars.CALCUL_URL }}
           CALCUL_AUDIENCE: ${{ vars.CALCUL_AUDIENCE }}
           CALCUL_API_CLIENT_ID: ${{ vars.CALCUL_API_CLIENT_ID }}
           AZURE_UAMI_CLIENT_ID: ${{ vars.AZURE_UAMI_CLIENT_ID }}
           AZURE_UAMI_MCP_CLIENT_ID: ${{ vars.AZURE_UAMI_MCP_CLIENT_ID }}
+          AZURE_UAMI_RAG_CLIENT_ID: ${{ vars.AZURE_UAMI_RAG_CLIENT_ID }}
+          LLM_AUDIENCE: ${{ vars.LLM_AUDIENCE }}
+          LLM_API_CLIENT_ID: ${{ vars.LLM_API_CLIENT_ID }}
+          FOUNDRY_ENDPOINT: ${{ vars.FOUNDRY_ENDPOINT }}
         run: |
           manque=0
-          for v in CALCUL_APP_NAME CALCUL_URL CALCUL_AUDIENCE CALCUL_API_CLIENT_ID MCP_APP_NAME AZURE_UAMI_CLIENT_ID AZURE_UAMI_MCP_CLIENT_ID; do
+          for v in CALCUL_APP_NAME CALCUL_URL CALCUL_AUDIENCE CALCUL_API_CLIENT_ID MCP_APP_NAME RAG_APP_NAME AZURE_UAMI_CLIENT_ID AZURE_UAMI_MCP_CLIENT_ID AZURE_UAMI_RAG_CLIENT_ID LLM_AUDIENCE LLM_API_CLIENT_ID FOUNDRY_ENDPOINT; do
             [ -n "${!v}" ] || { echo "::error::variable $v vide pour cet environnement (docs/secrets.md) : aucune mise à jour lancée"; manque=1; }
           done
           exit "$manque"
@@ -168,31 +174,35 @@ jobs:
             { echo "::error::$MCP_APP exposé hors de l'environnement : l'entrée doit rester interne"; exit 1; }
           echo "✔ $MCP_APP déployé, entrée interne $fqdn, identité managée propre posée"
 
-      - name: Déployer (modèle infra/containerapp.yaml, nouvelle révision)
+      - name: Déployer la gateway, underwriting-admin et la base annexe (modèle infra/containerapp.yaml, nouvelle révision)
         id: deployer
         env:
           IMAGE_GATEWAY: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-gateway:${{ steps.image.outputs.tag }}
-          IMAGE_RAG: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-rag:${{ steps.image.outputs.tag }}
           IMAGE_UNDERWRITING: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-underwriting:${{ steps.image.outputs.tag }}
           MCP_APP_FQDN: ${{ steps.mcp.outputs.fqdn }}
           # Tag fixe de l'image annexe, construite à la main (infra/postgres-annexe.sh)
           IMAGE_POSTGRES: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-postgres:1
           APP_ENV: ${{ inputs.environnement }}
-          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           RAG_API_CLIENT_ID: ${{ vars.RAG_API_CLIENT_ID }}
           UNDERWRITING_API_CLIENT_ID: ${{ vars.UNDERWRITING_API_CLIENT_ID }}
           MCP_API_CLIENT_ID: ${{ vars.MCP_API_CLIENT_ID }}
-          RAG_SEUIL: ${{ vars.RAG_SEUIL }}
           AZURE_UAMI_CLIENT_ID: ${{ vars.AZURE_UAMI_CLIENT_ID }}
+          LLM_AUDIENCE: ${{ vars.LLM_AUDIENCE }}
+          LLM_API_CLIENT_ID: ${{ vars.LLM_API_CLIENT_ID }}
+          FOUNDRY_ENDPOINT: ${{ vars.FOUNDRY_ENDPOINT }}
           SEED_GESTIONNAIRE_A: ${{ vars.SEED_GESTIONNAIRE_A }}
           SEED_GESTIONNAIRE_B: ${{ vars.SEED_GESTIONNAIRE_B }}
           CALCUL_URL: ${{ vars.CALCUL_URL }}
           CALCUL_AUDIENCE: ${{ vars.CALCUL_AUDIENCE }}
           CALCUL_API_CLIENT_ID: ${{ vars.CALCUL_API_CLIENT_ID }}
         run: |
+          # rag a sa Container App (entrée interne) : son FQDN existe depuis `make infra`, la gateway le vise (cluster rag)
+          RAG_APP_FQDN=$(az containerapp show -n "$RAG_APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
+          test -n "$RAG_APP_FQDN" || { echo "::error::FQDN interne de $RAG_APP introuvable (make infra)"; exit 1; }
+          export RAG_APP_FQDN
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
-          envsubst '$IMAGE_GATEWAY $IMAGE_RAG $IMAGE_UNDERWRITING $IMAGE_POSTGRES $APP_ENV $AZURE_OPENAI_ENDPOINT $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $MCP_API_CLIENT_ID $RAG_SEUIL $AZURE_UAMI_CLIENT_ID $SEED_GESTIONNAIRE_A $SEED_GESTIONNAIRE_B $CALCUL_URL $CALCUL_AUDIENCE $CALCUL_API_CLIENT_ID $MCP_APP_FQDN' \
+          envsubst '$IMAGE_GATEWAY $IMAGE_UNDERWRITING $IMAGE_POSTGRES $APP_ENV $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $MCP_API_CLIENT_ID $AZURE_UAMI_CLIENT_ID $SEED_GESTIONNAIRE_A $SEED_GESTIONNAIRE_B $CALCUL_URL $CALCUL_AUDIENCE $CALCUL_API_CLIENT_ID $MCP_APP_FQDN $RAG_APP_FQDN $LLM_AUDIENCE $LLM_API_CLIENT_ID $FOUNDRY_ENDPOINT' \
             < infra/containerapp.yaml > "$RUNNER_TEMP/containerapp.yaml"
           az containerapp update -n "$APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp.yaml" -o none
           # Production : le domaine personnalisé (G4, #12) dès que PROD_URL est posée ; la fumée
@@ -214,13 +224,52 @@ jobs:
               { echo "::error::secret $secret perdu par l'update de $APP (relancer infra/postgres-annexe.sh)"; exit 1; }
           done
           echo "✔ identité managée et 7 secrets pg-* conservés"
+          # rag joint la base annexe par ce port TCP interne ; l'entrée externe 8000 (la gateway) doit être intacte
+          jq -e '.properties.configuration.ingress.external == true and .properties.configuration.ingress.targetPort == 8000' <<<"$app" > /dev/null ||
+            { echo "::error::entrée de $APP altérée par l'update : la gateway doit rester l'entrée externe (port 8000)"; exit 1; }
+          jq -e '[.properties.configuration.ingress.additionalPortMappings[]? | select(.targetPort == 5432 and .external == false)] | length == 1' <<<"$app" > /dev/null ||
+            { echo "::error::port TCP interne 5432 absent de $APP : rag n'atteindrait pas la base annexe"; exit 1; }
+          echo "✔ entrée externe 8000 intacte, port interne 5432 exposé à l'environnement"
+
+      # rag APRÈS la principale : la base annexe est éphémère, elle repart vide avec la nouvelle révision ; rag y joue
+      # ses migrations (demarrer.sh) à son démarrage, donc il doit démarrer quand le postgres neuf existe déjà.
+      # Il parle à la gateway (LLM, dossiers, traces) seulement à la requête : la gateway n'a pas à le précéder.
+      - name: Déployer rag (modèle infra/containerapp-rag.yaml, Container App interne, identité managée propre)
+        env:
+          IMAGE_RAG: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-rag:${{ steps.image.outputs.tag }}
+          APP_ENV: ${{ inputs.environnement }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          RAG_API_CLIENT_ID: ${{ vars.RAG_API_CLIENT_ID }}
+          UNDERWRITING_API_CLIENT_ID: ${{ vars.UNDERWRITING_API_CLIENT_ID }}
+          RAG_SEUIL: ${{ vars.RAG_SEUIL }}
+          LLM_AUDIENCE: ${{ vars.LLM_AUDIENCE }}
+          AZURE_UAMI_RAG_CLIENT_ID: ${{ vars.AZURE_UAMI_RAG_CLIENT_ID }}
+        run: |
+          GATEWAY_URL="https://$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)"
+          # PG_HOST : le nom de la Container App principale, résolu dans l'environnement (port TCP interne 5432)
+          PG_HOST="$APP"
+          export GATEWAY_URL PG_HOST
+          # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
+          envsubst '$IMAGE_RAG $APP_ENV $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $RAG_SEUIL $LLM_AUDIENCE $AZURE_UAMI_RAG_CLIENT_ID $GATEWAY_URL $PG_HOST' \
+            < infra/containerapp-rag.yaml > "$RUNNER_TEMP/containerapp-rag.yaml"
+          az containerapp update -n "$RAG_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-rag.yaml" -o none
+          rag=$(az containerapp show -n "$RAG_APP" -g "$RG" -o json)
+          jq -e --arg u "$AZURE_UAMI_RAG_CLIENT_ID" '[.identity.userAssignedIdentities // {} | .[] | .clientId | ascii_downcase] | index($u | ascii_downcase)' <<<"$rag" > /dev/null ||
+            { echo "::error::identité managée $AZURE_UAMI_RAG_CLIENT_ID absente de $RAG_APP après l'update (OBO et jeton LLM de rag impossibles)"; exit 1; }
+          jq -e '.properties.configuration.ingress.external == false' <<<"$rag" > /dev/null ||
+            { echo "::error::$RAG_APP exposé hors de l'environnement : l'entrée doit rester interne"; exit 1; }
+          for secret in pg-migrateur-password pg-writer-password pg-reader-password; do
+            jq -e --arg s "$secret" '[.properties.configuration.secrets[]?.name] | index($s)' <<<"$rag" > /dev/null ||
+              { echo "::error::secret $secret perdu par l'update de $RAG_APP (relancer infra/postgres-annexe.sh)"; exit 1; }
+          done
+          echo "✔ $RAG_APP déployé, entrée interne, identité managée propre posée, 3 secrets pg-* conservés"
 
       - name: Fumée par la gateway — bonnes versions (dont le MCP interne et la Function), API fermée sans jeton (porte bloquante)
         env:
           URL: ${{ steps.deployer.outputs.url }}
           attendu: ${{ steps.image.outputs.tag }}
         run: |
-          # démarrage de la nouvelle révision : rag et underwriting-admin jouent leurs migrations avant d'écouter, après la gateway
+          # démarrage des nouvelles révisions : rag (sa Container App) et underwriting-admin jouent leurs migrations avant d'écouter
           for _ in $(seq 1 30); do
             version=$(curl -fsS "$URL/health" | jq -r .version) || version=""
             version_rag=$(curl -fsS "$URL/health/rag" | jq -r .version) || version_rag=""
@@ -239,8 +288,10 @@ jobs:
           [ "$code" = 401 ] || { echo "::error::POST /api/reponses sans jeton : $code ≠ 401"; exit 1; }
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/calcul/evaluer" -H 'content-type: application/json' -d '{}')
           [ "$code" = 401 ] || { echo "::error::POST /api/calcul/evaluer sans jeton : $code ≠ 401"; exit 1; }
-          # Le LLM est vérifié avec un jeton de la CI par le job evals (staging)
-          echo "✔ $URL : gateway, rag, underwriting-admin, serveur-mcp et calcul en $attendu, /api/reponses et /api/calcul fermées sans jeton"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/llm/v1/chat/completions" -H 'content-type: application/json' -d '{}')
+          [ "$code" = 401 ] || { echo "::error::POST /api/llm/v1/chat/completions sans jeton : $code ≠ 401"; exit 1; }
+          # Le LLM avec jeton (rôle LLM de rag) est vérifié par le job evals (staging), via /api/reponses
+          echo "✔ $URL : gateway, rag, underwriting-admin, serveur-mcp et calcul en $attendu, /api/reponses, /api/calcul et /api/llm fermées sans jeton"
 
       - uses: astral-sh/setup-uv@v6
         with: { version: "0.11.13", enable-cache: true }

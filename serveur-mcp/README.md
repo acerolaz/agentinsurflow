@@ -41,7 +41,7 @@ Les outils sont déclarés avec le SDK MCP officiel ; la docstring de chacun est
 | `evaluer_risque` | faits du contrat | Score, classe et règles déclenchées, versions du barème | Calcul (Function de calcul, `POST /api/evaluer`) |
 | `calculer_prime` | faits du contrat et de la formule | Prime détaillée, version de la formule | Calcul (Function de calcul, `POST /api/calculer`) |
 
-Les deux outils appellent directement la Function de calcul (spec `2026-10-22-calcul-risque-prime-design.md`), jeton de l'identité managée.
+Les deux outils appellent directement la Function de calcul (spec `2026-10-22-calcul-risque-prime-design.md`), avec un jeton de l'inscription MCP, obtenu par assertion client de l'identité managée fédérée.
 
 ### 2.2 Codes d'erreur
 

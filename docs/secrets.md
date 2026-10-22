@@ -32,6 +32,9 @@ Apps** (`pg-*-password`), posés à la main par `make annexe` (`infra/postgres-a
 | `ACR_NAME` | Variable de repo | `ACR_NAME` | `ci-cd.yml` › build (push), `deploy.yml` (image) |
 | `APP_STAGING` | Variable de l'env. `staging` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
 | `APP_PRODUCTION` | Variable de l'env. `production` | `CONTAINER_APP_NAME` | `deploy.yml` : `APP` |
+| `CALCUL_APP_STAGING` / `CALCUL_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `CALCUL_APP_NAME` | `deploy.yml` : déploiement de la Function de calcul ; affiché par `make calcul` |
+| (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_URL` | `deploy.yml` : fumée de la Function ; → `infra/containerapp.yaml` (`CALCUL_URL` du serveur MCP) |
+| (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_AUDIENCE` | `deploy.yml` → `infra/containerapp.yaml` (`api://<appId agentinsurflow-calcul>`) |
 | `AZURE_OPENAI_ENDPOINT` | Variable de **repo** | `AZURE_OPENAI_ENDPOINT` | `deploy.yml` → `infra/containerapp.yaml` (conteneur rag) ; `ci-cd.yml` › `evals-pr` (désactivé) |
 | `RAG_SEUIL` | Variable de **repo** | `RAG_SEUIL` | `deploy.yml` → conteneur rag (porte de pertinence ; vide → `/api/extraits` en 503) |
 | `RAG_API_CLIENT_ID` | Variable de **repo** | `RAG_API_CLIENT_ID` | `deploy.yml` → audiences de la gateway et de rag, connexion de la page Swagger |
@@ -149,4 +152,4 @@ gh secret list -R acerolaz/agentinsurflow -e production   # noms seulement, jama
 ```
 
 **Reconstruire depuis le repo seul** : `git clone` → `cp .env.example .env` → remplir → `make infra` →
-`make entra` (avant le premier déploiement : il crée l'API du serveur MCP dont `MCP_API_CLIENT_ID` vient) → `make annexe` → `make domaine DOMAINE=…` → reporter dans GitHub (§2) → `git push`.
+`make entra` (avant le premier déploiement : il crée l'API du serveur MCP dont `MCP_API_CLIENT_ID` vient) → `make calcul` (Function de calcul ; après `make entra`, il lit `MCP_API_CLIENT_ID`) → `make annexe` → `make domaine DOMAINE=…` → reporter dans GitHub (§2 ; les trois variables `CALCUL_*`, par environnement, avant le prochain déploiement : sinon `deploy.yml` échoue) → `git push`.

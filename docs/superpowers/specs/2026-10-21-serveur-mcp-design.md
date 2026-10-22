@@ -17,7 +17,7 @@ Le cluster sera en place le 30/10 et c'est lui qui appelle le serveur MCP pendan
 - Chaque appel tracé dans la trace du dossier, sans donnée personnelle.
 
 **Non-objectifs**
-- Contenu métier de `evaluer_risque` (barème) et `calculer_prime` (formule) : **en attente de la réponse d'Acerola** (§ 5.3). D50 (245 règles) est **écartée**.
+- Contenu métier de `evaluer_risque` (barème) et `calculer_prime` (formule) : il vit dans la Function de calcul (§ 5.3, spec `2026-10-22-calcul-risque-prime-design.md`). D50 (245 règles) est **écartée**.
 - L'`interrupt()` avant décision (D9) : c'est le travail du cluster, pas du serveur MCP.
 - Resources et Prompts MCP : non exposés (toute lecture passe par un Tool, donc par la matrice et la trace).
 - Nouveau fournisseur d'identité, nouveau journal d'audit, nouvelle stack.
@@ -51,7 +51,7 @@ flowchart LR
     GW --> RAG["rag"]
     GW --> UW["underwriting-admin"]
     MCP -. "OTLP (boucle locale)" .-> UW
-    MCP -->|"appel direct HTTPS<br/>jeton identité managée"| FN["Function de calcul<br/>/api/evaluer, /api/calculer"]
+    MCP -->|"appel direct HTTPS<br/>jeton de l'inscription MCP<br/>(assertion client de l'identité managée)"| FN["Function de calcul<br/>/api/evaluer, /api/calculer"]
 ```
 
 - **Langage et emplacement** : Python, architecture **hexagonale** (règle `~/.claude/rules/python-hexagonal.md`), dans `brief2/src/serveur-mcp/` à côté de `rag/` (`specs/03` ; pas `mcp/`, qui masquerait le paquet `mcp` du SDK). Paquet, `pyproject` et `Dockerfile` calqués sur rag.
@@ -67,12 +67,12 @@ flowchart LR
 
 ### 5.1 Catalogue
 
-| Outil | Appelé par (`azp`) | Cible (toujours via la gateway) | Nature |
+| Outil | Appelé par (`azp`) | Cible (via la gateway, sauf le calcul : appel direct, exception à D22) | Nature |
 |---|---|---|---|
 | `get_contrat` | Orchestrateur (nœud `charger`) | `GET /api/contrats/{numero_contrat}` | lecture |
-| `evaluer_risque` | Orchestrateur (nœud `evaluer`) | Function de calcul `POST /api/evaluer` (appel direct, § 5.3) | calcul |
+| `evaluer_risque` | Orchestrateur (nœud `evaluer`) | Function de calcul `POST /api/evaluer` (appel direct, exception à D22, § 5.3) | calcul |
 | `search_rag` | Agent Rédacteur (seul outil visible par un LLM, D59) | `GET /api/extraits` | lecture |
-| `calculer_prime` | Agent Actuaire | Function de calcul `POST /api/calculer` (appel direct, § 5.3) | calcul |
+| `calculer_prime` | Agent Actuaire | Function de calcul `POST /api/calculer` (appel direct, exception à D22, § 5.3) | calcul |
 | `enregistrer_brouillon` | Orchestrateur (nœud `brouillon`) | **nouvel** endpoint underwriting-admin | écriture (brouillon seulement, D66) |
 | `update_statut_dossier` | Orchestrateur (nœuds `enregistrer` après `interrupt()`, et `revue_humaine`) | **nouvel** endpoint underwriting-admin | écriture (seul outil qui écrit une décision) |
 
@@ -88,7 +88,7 @@ Deux endpoints nouveaux dans underwriting-admin (Clean Architecture, comme `Cons
 Dans les deux cas, underwriting-admin **revalide le portefeuille** du gestionnaire (D36) et rend le même 404 pour un contrat absent ou hors portefeuille (BOLA), comme la lecture.
 
 Contrat de données (*choix de Claude*, aligné sur la V1) : les champs viennent **du cluster** en arguments d'outil ; le serveur MCP ne calcule rien.
-- `enregistrer_brouillon` reçoit le `numero_contrat`, la fiche (5 champs, D52, dont décision proposée et score du barème) et la prime (montant, périodicité, date d'effet, P18). Tant que `evaluer_risque` et `calculer_prime` sont en attente, les tests utilisent des valeurs fournies par le test.
+- `enregistrer_brouillon` reçoit le `numero_contrat`, la fiche (5 champs, D52, dont décision proposée et score du barème) et la prime (montant, périodicité, date d'effet, P18). Le score du barème et la prime viennent de `evaluer_risque` et `calculer_prime` (§ 5.3, spec `2026-10-22-calcul-risque-prime-design.md`) ; les tests d'écriture utilisent des valeurs fournies par le test.
 - `update_statut_dossier` reçoit le `numero_contrat`, le statut cible et, pour l'écriture après `/revue`, la validation (`VALIDEE` / `CORRIGEE`) avec la correction éventuelle. C'est le **même** outil pour `REVUE_HUMAINE` et pour la décision validée.
 
 Valeurs de statut (`brief1/dossier-conception-v1.md`) : `BROUILLON`, `EN_ANALYSE`, `REVUE_HUMAINE`, décision `ACCEPTE` / `REFUSE`, validation `VALIDEE` / `CORRIGEE`. Le serveur MCP **ne vérifie pas** que le gestionnaire a validé : il écrit ce qu'on lui envoie une fois les droits vérifiés (D9 reste porté par le cluster). Les chemins, méthodes HTTP et la machine d'états exacte des transitions sont laissés au constructeur, en s'alignant sur les transitions T0 → T12 de la V1.
@@ -183,7 +183,7 @@ Même fonctionnement que rag.
 - [ ] Tests WireMock de la route : routage, 401/403, 429
 - [ ] `gateway/README.md` : exception JSON-RPC documentée
 - [ ] Streamable HTTP sans tampon
-- [ ] Tests d'intégration couvrant chaque outil, résultats interprétés (les deux outils en attente quand leur contenu sera fixé)
+- [ ] Tests d'intégration couvrant chaque outil, résultats interprétés (les deux outils de calcul via la Function, spec `2026-10-22-calcul-risque-prime-design.md`)
 - [ ] Documentation : architecture, outils, authentification/autorisation, format accessible
 - [ ] Déployé (5e conteneur), fumée verte
 

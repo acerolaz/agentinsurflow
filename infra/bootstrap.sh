@@ -59,8 +59,8 @@ for app in "$MCP_APP_STAGING" "$MCP_APP_PRODUCTION"; do
       --ingress internal --target-port 8003 --min-replicas 0 --max-replicas 1 -o none
 done
 # Base annexe (#70) : sa propre Container App, entrée TCP INTERNE 5432 (les autres apps joignent <nom de l'app>:5432).
-# 🔴 L'entrée TCP interne peut exiger un environnement Container Apps intégré à un réseau virtuel (VNet) : à vérifier
-# AVANT de lancer (az containerapp env show ... --query properties.vnetConfiguration) ; sinon `create` échoue ici.
+# Seule l'entrée TCP EXTERNE exige un VNet (doc Microsoft « Ingress in Azure Container Apps ») : l'entrée TCP interne
+# fonctionne dans l'environnement actuel (profils de charge, sans VNet, vérifié le 22/10).
 for app in "$PG_APP_STAGING" "$PG_APP_PRODUCTION"; do
   existe az containerapp show -n "$app" -g "$RG" ||
     az containerapp create -n "$app" -g "$RG" --environment "$CONTAINERAPPS_ENV" \

@@ -168,7 +168,7 @@ jobs:
           az containerapp update -n "$PG_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-postgres.yaml" -o none
           pg=$(az containerapp show -n "$PG_APP" -g "$RG" -o json)
           jq -e '.properties.configuration.ingress | (.external == false) and ((.transport // "" | ascii_downcase) == "tcp") and (.targetPort == 5432)' <<<"$pg" > /dev/null ||
-            { echo "::error::$PG_APP : l'entrée doit être TCP interne sur 5432 (environnement sans VNet ? voir docs/secrets.md)"; exit 1; }
+            { echo "::error::$PG_APP : l'entrée doit être TCP interne sur 5432 (relancer make infra, voir docs/secrets.md)"; exit 1; }
           for secret in pg-postgres-password pg-migrateur-password pg-writer-password pg-reader-password \
             pg-dossiers-password pg-traces-writer-password pg-traces-reader-password; do
             jq -e --arg s "$secret" '[.properties.configuration.secrets[]?.name] | index($s)' <<<"$pg" > /dev/null ||

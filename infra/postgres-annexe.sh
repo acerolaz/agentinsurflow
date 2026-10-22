@@ -5,7 +5,7 @@
 # Base éphémère (S3-5) : chaque révision repart vide ; le corpus revient par l'ingestion.
 set -euo pipefail
 
-for v in AZURE_RESOURCE_GROUP ACR_NAME APP_STAGING APP_PRODUCTION RAG_APP_STAGING RAG_APP_PRODUCTION PG_APP_STAGING PG_APP_PRODUCTION PG_POSTGRES_PASSWORD \
+for v in AZURE_RESOURCE_GROUP ACR_NAME UW_APP_STAGING UW_APP_PRODUCTION RAG_APP_STAGING RAG_APP_PRODUCTION PG_APP_STAGING PG_APP_PRODUCTION PG_POSTGRES_PASSWORD \
   PG_MIGRATEUR_PASSWORD PG_WRITER_PASSWORD PG_READER_PASSWORD PG_DOSSIERS_PASSWORD \
   PG_TRACES_WRITER_PASSWORD PG_TRACES_READER_PASSWORD; do
   [ -n "${!v:-}" ] || { echo "✘ $v manquant dans .env"; exit 1; }
@@ -18,7 +18,7 @@ az acr login -n "$ACR_NAME"
 docker build --platform linux/amd64 -t "$image" infra/postgres
 docker push "$image"
 
-echo "② Secrets PostgreSQL : chaque app n'a que ceux dont elle se sert (postgres : les sept, principale : underwriting-admin, rag : trois)"
+echo "② Secrets PostgreSQL : chaque app n'a que ceux dont elle se sert (postgres : les sept, underwriting-admin : quatre, rag : trois)"
 for app in "$PG_APP_STAGING" "$PG_APP_PRODUCTION"; do
   az containerapp secret set -n "$app" -g "$AZURE_RESOURCE_GROUP" -o none --secrets \
     "pg-postgres-password=$PG_POSTGRES_PASSWORD" \
@@ -29,8 +29,8 @@ for app in "$PG_APP_STAGING" "$PG_APP_PRODUCTION"; do
     "pg-traces-writer-password=$PG_TRACES_WRITER_PASSWORD" \
     "pg-traces-reader-password=$PG_TRACES_READER_PASSWORD"
 done
-# principale : underwriting-admin seulement (dossiers et traces) ; les anciens secrets inutiles restent sans effet
-for app in "$APP_STAGING" "$APP_PRODUCTION"; do
+# underwriting-admin (#70) a sa propre Container App : dossiers et traces ; la principale (gateway) n'en a plus l'usage
+for app in "$UW_APP_STAGING" "$UW_APP_PRODUCTION"; do
   az containerapp secret set -n "$app" -g "$AZURE_RESOURCE_GROUP" -o none --secrets \
     "pg-migrateur-password=$PG_MIGRATEUR_PASSWORD" \
     "pg-dossiers-password=$PG_DOSSIERS_PASSWORD" \

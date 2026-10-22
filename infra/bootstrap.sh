@@ -7,7 +7,7 @@
 set -euo pipefail
 
 for v in AZURE_SUBSCRIPTION_ID AZURE_LOCATION AZURE_RESOURCE_GROUP ACR_NAME CONTAINERAPPS_ENV \
-  APP_STAGING APP_PRODUCTION MCP_APP_STAGING MCP_APP_PRODUCTION RAG_APP_STAGING RAG_APP_PRODUCTION PG_APP_STAGING PG_APP_PRODUCTION GITHUB_REPO; do
+  APP_STAGING APP_PRODUCTION MCP_APP_STAGING MCP_APP_PRODUCTION UW_APP_STAGING UW_APP_PRODUCTION RAG_APP_STAGING RAG_APP_PRODUCTION PG_APP_STAGING PG_APP_PRODUCTION GITHUB_REPO; do
   [ -n "${!v:-}" ] || { echo "✘ $v manquant dans .env"; exit 1; }
 done
 RG=$AZURE_RESOURCE_GROUP
@@ -29,7 +29,7 @@ existe az acr show -n "$ACR_NAME" || az acr create -n "$ACR_NAME" -g "$RG" --sku
 existe az containerapp env show -n "$CONTAINERAPPS_ENV" -g "$RG" ||
   az containerapp env create -n "$CONTAINERAPPS_ENV" -g "$RG" -l "$AZURE_LOCATION" -o none
 
-echo "② Image d'amorçage + Container Apps principales, serveur MCP, rag et base annexe (staging, production)"
+echo "② Image d'amorçage + Container Apps principales (gateway), underwriting-admin, serveur MCP, rag et base annexe (staging, production)"
 amorce="$ACR_NAME.azurecr.io/agentinsurflow:amorce"
 az acr login -n "$ACR_NAME"
 docker build --platform linux/amd64 -f rag/Dockerfile --build-arg APP_VERSION=amorce -t "$amorce" .
@@ -40,6 +40,15 @@ for app in "$APP_STAGING" "$APP_PRODUCTION"; do
     az containerapp create -n "$app" -g "$RG" --environment "$CONTAINERAPPS_ENV" \
       --image "$amorce" --registry-server "$ACR_NAME.azurecr.io" --registry-identity system \
       --ingress external --target-port 8000 --min-replicas 0 --max-replicas 1 -o none
+done
+# underwriting-admin (#70) : sa propre Container App, entrée INTERNE (port 8002), jamais exposée : la gateway la joint par
+# https://<app>.internal.<domaine de l'environnement> (cluster underwriting et export des traces). Même image d'amorçage.
+# Il joint la base annexe par le port TCP interne 5432 (PG_HOST = nom de l'app postgres). Pas d'identité managée utilisateur.
+for app in "$UW_APP_STAGING" "$UW_APP_PRODUCTION"; do
+  existe az containerapp show -n "$app" -g "$RG" ||
+    az containerapp create -n "$app" -g "$RG" --environment "$CONTAINERAPPS_ENV" \
+      --image "$amorce" --registry-server "$ACR_NAME.azurecr.io" --registry-identity system \
+      --ingress internal --target-port 8002 --min-replicas 0 --max-replicas 1 -o none
 done
 # Serveur MCP : sa propre Container App, entrée INTERNE (port 8003) : joignable par la gateway seulement
 # (https://<app>.internal.<domaine de l'environnement>), jamais depuis Internet. Même image d'amorçage.
@@ -59,7 +68,7 @@ for app in "$PG_APP_STAGING" "$PG_APP_PRODUCTION"; do
       --ingress internal --transport tcp --target-port 5432 --exposed-port 5432 --min-replicas 0 --max-replicas 1 -o none
 done
 # rag (#70) : sa propre Container App, entrée INTERNE (port 8001), identité managée propre (infra/entra.sh).
-# Il joint la base annexe par le port TCP interne 5432 de la principale (infra/containerapp.yaml).
+# Il joint la base annexe par le port TCP interne 5432 de sa Container App (infra/containerapp-postgres.yaml).
 for app in "$RAG_APP_STAGING" "$RAG_APP_PRODUCTION"; do
   existe az containerapp show -n "$app" -g "$RG" ||
     az containerapp create -n "$app" -g "$RG" --environment "$CONTAINERAPPS_ENV" \
@@ -98,12 +107,14 @@ cat <<FIN
                       AZURE_RESOURCE_GROUP=$RG
                       ACR_NAME=$ACR_NAME
   Env. staging        CONTAINER_APP_NAME=$APP_STAGING
+                      UW_APP_NAME=$UW_APP_STAGING
                       MCP_APP_NAME=$MCP_APP_STAGING
                       RAG_APP_NAME=$RAG_APP_STAGING
                       PG_APP_NAME=$PG_APP_STAGING
   Env. production     CONTAINER_APP_NAME=$APP_PRODUCTION
+                      UW_APP_NAME=$UW_APP_PRODUCTION
                       MCP_APP_NAME=$MCP_APP_PRODUCTION
                       RAG_APP_NAME=$RAG_APP_PRODUCTION
                       PG_APP_NAME=$PG_APP_PRODUCTION
-  (les FQDN internes du serveur MCP et de rag sont lus par deploy.yml : rien à reporter ; PG_HOST = PG_APP_NAME)
+  (les FQDN internes d'underwriting-admin, du serveur MCP et de rag sont lus par deploy.yml : rien à reporter ; PG_HOST = PG_APP_NAME)
 FIN

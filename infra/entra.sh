@@ -10,6 +10,9 @@
 # ⑦ (#70) : rag dans sa propre Container App, identité managée propre uami-insurflow-rag-app (fédérée sur agentinsurflow-rag,
 # rôle Telemetrie). L'identité partagée uami-insurflow-rag ne reste qu'à la Container App principale (gateway) : son nom
 # est gardé (la Function de calcul et le rôle Foundry y sont rattachés) ; la renommer est une décision d'Acerola.
+# (#70) underwriting-admin dans sa propre Container App (entrée interne) : plus d'identité partagée avec la gateway, et il n'en a
+# pas besoin (aucun appel Azure : base par secrets pg-*, image par l'identité système). La gateway envoie ses traces à son
+# /v1/traces avec un jeton d'application : rôle Telemetrie attribué à l'identité de la gateway (⑤).
 # Le rôle LLM de rag et l'accès Foundry relèvent de infra/llm.sh. Les inscriptions des agents (azp) relèvent de #7.
 # Prérequis : `make infra` (Container Apps MCP et rag).
 set -euo pipefail
@@ -118,7 +121,7 @@ acces=$(az ad app show --id "$rag" --query "requiredResourceAccess" -o json |
 az rest --method PATCH --uri "$GRAPH/applications/$rag_objet" --headers content-type=application/json \
   --body "{\"requiredResourceAccess\": $acces}" -o none
 
-echo "⑤ Identité managée attribuée par l'utilisateur (A7) : rattachée aux Container Apps principales (gateway, underwriting-admin)"
+echo "⑤ Identité managée de la gateway (A7) : rattachée aux Container Apps principales (gateway seule), rôle Telemetrie"
 UAMI=${UAMI:-uami-insurflow-rag} # même défaut dans infra/calcul.sh (identité de la gateway)
 az identity show -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" -o none 2>/dev/null ||
   az identity create -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" -o none
@@ -128,6 +131,8 @@ for app in "$APP_STAGING" "$APP_PRODUCTION"; do
   # `assign` ajoute l'identité sans toucher à l'identité système (AcrPull) ; sans effet si déjà posée
   az containerapp identity assign -n "$app" -g "$AZURE_RESOURCE_GROUP" --user-assigned "$uami_id" -o none
 done
+# La gateway envoie ses traces à underwriting-admin (/v1/traces) avec un jeton d'application : rôle Telemetrie
+attribuer "$uw" "$UW_TELEMETRIE" "$(az identity show -n "$UAMI" -g "$AZURE_RESOURCE_GROUP" --query principalId -o tsv)" "gateway ($UAMI) → Telemetrie (underwriting)"
 # (la fédération sur agentinsurflow-rag n'est plus ici : rag a son identité propre, ⑦)
 
 echo "⑥ Serveur MCP agentinsurflow-mcp (inscrit en ②) : rôles, permissions déléguées mcp → rag et underwriting, identité managée propre"

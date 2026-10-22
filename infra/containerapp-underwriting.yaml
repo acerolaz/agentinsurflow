@@ -1,0 +1,33 @@
+# Container App d'underwriting-admin (#70) : modèle versionné, substitué par deploy.yml (envsubst) puis
+# `az containerapp update --yaml`. Seul `template` est fourni : l'entrée INTERNE (port 8002, posée par
+# infra/bootstrap.sh), le registre et les secrets pg-* (infra/postgres-annexe.sh) restent tels quels.
+# Joignable seulement par la gateway (https://<app>.internal.<domaine de l'environnement>). Aucune identité managée
+# utilisateur : elle n'appelle aucun service Azure (base par secrets pg-*). Ses propres spans vont à son /v1/traces
+# en loopback (sans jeton, règle S3-21) ; ceux de la gateway, de rag et du MCP arrivent avec un jeton, rôle Telemetrie.
+properties:
+  template:
+    scale:
+      minReplicas: 1 # la gateway l'appelle à chaque dossier et reçoit les traces : jamais à froid
+      maxReplicas: 1
+    containers:
+      - name: underwriting-admin
+        image: ${IMAGE_UNDERWRITING}
+        resources: { cpu: 0.5, memory: 1Gi }
+        probes:
+          - { type: Liveness, httpGet: { path: /health, port: 8002 }, initialDelaySeconds: 10, periodSeconds: 10 }
+          - { type: Readiness, httpGet: { path: /health, port: 8002 }, initialDelaySeconds: 5, periodSeconds: 5 }
+        env:
+          - { name: AzureAd__TenantId, value: "${AZURE_TENANT_ID}" }
+          - { name: AzureAd__ClientId, value: "${UNDERWRITING_API_CLIENT_ID}" }
+          # même liste que la gateway (Entra__Audiences__underwriting__0 et __1)
+          - { name: Entra__Audiences__underwriting__0, value: "api://agentinsurflow-underwriting,${UNDERWRITING_API_CLIENT_ID}" }
+          # schémas et seed au démarrage (migrateur) ; Otlp__SourcesSansJeton : défaut, loopback seule
+          - { name: Migrations__AuDemarrage, value: "true" }
+          - { name: PG_HOST, value: "${PG_HOST}" } # nom de la Container App postgres (TCP interne 5432)
+          - { name: PG_MIGRATEUR_PASSWORD, secretRef: pg-migrateur-password }
+          - { name: PG_DOSSIERS_PASSWORD, secretRef: pg-dossiers-password }
+          - { name: PG_TRACES_WRITER_PASSWORD, secretRef: pg-traces-writer-password }
+          - { name: PG_TRACES_READER_PASSWORD, secretRef: pg-traces-reader-password }
+          # oid des deux gestionnaires de test (variables GitHub, pas des secrets)
+          - { name: SEED_GESTIONNAIRE_A, value: "${SEED_GESTIONNAIRE_A}" }
+          - { name: SEED_GESTIONNAIRE_B, value: "${SEED_GESTIONNAIRE_B}" }

@@ -1,14 +1,12 @@
 # Container App : modèle versionné (G5, S3-19, S3-30). deploy.yml y substitue les variables (envsubst),
 # puis `az containerapp update --yaml`. Seul `template` est fourni : l'entrée (port 8000, gateway),
-# le registre et les secrets posés à la main (infra/postgres-annexe.sh) restent tels quels
-# (🔴 Z4 : conservation des secrets à vérifier au premier déploiement en staging).
-# Les conteneurs partagent localhost : gateway 8000 (seule exposée), underwriting-admin 8002 (interne).
-# Le serveur MCP, rag et la base annexe ne sont plus ici : chacun a sa Container App, entrée interne
-# (infra/containerapp-mcp.yaml, infra/containerapp-rag.yaml, infra/containerapp-postgres.yaml).
+# le registre et l'identité managée (infra/entra.sh) restent tels quels.
+# Cette Container App ne contient que la gateway (seule exposée). underwriting-admin, le serveur MCP, rag et la base
+# annexe ont chacun la leur, entrée interne (infra/containerapp-underwriting.yaml, -mcp.yaml, -rag.yaml, -postgres.yaml).
 properties:
   template:
     scale:
-      minReplicas: 1 # base annexe éphémère : une seule réplique, toujours allumée
+      minReplicas: 1 # la gateway est le point d'entrée : jamais à froid
       maxReplicas: 1
     containers:
       - name: gateway
@@ -35,32 +33,12 @@ properties:
           # échange de jeton vers la Function : identité managée partagée (Easy Auth n'accepte que son client id)
           - { name: Calcul__Portee, value: "${CALCUL_AUDIENCE}/.default" }
           - { name: Calcul__IdentiteClientId, value: "${AZURE_UAMI_CLIENT_ID}" }
-          # rag et serveur MCP : Container Apps internes du même environnement (FQDN lus par deploy.yml)
+          # rag, underwriting-admin et serveur MCP : Container Apps internes du même environnement (FQDN lus par deploy.yml)
+          - { name: ReverseProxy__Clusters__underwriting__Destinations__d1__Address, value: "https://${UNDERWRITING_APP_FQDN}" }
           - { name: ReverseProxy__Clusters__rag__Destinations__d1__Address, value: "https://${RAG_APP_FQDN}" }
           - { name: ReverseProxy__Clusters__mcp__Destinations__d1__Address, value: "https://${MCP_APP_FQDN}" }
           # ponytail: la page Swagger se connecte avec l'inscription de rag (A3 : pas d'inscription gateway)
           - { name: SWAGGER_CLIENT_ID, value: "${RAG_API_CLIENT_ID}" }
-          # traces : récepteur OTLP d'underwriting-admin (loopback, sans jeton : règle S3-21)
-          - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: "http://localhost:8002/v1/traces" }
-      - name: underwriting-admin
-        image: ${IMAGE_UNDERWRITING}
-        resources: { cpu: 0.5, memory: 1Gi }
-        # port 8002 : jamais d'entrée externe, seule la gateway (localhost) l'appelle
-        probes:
-          - { type: Liveness, httpGet: { path: /health, port: 8002 }, initialDelaySeconds: 10, periodSeconds: 10 }
-          - { type: Readiness, httpGet: { path: /health, port: 8002 }, initialDelaySeconds: 5, periodSeconds: 5 }
-        env:
-          - { name: AzureAd__TenantId, value: "${AZURE_TENANT_ID}" }
-          - { name: AzureAd__ClientId, value: "${UNDERWRITING_API_CLIENT_ID}" }
-          # même liste que la gateway (Entra__Audiences__underwriting__0 et __1)
-          - { name: Entra__Audiences__underwriting__0, value: "api://agentinsurflow-underwriting,${UNDERWRITING_API_CLIENT_ID}" }
-          # schémas et seed au démarrage (migrateur) ; Otlp__SourcesSansJeton : défaut, loopback seule
-          - { name: Migrations__AuDemarrage, value: "true" }
-          - { name: PG_HOST, value: "${PG_HOST}" } # nom de la Container App postgres (TCP interne 5432)
-          - { name: PG_MIGRATEUR_PASSWORD, secretRef: pg-migrateur-password }
-          - { name: PG_DOSSIERS_PASSWORD, secretRef: pg-dossiers-password }
-          - { name: PG_TRACES_WRITER_PASSWORD, secretRef: pg-traces-writer-password }
-          - { name: PG_TRACES_READER_PASSWORD, secretRef: pg-traces-reader-password }
-          # oid des deux gestionnaires de test (variables GitHub, pas des secrets)
-          - { name: SEED_GESTIONNAIRE_A, value: "${SEED_GESTIONNAIRE_A}" }
-          - { name: SEED_GESTIONNAIRE_B, value: "${SEED_GESTIONNAIRE_B}" }
+          # traces : récepteur OTLP d'underwriting-admin (adresse interne), jeton d'application de la gateway (rôle Telemetrie)
+          - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: "https://${UNDERWRITING_APP_FQDN}/v1/traces" }
+          - { name: Telemetrie__Audience, value: "api://${UNDERWRITING_API_CLIENT_ID}" }

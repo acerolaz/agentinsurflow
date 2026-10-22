@@ -61,8 +61,8 @@ d'ingestion, agent) dans [`rag/README.md`](rag/README.md). Tests : pyramide **70
 
 ### Architecture déployée
 
-Chaque environnement (staging, production) est **quatre Container Apps** du même environnement : la principale, à **deux conteneurs**
-(`gateway`, `underwriting-admin` : ils partagent `localhost` ; modèle versionné : [`infra/containerapp.yaml`](infra/containerapp.yaml)), celle du **serveur MCP**
+Chaque environnement (staging, production) est **cinq Container Apps** du même environnement : la principale, qui ne contient que la **gateway**
+([`infra/containerapp.yaml`](infra/containerapp.yaml)), celle d'**underwriting-admin** ([`infra/containerapp-underwriting.yaml`](infra/containerapp-underwriting.yaml), entrée interne), celle du **serveur MCP**
 ([`infra/containerapp-mcp.yaml`](infra/containerapp-mcp.yaml)) celle de **rag** ([`infra/containerapp-rag.yaml`](infra/containerapp-rag.yaml)), à entrée interne et identité managée propre, que seule la gateway appelle, et celle de la **base PostgreSQL annexe** ([`infra/containerapp-postgres.yaml`](infra/containerapp-postgres.yaml)), à entrée TCP interne 5432.
 **Foundry n'est joint que par la gateway** (route `/api/llm`, clés désactivées) : rag lui demande le modèle avec un jeton d'application (rôle `LLM`).
 La Function de calcul (Azure Functions) n'accepte que la gateway :
@@ -71,7 +71,7 @@ La Function de calcul (Azure Functions) n'accepte que la gateway :
 |---|---|---|
 | `gateway` | 8000 | **seul exposé** (entrée de la Container App) ; valide jeton et rôle, puis transmet |
 | `rag` | 8001 | **sa propre Container App** (interne) : API du corpus et de l'agent ; revalide le jeton ; migrations de la base au démarrage (`rag/demarrer.sh`) ; joint la base annexe (sa Container App, TCP interne 5432), le modèle et les dossiers par la gateway |
-| `underwriting-admin` | 8002 | Dossiers (`/api/contrats`, BOLA) et traces (`/v1/traces`, `/api/traces/{trace_id}`) ; revalide le jeton ; migrations EF Core au démarrage |
+| `underwriting-admin` | 8002 | **sa propre Container App** (interne, sans identité managée utilisateur) : dossiers (`/api/contrats`, BOLA) et traces (`/v1/traces`, `/api/traces/{trace_id}`) ; revalide le jeton ; migrations EF Core au démarrage |
 | `postgres` | 5432 | **sa propre Container App** (TCP interne) : **base annexe éphémère** (pgvector) : bases `vecteurs`, `dossiers`, `traces` ; une réplique, sans volume |
 
 Documentation des données : [`docs/donnees/`](docs/donnees/) — [sources](docs/donnees/sources.md),
@@ -104,7 +104,8 @@ démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `d
 │   └── deploy.yml             # déploiement (modèle containerapp.yaml) + fumée ; lancé à la main = rollback
 ├── infra/
 │   ├── bootstrap.sh           # make infra : groupe de ressources, ACR, Container Apps, OIDC (idempotent)
-│   ├── containerapp.yaml      # modèle de la Container App principale : gateway + underwriting-admin
+│   ├── containerapp.yaml      # modèle de la Container App principale : la gateway seule
+│   ├── containerapp-underwriting.yaml  # modèle de la Container App d'underwriting-admin (interne, 8002)
 │   ├── containerapp-postgres.yaml  # modèle de la base annexe (TCP interne 5432)
 │   ├── containerapp-rag.yaml  # modèle de la Container App de rag (interne, identité propre) ; idem containerapp-mcp.yaml
 │   ├── llm.sh                 # make llm : Entra llm + gateway-local, Foundry sans clé, rôle réservé à la gateway

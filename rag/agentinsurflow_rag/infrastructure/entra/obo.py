@@ -7,6 +7,7 @@ par l'utilisateur, déclarée comme identifiant fédéré. En local seulement : 
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from azure.core.exceptions import AzureError
@@ -17,6 +18,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from ...domain.ports import ErreurDossiers
 
 PORTEE_FEDERATION = "api://AzureADTokenExchange/.default"
+logger = logging.getLogger(__name__)
 
 
 class ConfigObo(BaseSettings):
@@ -48,4 +50,6 @@ def jeton_obo(cfg: ConfigObo, jeton_utilisateur: str) -> str:
     try:
         return credential.get_token(f"api://{cfg.underwriting_api_client_id}/access_as_user").token
     except AzureError as exc:
+        # #47 : code AADSTS et identifiants de corrélation d'Entra ; jamais le jeton
+        logger.warning("jeton On-Behalf-Of refusé par Entra : %s", exc)
         raise ErreurDossiers(f"jeton On-Behalf-Of refusé : {exc!r}") from exc

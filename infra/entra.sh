@@ -4,6 +4,8 @@
 # Prérequis : az login avec le droit de créer des inscriptions d'application dans le tenant.
 # La gateway n'a pas d'inscription propre : elle valide les jetons des deux audiences.
 # U5 : permission déléguée rag → underwriting (OBO, S3-20) et identité managée fédérée de rag (A7).
+# #47 : chaque API pré-autorise ses clients OBO (preAuthorizedApplications) : aucun consentement
+# administrateur, qui vaudrait pour tous les utilisateurs du tenant, n'est nécessaire.
 # ⑥ (#15) : serveur MCP agentinsurflow-mcp. Les inscriptions des agents (azp) relèvent de #7.
 set -euo pipefail
 
@@ -32,15 +34,17 @@ done
 printf '   %s\n' "${redirections[@]}"
 spa=$(printf '%s\n' "${redirections[@]}" | jq -R . | jq -s .)
 
-# inscrire <nom> <id du scope> <rôle>=<id>… : crée l'inscription au besoin, puis impose
-# l'URI d'API, le scope access_as_user, les rôles, les redirections et la pré-autorisation d'Azure CLI.
+# inscrire <nom> <id du scope> "<appId client>…" <rôle>=<id>… : crée l'inscription au besoin, puis impose
+# l'URI d'API, le scope access_as_user, les rôles, les redirections et la pré-autorisation sur ce scope
+# d'Azure CLI et des clients donnés (#47 : leur OBO se passe du consentement administrateur du tenant).
 inscrire() {
-  local nom=$1 scope=$2 app_id objet corps
-  shift 2
+  local nom=$1 scope=$2 clients app_id objet corps
+  clients=$(printf '%s\n' "$CLI" $3 | jq -R . | jq -s .)
+  shift 3
   app_id=$(az ad app list --display-name "$nom" --query "[0].appId" -o tsv)
   [ -n "$app_id" ] || app_id=$(az ad app create --display-name "$nom" --sign-in-audience AzureADMyOrg --query appId -o tsv)
   objet=$(az ad app show --id "$app_id" --query id -o tsv)
-  corps=$(jq -n --arg uri "api://$nom" --arg scope "$scope" --arg cli "$CLI" --argjson spa "$spa" \
+  corps=$(jq -n --arg uri "api://$nom" --arg scope "$scope" --argjson clients "$clients" --argjson spa "$spa" \
     --arg texte "Appeler $nom au nom de l'utilisateur connecté" \
     --argjson roles "$(printf '%s\n' "$@" | jq -R 'split("=") | {value: .[0], id: .[1], displayName: .[0],
       description: .[0], allowedMemberTypes: ["User", "Application"], isEnabled: true}' | jq -s .)" '{
@@ -49,7 +53,7 @@ inscrire() {
       oauth2PermissionScopes: [{id: $scope, value: "access_as_user", type: "User", isEnabled: true,
         adminConsentDisplayName: $texte, adminConsentDescription: $texte,
         userConsentDisplayName: $texte, userConsentDescription: $texte}],
-      preAuthorizedApplications: [{appId: $cli, delegatedPermissionIds: [$scope]}]}}')
+      preAuthorizedApplications: [$clients[] | {appId: ., delegatedPermissionIds: [$scope]}]}}')
   # Deux passes : Graph refuse une pré-autorisation qui vise un scope pas encore créé
   az rest --method PATCH --uri "$GRAPH/applications/$objet" --headers content-type=application/json \
     --body "$(jq '.api.preAuthorizedApplications = []' <<<"$corps")" -o none
@@ -59,9 +63,12 @@ inscrire() {
   echo "$app_id"
 }
 
-echo "② Inscriptions agentinsurflow-rag et agentinsurflow-underwriting (A3)"
-rag=$(inscrire agentinsurflow-rag "$RAG_SCOPE" "Gestionnaire=$RAG_GESTIONNAIRE" "Ingestion=$RAG_INGESTION")
-uw=$(inscrire agentinsurflow-underwriting "$UW_SCOPE" "Gestionnaire=$UW_GESTIONNAIRE" "Telemetrie=$UW_TELEMETRIE")
+echo "② Inscriptions agentinsurflow-mcp, agentinsurflow-rag et agentinsurflow-underwriting (A3)"
+# Les clients OBO d'abord : une API ne pré-autorise qu'un appId déjà inscrit
+mcp=$(inscrire agentinsurflow-mcp "$MCP_SCOPE" "" "Gestionnaire=$MCP_GESTIONNAIRE")
+rag=$(inscrire agentinsurflow-rag "$RAG_SCOPE" "$mcp" "Gestionnaire=$RAG_GESTIONNAIRE" "Ingestion=$RAG_INGESTION")
+uw=$(inscrire agentinsurflow-underwriting "$UW_SCOPE" "$rag $mcp" \
+  "Gestionnaire=$UW_GESTIONNAIRE" "Telemetrie=$UW_TELEMETRIE")
 
 # attribuer <appId de l'API> <id du rôle> <objet du principal> <libellé> : seulement s'il manque
 attribuer() {
@@ -94,7 +101,7 @@ else
   echo "   (2e gestionnaire de démo : relancer avec DEMO_USER_ID=<id d'objet Entra>)"
 fi
 
-echo "④ Permission déléguée rag → underwriting/access_as_user (OBO) + consentement administrateur"
+echo "④ Permission déléguée rag → underwriting/access_as_user (OBO, pré-autorisée en ②)"
 rag_objet=$(az ad app show --id "$rag" --query id -o tsv)
 # remplace seulement l'entrée de l'API underwriting : relancer ne la duplique pas
 acces=$(az ad app show --id "$rag" --query "requiredResourceAccess" -o json |
@@ -102,8 +109,9 @@ acces=$(az ad app show --id "$rag" --query "requiredResourceAccess" -o json |
     'map(select(.resourceAppId != $api)) + [{resourceAppId: $api, resourceAccess: [{id: $scope, type: "Scope"}]}]')
 az rest --method PATCH --uri "$GRAPH/applications/$rag_objet" --headers content-type=application/json \
   --body "{\"requiredResourceAccess\": $acces}" -o none
+# Consentement pour tout le tenant : facultatif depuis la pré-autorisation (#47), tenté si le compte le peut
 az ad app permission admin-consent --id "$rag" -o none ||
-  echo "⚠ consentement administrateur refusé : à accorder dans le portail (Autorisations d'API de agentinsurflow-rag)"
+  echo "⚠ consentement administrateur refusé : sans effet, l'OBO de rag est pré-autorisé par underwriting (#47)"
 
 echo "⑤ Identité managée attribuée par l'utilisateur (A7) : rattachée aux Container Apps, fédérée à rag"
 UAMI=uami-insurflow-rag
@@ -123,8 +131,7 @@ if [ "$(az ad app federated-credential list --id "$rag" --query "length([?name==
     \"subject\": \"$uami_principal\", \"audiences\": [\"api://AzureADTokenExchange\"]}"
 fi
 
-echo "⑥ Serveur MCP agentinsurflow-mcp : rôle, portée, permissions déléguées mcp → rag et underwriting, identité fédérée"
-mcp=$(inscrire agentinsurflow-mcp "$MCP_SCOPE" "Gestionnaire=$MCP_GESTIONNAIRE")
+echo "⑥ Serveur MCP agentinsurflow-mcp (inscrit en ②) : rôle, permissions déléguées mcp → rag et underwriting, identité fédérée"
 attribuer "$mcp" "$MCP_GESTIONNAIRE" "$moi" "toi → Gestionnaire (mcp)"
 attribuer "$mcp" "$MCP_GESTIONNAIRE" "$ci" "CI → Gestionnaire (mcp)"
 [ -z "${DEMO_USER_ID:-}" ] || attribuer "$mcp" "$MCP_GESTIONNAIRE" "$DEMO_USER_ID" "2e gestionnaire → Gestionnaire (mcp)"
@@ -138,7 +145,7 @@ acces=$(az ad app show --id "$mcp" --query "requiredResourceAccess" -o json |
 az rest --method PATCH --uri "$GRAPH/applications/$mcp_objet" --headers content-type=application/json \
   --body "{\"requiredResourceAccess\": $acces}" -o none
 az ad app permission admin-consent --id "$mcp" -o none ||
-  echo "⚠ consentement administrateur refusé : à accorder dans le portail (Autorisations d'API de agentinsurflow-mcp)"
+  echo "⚠ consentement administrateur refusé : sans effet, l'OBO de mcp est pré-autorisé par rag et underwriting (#47)"
 # même identité managée que rag (⑤) : elle prouve aussi l'identité du serveur MCP, sans secret client
 if [ "$(az ad app federated-credential list --id "$mcp" --query "length([?name=='uami-mcp'])" -o tsv)" = 0 ]; then
   az ad app federated-credential create --id "$mcp" -o none --parameters "{

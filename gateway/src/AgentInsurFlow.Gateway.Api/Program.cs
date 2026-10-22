@@ -9,6 +9,7 @@ using Azure.Core;
 using Azure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration.Json;
 using OpenTelemetry.Exporter;
@@ -45,6 +46,11 @@ builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
     .AddTransforms(ctx =>
     {
+        if (ctx.Route.RouteId == "llm")
+        {
+            // Mesure des tokens (#70) : attributs du span serveur, jamais de texte. Le corps relayé reste identique.
+            ctx.AddResponseTransform(async t => await MesurerTokens(t.HttpContext, t.ProxyResponse));
+        }
         if (!echanges.TryGetValue(ctx.Route.RouteId, out var echange))
         {
             return;
@@ -233,6 +239,55 @@ static string Partition(HttpContext ctx) =>
 // Appelant de l'API LLM : l'application cliente (azp, ou appid d'un jeton v1), sinon repli sur l'utilisateur/IP.
 static string PartitionAppelant(HttpContext ctx) =>
     (ctx.User.FindFirst("azp") ?? ctx.User.FindFirst("appid"))?.Value is { } app ? $"azp:{app}" : Partition(ctx);
+
+// Tokens consommés (conventions GenAI d'OTel) posés sur le span de la requête. JSON : usage lu dans une copie
+// tamponnée (HttpContent relu tel quel ensuite) ; flux SSE : jamais lu, donc jamais tamponné.
+// ponytail: réponse JSON compressée non lue (aucun attribut de nombre) ; décompresser si Foundry en renvoie.
+static async Task MesurerTokens(HttpContext ctx, HttpResponseMessage? reponse)
+{
+    var span = ctx.Features.Get<IHttpActivityFeature>()?.Activity;
+    var type = reponse?.Content.Headers.ContentType?.MediaType;
+    if (span is null || reponse is null || type is not ("application/json" or "text/event-stream"))
+    {
+        return;
+    }
+    if ((ctx.User.FindFirst("azp") ?? ctx.User.FindFirst("appid") ?? ctx.User.FindFirst("oid"))?.Value is { } appelant)
+    {
+        span.SetTag("appelant.azp", appelant);
+    }
+    if (type == "text/event-stream")
+    {
+        span.SetTag("gen_ai.usage.mesure", "non_disponible");
+        return;
+    }
+    try
+    {
+        var octets = await reponse.Content.ReadAsByteArrayAsync(ctx.RequestAborted);
+        using var json = System.Text.Json.JsonDocument.Parse(octets);
+        var racine = json.RootElement;
+        if (racine.ValueKind != System.Text.Json.JsonValueKind.Object || !racine.TryGetProperty("usage", out var usage)
+            || usage.ValueKind != System.Text.Json.JsonValueKind.Object)
+        {
+            return;
+        }
+        if (usage.TryGetProperty("prompt_tokens", out var entree) && entree.TryGetInt64(out var nbEntree))
+        {
+            span.SetTag("gen_ai.usage.input_tokens", nbEntree);
+        }
+        if (usage.TryGetProperty("completion_tokens", out var sortie) && sortie.TryGetInt64(out var nbSortie))
+        {
+            span.SetTag("gen_ai.usage.output_tokens", nbSortie);
+        }
+        if (racine.TryGetProperty("model", out var modele) && modele.ValueKind == System.Text.Json.JsonValueKind.String)
+        {
+            span.SetTag("gen_ai.response.model", modele.GetString());
+        }
+    }
+    catch (System.Text.Json.JsonException)
+    {
+        // JSON invalide : rien à mesurer, le client reçoit quand même la réponse d'amont
+    }
+}
 
 static FixedWindowRateLimiterOptions FenetreFixe(int limite, TimeSpan fenetre) =>
     new() { PermitLimit = limite, Window = fenetre, QueueLimit = 0 };

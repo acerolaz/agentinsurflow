@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 using Azure;
@@ -184,6 +186,109 @@ public sealed class LlmTests(Backends backends) : IClassFixture<Backends>
 
         Assert.Equal("data: un", premier); // reçu alors que l'amont n'a pas fini
         suite.SetResult();
+    }
+
+    /// <summary>Amont Foundry factice : répond <paramref name="corps"/> tel quel avec ce type de contenu.</summary>
+    private static async Task<(WebApplication Amont, string Adresse)> AmontFixe(string type, string corps)
+    {
+        var constructeur = WebApplication.CreateSlimBuilder();
+        constructeur.WebHost.UseUrls("http://127.0.0.1:0");
+        var amont = constructeur.Build();
+        amont.MapPost("/openai/v1/chat/completions", async (HttpContext ctx) =>
+        {
+            ctx.Response.ContentType = type;
+            await ctx.Response.WriteAsync(corps, ctx.RequestAborted);
+        });
+        await amont.StartAsync(TestContext.Current.CancellationToken);
+        return (amont, amont.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First());
+    }
+
+    /// <summary>Un appel avec ce jeton ; rend le corps reçu et les attributs du span serveur de la requête.</summary>
+    private async Task<(string Corps, Dictionary<string, object?> Attributs)> AppelMesure(string type, string corps, string jeton, string azpAttendu)
+    {
+        var spans = new ConcurrentBag<Activity>();
+        using var ecoute = new ActivityListener
+        {
+            ShouldListenTo = s => s.Name == "Microsoft.AspNetCore",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = spans.Add,
+        };
+        ActivitySource.AddActivityListener(ecoute);
+        var (amont, adresse) = await AmontFixe(type, corps);
+        await using var _ = amont;
+        using var usine = Gateway(new FauxCredential(), ("ReverseProxy:Clusters:llm:Destinations:d1:Address", adresse));
+        using var client = usine.CreateClient();
+
+        var reponse = await Envoyer(client, jeton);
+
+        Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
+        var recu = await reponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        // listener global (tests en parallèle) : le span de CET appel, retrouvé par son appelant, unique par test
+        var span = Assert.Single(spans, a => a.GetTagItem("appelant.azp") as string == azpAttendu);
+        return (recu, span.TagObjects.ToDictionary(t => t.Key, t => t.Value));
+    }
+
+    private Task<(string Corps, Dictionary<string, object?> Attributs)> AppelMesure(string type, string corps, string azp) =>
+        AppelMesure(type, corps, JetonLlm(azp: azp), azp);
+
+    [Fact]
+    public async Task Reponse_json_tokens_et_modele_dans_le_span_corps_identique()
+    {
+        const string corps = """{"model":"gpt-4o-mini","choices":[{"message":{"content":"texte-secret-reponse"}}],"usage":{"prompt_tokens":12,"completion_tokens":34}}""";
+
+        var (recu, attributs) = await AppelMesure("application/json", corps, "app-mesure-json");
+
+        Assert.Equal(corps, recu);
+        Assert.Equal(12L, attributs["gen_ai.usage.input_tokens"]);
+        Assert.Equal(34L, attributs["gen_ai.usage.output_tokens"]);
+        Assert.Equal("gpt-4o-mini", attributs["gen_ai.response.model"]);
+        Assert.DoesNotContain(attributs.Values, v => v?.ToString()?.Contains("texte-secret-reponse", StringComparison.Ordinal) == true);
+        Assert.False(attributs.ContainsKey("gen_ai.usage.mesure"));
+    }
+
+    [Fact]
+    public async Task Embeddings_sans_completion_seul_input_tokens()
+    {
+        const string corps = """{"model":"embed","data":[],"usage":{"prompt_tokens":7}}""";
+
+        var (_, attributs) = await AppelMesure("application/json", corps, "app-mesure-embed");
+
+        Assert.Equal(7L, attributs["gen_ai.usage.input_tokens"]);
+        Assert.False(attributs.ContainsKey("gen_ai.usage.output_tokens"));
+    }
+
+    [Theory]
+    [InlineData("pas du json {", "app-mesure-invalide")]
+    [InlineData("""{"model":"m","choices":[]}""", "app-mesure-sans-usage")]
+    public async Task Json_invalide_ou_sans_usage_aucun_nombre_et_corps_intact(string corps, string azp)
+    {
+        var (recu, attributs) = await AppelMesure("application/json", corps, azp);
+
+        Assert.Equal(corps, recu);
+        Assert.False(attributs.ContainsKey("gen_ai.usage.input_tokens"));
+        Assert.False(attributs.ContainsKey("gen_ai.usage.output_tokens"));
+    }
+
+    [Fact]
+    public async Task Flux_non_mesure_non_disponible_et_corps_intact()
+    {
+        const string corps = "data: {\"usage\":{\"prompt_tokens\":1}}\n\n";
+
+        var (recu, attributs) = await AppelMesure("text/event-stream", corps, "app-mesure-flux");
+
+        Assert.Equal(corps, recu);
+        Assert.Equal("non_disponible", attributs["gen_ai.usage.mesure"]);
+        Assert.False(attributs.ContainsKey("gen_ai.usage.input_tokens"));
+    }
+
+    [Fact]
+    public async Task Sans_azp_ni_appid_repli_sur_oid()
+    {
+        var jeton = Creer(AudienceLlm, ["LLM"], oid: "oid-mesure-repli");
+
+        var (_, attributs) = await AppelMesure("application/json", """{"usage":{"prompt_tokens":3}}""", jeton, "oid-mesure-repli");
+
+        Assert.Equal(3L, attributs["gen_ai.usage.input_tokens"]);
     }
 
     [Fact]

@@ -2,16 +2,16 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task.
 
-**Goal:** Faire passer le canal serveur MCP → Function de calcul par la gateway (route, politique rôle + audience, débit), supprimer l'exception à D22.
+**Goal:** Faire passer le canal serveur MCP → Function de calcul par la gateway, qui échange le jeton (la Function n'accepte que la gateway), et sortir le serveur MCP dans sa propre Container App ; supprimer l'exception à D22.
 
-**Architecture:** La gateway relaie le jeton application du serveur MCP (rôle `Calcul`, audience « calcul ») vers la Function, qui le revalide par Easy Auth. Le serveur MCP vise la gateway et demande toujours son jeton.
+**Architecture:** La gateway valide le jeton application du serveur MCP (rôle `Calcul`, audience « calcul »), le remplace par le sien (`Azure.Identity`, identité managée) et relaie vers la Function, dont l'Easy Auth n'accepte que la gateway. Le serveur MCP a sa Container App (entrée interne, identité managée propre).
 
 **Spec:** [`docs/superpowers/specs/2026-10-22-calcul-risque-prime-design.md`](../specs/2026-10-22-calcul-risque-prime-design.md) § 3.3 (amendement du 22/10).
 
 ## Global Constraints
 
 - Branche `feat/RiskPrime`, commits locaux ; jamais de push sur `main`.
-- Aucune nouvelle dépendance ni changement de version.
+- Seule dépendance ajoutée, validée par Acerola le 22/10 : `Azure.Identity` (dernière version stable) dans la gateway. Rien d'autre.
 - `gateway/CLAUDE.md` : refus par défaut, chaque route déclare `AuthorizationPolicy` (rôle **et** audience) ; erreurs ProblemDetails (`NON_AUTHENTIFIE`, `ACCES_REFUSE`, `TROP_DE_REQUETES`).
 - Aucun secret dans le dépôt ; scripts `infra/*.sh` rédigés, jamais lancés par un agent ; aucune commande `az`.
 - Jamais dans une trace ou un log : faits, montants, `numero_contrat`, jeton.
@@ -37,16 +37,31 @@
 - [ ] Compose (`Entra__Audiences__calcul__0`, adresse du cluster) et `infra/containerapp.yaml` (mêmes variables, `${CALCUL_AUDIENCE}`, `${CALCUL_URL}`) ; README de la gateway : la route et sa politique.
 - [ ] Commit `feat(gateway): route calcul vers la Function (rôle Calcul + audience, débit) (T9 #64)`.
 
-### Task 2: Serveur MCP via la gateway, infra et docs
+### Task 2: Échange de jeton dans la gateway
 
-**Files:**
-- Modify: `serveur-mcp/agentinsurflow_mcp/infrastructure/fonction_calcul/client.py`, `serveur-mcp/tests/unit/test_client_calcul.py`, `docker-compose.yml` (service `serveur-mcp` : `CALCUL_URL: http://gateway:8000/api/calcul`, `CALCUL_AUDIENCE`), `infra/containerapp.yaml` (conteneur `serveur-mcp` : `CALCUL_URL` = `http://localhost:8000/api/calcul`), `.github/workflows/deploy.yml`, `infra/calcul.sh`, `.env.example`, `docs/secrets.md`, `docs/superpowers/specs/2026-10-21-serveur-mcp-design.md`, `serveur-mcp/README.md`, `fonction-calcul/README.md`
+**Files:** `gateway/src/AgentInsurFlow.Gateway.Api/AgentInsurFlow.Gateway.Api.csproj` (`Azure.Identity`), `Program.cs` (transformation YARP sur la route `calcul`), `appsettings.json`, tests `gateway/tests/…/CalculTests.cs`, `gateway/README.md`.
 
-**Interfaces consommées :** celles de la tâche 1.
+**Interfaces :**
+- Configuration `Calcul:Portee` (ex. `api://<appId calcul>/.default`) et `Calcul:IdentiteClientId` (client id de l'identité managée de la Container App de la gateway). Portée absente → la gateway **retire** l'en-tête `Authorization` avant de relayer (local).
+- Sur la route `calcul` seulement : après validation de la politique `calcul-mcp`, `Authorization: Bearer <jeton de la gateway>` remplace celui du MCP. Jeton obtenu par une abstraction injectée (interface `IJetonsSortants` ou `TokenCredential` d'`Azure.Identity` enregistré en singleton : `ManagedIdentityCredential(clientId)`), pour que les tests la remplacent par un faux.
+- Échec d'obtention du jeton → 502 ProblemDetails, code `CALCUL_INDISPONIBLE`, sans détail du jeton.
 
-- [ ] Tests d'abord (`test_client_calcul.py`) : avec `calcul_audience` et `mcp_client_secret` (local) → jeton demandé par `ClientSecretCredential(tenant, mcp_api_client_id, secret)` pour `"{calcul_audience}/.default"` ; avec l'identité managée (Azure) → `ClientAssertionCredential` inchangé ; **sans `calcul_audience`** ou sans configuration Entra → `ErreurOutil(CALCUL_INDISPONIBLE)` **sans appel HTTP** (le jeton est désormais obligatoire). L'URL appelée est `{calcul_url}/evaluer` et `{calcul_url}/calculer` (la base inclut `/api/calcul`). Échec montré.
-- [ ] Implémenter dans `client.py` (même ordre de priorité que `infrastructure/entra/obo.py` : secret local d'abord, puis identité managée) ; `uv run pytest serveur-mcp/tests --no-cov -q`, `make test`, `make lint` verts.
-- [ ] `infra/calcul.sh` : rôle d'application `Calcul` (`allowedMemberTypes: ["Application"]`, id fixe en variable `CALCUL_ROLE`, comme `MCP_GESTIONNAIRE` dans `entra.sh`) sur l'inscription « calcul », attribué au principal de service de `MCP_API_CLIENT_ID` (motif `attribuer()`), et au principal de la CI si la fumée en a besoin (non : la fumée est anonyme). `bash -n` et `shellcheck` propres.
-- [ ] `deploy.yml` : la fumée de la Function passe par la gateway **après** la mise à jour de la Container App : `GET $URL/health/calcul` → bonne version ; `POST $URL/api/calcul/evaluer` sans jeton → 401 (gateway). Garder la fumée directe existante (version + 401 Easy Auth) avant la mise à jour. `actionlint` sans nouvelle alerte.
-- [ ] Docs : supprimer partout l'« exception à D22 » du calcul (spec MCP § 2, § 4, § 5.1, § 5.3, § 6 ; READMEs ; `docs/secrets.md`) et décrire le chemin MCP → gateway → Function ; `.env.example` (`CALCUL_ROLE=`).
-- [ ] Commit `feat(mcp): appel de la Function de calcul par la gateway, jeton toujours requis (T9 #64)`.
+- [ ] Tests d'abord (WireMock) : le backend reçoit le jeton **de la gateway** (faux credential), jamais celui du MCP ; sans portée configurée, aucun `Authorization` relayé ; autres routes inchangées (le jeton entrant y est relayé tel quel) ; credential en échec → 502 `CALCUL_INDISPONIBLE`. Échec montré.
+- [ ] Implémenter ; `dotnet test gateway`, `dotnet format --verify-no-changes`.
+- [ ] Commit `feat(gateway): échange de jeton vers la Function de calcul (Azure.Identity) (T9 #64)`.
+
+### Task 3: Serveur MCP via la gateway (code)
+
+**Files:** `serveur-mcp/agentinsurflow_mcp/infrastructure/fonction_calcul/client.py`, `serveur-mcp/agentinsurflow_mcp/infrastructure/otel/telemetrie.py`, tests `serveur-mcp/tests/unit/test_client_calcul.py` (+ test de l'exportateur), `docker-compose.yml` (`serveur-mcp` : `CALCUL_URL: http://gateway:8000/api/calcul`, `CALCUL_AUDIENCE`), `serveur-mcp/README.md`.
+
+- [ ] Tests d'abord (`test_client_calcul.py`) : avec `calcul_audience` et `mcp_client_secret` (local) → `ClientSecretCredential(tenant, mcp_api_client_id, secret)` pour `"{calcul_audience}/.default"` ; avec l'identité managée (Azure) → `ClientAssertionCredential` inchangé ; **sans `calcul_audience`** ou sans configuration Entra → `ErreurOutil(CALCUL_INDISPONIBLE)` **sans appel HTTP**. URL appelée : `{calcul_url}/evaluer`, `{calcul_url}/calculer` (la base inclut `/api/calcul`). Échec montré.
+- [ ] Exportateur OTLP : quand `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` vise la gateway et que `TELEMETRIE_AUDIENCE` est défini, chaque export porte `Authorization: Bearer <jeton d'application, audience underwriting, rôle Telemetrie>` (même credential : secret local ou identité managée) ; sans `TELEMETRIE_AUDIENCE`, comportement actuel. Test : l'en-tête est posé, le jeton n'est jamais journalisé ni tracé.
+- [ ] `uv run pytest serveur-mcp/tests --no-cov -q`, `make test`, `make lint` verts. Commit `feat(mcp): calcul et traces par la gateway, jeton d'application toujours requis (T9 #64)`.
+
+### Task 4: Container App du serveur MCP, infra, déploiement et docs
+
+**Files:** `infra/containerapp.yaml` (retirer le conteneur `serveur-mcp` ; gateway : adresse du cluster `mcp` = `https://${MCP_APP_FQDN}` interne, `Calcul__Portee`, `Calcul__IdentiteClientId`), nouveau `infra/containerapp-mcp.yaml` (conteneur `serveur-mcp`, entrée **interne** port 8003, identité managée propre, `GATEWAY_URL`, `CALCUL_URL`, `CALCUL_AUDIENCE`, `TELEMETRIE_AUDIENCE`, OTLP vers `${GATEWAY_URL}/v1/traces`), `infra/bootstrap.sh` (Container Apps MCP staging et production, entrée interne), `infra/entra.sh` (identité managée du MCP, fédérée sur `agentinsurflow-mcp` à la place de l'identité partagée ; rôle `Telemetrie` d'underwriting attribué au MCP), `infra/calcul.sh` (rôle `Calcul` attribué au MCP ; Easy Auth `allowedApplications` = client id de l'identité managée de la **gateway**), `.github/workflows/deploy.yml` (déploie la Container App MCP puis la principale ; fumées `/health/mcp` et `/health/calcul` par la gateway ; `POST /api/calcul/evaluer` sans jeton → 401 ; la fumée directe de la Function reste), `.env.example`, `docs/secrets.md` (nouvelles variables par environnement : `MCP_APP_NAME`, `MCP_APP_FQDN`, `AZURE_UAMI_MCP_CLIENT_ID`, …), spec MCP (`2026-10-21-serveur-mcp-design.md` : plus de « 5e conteneur » ni d'exception à D22 pour le calcul), READMEs.
+
+- [ ] Scripts : `bash -n`, `shellcheck` propres ; aucun lancé, aucune commande `az`.
+- [ ] `actionlint .github/workflows/deploy.yml` sans nouvelle alerte ; `make lint`, `make test` verts.
+- [ ] Commit `feat(infra): serveur MCP dans sa Container App, Function réservée à la gateway (T9 #64)`.

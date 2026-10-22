@@ -41,7 +41,7 @@ flowchart LR
     MCP -->|"OBO → underwriting<br/>GET /api/contrats/{n}"| GW
     GW --> UW["underwriting-admin<br/>vue_contrat_minimisee"]
     MCP -->|"POST /api/calcul/{evaluer,calculer}<br/>jeton app MCP (rôle Calcul)"| GW
-    GW -->|"HTTPS, même jeton<br/>revalidé par Easy Auth"| FN["Function App calcul<br/>/api/evaluer, /api/calculer"]
+    GW -->|"HTTPS, jeton de la gateway<br/>(échange, Easy Auth)"| FN["Function App calcul<br/>/api/evaluer, /api/calculer"]
 ```
 
 - **MCP → gateway → Function** (décision d'Acerola, 22/10, au nom des règles OWASP) : **remplace** l'appel direct décidé plus tôt le même jour. **Plus aucune exception à D22** pour le calcul (§ 3.3).
@@ -71,9 +71,12 @@ flowchart LR
 
 Décision d'Acerola : le canal MCP → Function passe par la gateway, comme rag et underwriting-admin (D22, OWASP API4 limitation de débit, API8 configuration, API9 inventaire). *Le reste est un choix de Claude.*
 - **Route gateway** `calcul` : `POST /api/calcul/{**reste}` → cluster `calcul` (destination = URL de la Function, par variable d'environnement), chemin réécrit en `/api/{**reste}` ; politique `calcul-mcp` = rôle **`Calcul`** + audience `Entra:Audiences:calcul` ; limite de débit dédiée ; refus par défaut inchangé. Route anonyme `GET /health/calcul` → `/api/sante` de la Function (fumée par la gateway, comme `/health/mcp`).
-- **Jeton** : jeton *application* de l'inscription MCP (client credentials), audience `api://<appId calcul>`, portant le rôle d'application **`Calcul`** (nouveau rôle de l'inscription « calcul », attribué au seul principal de service du serveur MCP, sur le modèle `attribuer()` d'`infra/entra.sh`). La gateway relaie le jeton tel quel ; la Function le **revalide** (Easy Auth, `allowedApplications = [MCP]`) : la gateway n'est pas la seule défense.
-- **Serveur MCP** : `CALCUL_URL` vise la gateway (`http://localhost:8000/api/calcul` en Azure, `http://gateway:8000/api/calcul` en local). Le jeton est **toujours** demandé : identité managée fédérée en Azure, `MCP_CLIENT_SECRET` en local (même repli que l'OBO). Sans configuration Entra : `CALCUL_INDISPONIBLE`.
-- **Limite connue (assumée)** : le serveur MCP et la gateway partagent la Container App (même identité managée, même IP de sortie). Rien de cryptographique ni de réseau n'empêche le MCP d'appeler la Function en direct : comme pour rag et underwriting-admin sur `localhost`, le passage par la gateway est une **règle d'architecture** (code + revue), pas une barrière. La fermer vraiment demanderait un composant hors de la Container App ou une identité distincte par conteneur : hors périmètre.
+- **Jeton entrant (MCP → gateway)** : jeton *application* de l'inscription MCP (client credentials), audience `api://<appId calcul>`, portant le rôle d'application **`Calcul`** (nouveau rôle de l'inscription « calcul », attribué au seul principal de service du serveur MCP, sur le modèle `attribuer()` d'`infra/entra.sh`). La gateway le valide (politique `calcul-mcp`).
+- **Échange de jeton (décision d'Acerola, 22/10)** : la gateway **remplace** le jeton du MCP par **le sien** avant de relayer : `Azure.Identity` (dépendance validée par Acerola), identité managée de la Container App de la gateway, portée `api://<appId calcul>/.default`, jeton mis en cache par la bibliothèque. Sans configuration (local), la gateway relaie sans `Authorization` (la Function du compose n'a pas d'Easy Auth).
+- **Function** : Easy Auth `allowedApplications = [identité managée de la gateway]` : **seule la gateway entre** ; un jeton du MCP, même valide, reçoit 401. La Function revalide donc le jeton de la gateway (la gateway n'est pas la seule défense).
+- **Serveur MCP dans sa propre Container App (décision d'Acerola, 22/10)** : même environnement Container Apps, **entrée interne** seulement (port 8003, joignable par la gateway, jamais depuis Internet), **identité managée propre** fédérée sur l'inscription `agentinsurflow-mcp` (OBO et jetons d'application). Le cluster `mcp` de la gateway vise l'adresse interne de cette Container App ; le MCP joint la gateway par son adresse dans l'environnement (`GATEWAY_URL`). Traces OTLP du MCP : par la route `/v1/traces` de la gateway, jeton d'application avec le rôle `Telemetrie` d'underwriting-admin (attribué au MCP).
+- **Serveur MCP → calcul** : `CALCUL_URL` = `${GATEWAY_URL}/api/calcul`. Le jeton est **toujours** demandé : identité managée fédérée en Azure, `MCP_CLIENT_SECRET` en local (même repli que l'OBO). Sans configuration Entra : `CALCUL_INDISPONIBLE`.
+- **Limite restante (assumée)** : rag et underwriting-admin partagent la Container App, donc l'identité managée, de la gateway : eux pourraient obtenir le jeton accepté par la Function. Aucun des deux n'a de raison de l'appeler : règle d'architecture, comme aujourd'hui.
 
 ### 3.2 Déploiement
 

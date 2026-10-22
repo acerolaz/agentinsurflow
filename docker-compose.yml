@@ -69,6 +69,12 @@ services:
       APP_ENV: local
     ports: ["8003:8003"]
 
+  # Function de calcul (barème + formule) : réseau interne seulement, aucun port publié
+  calcul:
+    build: { context: ., dockerfile: fonction-calcul/Dockerfile }
+    environment:
+      APP_VERSION: dev
+
   underwriting-admin:
     build: { context: ., dockerfile: underwriting-admin/Dockerfile }
     environment:

@@ -218,3 +218,36 @@ def test_serialisation_aller_retour_conserve_les_tuples() -> None:
     )
     brut = json.loads(json.dumps(etat_vers_dict(etat)))  # comme un point de reprise
     assert etat_depuis_dict(brut) == etat
+
+
+async def test_proposer_sans_date_effet_revue_humaine_cause_erreur() -> None:
+    from agentinsurflow_cluster.domain.models import Fiche, Pieces, Prime, Risque
+
+    outils = FakeOutils()
+    etat = EtatDossier(
+        "C-1",
+        dossier={},
+        pieces=Pieces("complet", (), "n"),
+        risque=Risque(3, "acceptable", (), "b", "n"),
+        fiche=Fiche("ACCEPTE", "tiers", 3, "b", (), ("m",), ("c",)),
+        prime=Prime("600.00", "50.00", "v", "e"),
+    )
+    etat = await proposer(etat, JETON, _deps(outils))
+    assert statut_de(etat) == "REVUE_HUMAINE"
+    assert outils.corps("update_statut_dossier")[0]["statut"] == "REVUE_HUMAINE"
+    assert "prime" not in outils.corps("enregistrer_brouillon")[0]
+
+
+async def test_fiche_acceptee_remplacee_par_la_provisoire_apres_garde_de_duree() -> None:
+    outils = FakeOutils()
+    deps = _deps(outils)
+    etat = await charger("C-1", JETON, deps)
+    for _ in range(3):  # pièces, risque, rédacteur : la fiche ACCEPTE existe
+        etat = await pas(etat, JETON, deps)
+    assert etat.fiche is not None and etat.fiche.decision == "ACCEPTE"
+    etat = await pas(etat, JETON, deps, ecoule_s=24.0)  # l'actuaire n'a plus le temps
+    assert etat.cause == "duree"
+    await proposer(etat, JETON, deps)
+    brouillon = outils.corps("enregistrer_brouillon")[0]
+    assert brouillon["fiche"]["decision"] == "REVUE_HUMAINE" and "prime" not in brouillon
+    assert brouillon["fiche"]["motifs"] == ["Délai d'analyse dépassé : revue humaine requise."]

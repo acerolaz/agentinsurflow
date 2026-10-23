@@ -47,6 +47,10 @@ class EvaluationEnAttente(Exception):
     """Une revue du gestionnaire attend déjà pour ce dossier."""
 
 
+class DossierDecide(Exception):
+    """Le dossier a déjà reçu sa décision (ACCEPTE ou REFUSE) : plus d'évaluation."""
+
+
 class AucuneRevueEnAttente(Exception):
     """Aucune évaluation n'attend la revue du gestionnaire."""
 
@@ -174,6 +178,8 @@ async def proposer(etat: EtatDossier, jeton: str, deps: Dependances) -> EtatDoss
 
     Rend l'état sans ``observations`` : la pause humaine qui suit n'en a plus besoin.
     """
+    if statut_de(etat) == "EN_ANALYSE" and "date_effet" not in (etat.dossier or {}):
+        etat = replace(etat, cause="erreur")  # prime sans date d'effet : pas de brouillon valable
     statut = statut_de(etat)
     if statut == "REVUE_HUMAINE":
         cause = prochaine_etape(etat)[1]

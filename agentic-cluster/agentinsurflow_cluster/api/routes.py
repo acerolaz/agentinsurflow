@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from ..application.evaluation import (
     MESSAGE_REVUE_HUMAINE,
     AucuneRevueEnAttente,
+    DossierDecide,
     EvaluationEnAttente,
     Revue,
 )
@@ -68,7 +69,7 @@ def _evaluation(r: Resultat) -> EvaluationReponse:
         fiche=None if revue or e.fiche is None else FicheDto(**vars(e.fiche)),
         prime=None if revue or e.prime is None else PrimeDto(**vars(e.prime)),
         message=MESSAGE_REVUE_HUMAINE if revue else None,
-        synthese=[EtapeDto(**t) for t in e.tours],  # type: ignore[arg-type]
+        synthese=[EtapeDto(tour=t["tour"], outil_appele=t["outil_appele"]) for t in e.tours],  # type: ignore[arg-type]
     )
 
 
@@ -84,6 +85,8 @@ async def evaluer(numero_contrat: str, request: Request, courant: Courant) -> Ev
         raise Probleme(
             409, "EVALUATION_EN_ATTENTE", "Une revue est déjà en attente pour ce dossier"
         ) from e
+    except DossierDecide as e:
+        raise Probleme(409, "DOSSIER_DECIDE", "Ce dossier a déjà reçu sa décision") from e
     except ErreurOutil as e:
         raise _outil_en_echec(e) from e
 

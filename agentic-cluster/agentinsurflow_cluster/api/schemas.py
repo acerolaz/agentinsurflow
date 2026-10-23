@@ -27,8 +27,6 @@ class PrimeDto(BaseModel):
 class EtapeDto(BaseModel):
     tour: int
     outil_appele: str
-    precondition: str | None
-    mode: str
 
 
 class EvaluationReponse(BaseModel):

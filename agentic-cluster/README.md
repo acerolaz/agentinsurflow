@@ -26,6 +26,13 @@ flowchart LR
 
 Erreurs : `application/problem+json` avec un `code` stable. Le message de `REVUE_HUMAINE` est neutre : jamais la cause ni le nom d'un détecteur.
 
+## Concurrence et reprise
+
+- Un `asyncio.Lock` par numéro de contrat sérialise `evaluer` et `reviser` : il ne vaut que pour **une réplique** (`maxReplicas: 1` en T12) ; plusieurs répliques demanderaient un verrou en base.
+- Un dossier `ACCEPTE` ou `REFUSE` ne se réévalue pas : `409 DOSSIER_DECIDE`.
+- Si l'écriture de la décision échoue (`502`), la revue reste posée : un second `/revue` rejoue `enregistrer` (la décision la plus récente l'emporte) ; `POST /evaluations/{n}` répond `409 EVALUATION_EN_ATTENTE` entre-temps.
+- Les observations du dossier ne sont jamais dans l'état du graphe ni dans un point de reprise : elles passent par le contexte d'exécution (en mémoire).
+
 ## Configuration (variables d'environnement, aucune valeur dans le dépôt)
 
 - Entra et gateway : `AZURE_TENANT_ID`, `GATEWAY_URL`, `MCP_API_CLIENT_ID`, `LLM_AUDIENCE`, `INSURFLOW_CLUSTER_CLIENT_ID`, `INSURFLOW_AGENT_<AGENT>_CLIENT_ID`, `INSURFLOW_CLIENT_SECRET` (local) ou `AZURE_UAMI_CLIENT_ID` (Azure).

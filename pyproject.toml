@@ -19,6 +19,13 @@ agentinsurflow-rag = { workspace = true }
 agentinsurflow-mcp = { workspace = true }
 agentinsurflow-calcul = { workspace = true }
 agentinsurflow-cluster = { workspace = true }
+# décision d'Acerola du 23/10 : image sans CUDA, même version de torch que le lock, build CPU
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [dependency-groups]
 dev = [

@@ -109,6 +109,87 @@ async def test_le_jeton_n_est_ecrit_dans_aucun_point_de_reprise() -> None:
     assert jeton not in ecrit and "pieces" in ecrit
 
 
+OBSERVATION = "Observation confidentielle ZX42 du gestionnaire."
+
+
+def _octets(valeur: Any) -> bytes:
+    """Tout le contenu binaire ou textuel d'une structure de points de reprise, à plat."""
+    if isinstance(valeur, bytes | bytearray):
+        return bytes(valeur)
+    if isinstance(valeur, str):
+        return valeur.encode()
+    if isinstance(valeur, dict):
+        return b"".join(_octets(k) + _octets(v) for k, v in valeur.items())
+    if isinstance(valeur, list | tuple | set):
+        return b"".join(_octets(v) for v in valeur)
+    return b""
+
+
+async def test_observations_jamais_dans_un_point_de_reprise_mais_recues_par_le_redacteur() -> None:
+    banc = Banc(outils=FakeOutils(get_contrat={**CONTRAT, "observations": OBSERVATION}))
+    async with client(banc) as c:
+        assert (await c.post("/evaluations/C-1")).status_code == 200
+    stockage = _octets(banc.saver.storage) + _octets(banc.saver.blobs) + _octets(banc.saver.writes)
+    assert b"pieces" in stockage and OBSERVATION.encode() not in stockage
+    redacteur = [vue for agent, vue, _ in banc.redaction.appels if agent == "redacteur"]
+    assert OBSERVATION in redacteur[0]["observations"]
+    assert OBSERVATION not in json.dumps(banc.outils.arguments)
+
+
+class SortiePanne(FakeOutils):
+    """Échoue une fois à l'écriture du statut ACCEPTE (reprise sur panne du MCP)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.echecs = 0
+
+    async def appeler(self, agent: str, jeton: str, outil: str, arguments: dict[str, Any]) -> Any:
+        if outil == "update_statut_dossier" and arguments["statut"] == "ACCEPTE":
+            if self.echecs == 0:
+                self.echecs += 1
+                raise ErreurOutil("MCP_INDISPONIBLE")
+        return await super().appeler(agent, jeton, outil, arguments)
+
+
+async def test_revue_non_perdue_si_l_enregistrement_echoue_puis_rejoue() -> None:
+    outils = SortiePanne()
+    banc = Banc(outils=outils)
+    async with client(banc) as c:
+        await c.post("/evaluations/C-1")
+        premiere = await c.post("/evaluations/C-1/revue", json=REVUE)
+        assert premiere.status_code == 502
+        assert (await c.post("/evaluations/C-1")).status_code == 409  # la revue attend encore
+        seconde = await c.post("/evaluations/C-1/revue", json=REVUE)
+        assert seconde.status_code == 200 and seconde.json() == {"statut": "ACCEPTE"}
+    ecrits = [a for a in outils.corps("update_statut_dossier") if a["statut"] == "ACCEPTE"]
+    assert len(ecrits) == 1
+
+
+async def test_deux_evaluations_concurrentes_un_seul_brouillon() -> None:
+    banc = Banc()
+    async with client(banc) as c:
+        a, b = await asyncio.gather(c.post("/evaluations/C-1"), c.post("/evaluations/C-1"))
+    assert sorted([a.status_code, b.status_code]) == [200, 409]
+    assert len(banc.outils.corps("enregistrer_brouillon")) == 1
+
+
+async def test_evaluation_d_un_dossier_decide_409_dossier_decide() -> None:
+    async with client(Banc()) as c:
+        await c.post("/evaluations/C-1")
+        await c.post("/evaluations/C-1/revue", json={**REVUE, "decision": "REFUSE"})
+        r = await c.post("/evaluations/C-1")
+    assert r.status_code == 409 and r.json()["code"] == "DOSSIER_DECIDE"
+    assert r.headers["content-type"].startswith("application/problem+json")
+
+
+async def test_synthese_ne_porte_que_le_tour_et_l_outil() -> None:
+    banc = Banc(garde=FakeGarde(entree=["prompt_injection"]))
+    async with client(banc) as c:
+        r = await c.post("/evaluations/C-1")
+    assert all(set(e) == {"tour", "outil_appele"} for e in r.json()["synthese"])
+    assert "repli" not in r.text and "precondition" not in r.text
+
+
 async def test_revue_humaine_ne_revele_ni_cause_ni_detecteur() -> None:
     banc = Banc(garde=FakeGarde(entree=["prompt_injection"]))
     async with client(banc) as c:

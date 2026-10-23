@@ -1,4 +1,4 @@
-"""Validation d'un jeton de gestionnaire (audience ``api://agentinsurflow-cluster`` ou appId du cluster).
+"""Validation d'un jeton de gestionnaire (audience ``api://agentinsurflow-cluster`` ou appId).
 
 Même contrôle que serveur-mcp (RS256, émetteur v1 ou v2, audience, ``exp``, ``oid``) ; copie
 adaptée, aucun import entre services.

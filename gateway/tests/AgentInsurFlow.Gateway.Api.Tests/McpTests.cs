@@ -159,6 +159,40 @@ public sealed class McpTests(Backends backends) : IClassFixture<Backends>
         Assert.Equal(HttpStatusCode.Forbidden, sansRole.StatusCode);
     }
 
+    [Fact]
+    public async Task Put_etat_relaye_seulement_pour_le_jeton_du_serveur_mcp()
+    {
+        using var usine = backends.Gateway();
+        using var client = usine.CreateClient();
+        const string chemin = "/api/contrats/AIF-2026-0001/etat";
+        var corps = () => new StringContent("{}", Encoding.UTF8, "application/json");
+
+        // le gestionnaire appelle directement : rôle et audience valides, mais pas l'appelant MCP
+        var direct = await Envoyer(client, "PUT", chemin, Creer(AudienceUnderwriting, ["Gestionnaire"]), corps());
+        var autreAzp = await Envoyer(client, "PUT", chemin, Creer(AudienceUnderwriting, ["Gestionnaire"], azp: "autre-client"), corps());
+        Assert.Equal(HttpStatusCode.Forbidden, direct.StatusCode);
+        Assert.Equal("ACCES_REFUSE", await AutorisationTests.Code(direct));
+        Assert.Equal(HttpStatusCode.Forbidden, autreAzp.StatusCode);
+        Assert.Empty(backends.Underwriting.LogEntries);
+
+        var mcp = await Envoyer(client, "PUT", chemin, Creer(AudienceUnderwriting, ["Gestionnaire"], azp: ClientMcp), corps());
+        Assert.Equal(HttpStatusCode.OK, mcp.StatusCode);
+        Assert.Equal(chemin, Assert.Single(backends.Underwriting.LogEntries).RequestMessage!.Path);
+    }
+
+    [Fact]
+    public async Task Put_etat_sans_client_mcp_configure_refuse_tout_le_monde()
+    {
+        using var usine = backends.Gateway(("Entra:McpClientId", ""));
+        using var client = usine.CreateClient();
+
+        var reponse = await Envoyer(client, "PUT", "/api/contrats/AIF-2026-0001/etat",
+            Creer(AudienceUnderwriting, ["Gestionnaire"], azp: ""), new StringContent("{}", Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);
+        Assert.Empty(backends.Underwriting.LogEntries);
+    }
+
     // WireMock répond d'un bloc : un vrai Kestrel local sert l'événement 1, puis attend le feu vert du test
     [Fact]
     public async Task Sse_transmis_au_fil_de_l_eau()

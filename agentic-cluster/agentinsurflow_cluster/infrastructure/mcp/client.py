@@ -58,8 +58,17 @@ class ClientMcpGateway:
                     async with ClientSession(lire, ecrire) as session:
                         await session.initialize()
                         resultat = await session.call_tool(outil, arguments)
-        except (httpx.HTTPError, McpError, BaseExceptionGroup) as e:  # panne de transport
+        except (httpx.HTTPError, McpError) as e:  # panne de transport
             raise ErreurOutil("MCP_INDISPONIBLE", type(e).__name__) from e
+        except BaseExceptionGroup as g:
+            # une annulation seule doit remonter : sinon asyncio.timeout ne lève plus TimeoutError
+            # (la condition de `subgroup` s'applique aussi aux groupes : on la restreint aux feuilles)
+            autres = g.subgroup(
+                lambda e: not isinstance(e, asyncio.CancelledError | BaseExceptionGroup)
+            )
+            if autres is None:
+                raise
+            raise ErreurOutil("MCP_INDISPONIBLE", type(g).__name__) from g
         if resultat.isError:
             code = (resultat.structuredContent or {}).get("code", "MCP_ERREUR")
             raise ErreurOutil(str(code))

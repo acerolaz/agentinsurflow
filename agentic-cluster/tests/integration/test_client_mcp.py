@@ -7,6 +7,7 @@ n'importe pas d'un service à l'autre ; son contrat de refus est couvert par ses
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -110,3 +111,23 @@ async def test_panne_de_transport_devient_mcp_indisponible() -> None:
     with pytest.raises(ErreurOutil) as exc:
         await client.appeler("analyste", "jeton-gestionnaire", "lister_pieces", {})
     assert exc.value.code == "MCP_INDISPONIBLE"
+
+
+class _HttpAnnule:
+    async def __aenter__(self) -> None:
+        raise BaseExceptionGroup("x", [asyncio.CancelledError()])
+
+    async def __aexit__(self, *exc: object) -> None:
+        return None
+
+
+async def test_annulation_seule_est_relancee_telle_quelle() -> None:
+    client = ClientMcpGateway(
+        "http://test",
+        _FauxJetons(),
+        fabrique_http=lambda e: _HttpAnnule(),  # type: ignore[arg-type,return-value]
+    )
+    with pytest.raises(BaseExceptionGroup) as exc:
+        await client.appeler("analyste", "jeton-gestionnaire", "lister_pieces", {})
+    assert not isinstance(exc.value, ErreurOutil)
+    assert isinstance(exc.value.exceptions[0], asyncio.CancelledError)

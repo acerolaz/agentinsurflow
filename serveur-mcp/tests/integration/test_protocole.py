@@ -97,7 +97,6 @@ async def test_orchestrateur_voit_ses_outils(ouvrir: Ouvrir) -> None:
             "update_statut_dossier",
             "enregistrer_brouillon",
             "get_contrat",
-            "evaluer_risque",
         }
 
 

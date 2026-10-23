@@ -5,7 +5,9 @@ from __future__ import annotations
 import pytest
 from jetons_mcp_de_test import (
     AZP_ACTUAIRE,
+    AZP_ANALYSTE,
     AZP_ORCHESTRATEUR,
+    AZP_PIECES,
     AZP_REDACTEUR,
     CLE_ETRANGERE,
     CLE_PUBLIQUE,
@@ -26,6 +28,8 @@ CFG = config_auth()
         (AZP_ORCHESTRATEUR, "orchestrateur"),
         (AZP_REDACTEUR, "redacteur"),
         (AZP_ACTUAIRE, "actuaire"),
+        (AZP_PIECES, "pieces"),
+        (AZP_ANALYSTE, "analyste"),
     ],
 )
 def test_agent_deduit_de_azp(azp: str, agent: str) -> None:

@@ -83,7 +83,7 @@ async def test_lister_les_outils_est_trace(spans: InMemorySpanExporter) -> None:
         await s.list_tools()
     attributs = _un(spans, "mcp.lister_outils")
     assert attributs["appelant.azp"] == AZP_ORCHESTRATEUR
-    assert attributs["outils.nombre"] == 4
+    assert attributs["outils.nombre"] == 3
 
 
 async def test_search_rag_trace_la_question_par_son_empreinte(spans: InMemorySpanExporter) -> None:

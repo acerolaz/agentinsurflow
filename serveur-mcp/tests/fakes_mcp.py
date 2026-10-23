@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from agentinsurflow_mcp.domain.models import Appelant, ErreurOutil
+from agentinsurflow_mcp.domain.models import Agent, Appelant, ErreurOutil
 
 
-def appelant(agent: Literal["orchestrateur", "redacteur", "actuaire"] = "redacteur") -> Appelant:
+def appelant(agent: Agent = "redacteur") -> Appelant:
     return Appelant("oid-a", "azp-a", agent, frozenset({"Gestionnaire"}), "jeton-entrant")
 
 

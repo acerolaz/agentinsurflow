@@ -228,6 +228,8 @@ jobs:
           MCP_AZP_ORCHESTRATEUR: ${{ vars.MCP_AZP_ORCHESTRATEUR }}
           MCP_AZP_REDACTEUR: ${{ vars.MCP_AZP_REDACTEUR }}
           MCP_AZP_ACTUAIRE: ${{ vars.MCP_AZP_ACTUAIRE }}
+          MCP_AZP_PIECES: ${{ vars.MCP_AZP_PIECES }}
+          MCP_AZP_ANALYSTE: ${{ vars.MCP_AZP_ANALYSTE }}
           AZURE_UAMI_MCP_CLIENT_ID: ${{ vars.AZURE_UAMI_MCP_CLIENT_ID }}
           CALCUL_AUDIENCE: ${{ vars.CALCUL_AUDIENCE }}
         run: |
@@ -236,7 +238,7 @@ jobs:
           GATEWAY_URL="https://$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)"
           export GATEWAY_URL
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
-          envsubst '$IMAGE_MCP $APP_ENV $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $MCP_API_CLIENT_ID $MCP_AZP_ORCHESTRATEUR $MCP_AZP_REDACTEUR $MCP_AZP_ACTUAIRE $AZURE_UAMI_MCP_CLIENT_ID $GATEWAY_URL $CALCUL_AUDIENCE' \
+          envsubst '$IMAGE_MCP $APP_ENV $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $MCP_API_CLIENT_ID $MCP_AZP_ORCHESTRATEUR $MCP_AZP_REDACTEUR $MCP_AZP_ACTUAIRE $MCP_AZP_PIECES $MCP_AZP_ANALYSTE $AZURE_UAMI_MCP_CLIENT_ID $GATEWAY_URL $CALCUL_AUDIENCE' \
             < infra/containerapp-mcp.yaml > "$RUNNER_TEMP/containerapp-mcp.yaml"
           az containerapp update -n "$MCP_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-mcp.yaml" -o none
           # FQDN interne (<app>.internal.<domaine de l'environnement>) : la gateway l'appelle en https, port 443 -> 8003

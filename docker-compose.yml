@@ -62,6 +62,8 @@ services:
       MCP_AZP_ORCHESTRATEUR: ${MCP_AZP_ORCHESTRATEUR:-}
       MCP_AZP_REDACTEUR: ${MCP_AZP_REDACTEUR:-}
       MCP_AZP_ACTUAIRE: ${MCP_AZP_ACTUAIRE:-}
+      MCP_AZP_PIECES: ${MCP_AZP_PIECES:-}
+      MCP_AZP_ANALYSTE: ${MCP_AZP_ANALYSTE:-}
       # rag et dossiers en On-Behalf-Of, par la gateway (D22) ; secret : .env local seulement
       RAG_API_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
       UNDERWRITING_API_CLIENT_ID: ${UNDERWRITING_API_CLIENT_ID:-}

@@ -1,7 +1,7 @@
 """Validation d'un jeton Entra ID pour le serveur MCP (audience ``agentinsurflow-mcp``).
 
 Mêmes contrôles que rag (RS256, émetteur v1 ou v2, audience, ``exp``, ``oid``), plus l'identité de
-l'agent : l'``azp`` (``appid`` pour un jeton v1) est cherché dans les trois variables d'agent.
+l'agent : l'``azp`` (``appid`` pour un jeton v1) est cherché dans les variables d'agent.
 """
 
 from __future__ import annotations
@@ -25,6 +25,8 @@ class ConfigAuth(BaseSettings):
     mcp_azp_orchestrateur: str = ""
     mcp_azp_redacteur: str = ""
     mcp_azp_actuaire: str = ""
+    mcp_azp_pieces: str = ""
+    mcp_azp_analyste: str = ""
 
     @property
     def audiences(self) -> list[str]:
@@ -48,6 +50,8 @@ class ConfigAuth(BaseSettings):
             self.mcp_azp_orchestrateur: "orchestrateur",
             self.mcp_azp_redacteur: "redacteur",
             self.mcp_azp_actuaire: "actuaire",
+            self.mcp_azp_pieces: "pieces",
+            self.mcp_azp_analyste: "analyste",
         }
         return agents.get(azp) if azp else None
 

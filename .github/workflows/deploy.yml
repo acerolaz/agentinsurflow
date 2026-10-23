@@ -166,6 +166,18 @@ jobs:
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
           envsubst '$IMAGE_POSTGRES $TAG' < infra/containerapp-postgres.yaml > "$RUNNER_TEMP/containerapp-postgres.yaml"
           az containerapp update -n "$PG_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-postgres.yaml" -o none
+          # La nouvelle révision doit être prête ET seule active avant de déployer ses clients : sinon underwriting-admin
+          # migre dans l'ancienne base, éteinte ensuite, et tourne sans schéma (42P01, run #83 du 23/10).
+          derniere=$(az containerapp show -n "$PG_APP" -g "$RG" --query properties.latestRevisionName -o tsv)
+          for _ in $(seq 60); do
+            prete=$(az containerapp show -n "$PG_APP" -g "$RG" --query properties.latestReadyRevisionName -o tsv)
+            actives=$(az containerapp revision list -n "$PG_APP" -g "$RG" --query "[?properties.active].name" -o tsv)
+            [ "$prete" = "$derniere" ] && [ "$actives" = "$derniere" ] && break
+            sleep 5
+          done
+          [ "$prete" = "$derniere" ] && [ "$actives" = "$derniere" ] ||
+            { echo "::error::$PG_APP : la révision $derniere n'est pas seule active après 5 min (actives : ${actives//$'\n'/ })"; exit 1; }
+          echo "✔ $PG_APP : révision $derniere prête et seule active"
           pg=$(az containerapp show -n "$PG_APP" -g "$RG" -o json)
           jq -e '.properties.configuration.ingress | (.external == false) and ((.transport // "" | ascii_downcase) == "tcp") and (.targetPort == 5432)' <<<"$pg" > /dev/null ||
             { echo "::error::$PG_APP : l'entrée doit être TCP interne sur 5432 (relancer make infra, voir docs/secrets.md)"; exit 1; }

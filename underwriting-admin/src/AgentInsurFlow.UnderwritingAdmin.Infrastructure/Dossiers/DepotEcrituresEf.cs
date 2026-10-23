@@ -100,13 +100,14 @@ internal sealed class DepotEcrituresEf(DossiersDbContext db, TimeProvider horlog
         var maintenant = horloge.GetUtcNow();
 
         // Idempotent (l'orchestrateur rejoue le même état) : upsert de l'état et des sections, insertion qui ignore un doublon
-        // pour les rapports et les tours. nb_relances n'est pas touché ici.
+        // pour les rapports et les tours. Une écriture périmée (tentative plus ancienne) ne remplace pas l'état. nb_relances n'est pas touché ici.
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await db.Database.ExecuteSqlAsync($"""
             INSERT INTO etat_dossier (numero_contrat, version_schema, statut_parcours, tentative, nb_relances, maj_le)
             VALUES ({numeroContrat}, 1, {etat.StatutParcours}, {etat.Tentative}, 0, {maintenant})
             ON CONFLICT (numero_contrat) DO UPDATE
             SET statut_parcours = EXCLUDED.statut_parcours, tentative = EXCLUDED.tentative, maj_le = EXCLUDED.maj_le
+            WHERE etat_dossier.tentative <= EXCLUDED.tentative
             """, ct);
         foreach (var s in etat.Sections)
             await db.Database.ExecuteSqlAsync($"""

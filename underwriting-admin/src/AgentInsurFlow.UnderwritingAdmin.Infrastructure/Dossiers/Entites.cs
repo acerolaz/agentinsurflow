@@ -199,7 +199,7 @@ internal sealed class LigneVue
 
 // Mémoire long terme du dossier (D100) : aucune colonne identifiante (nom, adresse…), la liste blanche des sections y veille.
 
-/// <summary>État courant du parcours d'un dossier (une ligne par contrat).</summary>
+/// <summary>État courant du parcours d'un dossier (une ligne par contrat, clé étrangère vers `contrat.numero_contrat`).</summary>
 internal sealed class EtatDossier
 {
     public string NumeroContrat { get; set; } = "";
@@ -212,7 +212,6 @@ internal sealed class EtatDossier
 
 internal sealed class SectionEtat
 {
-    public Guid Id { get; set; }
     public string NumeroContrat { get; set; } = "";
     public string Section { get; set; } = "";
     public int Tentative { get; set; }
@@ -224,7 +223,6 @@ internal sealed class SectionEtat
 /// <summary>Rapport d'un agent : append-only, unique par (contrat, agent, tentative, trace).</summary>
 internal sealed class RapportAgent
 {
-    public Guid Id { get; set; }
     public string NumeroContrat { get; set; } = "";
     public string Agent { get; set; } = "";
     public int Tentative { get; set; }
@@ -240,7 +238,6 @@ internal sealed class RapportAgent
 
 internal sealed class TourPilotage
 {
-    public Guid Id { get; set; }
     public string NumeroContrat { get; set; } = "";
     public int Tentative { get; set; }
     public int Tour { get; set; }

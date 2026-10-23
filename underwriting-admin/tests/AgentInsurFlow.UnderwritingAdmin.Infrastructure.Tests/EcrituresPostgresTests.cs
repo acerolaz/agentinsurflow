@@ -108,7 +108,7 @@ public sealed class EcrituresPostgresTests
         await using var _ = db;
         var ct = TestContext.Current.CancellationToken;
         var migrateur = Connexions().Migrateur;
-        foreach (var t in new[] { "etat_dossier", "section_etat", "rapport_agent", "tour_pilotage" })
+        foreach (var t in new[] { "tour_pilotage", "rapport_agent", "section_etat", "etat_dossier" })
             await Lire(migrateur, $"DELETE FROM {t} WHERE numero_contrat = @p0", numero);
         var etat = new EtatEntrant("EN_COURS", 2, [new("risque", "{\"score\":0.4}")],
             [new("risque", "{\"resume\":\"ok\"}", "llm", null, "v1", "t-1")], [new(1, "evaluer_risque", "pieces_ok", "llm")]);
@@ -116,6 +116,8 @@ public sealed class EcrituresPostgresTests
         Assert.True(await depot.EnregistrerEtat(GestionnaireA, numero, etat, ct));
         Assert.True(await depot.EnregistrerEtat(GestionnaireA, numero, etat with { StatutParcours = "TERMINE", Sections = [new("risque", "{\"score\":0.5}")] }, ct));
         Assert.False(await depot.EnregistrerEtat(GestionnaireB, numero, etat, ct));
+        // Écriture périmée : une tentative plus ancienne ne remplace pas l'état (tentative 2 reste).
+        Assert.True(await depot.EnregistrerEtat(GestionnaireA, numero, etat with { StatutParcours = "PERIME", Tentative = 1, Sections = [], Rapports = [], Tours = [] }, ct));
 
         var e = Assert.Single(await Lire(migrateur, "SELECT statut_parcours, tentative, version_schema, nb_relances FROM etat_dossier WHERE numero_contrat = @p0", numero));
         Assert.Equal(["TERMINE", "2", "1", "0"], e.Select(o => o.ToString()));

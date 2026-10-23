@@ -104,6 +104,9 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                     b.HasKey("Id")
                         .HasName("pk_contrat");
 
+                    b.HasAlternateKey("NumeroContrat")
+                        .HasName("ak_contrat_numero_contrat");
+
                     b.HasIndex("GestionnaireId")
                         .HasDatabaseName("ix_contrat_gestionnaire_id");
 
@@ -492,16 +495,21 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
 
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.RapportAgent", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("gen_random_uuid()");
+                    b.Property<string>("NumeroContrat")
+                        .HasColumnType("text")
+                        .HasColumnName("numero_contrat");
 
                     b.Property<string>("Agent")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("agent");
+
+                    b.Property<int>("Tentative")
+                        .HasColumnType("integer")
+                        .HasColumnName("tentative");
+
+                    b.Property<string>("TraceId")
+                        .HasColumnType("text")
+                        .HasColumnName("trace_id");
 
                     b.Property<string>("Cause")
                         .HasColumnType("text")
@@ -518,36 +526,18 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .HasColumnType("text")
                         .HasColumnName("mode");
 
-                    b.Property<string>("NumeroContrat")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("numero_contrat");
-
                     b.Property<string>("Rapport")
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("rapport");
-
-                    b.Property<int>("Tentative")
-                        .HasColumnType("integer")
-                        .HasColumnName("tentative");
-
-                    b.Property<string>("TraceId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("trace_id");
 
                     b.Property<string>("VersionPrompt")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("version_prompt");
 
-                    b.HasKey("Id")
+                    b.HasKey("NumeroContrat", "Agent", "Tentative", "TraceId")
                         .HasName("pk_rapport_agent");
-
-                    b.HasIndex("NumeroContrat", "Agent", "Tentative", "TraceId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_rapport_agent_numero_contrat_agent_tentative_trace_id");
 
                     b.ToTable("rapport_agent", (string)null);
                 });
@@ -586,24 +576,11 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
 
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.SectionEtat", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<string>("Contenu")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("contenu");
-
                     b.Property<string>("NumeroContrat")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("numero_contrat");
 
                     b.Property<string>("Section")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("section");
 
@@ -611,12 +588,13 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("tentative");
 
-                    b.HasKey("Id")
-                        .HasName("pk_section_etat");
+                    b.Property<string>("Contenu")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("contenu");
 
-                    b.HasIndex("NumeroContrat", "Section", "Tentative")
-                        .IsUnique()
-                        .HasDatabaseName("ix_section_etat_numero_contrat_section_tentative");
+                    b.HasKey("NumeroContrat", "Section", "Tentative")
+                        .HasName("pk_section_etat");
 
                     b.ToTable("section_etat", (string)null);
                 });
@@ -753,21 +731,22 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
 
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.TourPilotage", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("gen_random_uuid()");
+                    b.Property<string>("NumeroContrat")
+                        .HasColumnType("text")
+                        .HasColumnName("numero_contrat");
+
+                    b.Property<int>("Tentative")
+                        .HasColumnType("integer")
+                        .HasColumnName("tentative");
+
+                    b.Property<int>("Tour")
+                        .HasColumnType("integer")
+                        .HasColumnName("tour");
 
                     b.Property<string>("Mode")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("mode");
-
-                    b.Property<string>("NumeroContrat")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("numero_contrat");
 
                     b.Property<string>("OutilAppele")
                         .IsRequired()
@@ -779,20 +758,8 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .HasColumnType("text")
                         .HasColumnName("precondition");
 
-                    b.Property<int>("Tentative")
-                        .HasColumnType("integer")
-                        .HasColumnName("tentative");
-
-                    b.Property<int>("Tour")
-                        .HasColumnType("integer")
-                        .HasColumnName("tour");
-
-                    b.HasKey("Id")
+                    b.HasKey("NumeroContrat", "Tentative", "Tour")
                         .HasName("pk_tour_pilotage");
-
-                    b.HasIndex("NumeroContrat", "Tentative", "Tour")
-                        .IsUnique()
-                        .HasDatabaseName("ix_tour_pilotage_numero_contrat_tentative_tour");
 
                     b.ToTable("tour_pilotage", (string)null);
                 });
@@ -908,6 +875,17 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .HasConstraintName("fk_decision_contrat_contrat_id");
                 });
 
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.EtatDossier", b =>
+                {
+                    b.HasOne("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Contrat", null)
+                        .WithOne()
+                        .HasForeignKey("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.EtatDossier", "NumeroContrat")
+                        .HasPrincipalKey("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Contrat", "NumeroContrat")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_etat_dossier_contrat_numero_contrat");
+                });
+
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Franchise", b =>
                 {
                     b.HasOne("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Garantie", null)
@@ -948,6 +926,16 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .HasConstraintName("fk_prime_contrat_contrat_id");
                 });
 
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.RapportAgent", b =>
+                {
+                    b.HasOne("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.EtatDossier", null)
+                        .WithMany()
+                        .HasForeignKey("NumeroContrat")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_rapport_agent_etat_dossier_numero_contrat");
+                });
+
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.ReleveInformation", b =>
                 {
                     b.HasOne("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Contrat", null)
@@ -956,6 +944,16 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_releve_information_contrat_contrat_id");
+                });
+
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.SectionEtat", b =>
+                {
+                    b.HasOne("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.EtatDossier", null)
+                        .WithMany()
+                        .HasForeignKey("NumeroContrat")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_section_etat_etat_dossier_numero_contrat");
                 });
 
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.SignalementFraude", b =>
@@ -976,6 +974,16 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_sinistre_releve_information_releve_information_id");
+                });
+
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.TourPilotage", b =>
+                {
+                    b.HasOne("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.EtatDossier", null)
+                        .WithMany()
+                        .HasForeignKey("NumeroContrat")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tour_pilotage_etat_dossier_numero_contrat");
                 });
 
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Vehicule", b =>

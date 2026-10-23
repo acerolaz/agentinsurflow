@@ -81,24 +81,29 @@ public sealed class DossiersDbContext(DbContextOptions<DossiersDbContext> option
         });
 
         // Mémoire long terme du dossier (D100) : les écritures passent par du SQL en upsert / insertion idempotente.
-        modelBuilder.Entity<EtatDossier>(e => e.HasKey(x => x.NumeroContrat));
+        // Clés primaires composites = la contrainte d'unicité métier ; clés étrangères de l'ER : contrat ← état ← le reste.
+        modelBuilder.Entity<EtatDossier>(e =>
+        {
+            e.HasKey(x => x.NumeroContrat);
+            e.HasOne<Contrat>().WithOne().HasForeignKey<EtatDossier>(x => x.NumeroContrat).HasPrincipalKey<Contrat>(c => c.NumeroContrat);
+        });
         modelBuilder.Entity<SectionEtat>(e =>
         {
-            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.HasKey(x => new { x.NumeroContrat, x.Section, x.Tentative });
             e.Property(x => x.Contenu).HasColumnType("jsonb");
-            e.HasIndex(x => new { x.NumeroContrat, x.Section, x.Tentative }).IsUnique();
+            e.HasOne<EtatDossier>().WithMany().HasForeignKey(x => x.NumeroContrat);
         });
         modelBuilder.Entity<RapportAgent>(e =>
         {
-            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.HasKey(x => new { x.NumeroContrat, x.Agent, x.Tentative, x.TraceId });
             e.Property(x => x.Rapport).HasColumnType("jsonb");
             e.Property(x => x.CreeLe).HasDefaultValueSql("now()");
-            e.HasIndex(x => new { x.NumeroContrat, x.Agent, x.Tentative, x.TraceId }).IsUnique();
+            e.HasOne<EtatDossier>().WithMany().HasForeignKey(x => x.NumeroContrat);
         });
         modelBuilder.Entity<TourPilotage>(e =>
         {
-            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
-            e.HasIndex(x => new { x.NumeroContrat, x.Tentative, x.Tour }).IsUnique();
+            e.HasKey(x => new { x.NumeroContrat, x.Tentative, x.Tour });
+            e.HasOne<EtatDossier>().WithMany().HasForeignKey(x => x.NumeroContrat);
         });
 
         // Vue créée par SQL (migration VueEtDroits) : EF ne la crée pas, il la lit seulement.

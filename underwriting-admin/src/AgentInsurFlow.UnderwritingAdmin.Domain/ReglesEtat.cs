@@ -14,8 +14,8 @@ public sealed record EtatEntrant(string StatutParcours, int Tentative, IReadOnly
     IReadOnlyList<RapportEntrant> Rapports, IReadOnlyList<TourEntrant> Tours);
 
 /// <summary>
-/// Règle pure de la mémoire du dossier (D100) : seules les sections de la liste blanche sont écrites, ce qui interdit
-/// par construction toute donnée identifiante (nom, adresse…).
+/// Règle pure de la mémoire du dossier (D100) : seules les sections de la liste blanche sont écrites. Elle ne filtre que
+/// le nom de section, pas le contenu : l'absence de donnée identifiante dans <c>contenu</c> reste la responsabilité de l'orchestrateur.
 /// </summary>
 public static class ReglesEtat
 {

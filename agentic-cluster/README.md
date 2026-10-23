@@ -16,7 +16,7 @@ flowchart LR
 
 **Texte alternatif.** `charger` lit le dossier et passe les observations au garde d'entrée ; `pas` boucle sur les agents tant que le plan en demande un ; `proposer` écrit le brouillon et le statut `EN_ANALYSE` (ou `REVUE_HUMAINE` : fin du graphe) ; `valider` met le graphe en pause jusqu'à `POST /evaluations/{numero}/revue`, puis `enregistrer` écrit la décision. `thread_id` = numéro de contrat.
 
-## API (jeton Entra, rôle `Gestionnaire`, audience `api://agentic-cluster` ou appId du cluster)
+## API (jeton Entra, rôle `Gestionnaire`, audience `api://agentinsurflow-cluster` ou appId du cluster)
 
 | Route | Réponses |
 |---|---|

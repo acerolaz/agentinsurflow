@@ -22,7 +22,7 @@ internal static class JetonsDeTest
     public const string AudienceMcp = "api://agentinsurflow-mcp";
     public const string AudienceCalcul = "api://agentinsurflow-calcul";
     public const string AudienceLlm = "api://agentinsurflow-llm";
-    public const string AudienceCluster = "api://agentic-cluster";
+    public const string AudienceCluster = "api://agentinsurflow-cluster";
     public const string ClientMcp = "00000000-0000-0000-0000-00000000mcp1"; // azp des jetons OBO du serveur MCP
     public static readonly string[] TousLesRoles = ["Gestionnaire", "Ingestion", "Telemetrie"];
 

@@ -74,7 +74,7 @@ def jeton_mcp() -> str:
 @pytest.fixture(scope="session")
 def jeton_cluster() -> str:
     """Rôle Gestionnaire, audience du cluster d'agents (``POST /v1/souscriptions/{n}/...``)."""
-    return _jeton("E2E_JETON_CLUSTER", "agentic-cluster")
+    return _jeton("E2E_JETON_CLUSTER", "agentinsurflow-cluster")
 
 
 @pytest.fixture(scope="session")

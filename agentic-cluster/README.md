@@ -51,3 +51,8 @@ make test                                   # TU
 uv run pytest agentic-cluster/tests --no-cov  # TU + TI (hors modèles réels, `-m lent`)
 docker compose build agentic-cluster        # image : modèles LLM Guard cuits (≈ 2,5 Go de modèles)
 ```
+
+## Pour aller plus loin
+
+- État du contrat personnel K1→K11, avenants, mesures des garde-fous et signaux du sprint 5 : [`docs/contrat-personnel.md`](../docs/contrat-personnel.md).
+- Démo de l'atelier 4 : [`docs/demo-atelier-4.md`](../docs/demo-atelier-4.md).

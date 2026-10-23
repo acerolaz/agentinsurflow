@@ -12,5 +12,4 @@ public static class TypesPiece
     public const string ReleveInformation = "releve_information";
     public const string Permis = "permis";
 
-    public static readonly IReadOnlyList<string> Tous = [ReleveInformation, Permis];
 }

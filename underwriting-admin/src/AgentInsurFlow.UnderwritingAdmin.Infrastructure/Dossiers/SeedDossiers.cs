@@ -43,7 +43,7 @@ internal static class SeedDossiers
 
     /// <summary>
     /// Pièces déclarées des dossiers de démonstration (migration PiecesDeclarees) : relevé d'information daté de moins de
-    /// 3 mois avant la date d'effet (2026-01-01) et permis, sauf le dossier n° 3, sans relevé. Même garde que <see cref="Sql"/>.
+    /// 3 mois avant la date d'effet (2026-01-01) et permis, sauf le dossier n° 3, sans relevé. Insère seulement pour les contrats présents (le seed a pu tourner sans les variables SEED_*).
     /// </summary>
     public static string SqlPieces(string? gestionnaireA, string? gestionnaireB)
     {
@@ -59,13 +59,15 @@ internal static class SeedDossiers
             {
                 sql.AppendLine(c, $"""
                     INSERT INTO piece_justificative (id, contrat_id, type, nom_fichier, url_blob, date_emission, declaree_le, declaree_par)
-                    VALUES ('{Id(9, d.N, 1)}', '{Id(2, d.N)}', 'releve_information', 'releve-{d.N}.pdf', 'blob://demo/releve-{d.N}.pdf', '2025-11-20', '2026-10-01T08:00:00Z', 'seed')
+                    SELECT '{Id(9, d.N, 1)}', id, 'releve_information', 'releve-{d.N}.pdf', 'blob://demo/releve-{d.N}.pdf', '2025-11-20', '2026-10-01T08:00:00Z', 'seed'
+                    FROM contrat WHERE id = '{Id(2, d.N)}'
                     ON CONFLICT DO NOTHING;
                     """);
             }
             sql.AppendLine(c, $"""
                 INSERT INTO piece_justificative (id, contrat_id, type, nom_fichier, url_blob, date_emission, declaree_le, declaree_par)
-                VALUES ('{Id(9, d.N, 2)}', '{Id(2, d.N)}', 'permis', 'permis-{d.N}.pdf', 'blob://demo/permis-{d.N}.pdf', '{d.Permis:yyyy-MM-dd}', '2026-10-01T08:00:00Z', 'seed')
+                SELECT '{Id(9, d.N, 2)}', id, 'permis', 'permis-{d.N}.pdf', 'blob://demo/permis-{d.N}.pdf', '{d.Permis:yyyy-MM-dd}', '2026-10-01T08:00:00Z', 'seed'
+                FROM contrat WHERE id = '{Id(2, d.N)}'
                 ON CONFLICT DO NOTHING;
                 """);
         }

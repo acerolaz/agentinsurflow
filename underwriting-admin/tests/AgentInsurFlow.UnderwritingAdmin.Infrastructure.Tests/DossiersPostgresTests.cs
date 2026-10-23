@@ -292,6 +292,34 @@ public sealed class DossiersPostgresTests
         await Assert.ThrowsAsync<PostgresException>(() => Lire(Connexions().Dossiers, "SELECT nom_fichier FROM piece_justificative"));
     }
 
+    [Fact]
+    public async Task Pieces_du_seed_sans_contrats_presents_n_echouent_pas_et_n_inserent_rien()
+    {
+        // Seed joué sans variables SEED_* (aucun contrat), puis variables fournies : l'insertion des pièces ne doit pas violer la FK.
+        try
+        {
+            Environment.SetEnvironmentVariable("SEED_GESTIONNAIRE_A", null);
+            Environment.SetEnvironmentVariable("SEED_GESTIONNAIRE_B", null);
+            await Lire(Connexions().Migrateur, "DROP SCHEMA public CASCADE");
+            await Lire(Connexions().Migrateur, "CREATE SCHEMA public");
+            await Preparer();
+            Assert.Equal(0L, await Compter("contrat"));
+
+            await Lire(Connexions().Migrateur, SeedDossiers.SqlPieces(GestionnaireA, GestionnaireB));
+
+            Assert.Equal(0L, await Compter("piece_justificative"));
+        }
+        finally
+        {
+            // Rend la base seedée aux autres tests de la collection.
+            Environment.SetEnvironmentVariable("SEED_GESTIONNAIRE_A", GestionnaireA);
+            Environment.SetEnvironmentVariable("SEED_GESTIONNAIRE_B", GestionnaireB);
+            await Lire(Connexions().Migrateur, "DROP SCHEMA public CASCADE");
+            await Lire(Connexions().Migrateur, "CREATE SCHEMA public");
+            await Preparer();
+        }
+    }
+
     private static int Annees(DateOnly depuis, DateOnly jusqua) =>
         jusqua.Year - depuis.Year - (jusqua < depuis.AddYears(jusqua.Year - depuis.Year) ? 1 : 0);
 

@@ -136,6 +136,12 @@ async def test_lent_none_repli_avec_reference() -> None:
     assert r.section == {} and r.cause == "llm_ko" and r.mode == "repli"
 
 
+async def test_pii_en_sortie_cause_garde_fou_pii_jamais_llm_ko() -> None:
+    red = FakeRedaction(lambda a, v: {"erreur": "garde_fou:pii"})
+    r = await executer_agent("redacteur", _etat(risque=_risque()), "j", _deps(redaction=red), 5)
+    assert r.section == {} and r.cause == "garde_fou:pii" and r.mode == "repli"
+
+
 async def test_intrus_unauthorized_tool_section_vide_cause_erreur() -> None:
     outils = FakeOutils(lister_pieces=ErreurOutil("UNAUTHORIZED_TOOL"))
     red = FakeRedaction()

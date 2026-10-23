@@ -61,7 +61,7 @@ async def test_agent_sans_outil_rend_le_champ_structure() -> None:
     assert sortie == {"note": "Pièces complètes."}
 
 
-async def test_modele_absent_ou_trop_lent_ou_email_rendent_none() -> None:
+async def test_modele_absent_ou_trop_lent_rendent_none_et_email_garde_fou_pii() -> None:
     assert await _red(None).rediger("pieces", {}, 5) is None
     lent = FauxModele(messages=[_appel("Note", {"note": "x"})], delai_s=1)
     assert await _red(lent).rediger("pieces", {}, 0.05) is None
@@ -69,7 +69,8 @@ async def test_modele_absent_ou_trop_lent_ou_email_rendent_none() -> None:
     # d'outil structuré n'est vu que des garde-fous du domaine (GP3, GR3, GF7, GA3).
     mail = _appel("Note", {"note": "x"}).model_copy(update={"content": "écrire à a@b.fr"})
     fuite = FauxModele(messages=[mail])
-    assert await _red(fuite).rediger("pieces", {}, 5) is None
+    # K5 : une détection PII n'est pas une panne du LLM (cause distincte, pas « llm_ko »)
+    assert await _red(fuite).rediger("pieces", {}, 5) == {"erreur": "garde_fou:pii"}
 
 
 async def test_sortie_invalide_rend_none() -> None:

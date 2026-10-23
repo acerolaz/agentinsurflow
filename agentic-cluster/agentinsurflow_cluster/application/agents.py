@@ -37,6 +37,7 @@ from agentinsurflow_cluster.domain.references import prime_de, risque_de, verifi
 from agentinsurflow_cluster.domain.specs import SPECS
 
 NOT_FOUND = "NOT_FOUND_IN_CORPUS"
+CAUSE_PII = "garde_fou:pii"  # même valeur que l'adapter LLM (le port la transporte)
 HORS_BAREME = "DONNEE_HORS_BAREME"
 _ERREURS_REFERENCE = (ErreurOutil, KeyError, TypeError, ValueError)
 _ERREURS_SORTIE = (KeyError, TypeError, ValueError)
@@ -118,6 +119,8 @@ async def _rediger(
     sortie = await deps.redaction.rediger(nom, vue, budget_s, jeton)
     if sortie is None:
         return echec("llm_ko", [])
+    if sortie.get("erreur") == CAUSE_PII:  # K5 : détection PII ≠ panne du LLM (« llm_ko »)
+        return echec(CAUSE_PII, ["pii"])
     if "erreur" in sortie:
         return echec("not_found" if sortie["erreur"] == NOT_FOUND else "erreur", [])
     try:

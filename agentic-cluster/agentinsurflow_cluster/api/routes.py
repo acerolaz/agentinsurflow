@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from ..application.evaluation import (
+    MESSAGE_INDISPONIBLE,
     MESSAGE_REVUE_HUMAINE,
     AucuneRevueEnAttente,
     DossierDecide,
@@ -64,11 +65,14 @@ async def sante(request: Request) -> SanteReponse | JSONResponse:
 def _evaluation(r: Resultat) -> EvaluationReponse:
     revue = r.statut == "REVUE_HUMAINE"
     e = r.etat
+    score = e.fiche.score if e.fiche else e.risque.score if e.risque else None
+    message = MESSAGE_INDISPONIBLE if e.cause == "llm_ko" else MESSAGE_REVUE_HUMAINE
     return EvaluationReponse(
         statut=r.statut,  # type: ignore[arg-type]
+        score=score,
         fiche=None if revue or e.fiche is None else FicheDto(**vars(e.fiche)),
         prime=None if revue or e.prime is None else PrimeDto(**vars(e.prime)),
-        message=MESSAGE_REVUE_HUMAINE if revue else None,
+        message=message if revue else None,
         synthese=[EtapeDto(tour=t["tour"], outil_appele=t["outil_appele"]) for t in e.tours],  # type: ignore[arg-type]
     )
 

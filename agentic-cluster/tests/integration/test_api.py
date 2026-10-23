@@ -4,13 +4,21 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
 import pytest
-from fakes_cluster import CONTRAT, FakeAudit, FakeGarde, FakeOutils, FakeRedaction
+from fakes_cluster import (
+    CONTRAT,
+    FakeAudit,
+    FakeGarde,
+    FakeOutils,
+    FakeRedaction,
+    redaction_fidele,
+)
 from jetons_cluster_de_test import (
     CLIENT_CLUSTER,
     EMETTEUR_V1,
@@ -201,6 +209,34 @@ async def test_revue_humaine_ne_revele_ni_cause_ni_detecteur() -> None:
     assert corps["fiche"] is None and corps["prime"] is None
     assert "garde_fou" not in r.text and "prompt_injection" not in r.text
     assert banc.redaction.appels == []
+
+
+async def test_k5_llm_inactif_200_revue_humaine_score_et_message_indisponible() -> None:
+    banc = Banc()
+    banc.redaction.scenario = lambda agent, vue: None  # INSURFLOW_LLM_ACTIF=false : aucun modèle
+    debut = time.monotonic()
+    async with client(banc) as c:
+        r = await c.post("/evaluations/C-1")
+    assert time.monotonic() - debut < 30
+    assert r.status_code == 200
+    corps = r.json()
+    assert corps["statut"] == "REVUE_HUMAINE"
+    assert corps["score"] == 3 and corps["message"] == "Service temporairement indisponible"
+    assert corps["fiche"] is None and corps["prime"] is None
+    assert "llm_ko" not in r.text
+
+
+async def test_k5_pii_en_sortie_n_est_pas_une_panne_du_llm() -> None:
+    banc = Banc()
+    banc.redaction.scenario = lambda agent, vue: (
+        {"erreur": "garde_fou:pii"} if agent == "redacteur" else redaction_fidele(agent, vue)
+    )
+    async with client(banc) as c:
+        r = await c.post("/evaluations/C-1")
+    corps = r.json()
+    assert corps["statut"] == "REVUE_HUMAINE" and corps["score"] == 3
+    assert corps["message"] == "Ce dossier nécessite une revue humaine."
+    assert "pii" not in r.text
 
 
 async def test_revue_humaine_n_attend_aucune_revue() -> None:

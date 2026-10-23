@@ -28,6 +28,7 @@ from agentinsurflow_cluster.domain.specs import SPECS
 ORCHESTRATEUR: Literal["orchestrateur"] = "orchestrateur"
 SEUIL_BUDGET_S = 0.3  # en deçà, aucun agent n'a le temps de répondre : revue humaine (« duree »)
 MESSAGE_REVUE_HUMAINE = "Ce dossier nécessite une revue humaine."
+MESSAGE_INDISPONIBLE = "Service temporairement indisponible"  # K5 : cause « llm_ko »
 
 _AGENT_DE: Mapping[Appel, NomAgent] = {
     "appeler_pieces": "pieces",

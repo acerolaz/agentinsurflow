@@ -35,6 +35,7 @@ from ...domain.specs import SPECS
 
 PROMPTS = Path(__file__).parent / "prompts"
 MAX_RECHERCHES = 5
+CAUSE_PII = "garde_fou:pii"
 
 
 class Note(BaseModel):
@@ -60,7 +61,6 @@ FORMATS: dict[NomAgent, type[BaseModel]] = {
 }
 _ERREURS_LLM = (
     TimeoutError,
-    PIIDetectionError,
     StructuredOutputError,
     ValidationError,
     openai.OpenAIError,
@@ -130,6 +130,8 @@ class RedactionLangChain:
         try:
             async with asyncio.timeout(budget_s):
                 resultat = await lc.ainvoke(entree)  # type: ignore[call-overload]
+        except PIIDetectionError:  # K5 : un garde-fou, pas une panne du LLM
+            return {"erreur": CAUSE_PII}
         except _ERREURS_LLM:
             return None
         champs = resultat.get("structured_response")

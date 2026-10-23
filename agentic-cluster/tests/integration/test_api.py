@@ -375,6 +375,18 @@ async def test_contrat_introuvable_404_puis_reprise_possible() -> None:
         assert (await c.post("/evaluations/C-9")).status_code == 200  # un échec n'attend rien
 
 
+async def test_bola_la_tentative_d_un_autre_gestionnaire_ne_s_approprie_pas_le_dossier() -> None:
+    # B tente le dossier de A avant toute évaluation : le 404 ne doit pas lui laisser le point
+    # de reprise (l'entrée {"oid": B} est écrite avant `charger`), sinon A serait bloqué en 404.
+    outils = FakeOutils(get_contrat=ErreurOutil("CONTRAT_INTROUVABLE"))
+    banc = Banc(outils=outils)
+    async with client(banc) as c:
+        r = await c.post("/evaluations/C-7", headers=_jeton_de("oid-gestionnaire-b"))
+        assert r.status_code == 404 and r.json()["code"] == "CONTRAT_INTROUVABLE"
+        outils.reponses["get_contrat"] = CONTRAT  # A, propriétaire, est servi par underwriting
+        assert (await c.post("/evaluations/C-7")).status_code == 200
+
+
 async def test_panne_d_outil_502() -> None:
     banc = Banc(outils=FakeOutils(get_contrat=ErreurOutil("MCP_INDISPONIBLE")))
     async with client(banc) as c:

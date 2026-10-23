@@ -154,7 +154,9 @@ class ServiceEvaluation:
     async def _controler_proprietaire(self, numero: str, oid: str) -> Any:
         """BOLA : un dossier dont le point de reprise porte un autre ``oid`` n'existe pas (404)."""
         instantane = await self._etat(numero)
-        proprietaire = instantane.values.get("oid")
+        # l'entrée {"oid": …} est écrite avant `charger` : un échec (404 d'un autre gestionnaire)
+        # ne fait de personne le propriétaire ; seul un dossier effectivement chargé (`etat`) compte
+        proprietaire = instantane.values.get("oid") if instantane.values.get("etat") else None
         if proprietaire is not None and proprietaire != oid:
             raise ErreurOutil("CONTRAT_INTROUVABLE")
         return instantane

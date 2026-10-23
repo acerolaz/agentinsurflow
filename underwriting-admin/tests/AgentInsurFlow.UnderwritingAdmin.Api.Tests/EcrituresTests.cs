@@ -39,7 +39,7 @@ public sealed class EcrituresTests : IDisposable
         }
 
         public Task<string?> StatutContrat(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
-            throw new NotSupportedException();
+            Task.FromResult<string?>(numeroContrat == "AIF-FIGE" ? "ACCEPTE" : "EN_ANALYSE");
 
         public Task<bool> EnregistrerObservations(string gestionnaireId, string numeroContrat, string observations,
             CancellationToken ct) => throw new NotSupportedException();
@@ -79,6 +79,19 @@ public sealed class EcrituresTests : IDisposable
         Assert.Equal(HttpStatusCode.NoContent, statut);
         Assert.Null(corps);
         Assert.Equal(["brouillon oid-gestionnaire-a AIF-A1 ACCEPTE R1 512.4"], DepotEnMemoire.Appels);
+    }
+
+    [Theory]
+    [InlineData("brouillon")]
+    [InlineData("statut")]
+    public async Task Dossier_decide_409_STATUT_FIGE_sans_ecriture(string route)
+    {
+        var json = route == "brouillon" ? Brouillon : "{\"statut\":\"REFUSE\",\"validation\":\"CORRIGEE\"}";
+        var (statut, corps) = await Put($"/api/contrats/AIF-FIGE/{route}", json, GestionnaireA, "Gestionnaire");
+
+        Assert.Equal(HttpStatusCode.Conflict, statut);
+        Assert.Equal("STATUT_FIGE", corps!.Value.GetProperty("code").GetString());
+        Assert.Empty(DepotEnMemoire.Appels);
     }
 
     [Fact]

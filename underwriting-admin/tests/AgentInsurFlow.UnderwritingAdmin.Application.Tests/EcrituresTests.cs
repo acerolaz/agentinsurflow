@@ -5,7 +5,7 @@ namespace AgentInsurFlow.UnderwritingAdmin.Application.Tests;
 /// <summary>TU : cas d'usage d'écriture, avec un port <see cref="IDepotEcritures"/> simulé.</summary>
 public sealed class EcrituresTests
 {
-    private sealed class DepotSimule(bool resultat) : IDepotEcritures
+    private sealed class DepotSimule(bool resultat, string statut = "EN_ANALYSE") : IDepotEcritures
     {
         public Task<bool> EnregistrerEtat(string gestionnaireId, string numeroContrat, EtatEntrant etat, CancellationToken ct) =>
             throw new NotSupportedException();
@@ -30,10 +30,36 @@ public sealed class EcrituresTests
         }
 
         public Task<string?> StatutContrat(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
-            throw new NotSupportedException();
+            Task.FromResult<string?>(statut);
 
         public Task<bool> EnregistrerObservations(string gestionnaireId, string numeroContrat, string observations,
             CancellationToken ct) => throw new NotSupportedException();
+    }
+
+    [Theory]
+    [InlineData("ACCEPTE")]
+    [InlineData("REFUSE")]
+    public async Task ChangerStatut_dossier_decide_STATUT_FIGE_sans_appel_au_depot(string statut)
+    {
+        var depot = new DepotSimule(true, statut);
+        var r = await new ChangerStatut(depot).Executer("A", "C-1", new ChangementStatut("REFUSE", "CORRIGEE"),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(new ResultatEcriture(false, "STATUT_FIGE"), r);
+        Assert.Equal(0, depot.Appels);
+    }
+
+    [Theory]
+    [InlineData("ACCEPTE")]
+    [InlineData("REFUSE")]
+    public async Task EnregistrerBrouillon_dossier_decide_STATUT_FIGE_sans_appel_au_depot(string statut)
+    {
+        var depot = new DepotSimule(true, statut);
+        var r = await new EnregistrerBrouillon(depot).Executer("A", "C-1", Fiche(), null,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(new ResultatEcriture(false, "STATUT_FIGE"), r);
+        Assert.Equal(0, depot.Appels);
     }
 
     private static FicheBrouillon Fiche(string decision = "ACCEPTE") =>
@@ -92,7 +118,7 @@ public sealed class EcrituresTests
             CancellationToken ct) => Task.FromResult(new ResultatEcriture(false, "DECISION_ABSENTE"));
 
         public Task<string?> StatutContrat(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
-            throw new NotSupportedException();
+            Task.FromResult<string?>("EN_ANALYSE");
 
         public Task<bool> EnregistrerObservations(string gestionnaireId, string numeroContrat, string observations,
             CancellationToken ct) => throw new NotSupportedException();

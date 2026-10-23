@@ -21,7 +21,7 @@ internal static class EcrituresEndpoints
                 : Reponse(await cas.Executer(oid, numeroContrat, corps.Fiche, corps.Prime, ct)))
             .WithName("EnregistrerBrouillon")
             .WithSummary("Enregistre (ou remplace) la fiche et la prime en brouillon, sans changer le statut")
-            .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
+            .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
 
         contrats.MapPut("/{numero_contrat}/statut", async (ClaimsPrincipal utilisateur, ChangerStatut cas, CancellationToken ct,
                 [FromRoute(Name = "numero_contrat")] string numeroContrat, StatutCorps corps) =>
@@ -30,7 +30,7 @@ internal static class EcrituresEndpoints
                 : Reponse(await cas.Executer(oid, numeroContrat, new ChangementStatut(corps.Statut ?? "", corps.Validation), ct)))
             .WithName("ChangerStatut")
             .WithSummary("Change le statut ; ACCEPTE/REFUSE exigent une validation (VALIDEE ou CORRIGEE)")
-            .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
+            .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
 
         contrats.MapPut("/{numero_contrat}/observations", async (ClaimsPrincipal utilisateur, EnregistrerObservations cas, CancellationToken ct,
                 [FromRoute(Name = "numero_contrat")] string numeroContrat, ObservationsCorps corps) =>

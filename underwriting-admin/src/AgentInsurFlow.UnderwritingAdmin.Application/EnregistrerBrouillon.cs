@@ -11,6 +11,8 @@ public sealed class EnregistrerBrouillon(IDepotEcritures depot)
         if (!ReglesStatut.Decisions.Contains(fiche.Decision)) return new(false, "DECISION_INCONNUE");
         if (prime is not null && !ReglesStatut.Periodicites.Contains(prime.Periodicite))
             return new(false, "PERIODICITE_INCONNUE");
+        if (await depot.StatutContrat(gestionnaireId, numeroContrat, ct) is { } statut && ReglesStatut.Fige(statut))
+            return new(false, "STATUT_FIGE");
         return new(await depot.EnregistrerBrouillon(gestionnaireId, numeroContrat, fiche, prime, ct), null);
     }
 }

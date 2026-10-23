@@ -18,6 +18,9 @@ public sealed class EcrituresTests : IDisposable
 
     private sealed class DepotEnMemoire : IDepotEcritures
     {
+        public Task<bool> EnregistrerEtat(string gestionnaireId, string numeroContrat, EtatEntrant etat, CancellationToken ct) =>
+            throw new NotSupportedException();
+
         public static readonly List<string> Appels = [];
 
         public Task<bool> EnregistrerBrouillon(string gestionnaireId, string numeroContrat, FicheBrouillon fiche,

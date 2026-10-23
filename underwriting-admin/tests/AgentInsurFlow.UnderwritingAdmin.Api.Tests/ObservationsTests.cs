@@ -19,6 +19,9 @@ public sealed class ObservationsTests : IDisposable
 
     private sealed class DepotEnMemoire : IDepotEcritures, IDepotDossiers
     {
+        public Task<bool> EnregistrerEtat(string gestionnaireId, string numeroContrat, EtatEntrant etat, CancellationToken ct) =>
+            throw new NotSupportedException();
+
         // numéro → (gestionnaire, statut, observations)
         private readonly Dictionary<string, (string Gestionnaire, string Statut, string? Observations)> _contrats = new()
         {

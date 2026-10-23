@@ -7,6 +7,9 @@ public sealed class EcrituresTests
 {
     private sealed class DepotSimule(bool resultat) : IDepotEcritures
     {
+        public Task<bool> EnregistrerEtat(string gestionnaireId, string numeroContrat, EtatEntrant etat, CancellationToken ct) =>
+            throw new NotSupportedException();
+
         public int Appels { get; private set; }
 
         public Task<bool> EnregistrerBrouillon(string gestionnaireId, string numeroContrat, FicheBrouillon fiche,
@@ -79,6 +82,9 @@ public sealed class EcrituresTests
 
     private sealed class RefusSimule : IDepotEcritures
     {
+        public Task<bool> EnregistrerEtat(string gestionnaireId, string numeroContrat, EtatEntrant etat, CancellationToken ct) =>
+            throw new NotSupportedException();
+
         public Task<bool> EnregistrerBrouillon(string gestionnaireId, string numeroContrat, FicheBrouillon fiche,
             PrimeBrouillon? prime, CancellationToken ct) => throw new NotSupportedException();
 

@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using AgentInsurFlow.UnderwritingAdmin.Application;
 using AgentInsurFlow.UnderwritingAdmin.Domain;
 using Microsoft.AspNetCore.Mvc;
@@ -38,6 +40,15 @@ internal static class EcrituresEndpoints
             .WithName("EnregistrerObservations")
             .WithSummary("Écrase les observations du gestionnaire (2000 caractères au plus) tant que le statut n'est pas figé")
             .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
+
+        contrats.MapPut("/{numero_contrat}/etat", async (ClaimsPrincipal utilisateur, EnregistrerEtat cas, CancellationToken ct,
+                [FromRoute(Name = "numero_contrat")] string numeroContrat, EtatCorps corps) =>
+            ContratsEndpoints.Oid(utilisateur) is not { } oid
+                ? Problemes.Creer(403, "Jeton sans identité de gestionnaire", "ACCES_REFUSE")
+                : Reponse(await cas.Executer(oid, numeroContrat, corps.Vers(), ct)))
+            .WithName("EnregistrerEtat")
+            .WithSummary("Mémoire long terme du dossier (D100), idempotente : sections connues seulement, aucune donnée identifiante")
+            .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
     }
 
     // Même 404 pour « inexistant » et « à un autre gestionnaire » (BOLA).
@@ -56,3 +67,28 @@ internal sealed record StatutCorps(string? Statut, string? Validation);
 
 /// <summary>Corps de <c>PUT …/observations</c>.</summary>
 internal sealed record ObservationsCorps(string? Observations);
+
+/// <summary>Corps de <c>PUT …/etat</c> : l'état tel que le fusionne l'orchestrateur ; les contenus restent des documents JSON.</summary>
+internal sealed record EtatCorps(
+    [property: JsonPropertyName("statut_parcours")] string? StatutParcours,
+    int Tentative,
+    List<SectionCorps>? Sections,
+    List<RapportCorps>? Rapports,
+    List<TourCorps>? Tours)
+{
+    public EtatEntrant Vers() => new(StatutParcours ?? "", Tentative,
+        [.. (Sections ?? []).Select(s => new SectionEntrante(s.Section ?? "", Json(s.Contenu)))],
+        [.. (Rapports ?? []).Select(r => new RapportEntrant(r.Agent ?? "", Json(r.Rapport), r.Mode ?? "", r.Cause, r.VersionPrompt ?? "", r.TraceId ?? ""))],
+        [.. (Tours ?? []).Select(t => new TourEntrant(t.Tour, t.OutilAppele ?? "", t.Precondition ?? "", t.Mode ?? ""))]);
+
+    private static string Json(JsonElement? contenu) => contenu?.GetRawText() ?? "{}";
+}
+
+internal sealed record SectionCorps(string? Section, JsonElement? Contenu);
+
+internal sealed record RapportCorps(string? Agent, JsonElement? Rapport, string? Mode, string? Cause,
+    [property: JsonPropertyName("version_prompt")] string? VersionPrompt,
+    [property: JsonPropertyName("trace_id")] string? TraceId);
+
+internal sealed record TourCorps(int Tour,
+    [property: JsonPropertyName("outil_appele")] string? OutilAppele, string? Precondition, string? Mode);

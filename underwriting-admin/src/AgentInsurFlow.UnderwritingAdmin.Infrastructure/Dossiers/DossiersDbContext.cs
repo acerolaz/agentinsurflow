@@ -80,6 +80,27 @@ public sealed class DossiersDbContext(DbContextOptions<DossiersDbContext> option
             e.HasOne<Contrat>().WithMany().HasForeignKey(x => x.ContratId);
         });
 
+        // Mémoire long terme du dossier (D100) : les écritures passent par du SQL en upsert / insertion idempotente.
+        modelBuilder.Entity<EtatDossier>(e => e.HasKey(x => x.NumeroContrat));
+        modelBuilder.Entity<SectionEtat>(e =>
+        {
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.Property(x => x.Contenu).HasColumnType("jsonb");
+            e.HasIndex(x => new { x.NumeroContrat, x.Section, x.Tentative }).IsUnique();
+        });
+        modelBuilder.Entity<RapportAgent>(e =>
+        {
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.Property(x => x.Rapport).HasColumnType("jsonb");
+            e.Property(x => x.CreeLe).HasDefaultValueSql("now()");
+            e.HasIndex(x => new { x.NumeroContrat, x.Agent, x.Tentative, x.TraceId }).IsUnique();
+        });
+        modelBuilder.Entity<TourPilotage>(e =>
+        {
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.HasIndex(x => new { x.NumeroContrat, x.Tentative, x.Tour }).IsUnique();
+        });
+
         // Vue créée par SQL (migration VueEtDroits) : EF ne la crée pas, il la lit seulement.
         modelBuilder.Entity<LigneVue>(e =>
         {

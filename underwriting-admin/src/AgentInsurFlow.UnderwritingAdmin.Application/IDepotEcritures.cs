@@ -22,6 +22,12 @@ public interface IDepotEcritures
 
     /// <summary>Écrase les observations ; <c>false</c> si le contrat n'existe pas ou appartient à un autre gestionnaire.</summary>
     Task<bool> EnregistrerObservations(string gestionnaireId, string numeroContrat, string observations, CancellationToken ct);
+
+    /// <summary>
+    /// Mémoire long terme du dossier (D100), idempotente : état et sections en upsert, rapports et tours en insertion qui
+    /// ignore un doublon. <c>false</c> si le contrat n'existe pas ou appartient à un autre gestionnaire (rien n'est écrit).
+    /// </summary>
+    Task<bool> EnregistrerEtat(string gestionnaireId, string numeroContrat, EtatEntrant etat, CancellationToken ct);
 }
 
 /// <summary><c>Ecrit=false, CodeRefus=null</c> : contrat introuvable (404).</summary>

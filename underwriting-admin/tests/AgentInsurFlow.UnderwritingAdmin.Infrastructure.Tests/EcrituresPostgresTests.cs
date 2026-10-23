@@ -102,6 +102,31 @@ public sealed class EcrituresPostgresTests
     }
 
     [Fact]
+    public async Task Etat_rejoue_deux_fois_une_ligne_par_table_et_borne_au_gestionnaire()
+    {
+        var (db, depot, numero) = await Preparer();
+        await using var _ = db;
+        var ct = TestContext.Current.CancellationToken;
+        var migrateur = Connexions().Migrateur;
+        foreach (var t in new[] { "etat_dossier", "section_etat", "rapport_agent", "tour_pilotage" })
+            await Lire(migrateur, $"DELETE FROM {t} WHERE numero_contrat = @p0", numero);
+        var etat = new EtatEntrant("EN_COURS", 2, [new("risque", "{\"score\":0.4}")],
+            [new("risque", "{\"resume\":\"ok\"}", "llm", null, "v1", "t-1")], [new(1, "evaluer_risque", "pieces_ok", "llm")]);
+
+        Assert.True(await depot.EnregistrerEtat(GestionnaireA, numero, etat, ct));
+        Assert.True(await depot.EnregistrerEtat(GestionnaireA, numero, etat with { StatutParcours = "TERMINE", Sections = [new("risque", "{\"score\":0.5}")] }, ct));
+        Assert.False(await depot.EnregistrerEtat(GestionnaireB, numero, etat, ct));
+
+        var e = Assert.Single(await Lire(migrateur, "SELECT statut_parcours, tentative, version_schema, nb_relances FROM etat_dossier WHERE numero_contrat = @p0", numero));
+        Assert.Equal(["TERMINE", "2", "1", "0"], e.Select(o => o.ToString()));
+        var sec = Assert.Single(await Lire(migrateur, "SELECT contenu::text FROM section_etat WHERE numero_contrat = @p0", numero));
+        Assert.Equal("{\"score\": 0.5}", sec[0]);
+        Assert.Single(await Lire(migrateur, "SELECT 1 FROM rapport_agent WHERE numero_contrat = @p0", numero));
+        Assert.Single(await Lire(migrateur, "SELECT 1 FROM tour_pilotage WHERE numero_contrat = @p0", numero));
+        Assert.Empty(await Lire(migrateur, "SELECT 1 FROM etat_dossier WHERE numero_contrat = @p0 AND statut_parcours = 'EN_COURS'", numero));
+    }
+
+    [Fact]
     public async Task Brouillon_contrat_d_un_autre_gestionnaire_rend_false_et_n_ecrit_rien()
     {
         var (db, depot, numero) = await Preparer();

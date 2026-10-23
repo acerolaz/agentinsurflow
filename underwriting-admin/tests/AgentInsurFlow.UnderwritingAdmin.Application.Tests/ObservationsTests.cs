@@ -7,6 +7,9 @@ public sealed class ObservationsTests
 {
     private sealed class DepotSimule(string? statut) : IDepotEcritures
     {
+        public Task<bool> EnregistrerEtat(string gestionnaireId, string numeroContrat, EtatEntrant etat, CancellationToken ct) =>
+            throw new NotSupportedException();
+
         public int Ecritures { get; private set; }
 
         public Task<string?> StatutContrat(string gestionnaireId, string numeroContrat, CancellationToken ct) => Task.FromResult(statut);

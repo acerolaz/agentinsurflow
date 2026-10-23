@@ -185,6 +185,39 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                     b.ToTable("decision", (string)null);
                 });
 
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.EtatDossier", b =>
+                {
+                    b.Property<string>("NumeroContrat")
+                        .HasColumnType("text")
+                        .HasColumnName("numero_contrat");
+
+                    b.Property<DateTimeOffset>("MajLe")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("maj_le");
+
+                    b.Property<int>("NbRelances")
+                        .HasColumnType("integer")
+                        .HasColumnName("nb_relances");
+
+                    b.Property<string>("StatutParcours")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("statut_parcours");
+
+                    b.Property<int>("Tentative")
+                        .HasColumnType("integer")
+                        .HasColumnName("tentative");
+
+                    b.Property<int>("VersionSchema")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_schema");
+
+                    b.HasKey("NumeroContrat")
+                        .HasName("pk_etat_dossier");
+
+                    b.ToTable("etat_dossier", (string)null);
+                });
+
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Franchise", b =>
                 {
                     b.Property<Guid>("Id")
@@ -454,6 +487,68 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                     b.ToTable("prime", (string)null);
                 });
 
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.RapportAgent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Agent")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("agent");
+
+                    b.Property<string>("Cause")
+                        .HasColumnType("text")
+                        .HasColumnName("cause");
+
+                    b.Property<DateTimeOffset>("CreeLe")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cree_le")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("mode");
+
+                    b.Property<string>("NumeroContrat")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("numero_contrat");
+
+                    b.Property<string>("Rapport")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("rapport");
+
+                    b.Property<int>("Tentative")
+                        .HasColumnType("integer")
+                        .HasColumnName("tentative");
+
+                    b.Property<string>("TraceId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("trace_id");
+
+                    b.Property<string>("VersionPrompt")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("version_prompt");
+
+                    b.HasKey("Id")
+                        .HasName("pk_rapport_agent");
+
+                    b.HasIndex("NumeroContrat", "Agent", "Tentative", "TraceId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_rapport_agent_numero_contrat_agent_tentative_trace_id");
+
+                    b.ToTable("rapport_agent", (string)null);
+                });
+
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.ReleveInformation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -484,6 +579,43 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .HasDatabaseName("ix_releve_information_contrat_id");
 
                     b.ToTable("releve_information", (string)null);
+                });
+
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.SectionEtat", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Contenu")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("contenu");
+
+                    b.Property<string>("NumeroContrat")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("numero_contrat");
+
+                    b.Property<string>("Section")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("section");
+
+                    b.Property<int>("Tentative")
+                        .HasColumnType("integer")
+                        .HasColumnName("tentative");
+
+                    b.HasKey("Id")
+                        .HasName("pk_section_etat");
+
+                    b.HasIndex("NumeroContrat", "Section", "Tentative")
+                        .IsUnique()
+                        .HasDatabaseName("ix_section_etat_numero_contrat_section_tentative");
+
+                    b.ToTable("section_etat", (string)null);
                 });
 
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.SignalementFraude", b =>
@@ -614,6 +746,52 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .HasName("pk_souscripteur");
 
                     b.ToTable("souscripteur", (string)null);
+                });
+
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.TourPilotage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("mode");
+
+                    b.Property<string>("NumeroContrat")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("numero_contrat");
+
+                    b.Property<string>("OutilAppele")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("outil_appele");
+
+                    b.Property<string>("Precondition")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("precondition");
+
+                    b.Property<int>("Tentative")
+                        .HasColumnType("integer")
+                        .HasColumnName("tentative");
+
+                    b.Property<int>("Tour")
+                        .HasColumnType("integer")
+                        .HasColumnName("tour");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tour_pilotage");
+
+                    b.HasIndex("NumeroContrat", "Tentative", "Tour")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tour_pilotage_numero_contrat_tentative_tour");
+
+                    b.ToTable("tour_pilotage", (string)null);
                 });
 
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Vehicule", b =>

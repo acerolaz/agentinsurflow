@@ -56,24 +56,24 @@ def _red(
 
 
 async def test_agent_sans_outil_rend_le_champ_structure() -> None:
-    m = FauxModele(messages=[_appel("NotePieces", {"note": "Pièces complètes."})])
+    m = FauxModele(messages=[_appel("Note", {"note": "Pièces complètes."})])
     sortie = await _red(m).rediger("pieces", {"statut": "complet"}, 5)
     assert sortie == {"note": "Pièces complètes."}
 
 
 async def test_modele_absent_ou_trop_lent_ou_email_rendent_none() -> None:
     assert await _red(None).rediger("pieces", {}, 5) is None
-    lent = FauxModele(messages=[_appel("NotePieces", {"note": "x"})], delai_s=1)
+    lent = FauxModele(messages=[_appel("Note", {"note": "x"})], delai_s=1)
     assert await _red(lent).rediger("pieces", {}, 0.05) is None
     # PIIMiddleware lit le contenu du message du modèle ; l'e-mail dans les arguments d'un appel
     # d'outil structuré n'est vu que des garde-fous du domaine (GP3, GR3, GF7, GA3).
-    mail = _appel("NotePieces", {"note": "x"}).model_copy(update={"content": "écrire à a@b.fr"})
+    mail = _appel("Note", {"note": "x"}).model_copy(update={"content": "écrire à a@b.fr"})
     fuite = FauxModele(messages=[mail])
     assert await _red(fuite).rediger("pieces", {}, 5) is None
 
 
 async def test_sortie_invalide_rend_none() -> None:
-    m = FauxModele(messages=[_appel("NotePieces", {"autre": 1}), _appel("NotePieces", {"x": 1})])
+    m = FauxModele(messages=[_appel("Note", {"autre": 1}), _appel("Note", {"x": 1})])
     assert await _red(m).rediger("pieces", {}, 5) is None
 
 
@@ -131,3 +131,11 @@ def test_version_prompt_est_le_sha256_court_du_fichier() -> None:
 
 def test_prompts_presents_et_distincts() -> None:
     assert len({version_prompt(n) for n in ("pieces", "analyste", "redacteur", "actuaire")}) == 4
+
+
+async def test_search_rag_en_panne_rend_le_code_sans_exception() -> None:
+    outils = FakeOutils(search_rag=ErreurOutil("MCP_INDISPONIBLE"))
+    m = FauxModele(
+        messages=[_appel("search_rag", {"question": "q"}), _appel("FicheRedigee", FICHE)]
+    )
+    assert await _red(m, outils).rediger("redacteur", {}, 5, "J") == {"erreur": "MCP_INDISPONIBLE"}

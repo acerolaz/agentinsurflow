@@ -28,20 +28,16 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool, StructuredTool
 from pydantic import BaseModel, ValidationError
 
+from ...domain.balises import DEBUT_BALISE, FIN_BALISE
 from ...domain.models import NomAgent
 from ...domain.ports import ErreurOutil, OutilsPort
 from ...domain.specs import SPECS
 
 PROMPTS = Path(__file__).parent / "prompts"
 MAX_RECHERCHES = 5
-DEBUT_BALISE, FIN_BALISE = "<donnees_non_fiables>", "</donnees_non_fiables>"
 
 
-class NotePieces(BaseModel):
-    note: str
-
-
-class NoteRisque(BaseModel):
+class Note(BaseModel):
     note: str
 
 
@@ -57,8 +53,8 @@ class FicheRedigee(BaseModel):
 
 
 FORMATS: dict[NomAgent, type[BaseModel]] = {
-    "pieces": NotePieces,
-    "analyste": NoteRisque,
+    "pieces": Note,
+    "analyste": Note,
     "redacteur": FicheRedigee,
     "actuaire": ExplicationPrime,
 }

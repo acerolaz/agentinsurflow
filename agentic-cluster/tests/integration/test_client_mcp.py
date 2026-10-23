@@ -94,3 +94,19 @@ async def test_refus_leve_erreur_outil_avec_le_code() -> None:
         with pytest.raises(ErreurOutil) as exc:
             await client.appeler("analyste", "jeton-gestionnaire", "update_statut_dossier", {})
     assert exc.value.code == "UNAUTHORIZED_TOOL"
+
+
+async def test_panne_de_transport_devient_mcp_indisponible() -> None:
+    def refuse(requete: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("injoignable", request=requete)
+
+    client = ClientMcpGateway(
+        "http://test",
+        _FauxJetons(),
+        fabrique_http=lambda e: httpx.AsyncClient(
+            transport=httpx.MockTransport(refuse), base_url="http://test", headers=e
+        ),
+    )
+    with pytest.raises(ErreurOutil) as exc:
+        await client.appeler("analyste", "jeton-gestionnaire", "lister_pieces", {})
+    assert exc.value.code == "MCP_INDISPONIBLE"

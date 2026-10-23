@@ -12,6 +12,7 @@ from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import Any, Literal
 
+from agentinsurflow_cluster.domain.balises import DEBUT_BALISE, FIN_BALISE
 from agentinsurflow_cluster.domain.garde_fous import ga, gf, gp, gr
 from agentinsurflow_cluster.domain.models import (
     EtatDossier,
@@ -22,6 +23,7 @@ from agentinsurflow_cluster.domain.models import (
     Rapport,
     Risque,
 )
+from agentinsurflow_cluster.domain.pii import pii_detectees
 from agentinsurflow_cluster.domain.ports import (
     AuditPort,
     ErreurOutil,
@@ -32,7 +34,6 @@ from agentinsurflow_cluster.domain.ports import (
 from agentinsurflow_cluster.domain.references import prime_de, risque_de, verifier_completude
 from agentinsurflow_cluster.domain.specs import SPECS
 
-DEBUT_BALISE, FIN_BALISE = "<donnees_non_fiables>", "</donnees_non_fiables>"
 NOT_FOUND = "NOT_FOUND_IN_CORPUS"
 HORS_BAREME = "DONNEE_HORS_BAREME"
 _ERREURS_REFERENCE = (ErreurOutil, KeyError, TypeError, ValueError)
@@ -84,6 +85,7 @@ async def _rediger(
     texte: Callable[[Any], str],
     repli: Any,
     extra: Callable[[dict[str, Any]], dict[str, Any]] = lambda _s: {},
+    finaliser: Callable[[Any], Any] = lambda c: c,
 ) -> Resultat:
     """LLM puis garde-fous ; `repli=None` ⇒ section vide (Rédacteur), sinon section de référence."""
     section = SPECS[nom].section
@@ -106,7 +108,7 @@ async def _rediger(
     codes = controler(candidat) or deps.garde.sortie(texte(candidat))
     if codes:
         return echec(f"garde_fou:{codes[0]}", codes)
-    contenu = {section: candidat, **extra(sortie)}
+    contenu = {section: finaliser(candidat), **extra(sortie)}
     return Rapport(nom, contenu, "llm", None, version), []  # type: ignore[arg-type]
 
 
@@ -223,6 +225,8 @@ async def _actuaire(
         controler=lambda c: ga(c, ref),
         texte=lambda c: c.explication,
         repli=replace(ref, explication=gabarit),
+        # une fois GA passé, la section porte les chaînes exactes de la référence
+        finaliser=lambda c: replace(ref, explication=c.explication),
     )  # fmt: skip
 
 
@@ -264,8 +268,9 @@ async def _redacteur(
              "version_bareme": risque.version_bareme, "formule": formule,
              "observations": observations},
         construire=construire,
-        controler=lambda c: gf(c, risque, sources, formule),
-        texte=lambda c: "\n".join(c.motifs),
+        controler=lambda c: gf(c, risque, sources, formule)
+        + (["GF7"] if pii_detectees(c.contrat_type) else []),
+        texte=lambda c: "\n".join((c.contrat_type, *c.motifs)),
         repli=None,
         extra=lambda s: {"sources": tuple(s["sources"])},
     )  # fmt: skip

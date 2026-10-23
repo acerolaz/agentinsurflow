@@ -264,3 +264,94 @@ async def test_observations_ne_peuvent_pas_fermer_la_balise() -> None:
     await executer_agent("redacteur", etat, "j", _deps(redaction=red), 5)
     obs = red.appels[0][1]["observations"]
     assert obs.count("</donnees_non_fiables>") == 1 and obs.endswith("</donnees_non_fiables>")
+
+
+# --- correctifs du tour 1 ----------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("fuite", ["FR7630006000011234567890189", "marie@exemple.fr"])
+async def test_fuite_dans_contrat_type_meme_sur_refus_section_vide(fuite: str) -> None:
+    def scenario(agent: Any, vue: dict[str, Any]) -> dict[str, Any]:
+        return {**redaction_fidele(agent, vue), "contrat_type": fuite}
+
+    garde = FakeGarde()
+    rap = await executer_agent(
+        "redacteur",
+        _etat(risque=_risque("refus")),
+        "j",
+        _deps(redaction=FakeRedaction(scenario), garde=garde),
+        5,
+    )
+    assert rap.section == {} and rap.cause is not None and rap.cause.startswith("garde_fou:")
+    garde = FakeGarde()
+    await executer_agent("redacteur", _etat(risque=_risque()), "j", _deps(garde=garde), 5)
+    assert "tiers" in garde.textes[0] and "acceptable" in garde.textes[0]
+
+
+async def test_k7_actuaire_avec_ou_sans_llm_meme_prime_meme_fiche() -> None:
+    etat = _etat(risque=_risque())
+    resultats = []
+    for llm_actuaire in (True, False):
+
+        def scenario(agent: Any, vue: dict[str, Any], actif: bool = llm_actuaire) -> Any:
+            return None if agent == "actuaire" and not actif else redaction_fidele(agent, vue)
+
+        deps = _deps(redaction=FakeRedaction(scenario))
+        fiche = await executer_agent("redacteur", etat, "j", deps, 5)
+        prime = await executer_agent("actuaire", etat, "j", deps, 5)
+        resultats.append((fiche.section, prime.section["prime"], prime.mode))
+    (f1, p1, m1), (f2, p2, m2) = resultats
+    assert (m1, m2) == ("llm", "repli") and f1 == f2
+    assert (
+        (p1.prime_ttc_annuelle, p1.prime_mensuelle, p1.version_formule)
+        == (  # type: ignore[attr-defined]
+            p2.prime_ttc_annuelle,  # type: ignore[attr-defined]
+            p2.prime_mensuelle,  # type: ignore[attr-defined]
+            p2.version_formule,  # type: ignore[attr-defined]
+        )
+        == ("600.00", "50.00", "tarif-v1")
+    )
+
+
+async def test_actuaire_menteur_montant_ga1_repli_reference() -> None:
+    def menteur(agent: Any, vue: dict[str, Any]) -> dict[str, Any]:
+        return {"prime_ttc_annuelle": "1.00", "explication": f"Prime {vue['version_formule']}."}
+
+    rap = await executer_agent("actuaire", _etat(), "j", _deps(redaction=FakeRedaction(menteur)), 5)
+    assert rap.cause == "garde_fou:GA1" and rap.mode == "repli"
+    assert rap.section["prime"].prime_ttc_annuelle == "600.00"  # type: ignore[attr-defined]
+
+
+async def test_actuaire_menteur_version_ga2_repli_reference() -> None:
+    def menteur(agent: Any, vue: dict[str, Any]) -> dict[str, Any]:
+        return {"version_formule": "tarif-v9", "explication": "Prime tarif-v9."}
+
+    rap = await executer_agent("actuaire", _etat(), "j", _deps(redaction=FakeRedaction(menteur)), 5)
+    assert rap.cause == "garde_fou:GA2" and rap.section["prime"].version_formule == "tarif-v1"  # type: ignore[attr-defined]
+
+
+async def test_actuaire_valide_reprend_les_montants_exacts_de_la_reference() -> None:
+    def decimal_equivalent(agent: Any, vue: dict[str, Any]) -> dict[str, Any]:
+        return {"prime_ttc_annuelle": "600.0", "explication": f"Prime {vue['version_formule']}."}
+
+    rap = await executer_agent(
+        "actuaire", _etat(), "j", _deps(redaction=FakeRedaction(decimal_equivalent)), 5
+    )
+    assert rap.mode == "llm" and rap.section["prime"].prime_ttc_annuelle == "600.00"  # type: ignore[attr-defined]
+
+
+async def test_panne_mcp_indisponible_section_vide_cause_erreur() -> None:
+    for nom, outil in (
+        ("pieces", "lister_pieces"),
+        ("analyste", "evaluer_risque"),
+        ("actuaire", "calculer_prime"),
+    ):
+        outils = FakeOutils(**{outil: ErreurOutil("MCP_INDISPONIBLE")})
+        rap = await executer_agent(nom, _etat(risque=_risque()), "j", _deps(outils), 5)  # type: ignore[arg-type]
+        assert rap.section == {} and rap.cause == "erreur"
+
+
+async def test_redacteur_search_rag_en_panne_cause_erreur() -> None:
+    red = FakeRedaction(lambda a, v: {"erreur": "MCP_INDISPONIBLE"})
+    rap = await executer_agent("redacteur", _etat(risque=_risque()), "j", _deps(redaction=red), 5)
+    assert rap.section == {} and rap.cause == "erreur"

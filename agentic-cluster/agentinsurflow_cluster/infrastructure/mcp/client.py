@@ -15,6 +15,7 @@ from typing import Any, Protocol
 import httpx
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
+from mcp.shared.exceptions import McpError
 
 from ...domain.ports import AgentOuOrchestrateur, ErreurOutil
 
@@ -51,11 +52,14 @@ class ClientMcpGateway:
         entetes = {"Authorization": f"Bearer {jeton}"}
         if trace := self._traceparent():
             entetes["traceparent"] = trace
-        async with self._http(entetes) as http:
-            async with streamable_http_client(self._url, http_client=http) as (lire, ecrire, _):
-                async with ClientSession(lire, ecrire) as session:
-                    await session.initialize()
-                    resultat = await session.call_tool(outil, arguments)
+        try:
+            async with self._http(entetes) as http:
+                async with streamable_http_client(self._url, http_client=http) as (lire, ecrire, _):
+                    async with ClientSession(lire, ecrire) as session:
+                        await session.initialize()
+                        resultat = await session.call_tool(outil, arguments)
+        except (httpx.HTTPError, McpError, BaseExceptionGroup) as e:  # panne de transport
+            raise ErreurOutil("MCP_INDISPONIBLE", type(e).__name__) from e
         if resultat.isError:
             code = (resultat.structuredContent or {}).get("code", "MCP_ERREUR")
             raise ErreurOutil(str(code))

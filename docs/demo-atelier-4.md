@@ -13,7 +13,7 @@ Documents de l'API du cluster dans Swagger : `/cluster/openapi.json` (déjà ser
 ## 2. Observations du gestionnaire — 3 min
 
 1. `GET /api/contrats/{numero_contrat}` : la vue ne contient ni nom, ni adresse, ni permis ; noter `statut`.
-2. `PUT /api/contrats/{numero_contrat}/observations` avec `{"observations": "Client fidèle, relevé fourni le 12/10."}` → `200`. La valeur est **écrasée** à chaque appel ; plus de 2000 caractères → `400` avec un `code` ; statut figé → `409` ; contrat d'un autre gestionnaire → `404`.
+2. `PUT /api/contrats/{numero_contrat}/observations` avec `{"observations": "Client fidèle, relevé fourni le 12/10."}` → `204` (sans corps). La valeur est **écrasée** à chaque appel ; plus de 2000 caractères → `400` avec un `code` ; statut figé → `409` ; contrat d'un autre gestionnaire → `404`.
 
 ## 3. Cas légitime — 4 min
 
@@ -25,7 +25,7 @@ Documents de l'API du cluster dans Swagger : `/cluster/openapi.json` (déjà ser
 
 ## 4. Cas hostile — 4 min
 
-1. Sur le second contrat : `PUT …/observations` avec l'une des phrases de la liste du § 7.
+1. Sur le second contrat : `PUT …/observations` avec l'une des phrases hostiles du jeu de prompts (§ 6 de la spec, `eval/`).
 2. `POST /v1/souscriptions/{numero_contrat}/evaluation`.
 3. Deux issues possibles, toutes deux sûres :
    - **Détecté à l'entrée** (injection franche) : `statut = REVUE_HUMAINE`, `message = "Ce dossier nécessite une revue humaine."`, `fiche = null`, `prime = null`. Ni la cause ni le nom d'un détecteur dans la réponse. Aucun LLM n'a été appelé.

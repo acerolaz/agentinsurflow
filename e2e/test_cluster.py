@@ -86,7 +86,7 @@ def test_observations_hostiles_revue_humaine_et_message_neutre(
         headers=bearer(jeton_gestionnaire_underwriting),
         json={"observations": OBSERVATION_HOSTILE},
     )
-    assert ecrit.status_code == 200, ecrit.text
+    assert ecrit.status_code == 204, ecrit.text
     r = _evaluation(client, utilisateur, contrat)
     assert r.status_code == 200, r.text
     corps = r.json()

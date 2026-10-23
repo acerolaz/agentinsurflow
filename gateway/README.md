@@ -92,7 +92,7 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 - **Flux sans tampon** : YARP relaie les événements SSE au fil de l'eau (testé) ; `ActivityTimeout` de 5 min sur le cluster `mcp`. `traceparent` est relayé.
 - **Débit** : `RateLimit__Mcp__PermitLimit` (60 requêtes/min par utilisateur), en plus de la limite globale.
 - Outils, codes d'erreur : voir `serveur-mcp/README.md`.
-- Les écritures `PUT /api/contrats/{numéro}/brouillon` et `/statut` passent par la route `underwriting-contrats` existante.
+- Les écritures `PUT /api/contrats/{numéro}/brouillon` et `/statut` passent par la route `underwriting-contrats` existante. `PUT /api/contrats/{numéro}/etat` (mémoire du dossier) a sa propre route `underwriting-etat`, déclarée avant : elle exige, en plus du rôle `Gestionnaire` et de l'audience underwriting, `azp` = `Entra:McpClientId` (`MCP_API_CLIENT_ID`, le client OBO du serveur MCP) ; un gestionnaire en direct reçoit `403`, et sans `Entra:McpClientId` la route est fermée.
 
 ## Swagger
 

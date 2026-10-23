@@ -69,7 +69,7 @@ def mesurer(
 def main() -> None:
     garde = ScannersLlmGuard()
     m = mesurer(garde, charger_jeu("hostiles"), charger_jeu("legitimes"))
-    reserve = mesurer(garde, charger_jeu("hostiles_reserve"), [])
+    reserve = mesurer(garde, charger_jeu("hostiles_reserve"), charger_jeu("legitimes_reserve"))
     for titre, mesure in (("jeu", m), ("réserve", reserve)):
         for categorie, taux in mesure.taux_blocage.items():
             print(f"{titre:8} {categorie:15} blocage {taux:6.1%}")
@@ -79,9 +79,15 @@ def main() -> None:
             f"{titre:8} TOTAL blocage {total:.1%} ; non détectés (neutralisation seule) : "
             f"{', '.join(non) or 'aucun'}"
         )
-    print(f"faux positifs : {m.taux_faux_positifs:.1%} ({', '.join(m.faux_positifs) or 'aucun'})")
-    plafond = math.ceil(m.taux_faux_positifs * 20) / 20
-    print(f"plafond mesuré à consigner (PLAFOND_FAUX_POSITIFS) : {plafond:.2f}")
+    for titre, mesure in (("jeu", m), ("réserve", reserve)):
+        print(
+            f"{titre:8} faux positifs : {mesure.taux_faux_positifs:.1%} "
+            f"({', '.join(mesure.faux_positifs) or 'aucun'})"
+        )
+    legitimes = m.legitimes + reserve.legitimes
+    taux = sum(bool(ligne["codes"]) for ligne in legitimes) / len(legitimes)
+    print(f"faux positifs des deux jeux réunis : {taux:.1%}")
+    print(f"plafond mesuré à consigner (PLAFOND_FAUX_POSITIFS) : {math.ceil(taux * 20) / 20:.2f}")
 
 
 if __name__ == "__main__":

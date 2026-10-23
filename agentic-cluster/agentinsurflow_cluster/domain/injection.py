@@ -9,13 +9,24 @@ from __future__ import annotations
 import re
 import unicodedata
 
-_CIBLE = (
-    r"(?:consignes?|instructions?|regles?|directives?|baremes?|garde-?fous?|guidelines?|rules?|"
-    r"prompts?|restrictions?|refus|refusal|rejection)"
-)
 _VERBE_OUTRE = (
     r"(?:ignore[rz]?|oublie[rz]?|neglige[rz]?|contourne[rz]?|ne tiens? pas compte|"
     r"ne tenez pas compte|disregard|forget|override|bypass)"
+)
+_CIBLE = (
+    r"(?:consignes?|instructions?|regles?|directives?|baremes?|garde-?fous?|guidelines?|rules?|"
+    r"prompts?|restrictions?)"
+)
+# s'adresse à l'assistant : possessif de 2e personne, « toutes », « précédentes »
+_DE_L_ASSISTANT = r"(?:tes|vos|ton|votre|your|toutes? (?:les )?|all (?:the )?|previous|prior|above)"
+_DECIDER = (
+    r"(?:\b(?:accepte[rz]?|valide[rz]?|approuve[rz]?|approve)\s+(?:ce|cet|le|this|the|every|all|"
+    r"tous les)\s+(?:dossiers?|contrats?|files?|applications?|contracts?)\b"
+    r"|\bdecision\s+(?:accepte|approved)\b|\bstatut\s+(?:a|en)\s+accepte\b)"
+)
+_MARQUEUR = (
+    r"(?:quoi qu'il arrive|quel(?:le)? que soit|meme si|sans (?:aucune )?verif\w*|sans condition|"
+    r"obligatoire|whatever|regardless|no matter|c'est un ordre)"
 )
 
 # nom : (description en une ligne, motif sur texte normalisé)
@@ -23,58 +34,50 @@ MOTIFS: dict[str, tuple[str, re.Pattern[str]]] = {
     nom: (doc, re.compile(motif, re.S))
     for nom, (doc, motif) in {
         "passer_outre": (
-            "ordre d'ignorer/oublier/contourner consignes, règles, barème ou refus (FR/EN)",
-            rf"\b{_VERBE_OUTRE}\b.{{0,40}}\b{_CIBLE}\b",
+            "ordre d'ignorer/oublier les consignes, règles ou instructions DE l'assistant",
+            rf"\b{_VERBE_OUTRE}\b.{{0,25}}\b{_DE_L_ASSISTANT}\b.{{0,25}}\b{_CIBLE}\b",
         ),
         "changement_de_role": (
-            "changement de rôle : « tu es maintenant », « à partir de maintenant », « act as »",
-            r"\b(?:tu es maintenant|tu n'es plus|a partir de maintenant|desormais,? "
-            r"(?:reponds|tu|ignore|accepte|valide)|agis comme|fais comme si|you are now|"
-            r"act as|pretend (?:to be|you))\b",
+            "changement de rôle de l'assistant : « tu es maintenant », « you are now », « act as »",
+            r"\b(?:tu es maintenant|tu n'es plus|a partir de maintenant,? tu|agis comme|"
+            r"fais comme si tu|you are now|act as|pretend (?:to be|you)|desormais,? "
+            r"(?:reponds|tu dois))\b",
         ),
         "prompt_systeme": (
-            "demande du prompt système ou de ses instructions (révèle, affiche, répète…)",
-            r"\b(?:prompt systeme|system prompt|instruction systeme|mot pour mot)\b|"
-            r"\b(?:revele[rz]?|affiche[rz]?|montre[rz]?|repete[rz]?|print|reveal|show|display|"
-            r"repeat)\b.{0,30}\b(?:tes|vos|your)\s+(?:instructions|consignes|prompt)",
+            "demande du prompt système ou des instructions de l'assistant (révèle, affiche…)",
+            r"\b(?:prompt systeme|system prompt)\b|\b(?:revele[rz]?|affiche[rz]?|montre[rz]?|"
+            r"repete[rz]?|print|reveal|show|display|repeat)\b.{0,30}\b(?:tes|vos|your)\s+"
+            r"(?:instructions|consignes|prompt)|\b(?:instructions|consignes)\b.{0,20}\b"
+            r"(?:que tu as recues|de depart)\b",
         ),
         "ordre_de_decider": (
-            "ordre d'accepter/valider/approuver le dossier ou décision imposée (FR/EN)",
-            r"\b(?:accepte[rz]?|valide[rz]?|approuve[rz]?|approve)\b.{0,25}\b(?:ce|cet|le|this|the)"
-            r"\s+(?:dossier|contrat|file|application|contract)\b|\bjust (?:confirm|approve)\b|"
-            r"\bdecision\s+accepte\b|\boutput decision\b",
+            "ordre d'accepter/valider le dossier AVEC un marqueur d'injection (quoi qu'il arrive…)",
+            rf"(?=.*{_DECIDER})(?=.*{_MARQUEUR})",
         ),
         "ordre_de_statut": (
-            "ordre de fixer prime, statut ou score, ou ordre sans vérification",
+            "ordre de fixer prime, statut ou score à une valeur favorable (accepte, minimum, zéro)",
             r"\b(?:mets|met|passe|fixe|set)\b.{0,25}\b(?:prime|statut|score|decision|status|"
-            r"premium)\b.{0,15}\b(?:a|au|en|to|at)\b|\bc'est un ordre\b|"
-            r"\bsans (?:aucune )?verification\b",
+            r"premium)\b.{0,15}\b(?:a|au|en|to|at)\s+(?:accepte|minimum|zero|0|1 euro|approved)\b",
         ),
         "balise_evasion": (
-            "balises d'évasion : fermeture de <donnees_non_fiables>, ### system, [INST], [SYSTÈME]",
-            r"</?donnees_non_fiables>|###\s*system|\[/?inst\]|\[/?systeme?\]|\bmode "
-            r"(?:maintenance|developpeur|debug|admin)\b",
-        ),
-        "nouvelle_instruction": (
-            "annonce d'une « nouvelle instruction/consigne » (FR/EN : new system prompt)",
-            r"\bnouvell?es? (?:instruction|consigne|directive)s?\b|\bnew (?:system )?"
-            r"(?:instructions?|prompt)\b",
+            "balises techniques d'évasion : </donnees_non_fiables>, ### system, [INST], [SYSTÈME]",
+            r"</?donnees_non_fiables>|###\s*system|\[/?inst\]|\[/?systeme?\]",
         ),
         "donnees_identite": (
-            "demande du nom, adresse, permis, IBAN… du souscripteur",
-            r"\b(?:donne|communique|fournis|affiche|revele|liste|give|tell)(?:-moi)?\b.{0,30}\b"
+            "demande à l'assistant l'identité du souscripteur ou les données d'autres dossiers",
+            r"\b(?:donne|communique|fournis|dis|give|tell)(?:-moi| me)\b.{0,30}\b"
             r"(?:nom|adresse|numero|iban|telephone|mail|email|naissance|permis)\b.{0,30}\b"
-            r"(?:souscripteur|assure|client|conducteur|titulaire|policyholder|customer)",
-        ),
-        "autres_dossiers": (
-            "demande de données d'autres dossiers, clients ou contrats",
-            r"\bautres? (?:dossiers?|clients?|contrats?)\b|\bother (?:files|customers|clients)\b",
+            r"(?:souscripteur|assure|client|conducteur|titulaire|policyholder|customer)|"
+            r"\b(?:donne|communique|fournis|liste|give|tell)(?:-moi| me)\b.{0,30}\b"
+            r"(?:dossiers?|contrats?|clients?)\b.{0,20}\b(?:autres?|portefeuille|other)\b|"
+            r"\b(?:donne|communique|fournis|liste|give|tell)(?:-moi| me)\b.{0,30}\b"
+            r"(?:autres?|other)\s+(?:dossiers?|contrats?|clients?)",
         ),
         "secrets": (
-            "demande de clés, jetons, mots de passe ou variables d'environnement",
-            r"\b(?:donne|liste|affiche|revele|montre|print|show|give)[rz]?\b.{0,40}\b(?:cles? "
-            r"d'api|api keys?|jetons?|tokens?|mots? de passe|variables? d'environnement|"
-            r"credentials)\b|\bcredentials\b",
+            "demande à l'assistant ses clés, jetons, mots de passe ou variables d'environnement",
+            r"\b(?:tes|vos|your)\b.{0,30}\b(?:cles? d'api|api keys?|jetons?|tokens?|"
+            r"mots? de passe|variables? d'environnement)\b|\b(?:cles? d'api|api keys?|jetons?|"
+            r"variables? d'environnement)\b.{0,30}\bque tu\b",
         ),
     }.items()
 }

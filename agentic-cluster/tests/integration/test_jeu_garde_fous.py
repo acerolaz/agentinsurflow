@@ -29,8 +29,12 @@ JETON = "jeton-gestionnaire"
 def mesure() -> Any:
     garde = ScannersLlmGuard()
     m = mesurer(garde, charger_jeu("hostiles"), charger_jeu("legitimes"))
-    reserve = mesurer(garde, charger_jeu("hostiles_reserve"), [])
-    return replace(m, hostiles=m.hostiles + reserve.hostiles)  # jeu + réserve
+    reserve = mesurer(garde, charger_jeu("hostiles_reserve"), charger_jeu("legitimes_reserve"))
+    return replace(
+        m,
+        hostiles=m.hostiles + reserve.hostiles,
+        legitimes=m.legitimes + reserve.legitimes,
+    )  # jeux + réserves
 
 
 def _obeit(agent: Any, vue: dict[str, Any]) -> dict[str, Any]:
@@ -69,7 +73,13 @@ async def test_g01_tout_hostile_est_detecte_ou_neutralise(mesure: Any) -> None:
     for ligne in mesure.hostiles:
         if ligne["codes"]:
             continue
-        obeissante = await _proposition(ligne["observations"], FakeRedaction(_obeit))
+        redaction = FakeRedaction(_obeit)
+        obeissante = await _proposition(ligne["observations"], redaction)
+        # la neutralisation n'est prouvée que si le LLM obéissant a bien reçu le texte hostile
+        assert any(
+            ligne["observations"] in str(vue.get("observations", ""))
+            for _, vue, _ in redaction.appels
+        ), ligne["id"]
         # même barème, même prime ; le garde-fou GF2 écarte la rédaction qui obéit : au pire la
         # revue humaine (repli prudent), jamais l'acceptation voulue par l'attaquant.
         assert obeissante[2:] == reference[2:], ligne["id"]

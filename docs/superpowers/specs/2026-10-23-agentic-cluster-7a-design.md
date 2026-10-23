@@ -57,6 +57,7 @@ Pourquoi maintenant : le brief Sprint 4 exige « la composante en production, ga
 - Observabilité : Application Insights seul, `enable_content_recording=False`, un `audit.agent` par exécution d'agent (D90, D91, D102).
 - Architecture hexagonale Python (règle utilisateur) ; le domaine (état, `SPECS`, `prochaine_etape`, `fusionner`, préconditions, garde-fous purs) n'importe ni LangGraph, ni LangChain, ni LLM Guard.
 - Évaluation **synchrone en V1, ≤ 30 s** (L6.3) ; `thread_id = numero_contrat` (D93).
+- **Le cluster joint le serveur MCP par la gateway** (`${GATEWAY_URL}/mcp`, route `mcp` existante), jamais par l'URL interne du serveur MCP ; de même pour `/api/llm` (D22, D105 ; précisé par Acerola le 23/10).
 
 ### 3.3 Précisions issues de la relecture (★ = choix de Claude, à vérifier par Acerola)
 

@@ -25,6 +25,11 @@ class ConfigCluster(BaseSettings):
     azure_openai_deployment: str = ""
     insurflow_llm_actif: bool = True
     insurflow_llm_delai_s: float = 30
+    # P24 (ouverte) : mêmes pièces exigées pour toute formule, séparées par des virgules
+    insurflow_pieces_exigees: str = "releve_information,permis"
+
+    def pieces_exigees(self) -> tuple[str, ...]:
+        return tuple(p.strip() for p in self.insurflow_pieces_exigees.split(",") if p.strip())
 
     def client_agent(self, agent: str) -> str:
         return getattr(self, f"insurflow_agent_{agent}_client_id", "")

@@ -35,9 +35,20 @@ class OutilsPort(Protocol):
 
 class RedactionPort(Protocol):
     async def rediger(
-        self, agent: NomAgent, vue: dict[str, Any], budget_s: float
+        self, agent: NomAgent, vue: dict[str, Any], budget_s: float, jeton: str = ""
     ) -> dict[str, Any] | None:
-        """``None`` = repli : LLM absent, délai dépassé ou sortie invalide."""
+        """Rédige le champ LLM de l'agent à partir de sa ``vue`` ; ``None`` = repli (LLM absent,
+        délai dépassé ou sortie invalide).
+
+        ``jeton`` : jeton du gestionnaire, pour l'outil ``search_rag`` du Rédacteur seul.
+        Retour, selon l'agent (l'application ne retient que ces clés et contrôle tout) :
+        - pieces et analyste : ``{"note": str}`` ; actuaire : ``{"explication": str}`` ;
+        - redacteur : ``{"decision": str, "contrat_type": str, "motifs": [str], "citations": [str],
+          "sources": [dict]}`` ; ``sources`` = résultats de ``search_rag`` aplatis par le code
+          (``doc_id``, ``collection``, ``article``, ``regle_id`` éventuel, ``texte``) ;
+        - ``{"erreur": <code>}`` (Rédacteur) si ``search_rag`` a échoué sans rien rapporter
+          (``NOT_FOUND_IN_CORPUS``, ``UNAUTHORIZED_TOOL``…).
+        """
         ...
 
 

@@ -16,7 +16,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from agentinsurflow_cluster.domain.pii import pii_detectees
 
-# Entités scannées en entrée ET en sortie : ces 5 seulement (PERSON exclu, faux positifs en français) ;
+# Entités scannées en entrée ET en sortie : ces 5 seulement (PERSON exclu :
+# faux positifs en français) ;
 # `pii_detectees` du domaine complète. Tuple : `Sensitive` ajoute « CUSTOM » à la liste reçue.
 _ENTITES_PII = ("CREDIT_CARD", "EMAIL_ADDRESS", "IBAN_CODE", "PHONE_NUMBER", "IP_ADDRESS")
 _FICHIER = Path(__file__).resolve().parents[3] / "garde_fous.env"

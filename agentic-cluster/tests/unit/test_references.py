@@ -62,3 +62,19 @@ def test_prime_de() -> None:
         }
     )
     assert res == Prime("600.00", "50.00", "tarif-v1", "")
+
+
+def test_plusieurs_releves_le_plus_recent_fait_foi() -> None:
+    recent, ancien = _p("releve_information", "2026-08-01"), _p("releve_information", "2026-01-01")
+    for ordre in ([recent, ancien], [ancien, recent]):
+        res = verifier_completude("tiers", [_p("permis"), *ordre], EFFET, EXIGEES)
+        assert res.statut == "complet"
+
+
+def test_limite_fin_de_mois() -> None:
+    # effet 31 mai -> limite 28 février (2026) : le 28/02 passe, le 27/02 non
+    for emission, statut in (("2026-02-28", "complet"), ("2026-02-27", "incomplet")):
+        res = verifier_completude(
+            "tiers", [_p("permis"), _p("releve_information", emission)], date(2026, 5, 31), EXIGEES
+        )
+        assert res.statut == statut

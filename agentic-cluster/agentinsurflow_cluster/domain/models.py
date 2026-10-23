@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 Section = Literal[
     "dossier", "pieces", "risque", "sources", "fiche", "prime", "validation", "pilotage"
 ]
 NomAgent = Literal["pieces", "analyste", "redacteur", "actuaire"]
-# La cause tracée porte un suffixe : « garde_fou:GF2 », « garde_fou:entree:prompt_injection ».
-Cause = Literal[
-    "limite", "not_found", "garde_fou", "llm_ko", "budget", "erreur", "pieces_incompletes", "duree"
-]
 
 
 @dataclass(frozen=True)
@@ -75,4 +71,4 @@ class EtatDossier:
     cause: str | None = None
     entree_bloquee: str | None = None
     tentative: int = 1
-    tours: tuple[dict[str, object], ...] = field(default=())
+    tours: tuple[dict[str, object], ...] = ()

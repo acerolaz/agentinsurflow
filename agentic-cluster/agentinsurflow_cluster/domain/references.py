@@ -5,6 +5,7 @@ Les agents rédigent des notes ; les garde-fous les comparent à ces référence
 
 from __future__ import annotations
 
+import calendar
 from collections.abc import Mapping
 from datetime import date
 
@@ -16,16 +17,8 @@ MOIS_RELEVE_MAX = 3  # D85 : relevé d'information daté d'au plus 3 mois avant 
 
 def _moins_mois(jour: date, mois: int) -> date:
     annee, m = divmod(jour.year * 12 + jour.month - 1 - mois, 12)
-    return _borne(annee, m + 1, jour.day)
-
-
-def _borne(annee: int, mois: int, jour: int) -> date:
-    """Le jour demandé, ramené à la fin du mois s'il n'existe pas (31 → 30, 29 février…)."""
-    while True:
-        try:
-            return date(annee, mois, jour)
-        except ValueError:
-            jour -= 1
+    m += 1
+    return date(annee, m, min(jour.day, calendar.monthrange(annee, m)[1]))  # 31 mai -> 28/29 fév.
 
 
 def verifier_completude(
@@ -36,7 +29,10 @@ def verifier_completude(
 ) -> Pieces:
     """Pièces exigées pour la `formule` absentes ou périmées (relevé > 3 mois avant l'effet)."""
     limite = _moins_mois(date_effet, MOIS_RELEVE_MAX)
-    presentes = {p["type"]: date.fromisoformat(p["date_emission"]) for p in pieces}
+    presentes: dict[str, date] = {}
+    for p in pieces:  # plusieurs pièces d'un même type : la plus récente fait foi
+        d = date.fromisoformat(p["date_emission"])
+        presentes[p["type"]] = max(d, presentes.get(p["type"], d))
     manquantes = tuple(
         type_
         for type_ in exigees[formule]

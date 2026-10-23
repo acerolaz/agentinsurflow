@@ -80,7 +80,10 @@ def test_sans_secret_l_assertion_est_federee() -> None:
     assert [e["assertion"] for e in FauxObo.journal] == [["client_assertion_func"]] * 2
 
 
-def test_ni_secret_ni_identite_refuse() -> None:
+def test_ni_secret_ni_identite_refuse(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(
+        "AZURE_UAMI_CLIENT_ID", raising=False
+    )  # hermétique : `.env` exporté par make
     cfg = _cfg(insurflow_client_secret=None)
     with pytest.raises(ErreurOutil) as exc:
         JetonsAgents(cfg, fabrique_obo=FauxObo).pour_mcp("analyste", "j")

@@ -199,21 +199,25 @@ jobs:
           MANIFESTE: ${{ needs.changements.outputs.manifeste }}
         run: |
           az acr login -n "${{ vars.ACR_NAME }}"
+          # Cache inline : chaque image reprend les couches de la dernière image de main (tag flottant
+          # « main », jamais déployé : deploy.yml ne lit que le SHA). Sans lui, torch, LLM Guard et les
+          # modèles (cluster ≈ 9 Go) sont retéléchargés à chaque build. Absent au 1er build : ignoré.
+          construire() { # dépôt Dockerfile [build-args…]
+            local depot=$1 fichier=$2; shift 2
+            docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from "$ACR/agentinsurflow-$depot:main" \
+              --build-arg APP_VERSION="$SHA" "$@" -f "$fichier" \
+              -t "$ACR/agentinsurflow-$depot:$SHA" -t "$ACR/agentinsurflow-$depot:main" .
+          }
           # /health : SHA de l'image, release vX.Y.Z (et manifeste pour rag), gravés au build
-          docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
-            --build-arg APP_MANIFESTE="$MANIFESTE" -f rag/Dockerfile -t "$ACR/agentinsurflow-rag:$SHA" .
-          docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
-            -f underwriting-admin/Dockerfile -t "$ACR/agentinsurflow-underwriting:$SHA" .
-          docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
-            -f gateway/Dockerfile -t "$ACR/agentinsurflow-gateway:$SHA" .
-          docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
-            -f serveur-mcp/Dockerfile -t "$ACR/agentinsurflow-mcp:$SHA" .
-          docker build --build-arg APP_VERSION="$SHA" -f agentic-cluster/Dockerfile -t "$ACR/agentinsurflow-cluster:$SHA" .
-          docker push "$ACR/agentinsurflow-rag:$SHA"
-          docker push "$ACR/agentinsurflow-underwriting:$SHA"
-          docker push "$ACR/agentinsurflow-gateway:$SHA"
-          docker push "$ACR/agentinsurflow-mcp:$SHA"
-          docker push "$ACR/agentinsurflow-cluster:$SHA"
+          construire rag rag/Dockerfile --build-arg APP_RELEASE="$RELEASE" --build-arg APP_MANIFESTE="$MANIFESTE"
+          construire underwriting underwriting-admin/Dockerfile --build-arg APP_RELEASE="$RELEASE"
+          construire gateway gateway/Dockerfile --build-arg APP_RELEASE="$RELEASE"
+          construire mcp serveur-mcp/Dockerfile --build-arg APP_RELEASE="$RELEASE"
+          construire cluster agentic-cluster/Dockerfile
+          for depot in rag underwriting gateway mcp cluster; do
+            docker push "$ACR/agentinsurflow-$depot:$SHA"
+            docker push "$ACR/agentinsurflow-$depot:main"
+          done
 
   staging:
     needs: build

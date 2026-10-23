@@ -39,6 +39,8 @@ Les outils sont déclarés avec le SDK MCP officiel ; la docstring de chacun est
 | `get_contrat` | `numero_contrat` | Contrat : profil du conducteur, historique, formule (`GET /api/contrats/{numero}`) | Lecture |
 | `enregistrer_brouillon` | `numero_contrat`, `fiche` (`decision`, `contrat_type`, `score`, `version_bareme`, `regle_ids`, `motifs`, `citations`), `prime` facultative (`prime_ttc`, `periodicite`, `date_effet` AAAA-MM-JJ) | `{"ecrit": true}` | Écriture, brouillon seulement, idempotente |
 | `update_statut_dossier` | `numero_contrat`, `statut` (ex. `REVUE_HUMAINE`, `ACCEPTE`, `REFUSE`), `validation` (`VALIDEE` ou `CORRIGEE`, exigée avec `ACCEPTE` et `REFUSE`) | `{"ecrit": true}` | Écriture, seul outil qui écrit une décision |
+| `lister_pieces` | `numero_contrat` | `{"pieces": [{"type", "date_emission"}]}` | Lecture : métadonnées seulement, sans contenu de pièce |
+| `enregistrer_etat` | `numero_contrat`, `etat` (`statut_parcours`, `tentative`, `sections`, `rapports`, `tours`) | `{"ecrit": true}` | Écriture de l'état du parcours ; `ARGUMENTS_INVALIDES` si le backend refuse (ex. section inconnue) |
 | `evaluer_risque` | faits du contrat | Score, classe et règles déclenchées, versions du barème | Calcul (Function de calcul, par la gateway : `POST /api/calcul/evaluer`) |
 | `calculer_prime` | faits du contrat et de la formule | Prime détaillée, version de la formule | Calcul (Function de calcul, par la gateway : `POST /api/calcul/calculer`) |
 
@@ -50,7 +52,7 @@ Les deux outils appellent la Function de calcul **par la gateway** (`${GATEWAY_U
 |---|---|---|
 | `UNAUTHORIZED_TOOL` | Outil hors matrice pour l'`azp` du jeton (refus avant tout appel de backend) | tous |
 | `NOT_FOUND_IN_CORPUS` | Aucun extrait ne passe la porte de pertinence de rag | `search_rag` |
-| `CONTRAT_INTROUVABLE` | 404 d'underwriting-admin : contrat absent **ou** hors portefeuille (indiscernables) | `get_contrat`, `enregistrer_brouillon`, `update_statut_dossier` |
+| `CONTRAT_INTROUVABLE` | 404 d'underwriting-admin : contrat absent **ou** hors portefeuille (indiscernables) | `get_contrat`, `enregistrer_brouillon`, `update_statut_dossier`, `lister_pieces`, `enregistrer_etat` |
 | `DOSSIERS_INDISPONIBLES` | OBO refusé, backend en panne ou réponse inattendue | tous |
 | `CALCUL_INDISPONIBLE` | Function de calcul injoignable, jeton refusé ou requête malformée | `evaluer_risque`, `calculer_prime` |
 | `DONNEE_HORS_BAREME` | Donnée absente ou inconnue du barème (422) | `evaluer_risque`, `calculer_prime` |
@@ -93,9 +95,9 @@ Export OTLP/HTTP (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) : en local, **direct** v
 | `mcp.outil` | `mcp.outil`, `appelant.azp`, `autorisation.decision` (allow/deny), `autorisation.regle`, `resultat.code`, `isError` |
 | `obo.echanger` | réussite ou échec, cible (rag, underwriting) |
 | Appel gateway | route (gabarit), statut HTTP |
-| Écritures | `statut.cible`, `contrat.present` |
+| Écritures | `statut.cible`, `contrat.present`, `etat.present` (présence seulement) |
 
-**Jamais tracé** (vérifié par les tests) : jeton, `numero_contrat`, identité du gestionnaire, texte de la question (seulement `question.sha256` et `question.longueur`), contenu de contrat, de fiche ou de prime, message d'une exception.
+**Jamais tracé** (vérifié par les tests) : jeton, `numero_contrat`, identité du gestionnaire, texte de la question (seulement `question.sha256` et `question.longueur`), contenu de contrat (observations comprises), de fiche, de prime ou d'état de parcours, message d'une exception.
 
 **Limite connue** : les spans HTTP de la gateway et d'underwriting-admin (instrumentation ASP.NET Core) contiennent `url.path`, donc le `numero_contrat` des routes `/api/contrats/{numero_contrat}…` ; antérieur au serveur MCP, à traiter dans une issue dédiée.
 

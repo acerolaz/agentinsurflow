@@ -22,6 +22,7 @@ from agentinsurflow_mcp.infrastructure.gateway.client import ClientGateway
 CONTRAT = "AIF/2026/0042"
 QUESTION = "Jean Dupont conduit-il avec un malus ?"
 OID = "oid-gestionnaire-secret"
+ETAT = {"sections": [{"section": "pieces", "contenu": {"observations": "SECRET-OBS"}}]}
 TRACE_ID = "0af7651916cd43dd8448eb211c80319c"
 TRACEPARENT = f"00-{TRACE_ID}-b7ad6b7169203331-01"
 
@@ -83,7 +84,7 @@ async def test_lister_les_outils_est_trace(spans: InMemorySpanExporter) -> None:
         await s.list_tools()
     attributs = _un(spans, "mcp.lister_outils")
     assert attributs["appelant.azp"] == AZP_ORCHESTRATEUR
-    assert attributs["outils.nombre"] == 3
+    assert attributs["outils.nombre"] == 4
 
 
 async def test_search_rag_trace_la_question_par_son_empreinte(spans: InMemorySpanExporter) -> None:
@@ -219,9 +220,10 @@ async def test_aucune_donnee_personnelle_dans_les_spans(spans: InMemorySpanExpor
         await s.call_tool("search_rag", {"question": QUESTION})
         await s.call_tool("get_contrat", {"numero_contrat": CONTRAT})
         await s.call_tool("update_statut_dossier", {"numero_contrat": CONTRAT, "statut": "X"})
+        await s.call_tool("enregistrer_etat", {"numero_contrat": CONTRAT, "etat": ETAT})
     textes = _textes(spans)
     assert textes
-    for interdit in (CONTRAT, "0042", "Dupont", QUESTION, jeton, OID, "obo-"):
+    for interdit in (CONTRAT, "0042", "Dupont", QUESTION, jeton, OID, "obo-", "SECRET-OBS"):
         assert not any(interdit in t for t in textes), interdit
 
 
@@ -233,3 +235,14 @@ async def test_sante_n_est_pas_tracee(spans: InMemorySpanExporter) -> None:
         ) as http:
             assert (await http.get("/health")).status_code == 200
     assert not spans.get_finished_spans()
+
+
+async def test_enregistrer_etat_n_enregistre_qu_un_indicateur_de_presence(
+    spans: InMemorySpanExporter,
+) -> None:
+    async with session_mcp(_app(Gateway()), creer(AZP_ORCHESTRATEUR)) as s:
+        r = await s.call_tool("enregistrer_etat", {"numero_contrat": CONTRAT, "etat": ETAT})
+    assert r.isError is False
+    attributs = _un(spans, "mcp.outil")
+    assert attributs["etat.present"] is True
+    assert not any("SECRET-OBS" in t for t in _textes(spans))

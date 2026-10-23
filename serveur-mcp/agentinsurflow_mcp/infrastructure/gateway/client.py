@@ -5,7 +5,7 @@ Le client httpx n'est pas instrumenté (comme rag) : le ``traceparent`` est pos�
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from urllib.parse import quote
 
 import httpx
@@ -55,6 +55,25 @@ class ClientGateway:
         gabarit = f"{GABARIT}/statut"
         await self._appeler("PUT", chemin, gabarit, jeton, CONTRAT_INTROUVABLE, corps=corps)
 
+    async def lister_pieces(self, jeton: str, numero_contrat: str) -> list[dict[str, Any]]:
+        pieces = await self._appeler(
+            "GET",
+            f"{self._contrat(numero_contrat)}/pieces",
+            f"{GABARIT}/pieces",
+            jeton,
+            CONTRAT_INTROUVABLE,
+            attendu=list,
+        )
+        return cast("list[dict[str, Any]]", pieces)  # liste vérifiée par ``attendu``
+
+    async def enregistrer_etat(
+        self, jeton: str, numero_contrat: str, corps: dict[str, Any]
+    ) -> None:
+        chemin = f"{self._contrat(numero_contrat)}/etat"
+        await self._appeler(
+            "PUT", chemin, f"{GABARIT}/etat", jeton, CONTRAT_INTROUVABLE, corps=corps
+        )
+
     @staticmethod
     def _contrat(numero_contrat: str) -> str:
         return f"/api/contrats/{quote(numero_contrat, safe='')}"
@@ -69,6 +88,7 @@ class ClientGateway:
         *,
         params: dict[str, Any] | None = None,
         corps: dict[str, Any] | None = None,
+        attendu: type = dict,
     ) -> dict[str, Any]:
         with tracer.start_as_current_span(
             "gateway.appel",
@@ -93,14 +113,14 @@ class ClientGateway:
         if not reponse.is_success:
             raise ErreurOutil(DOSSIERS_INDISPONIBLES, f"Gateway : HTTP {reponse.status_code}")
         if not reponse.content:
-            return {}
+            return attendu()  # type: ignore[no-any-return]
         try:
             donnees = reponse.json()
         except ValueError as exc:
             raise ErreurOutil(DOSSIERS_INDISPONIBLES, "Réponse de la gateway illisible") from exc
-        if not isinstance(donnees, dict):
+        if not isinstance(donnees, attendu):
             raise ErreurOutil(DOSSIERS_INDISPONIBLES, "Réponse de la gateway mal formée")
-        return donnees
+        return donnees  # type: ignore[return-value]
 
 
 def _code_refus(reponse: httpx.Response) -> str:

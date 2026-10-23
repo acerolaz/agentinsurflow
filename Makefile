@@ -58,7 +58,7 @@ openapi:            ## docs/openapi/{rag,underwriting-admin}.json, générés de
 	ASPNETCORE_ENVIRONMENT=Development env -u VERSION dotnet build underwriting-admin/src/AgentInsurFlow.UnderwritingAdmin.Api -p:OpenApiGenerateDocuments=true -v q # VERSION (SHA) serait lu comme la propriété MSBuild Version ; Development : pas de mot de passe PostgreSQL exigé
 
 gateway-%:          ## cibles de gateway/Makefile : make gateway-test, gateway-lint, gateway-docker-build
-	$(MAKE) -C gateway $*
+	env -u VERSION $(MAKE) -C gateway $*  # VERSION (SHA git) serait lu comme la propriété MSBuild Version : restauration NuGet en échec (MSB4181)
 
 underwriting-%:     ## cibles de underwriting-admin/Makefile : make underwriting-test, underwriting-lint
 	$(MAKE) -C underwriting-admin $*

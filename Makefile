@@ -21,11 +21,11 @@ fmt:
 lint:               ## porte 1 : style + typage
 	uv run ruff check .
 	uv run ruff format --check .
-	uv run mypy rag/agentinsurflow_rag serveur-mcp/agentinsurflow_mcp fonction-calcul/agentinsurflow_calcul fonction-calcul/function_app.py tools
+	uv run mypy rag/agentinsurflow_rag serveur-mcp/agentinsurflow_mcp fonction-calcul/agentinsurflow_calcul fonction-calcul/function_app.py agentic-cluster/agentinsurflow_cluster tools
 	uv export --package agentinsurflow-calcul --no-emit-workspace --no-dev --no-hashes | diff - fonction-calcul/requirements.txt
 
 test:               ## TU, sans Docker (rag + serveur-mcp, tests/unit + outillage de la racine)
-	uv run pytest tests rag/tests/unit serveur-mcp/tests/unit fonction-calcul/tests/unit --no-cov
+	uv run pytest tests rag/tests/unit serveur-mcp/tests/unit fonction-calcul/tests/unit agentic-cluster/tests/unit --no-cov
 
 test-integration:   ## porte 2 : TU + TI (PostgreSQL du compose), couverture >= 80 %
 	docker compose up -d --build --wait postgres

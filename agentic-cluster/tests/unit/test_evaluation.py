@@ -57,6 +57,15 @@ async def test_charger_lit_le_contrat_avec_l_orchestrateur_et_retire_les_observa
     assert garde.entrees == [CONTRAT["observations"]] and etat.entree_bloquee is None
 
 
+async def test_charger_journalise_le_signal_d_injection_sans_bloquer() -> None:
+    garde = FakeGarde(signal=0.97)
+    audit = FakeAudit()
+    etat = await charger("C-1", JETON, _deps(garde=garde, audit=audit))
+    assert etat.entree_bloquee is None
+    assert audit.signaux == [0.97]
+    assert garde.entrees == [CONTRAT["observations"]]
+
+
 async def test_charger_sans_observations_ne_scanne_pas() -> None:
     garde = FakeGarde()
     outils = FakeOutils(get_contrat={**CONTRAT, "observations": None})

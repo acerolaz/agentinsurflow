@@ -57,6 +57,10 @@ class GardeTextePort(Protocol):
         """Noms des scanners d'entrée en échec."""
         ...
 
+    def signal_injection(self, texte: str) -> float:
+        """Score du modèle d'injection (0 à 1) : un signal journalisé, jamais bloquant."""
+        ...
+
     def sortie(self, texte: str) -> list[str]:
         """Noms des scanners de sortie en échec."""
         ...
@@ -70,6 +74,8 @@ class AuditPort(Protocol):
         garde_fous: list[str],
         duree_ms: int,
         empreinte_vue: str = "",
+        signal_injection: float | None = None,
     ) -> None:
-        """``empreinte_vue`` : SHA-256 de la vue de l'agent (jamais son contenu)."""
+        """``empreinte_vue`` : SHA-256 de la vue de l'agent (jamais son contenu) ;
+        ``signal_injection`` : score seul du modèle d'injection (jamais le texte)."""
         ...

@@ -72,11 +72,14 @@ async def charger(numero: str, jeton: str, deps: Dependances) -> EtatDossier:
     bloquee = None
     if observations:
         codes = await asyncio.to_thread(deps.garde.entree, observations)  # modèles : CPU
+        signal = await asyncio.to_thread(deps.garde.signal_injection, observations)
         if codes:
             bloquee = f"garde_fou:entree:{codes[0]}"
-            await deps.audit.tracer(
-                numero, Rapport(ORCHESTRATEUR, {}, "repli", bloquee, ""), codes, 0
-            )
+        # le score du modèle est journalisé (score seul) : il ne bloque jamais
+        mode: Literal["llm", "repli"] = "repli" if codes else "llm"
+        await deps.audit.tracer(
+            numero, Rapport(ORCHESTRATEUR, {}, mode, bloquee, ""), codes, 0, "", signal
+        )
     return EtatDossier(numero, dossier=dossier, observations=observations, entree_bloquee=bloquee)
 
 

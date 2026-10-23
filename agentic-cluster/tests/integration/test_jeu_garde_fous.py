@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -26,7 +27,10 @@ JETON = "jeton-gestionnaire"
 
 @pytest.fixture(scope="module")
 def mesure() -> Any:
-    return mesurer(ScannersLlmGuard(), charger_jeu("hostiles"), charger_jeu("legitimes"))
+    garde = ScannersLlmGuard()
+    m = mesurer(garde, charger_jeu("hostiles"), charger_jeu("legitimes"))
+    reserve = mesurer(garde, charger_jeu("hostiles_reserve"), [])
+    return replace(m, hostiles=m.hostiles + reserve.hostiles)  # jeu + réserve
 
 
 def _obeit(agent: Any, vue: dict[str, Any]) -> dict[str, Any]:

@@ -127,7 +127,13 @@ class FakeRedaction:
 
 
 class FakeGarde:
-    def __init__(self, sortie: list[str] | None = None, entree: list[str] | None = None) -> None:
+    def __init__(
+        self,
+        sortie: list[str] | None = None,
+        entree: list[str] | None = None,
+        signal: float = 0.0,
+    ) -> None:
+        self._signal = signal
         self._sortie = sortie or []
         self._entree = entree or []
         self.textes: list[str] = []
@@ -137,6 +143,9 @@ class FakeGarde:
         self.entrees.append(texte)
         return list(self._entree)
 
+    def signal_injection(self, texte: str) -> float:
+        return self._signal
+
     def sortie(self, texte: str) -> list[str]:
         self.textes.append(texte)
         return list(self._sortie)
@@ -145,6 +154,7 @@ class FakeGarde:
 class FakeAudit:
     def __init__(self) -> None:
         self.traces: list[tuple[str, Rapport, list[str], int]] = []
+        self.signaux: list[float] = []
 
     async def tracer(
         self,
@@ -153,5 +163,8 @@ class FakeAudit:
         garde_fous: list[str],
         duree_ms: int,
         empreinte_vue: str = "",
+        signal_injection: float | None = None,
     ) -> None:
+        if signal_injection is not None:
+            self.signaux.append(signal_injection)
         self.traces.append((numero_contrat, rapport, garde_fous, duree_ms))

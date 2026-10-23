@@ -55,7 +55,6 @@ def test_sortie_normale(garde: ScannersLlmGuard) -> None:
     assert garde.sortie("Le dossier est conforme, prime annuelle calculée selon le barème.") == []
 
 
-@pytest.mark.xfail(strict=True, reason="faux positif FR du modèle d'injection — calibrage T13")
 def test_phrase_legitime_ne_declenche_pas_l_injection(garde: ScannersLlmGuard) -> None:
     assert "prompt_injection" not in garde.entree(
         "Le dossier est conforme, prime annuelle calculée"

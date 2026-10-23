@@ -67,11 +67,18 @@ def mesurer(
 
 
 def main() -> None:
-    m = mesurer(ScannersLlmGuard(), charger_jeu("hostiles"), charger_jeu("legitimes"))
-    for categorie, taux in m.taux_blocage.items():
-        print(f"{categorie:15} blocage {taux:6.1%}")
-    non = [ligne["id"] for ligne in m.hostiles if not ligne["codes"]]
-    print(f"hostiles non détectés (neutralisation seule) : {', '.join(non) or 'aucun'}")
+    garde = ScannersLlmGuard()
+    m = mesurer(garde, charger_jeu("hostiles"), charger_jeu("legitimes"))
+    reserve = mesurer(garde, charger_jeu("hostiles_reserve"), [])
+    for titre, mesure in (("jeu", m), ("réserve", reserve)):
+        for categorie, taux in mesure.taux_blocage.items():
+            print(f"{titre:8} {categorie:15} blocage {taux:6.1%}")
+        total = sum(bool(ligne["codes"]) for ligne in mesure.hostiles) / len(mesure.hostiles)
+        non = [ligne["id"] for ligne in mesure.hostiles if not ligne["codes"]]
+        print(
+            f"{titre:8} TOTAL blocage {total:.1%} ; non détectés (neutralisation seule) : "
+            f"{', '.join(non) or 'aucun'}"
+        )
     print(f"faux positifs : {m.taux_faux_positifs:.1%} ({', '.join(m.faux_positifs) or 'aucun'})")
     plafond = math.ceil(m.taux_faux_positifs * 20) / 20
     print(f"plafond mesuré à consigner (PLAFOND_FAUX_POSITIFS) : {plafond:.2f}")

@@ -14,6 +14,7 @@ from llm_guard.input_scanners.ban_topics import MODEL_BGE_M3_V2
 from llm_guard.output_scanners import Sensitive
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from agentinsurflow_cluster.domain.injection import motifs_injection
 from agentinsurflow_cluster.domain.pii import pii_detectees
 
 # Entités scannées en entrée ET en sortie : ces 5 seulement (PERSON exclu :
@@ -43,9 +44,8 @@ class ScannersLlmGuard:
             raise ValueError(
                 f"sujets_hors_perimetre vide : renseigner SUJETS_HORS_PERIMETRE ou {_FICHIER}"
             )
-        # Calibré en T13 : le modèle rend 0 ou 1 (saturé) et juge ~40 % du français légitime
-        # (« Le dossier est conforme, prime annuelle calculée ») comme une injection ; aucun seuil
-        # < 1 ne l'en empêche, 1.0 couperait la détection. Voir PLAFOND_FAUX_POSITIFS.
+        # Signal seulement (T13) : le modèle est saturé (0 ou 1) et juge ~40 % du français légitime
+        # comme une injection ; le blocage vient de `motifs_injection` (domaine), voir `entree`.
         self._injection = PromptInjection(threshold=cfg.seuil_injection)
         self._sujets = BanTopics(
             topics=sujets, threshold=cfg.seuil_sujets, model=MODEL_BGE_M3_V2
@@ -61,15 +61,31 @@ class ScannersLlmGuard:
         codes = [
             code
             for code, scanner in (
-                ("prompt_injection", self._injection),
                 ("hors_perimetre", self._sujets),
                 ("secrets", self._secrets),
             )
             if not scanner.scan(texte)[1]
         ]
+        if motifs_injection(texte):  # les règles bloquent ; le modèle n'est qu'un signal
+            codes.insert(0, "prompt_injection")
         if not self._sensible.scan("", texte)[1] or pii_detectees(texte):
             codes.append("pii")
         return codes
+
+    def signal_injection(self, texte: str) -> float:
+        """Score du modèle PromptInjection (0 à 1, sans seuil) : un signal, jamais bloquant."""
+        if not texte.strip():
+            return 0.0
+        # ponytail: LLM Guard ne rend que le risque relatif au seuil ; le score brut vient de son
+        # pipeline interne (attributs privés, à revoir à chaque montée de version de llm-guard)
+        scanner = self._injection
+        resultats = scanner._pipeline(scanner._match_type.get_inputs(texte))
+        return float(
+            max(
+                round(r["score"] if r["label"] == "INJECTION" else 1 - r["score"], 2)
+                for r in resultats
+            )
+        )
 
     def sortie(self, texte: str) -> list[str]:
         codes = []

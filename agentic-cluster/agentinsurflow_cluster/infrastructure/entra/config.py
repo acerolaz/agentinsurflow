@@ -22,6 +22,9 @@ class ConfigCluster(BaseSettings):
     insurflow_agent_actuaire_client_id: str = ""
     insurflow_client_secret: SecretStr | None = None  # 🔒 .env local seulement
     azure_uami_client_id: str | None = None  # identité managée fédérée (Azure)
+    telemetrie_audience: str = (
+        ""  # api://<appId underwriting> : posée en Azure (export OTLP avec jeton)
+    )
     azure_openai_deployment: str = ""
     insurflow_llm_actif: bool = True
     insurflow_llm_delai_s: float = 30

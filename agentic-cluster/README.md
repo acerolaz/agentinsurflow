@@ -32,7 +32,7 @@ Erreurs : `application/problem+json` avec un `code` stable. Le message de `REVUE
 
 ## Concurrence et reprise
 
-- Un `asyncio.Lock` par numéro de contrat sérialise `evaluer` et `reviser` : il ne vaut que pour **une réplique** (`maxReplicas: 1` en T12) ; plusieurs répliques demanderaient un verrou en base.
+- Un `asyncio.Lock` par numéro de contrat sérialise `evaluer` et `reviser` : il ne vaut que pour **une réplique** (`maxReplicas: 1` en T12) ; plusieurs répliques demanderaient un verrou en base. **Limite (R17)** : pendant un déploiement, l'ancienne et la nouvelle révision peuvent coexister brièvement (même avec `maxReplicas: 1`) ; le verrou par dossier n'est pas garanti pendant cette fenêtre.
 - Un dossier `ACCEPTE` ou `REFUSE` ne se réévalue pas : `409 DOSSIER_DECIDE`.
 - Si l'écriture de la décision échoue (`502`), la revue reste posée : un second `/revue` rejoue `enregistrer` (la décision la plus récente l'emporte) ; `POST /evaluations/{n}` répond `409 EVALUATION_EN_ATTENTE` entre-temps.
 - Les observations du dossier ne sont jamais dans l'état du graphe ni dans un point de reprise : elles passent par le contexte d'exécution (en mémoire).
@@ -42,7 +42,7 @@ Erreurs : `application/problem+json` avec un `code` stable. Le message de `REVUE
 - Entra et gateway : `AZURE_TENANT_ID`, `GATEWAY_URL`, `MCP_API_CLIENT_ID`, `LLM_AUDIENCE`, `INSURFLOW_CLUSTER_CLIENT_ID`, `INSURFLOW_AGENT_<AGENT>_CLIENT_ID`, `INSURFLOW_CLIENT_SECRET` (local) ou `AZURE_UAMI_CLIENT_ID` (Azure).
 - Points de reprise : `INSURFLOW_CHECKPOINT_DSN` (PostgreSQL, schéma `agent_state`, créé au démarrage) ; absent : mémoire, avec un avertissement (local, tests).
 - Garde globale : `INSURFLOW_BUDGET_S` (25 s) ; budget d'un agent = `min(délai de l'agent, 25 - écoulé - 2)`, sous 0,3 s : revue humaine (`duree`).
-- Observabilité : `OTEL_SERVICE_NAME=agentic-cluster`, `OTEL_EXPORTER_OTLP_*`. Un enregistrement `audit.agent` (journal `insurflow.audit`) et un span `invoke_agent` par agent ; ni jeton, ni nom, ni prompt, ni observations (empreintes SHA-256 seulement).
+- Observabilité : `OTEL_SERVICE_NAME=agentic-cluster`, `OTEL_EXPORTER_OTLP_*` ; en Azure, `TELEMETRIE_AUDIENCE` (`api://<appId underwriting>`) : export par la gateway (`/v1/traces`) avec un jeton d'application du cluster (rôle `Telemetrie`), comme le serveur MCP ; local : export direct, sans jeton. Un enregistrement `audit.agent` (journal `insurflow.audit`) et un span `invoke_agent` par agent ; ni jeton, ni nom, ni prompt, ni observations (empreintes SHA-256 seulement).
 
 ## Lancer
 

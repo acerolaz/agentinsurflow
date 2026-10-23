@@ -276,6 +276,7 @@ jobs:
         id: cluster
         env:
           IMAGE_CLUSTER: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-cluster:${{ steps.image.outputs.tag }}
+          UNDERWRITING_API_CLIENT_ID: ${{ vars.UNDERWRITING_API_CLIENT_ID }}
           APP_ENV: ${{ inputs.environnement }}
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_UAMI_CLUSTER_CLIENT_ID: ${{ vars.AZURE_UAMI_CLUSTER_CLIENT_ID }}
@@ -295,7 +296,7 @@ jobs:
           test -n "$AZURE_OPENAI_DEPLOYMENT" || { echo "::error::AZURE_OPENAI_DEPLOYMENT absent de rag/llm.env"; exit 1; }
           export GATEWAY_URL AZURE_OPENAI_DEPLOYMENT
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
-          envsubst '$IMAGE_CLUSTER $APP_ENV $AZURE_TENANT_ID $AZURE_UAMI_CLUSTER_CLIENT_ID $MCP_API_CLIENT_ID $LLM_AUDIENCE $AZURE_OPENAI_DEPLOYMENT $GATEWAY_URL $INSURFLOW_CLUSTER_CLIENT_ID $INSURFLOW_AGENT_ORCHESTRATEUR_CLIENT_ID $INSURFLOW_AGENT_PIECES_CLIENT_ID $INSURFLOW_AGENT_ANALYSTE_CLIENT_ID $INSURFLOW_AGENT_REDACTEUR_CLIENT_ID $INSURFLOW_AGENT_ACTUAIRE_CLIENT_ID' \
+          envsubst '$IMAGE_CLUSTER $UNDERWRITING_API_CLIENT_ID $APP_ENV $AZURE_TENANT_ID $AZURE_UAMI_CLUSTER_CLIENT_ID $MCP_API_CLIENT_ID $LLM_AUDIENCE $AZURE_OPENAI_DEPLOYMENT $GATEWAY_URL $INSURFLOW_CLUSTER_CLIENT_ID $INSURFLOW_AGENT_ORCHESTRATEUR_CLIENT_ID $INSURFLOW_AGENT_PIECES_CLIENT_ID $INSURFLOW_AGENT_ANALYSTE_CLIENT_ID $INSURFLOW_AGENT_REDACTEUR_CLIENT_ID $INSURFLOW_AGENT_ACTUAIRE_CLIENT_ID' \
             < infra/containerapp-cluster.yaml > "$RUNNER_TEMP/containerapp-cluster.yaml"
           az containerapp update -n "$CLUSTER_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-cluster.yaml" -o none
           fqdn=$(az containerapp show -n "$CLUSTER_APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)

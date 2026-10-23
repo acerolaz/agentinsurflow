@@ -51,12 +51,14 @@ spa=$(printf '%s\n' "${redirections[@]}" | jq -R . | jq -s .)
 
 # inscrire <nom> <id du scope> "<appId client>…" <rôle>=<id>… : crée l'inscription au besoin, puis impose
 # l'URI d'API, le scope access_as_user, les rôles, les redirections et la pré-autorisation sur ce scope
-# d'Azure CLI et des clients donnés (#47 : leur OBO se passe du consentement administrateur du tenant).
+# des SEULS clients donnés (#47 : leur OBO se passe du consentement administrateur du tenant). Azure CLI
+# ($CLI : jetons du poste et de la CI) n'est pré-autorisé que si l'appelant le passe, pas par défaut :
+# les agents ne pré-autorisent que le cluster.
 # Deux URI d'API : api://<nom> (jetons du poste et de l'E2E) et api://<appId>, que l'OBO de rag et du
 # serveur MCP demande (sans elle : AADSTS500011, ressource introuvable).
 inscrire() {
   local nom=$1 scope=$2 clients app_id objet corps
-  clients=$(printf '%s\n' "$CLI" $3 | jq -R . | jq -s .)
+  clients=$(printf '%s\n' $3 | jq -R 'select(length > 0)' | jq -s .)
   shift 3
   app_id=$(az ad app list --display-name "$nom" --query "[0].appId" -o tsv)
   [ -n "$app_id" ] || app_id=$(az ad app create --display-name "$nom" --sign-in-audience AzureADMyOrg --query appId -o tsv)
@@ -83,9 +85,9 @@ inscrire() {
 
 echo "② Inscriptions agentinsurflow-mcp, agentinsurflow-rag et agentinsurflow-underwriting (A3)"
 # Les clients OBO d'abord : une API ne pré-autorise qu'un appId déjà inscrit
-mcp=$(inscrire agentinsurflow-mcp "$MCP_SCOPE" "" "Gestionnaire=$MCP_GESTIONNAIRE")
-rag=$(inscrire agentinsurflow-rag "$RAG_SCOPE" "$mcp" "Gestionnaire=$RAG_GESTIONNAIRE" "Ingestion=$RAG_INGESTION")
-uw=$(inscrire agentinsurflow-underwriting "$UW_SCOPE" "$rag $mcp" \
+mcp=$(inscrire agentinsurflow-mcp "$MCP_SCOPE" "$CLI" "Gestionnaire=$MCP_GESTIONNAIRE")
+rag=$(inscrire agentinsurflow-rag "$RAG_SCOPE" "$CLI $mcp" "Gestionnaire=$RAG_GESTIONNAIRE" "Ingestion=$RAG_INGESTION")
+uw=$(inscrire agentinsurflow-underwriting "$UW_SCOPE" "$CLI $rag $mcp" \
   "Gestionnaire=$UW_GESTIONNAIRE" "Telemetrie=$UW_TELEMETRIE")
 
 # attribuer <appId de l'API> <id du rôle> <objet du principal> <libellé> : seulement s'il manque
@@ -200,12 +202,15 @@ fi
 attribuer "$uw" "$UW_TELEMETRIE" "$(az ad sp show --id "$rag" --query id -o tsv)" "rag → Telemetrie (underwriting)"
 
 echo "⑧ Cluster d'agents (#7) : API agentinsurflow-cluster, cinq agents, identité managée propre fédérée sur chacun"
-# L'API du cluster pré-autorise le client de la page Swagger (rag, comme SWAGGER_CLIENT_ID) ; rôle Gestionnaire.
-cluster=$(inscrire agentinsurflow-cluster "$CLUSTER_SCOPE" "$rag" "Gestionnaire=$CLUSTER_GESTIONNAIRE")
+# L'API du cluster pré-autorise le client de la page Swagger (rag, comme SWAGGER_CLIENT_ID) et Azure CLI
+# (jetons de l'E2E, du poste et de la CI : `az account get-access-token --resource api://agentic-cluster`,
+# comme pour les autres API) ; rôle Gestionnaire.
+cluster=$(inscrire agentinsurflow-cluster "$CLUSTER_SCOPE" "$CLI $rag" "Gestionnaire=$CLUSTER_GESTIONNAIRE")
 attribuer "$cluster" "$CLUSTER_GESTIONNAIRE" "$moi" "toi → Gestionnaire (cluster)"
 attribuer "$cluster" "$CLUSTER_GESTIONNAIRE" "$ci" "CI → Gestionnaire (cluster)"
 [ -z "${DEMO_USER_ID:-}" ] || attribuer "$cluster" "$CLUSTER_GESTIONNAIRE" "$DEMO_USER_ID" "2e gestionnaire → Gestionnaire (cluster)"
-# Chaque agent expose access_as_user, pré-autorisé pour le cluster seul (1er saut OBO : cluster → agent ; 2e saut : agent → MCP).
+# Chaque agent expose access_as_user, pré-autorisé pour le cluster SEUL (ni Azure CLI ni autre client ; 1er saut OBO :
+# cluster → agent ; 2e saut : agent → MCP).
 # Aucun rôle d'application, aucun rôle utilisateur ; les URI et redirections posées par `inscrire` sont inoffensives ici.
 # (tableaux indexés, pas associatifs : bash 3.2 de macOS) agent_ids[i] = appId de AGENTS[i]
 agent_ids=()
@@ -214,7 +219,7 @@ for i in "${!AGENTS[@]}"; do
 done
 # Le MCP pré-autorise les cinq agents (2e saut sans consentement administrateur) : on relance son inscription, les
 # agents n'existaient pas en ②. Les clients rag et underwriting-admin ne dépendent pas de cette liste.
-mcp=$(inscrire agentinsurflow-mcp "$MCP_SCOPE" "${agent_ids[*]}" "Gestionnaire=$MCP_GESTIONNAIRE")
+mcp=$(inscrire agentinsurflow-mcp "$MCP_SCOPE" "$CLI ${agent_ids[*]}" "Gestionnaire=$MCP_GESTIONNAIRE")
 # Permission déléguée de chaque agent vers le MCP (même mécanique que mcp → rag en ⑥)
 for agent in "${agent_ids[@]}"; do
   objet=$(az ad app show --id "$agent" --query id -o tsv)
@@ -233,6 +238,9 @@ for i in "${!AGENTS[@]}"; do
 done
 az rest --method PATCH --uri "$GRAPH/applications/$objet" --headers content-type=application/json \
   --body "{\"requiredResourceAccess\": $acces}" -o none
+# Traces (R19) : comme le serveur MCP (⑥), le cluster exporte par la gateway (/v1/traces) avec un jeton d'application
+# de son inscription : rôle Telemetrie d'underwriting-admin
+attribuer "$uw" "$UW_TELEMETRIE" "$(az ad sp show --id "$cluster" --query id -o tsv)" "cluster → Telemetrie (underwriting)"
 # Identité managée PROPRE au cluster : elle sert d'assertion fédérée à l'application du cluster ET aux cinq agents
 UAMI_CLUSTER=uami-insurflow-cluster
 az identity show -n "$UAMI_CLUSTER" -g "$AZURE_RESOURCE_GROUP" -o none 2>/dev/null ||

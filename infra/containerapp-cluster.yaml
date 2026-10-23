@@ -34,6 +34,7 @@ properties:
           # MCP et LLM : TOUJOURS par la gateway (D22)
           - { name: GATEWAY_URL, value: "${GATEWAY_URL}" }
           - { name: MCP_API_CLIENT_ID, value: "${MCP_API_CLIENT_ID}" }
+          - { name: UNDERWRITING_API_CLIENT_ID, value: "${UNDERWRITING_API_CLIENT_ID}" }
           - { name: LLM_AUDIENCE, value: "${LLM_AUDIENCE}" }
           - { name: AZURE_OPENAI_DEPLOYMENT, value: "${AZURE_OPENAI_DEPLOYMENT}" }
           - { name: INSURFLOW_LLM_ACTIF, value: "true" }
@@ -47,7 +48,8 @@ properties:
           - { name: INSURFLOW_BUDGET_S, value: "25" }
           # points de reprise : DSN du compte agent_state (schéma agent_state seul, base dossiers), secret de l'app
           - { name: INSURFLOW_CHECKPOINT_DSN, secretRef: checkpoint-dsn }
-          # Traces : aucun point d'envoi OTLP en Azure pour l'instant. Le récepteur d'underwriting-admin n'accepte sans
-          # jeton que la loopback, et le cluster n'a pas encore de gestionnaire de jeton d'application pour /v1/traces
-          # (à ajouter avec la preuve des traces, T13) : OTEL_EXPORTER_OTLP_* volontairement absent, pas d'export.
+          # Traces (R19), comme le serveur MCP : par la gateway (/v1/traces), jeton d'application de l'inscription du
+          # cluster, rôle Telemetrie d'underwriting-admin (infra/entra.sh ⑧)
+          - { name: TELEMETRIE_AUDIENCE, value: "api://${UNDERWRITING_API_CLIENT_ID}" }
+          - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: "${GATEWAY_URL}/v1/traces" }
           - { name: OTEL_SERVICE_NAME, value: "agentic-cluster" }

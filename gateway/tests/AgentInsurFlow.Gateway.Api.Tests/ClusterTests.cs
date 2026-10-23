@@ -62,6 +62,9 @@ public sealed class ClusterTests(Backends backends) : IClassFixture<Backends>
     [InlineData("GET")]
     [InlineData("PUT")]
     [InlineData("DELETE")]
+    [InlineData("PATCH")]
+    [InlineData("HEAD")]
+    [InlineData("OPTIONS")]
     public async Task Autre_verbe_405_sans_appel_backend(string verbe)
     {
         using var usine = backends.Gateway();
@@ -70,6 +73,18 @@ public sealed class ClusterTests(Backends backends) : IClassFixture<Backends>
         var reponse = await Envoyer(client, verbe, Route, JetonCluster());
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, reponse.StatusCode);
+        Assert.Empty(backends.Cluster.LogEntries);
+    }
+
+    [Fact]
+    public async Task Jeton_sans_claim_roles_403()
+    {
+        using var usine = backends.Gateway();
+        using var client = usine.CreateClient();
+
+        var reponse = await Envoyer(client, "POST", Route, Creer(AudienceCluster, []));
+
+        Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);
         Assert.Empty(backends.Cluster.LogEntries);
     }
 

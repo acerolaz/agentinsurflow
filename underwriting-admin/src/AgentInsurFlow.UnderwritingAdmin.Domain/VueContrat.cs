@@ -4,6 +4,7 @@ namespace AgentInsurFlow.UnderwritingAdmin.Domain;
 /// Vue minimisée d'un contrat (D39) : aucune donnée directement identifiante. Les noms JSON (snake_case)
 /// sont ceux que lit <c>rag</c> ; ne pas les changer sans toucher son client. Les sept derniers champs sont les faits
 /// du calcul de risque/prime, évalués à la date d'effet (noms sans chiffre : snake_case prévisible) ;
+/// <c>observations</c> : texte libre du gestionnaire (nullable, ajout non cassant pour rag et serveur-mcp) ;
 /// <c>releve_present</c> faux = contrat sans relevé d'information : les faits du relevé n'ont alors aucune valeur.
 /// </summary>
 public sealed record VueContrat(
@@ -23,4 +24,5 @@ public sealed record VueContrat(
     string? TypeUsage,
     int NbSinistresTroisAns,
     int NbSinistresResponsablesTroisAns,
-    bool RelevePresent);
+    bool RelevePresent,
+    string? Observations);

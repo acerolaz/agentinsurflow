@@ -62,7 +62,7 @@ public sealed class DossiersPostgresTests
         await Preparer();
 
         await using var db = DossiersDbContextFactory.Creer(Connexions().Migrateur);
-        Assert.Equal(5, (await db.Database.GetAppliedMigrationsAsync(TestContext.Current.CancellationToken)).Count());
+        Assert.Equal(6, (await db.Database.GetAppliedMigrationsAsync(TestContext.Current.CancellationToken)).Count());
         Assert.Empty(await db.Database.GetPendingMigrationsAsync(TestContext.Current.CancellationToken));
         var tables = await Lire(Connexions().Migrateur,
             "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '__EFMigrationsHistory'");
@@ -80,7 +80,7 @@ public sealed class DossiersPostgresTests
         Assert.Equal(
             ["anciennete_permis_ans", "anciennete_permis_mois", "crm_bonus_malus", "date_effet", "departement", "formule",
                 "gestionnaire_id", "mis_a_jour", "nb_sinistres", "nb_sinistres_responsables_trois_ans", "nb_sinistres_trois_ans",
-                "numero_contrat", "puissance_fiscale_cv", "releve_present", "resiliations", "suspensions", "tranche_age", "type_usage"],
+                "numero_contrat", "observations", "puissance_fiscale_cv", "releve_present", "resiliations", "suspensions", "tranche_age", "type_usage"],
             colonnes.Select(c => (string)c[0]).Order(StringComparer.Ordinal));
     }
 

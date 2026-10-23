@@ -34,6 +34,12 @@ public sealed class EcrituresTests : IDisposable
             if (numeroContrat == "AIF-SANS-BROUILLON") return Task.FromResult(new ResultatEcriture(false, "DECISION_ABSENTE"));
             return Task.FromResult(new ResultatEcriture(gestionnaireId == GestionnaireA && numeroContrat == "AIF-A1", null));
         }
+
+        public Task<string?> StatutContrat(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<bool> EnregistrerObservations(string gestionnaireId, string numeroContrat, string observations,
+            CancellationToken ct) => throw new NotSupportedException();
     }
 
     private readonly WebApplicationFactory<Program> _usine = JetonsDeTest.Usine(b => b.ConfigureTestServices(s =>

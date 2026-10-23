@@ -25,6 +25,12 @@ public sealed class EcrituresTests
             DernierStatut = $"{gestionnaireId} {numeroContrat} {changement.StatutCible} {changement.Validation}";
             return Task.FromResult(new ResultatEcriture(resultat, null));
         }
+
+        public Task<string?> StatutContrat(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<bool> EnregistrerObservations(string gestionnaireId, string numeroContrat, string observations,
+            CancellationToken ct) => throw new NotSupportedException();
     }
 
     private static FicheBrouillon Fiche(string decision = "ACCEPTE") =>
@@ -78,6 +84,12 @@ public sealed class EcrituresTests
 
         public Task<ResultatEcriture> ChangerStatut(string gestionnaireId, string numeroContrat, ChangementStatut changement,
             CancellationToken ct) => Task.FromResult(new ResultatEcriture(false, "DECISION_ABSENTE"));
+
+        public Task<string?> StatutContrat(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<bool> EnregistrerObservations(string gestionnaireId, string numeroContrat, string observations,
+            CancellationToken ct) => throw new NotSupportedException();
     }
 
     [Fact]

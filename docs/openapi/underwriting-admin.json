@@ -428,6 +428,87 @@
           }
         }
       }
+    },
+    "/api/contrats/{numero_contrat}/observations": {
+      "put": {
+        "tags": [
+          "Contrats"
+        ],
+        "summary": "Écrase les observations du gestionnaire (2000 caractères au plus) tant que le statut n'est pas figé",
+        "operationId": "EnregistrerObservations",
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObservationsCorps"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -504,6 +585,20 @@
         }
       },
       "JsonElement": { },
+      "ObservationsCorps": {
+        "required": [
+          "observations"
+        ],
+        "type": "object",
+        "properties": {
+          "observations": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "PrimeBrouillon": {
         "required": [
           "prime_ttc",
@@ -730,7 +825,15 @@
           "suspensions",
           "resiliations",
           "formule",
-          "mis_a_jour"
+          "mis_a_jour",
+          "date_effet",
+          "anciennete_permis_mois",
+          "puissance_fiscale_cv",
+          "type_usage",
+          "nb_sinistres_trois_ans",
+          "nb_sinistres_responsables_trois_ans",
+          "releve_present",
+          "observations"
         ],
         "type": "object",
         "properties": {
@@ -789,6 +892,59 @@
           "mis_a_jour": {
             "type": "string",
             "format": "date-time"
+          },
+          "date_effet": {
+            "type": "string",
+            "format": "date"
+          },
+          "anciennete_permis_mois": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "puissance_fiscale_cv": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "type_usage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nb_sinistres_trois_ans": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "nb_sinistres_responsables_trois_ans": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "releve_present": {
+            "type": "boolean"
+          },
+          "observations": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       }

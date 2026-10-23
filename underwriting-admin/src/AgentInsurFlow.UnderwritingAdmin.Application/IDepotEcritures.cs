@@ -16,6 +16,12 @@ public interface IDepotEcritures
     /// </summary>
     Task<ResultatEcriture> ChangerStatut(string gestionnaireId, string numeroContrat, ChangementStatut changement,
         CancellationToken ct);
+
+    /// <summary>Statut courant du contrat ; <c>null</c> s'il n'existe pas ou appartient à un autre gestionnaire.</summary>
+    Task<string?> StatutContrat(string gestionnaireId, string numeroContrat, CancellationToken ct);
+
+    /// <summary>Écrase les observations ; <c>false</c> si le contrat n'existe pas ou appartient à un autre gestionnaire.</summary>
+    Task<bool> EnregistrerObservations(string gestionnaireId, string numeroContrat, string observations, CancellationToken ct);
 }
 
 /// <summary><c>Ecrit=false, CodeRefus=null</c> : contrat introuvable (404).</summary>

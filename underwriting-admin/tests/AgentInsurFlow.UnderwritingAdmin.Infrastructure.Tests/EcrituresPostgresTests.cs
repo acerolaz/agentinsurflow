@@ -84,6 +84,24 @@ public sealed class EcrituresPostgresTests
     }
 
     [Fact]
+    public async Task Observations_ecrasees_lues_par_la_vue_et_bornees_au_gestionnaire()
+    {
+        var (db, depot, numero) = await Preparer();
+        await using var _ = db;
+        var ct = TestContext.Current.CancellationToken;
+
+        Assert.NotNull(await depot.StatutContrat(GestionnaireA, numero, ct));
+        Assert.Null(await depot.StatutContrat(GestionnaireB, numero, ct));
+        Assert.True(await depot.EnregistrerObservations(GestionnaireA, numero, "premier", ct));
+        Assert.True(await depot.EnregistrerObservations(GestionnaireA, numero, "second", ct));
+        Assert.False(await depot.EnregistrerObservations(GestionnaireB, numero, "pirate", ct));
+
+        var vue = await new DepotDossiersEf(db).Trouver(GestionnaireA, numero, ct);
+        Assert.Equal("second", vue!.Observations);
+        await Assert.ThrowsAsync<PostgresException>(() => depot.EnregistrerObservations(GestionnaireA, numero, new string('a', 2001), ct));
+    }
+
+    [Fact]
     public async Task Brouillon_contrat_d_un_autre_gestionnaire_rend_false_et_n_ecrit_rien()
     {
         var (db, depot, numero) = await Preparer();

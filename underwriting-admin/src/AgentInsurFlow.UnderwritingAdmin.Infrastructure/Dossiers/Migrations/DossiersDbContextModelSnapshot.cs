@@ -85,6 +85,10 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .HasColumnType("text")
                         .HasColumnName("numero_contrat");
 
+                    b.Property<string>("Observations")
+                        .HasColumnType("text")
+                        .HasColumnName("observations");
+
                     b.Property<Guid>("SouscripteurId")
                         .HasColumnType("uuid")
                         .HasColumnName("souscripteur_id");
@@ -108,7 +112,10 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_contrat_souscripteur_id");
 
-                    b.ToTable("contrat", (string)null);
+                    b.ToTable("contrat", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_contrat_observations_longueur", "char_length(observations) <= 2000");
+                        });
                 });
 
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Decision", b =>
@@ -293,6 +300,10 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("numero_contrat");
+
+                    b.Property<string>("Observations")
+                        .HasColumnType("text")
+                        .HasColumnName("observations");
 
                     b.Property<int?>("PuissanceFiscaleCv")
                         .HasColumnType("integer")

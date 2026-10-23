@@ -80,6 +80,20 @@ internal sealed class DepotEcrituresEf(DossiersDbContext db, TimeProvider horlog
         return new(true, null);
     }
 
+    public async Task<string?> StatutContrat(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
+        await db.Set<Contrat>().AsNoTracking()
+            .Where(c => c.NumeroContrat == numeroContrat && c.GestionnaireId == gestionnaireId)
+            .Select(c => c.Statut)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<bool> EnregistrerObservations(string gestionnaireId, string numeroContrat, string observations,
+        CancellationToken ct)
+    {
+        var maintenant = horloge.GetUtcNow();
+        return await db.Set<Contrat>().Where(c => c.NumeroContrat == numeroContrat && c.GestionnaireId == gestionnaireId)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.Observations, observations).SetProperty(c => c.MisAJour, maintenant), ct) > 0;
+    }
+
     private async Task<Guid?> IdContrat(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
         await db.Set<Contrat>().AsNoTracking()
             .Where(c => c.NumeroContrat == numeroContrat && c.GestionnaireId == gestionnaireId)

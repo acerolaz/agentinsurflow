@@ -26,6 +26,7 @@ public sealed class DossiersDbContext(DbContextOptions<DossiersDbContext> option
             e.Property(x => x.Id).ValueGeneratedNever();
             e.HasIndex(x => x.NumeroContrat).IsUnique();
             e.HasIndex(x => x.GestionnaireId);
+            e.ToTable(t => t.HasCheckConstraint("ck_contrat_observations_longueur", "char_length(observations) <= 2000"));
             e.HasOne<Souscripteur>().WithOne().HasForeignKey<Contrat>(x => x.SouscripteurId);
         });
         // Relations 1 → 1 avec CONTRAT (MCD) : clé étrangère unique.

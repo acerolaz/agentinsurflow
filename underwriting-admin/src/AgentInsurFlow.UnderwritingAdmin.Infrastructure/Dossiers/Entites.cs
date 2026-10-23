@@ -44,6 +44,9 @@ internal sealed class Contrat
     public string Statut { get; set; } = "";
     public string Formule { get; set; } = "";
     public DateTimeOffset MisAJour { get; set; }
+
+    /// <summary>Observations libres du gestionnaire (≤ 2000 caractères), écrasées à chaque écriture.</summary>
+    public string? Observations { get; set; }
 }
 
 internal sealed class Vehicule
@@ -184,4 +187,5 @@ internal sealed class LigneVue
     public int NbSinistresTroisAns { get; set; }
     public int NbSinistresResponsablesTroisAns { get; set; }
     public bool RelevePresent { get; set; }
+    public string? Observations { get; set; }
 }

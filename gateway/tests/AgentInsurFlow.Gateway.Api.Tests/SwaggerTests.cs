@@ -46,7 +46,8 @@ public sealed class SwaggerTests : IDisposable
     [InlineData("/openapi/v1.json")]
     [InlineData("/rag/openapi.json")]
     [InlineData("/underwriting/openapi/v1.json")]
-    public async Task Page_swagger_liste_les_trois_documents(string document)
+    [InlineData("/cluster/openapi.json")]
+    public async Task Page_swagger_liste_les_documents(string document)
     {
         var page = await PageSwagger();
 

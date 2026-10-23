@@ -11,6 +11,7 @@ x-mots-de-passe: &mots-de-passe
   PG_DOSSIERS_PASSWORD: ${PG_DOSSIERS_PASSWORD:?PG_DOSSIERS_PASSWORD manquant (.env)}
   PG_TRACES_WRITER_PASSWORD: ${PG_TRACES_WRITER_PASSWORD:?PG_TRACES_WRITER_PASSWORD manquant (.env)}
   PG_TRACES_READER_PASSWORD: ${PG_TRACES_READER_PASSWORD:?PG_TRACES_READER_PASSWORD manquant (.env)}
+  PG_AGENT_STATE_PASSWORD: ${PG_AGENT_STATE_PASSWORD:?PG_AGENT_STATE_PASSWORD manquant (.env)}
 
 services:
   postgres:
@@ -137,6 +138,7 @@ services:
       ReverseProxy__Clusters__rag__Destinations__d1__Address: http://rag:8001
       ReverseProxy__Clusters__underwriting__Destinations__d1__Address: http://underwriting-admin:8002
       ReverseProxy__Clusters__mcp__Destinations__d1__Address: http://serveur-mcp:8003
+      ReverseProxy__Clusters__cluster__Destinations__d1__Address: http://agentic-cluster:8004
       ReverseProxy__Clusters__calcul__Destinations__d1__Address: http://calcul:80
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
       Entra__TenantId: ${AZURE_TENANT_ID:?AZURE_TENANT_ID manquant (.env)}
@@ -144,6 +146,8 @@ services:
       Entra__Audiences__rag__0: ${RAG_API_AUDIENCES:-api://agentinsurflow-rag}
       Entra__Audiences__underwriting__0: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
       Entra__Audiences__mcp__0: ${MCP_API_AUDIENCES:-api://agentinsurflow-mcp}
+      Entra__Audiences__cluster__0: ${CLUSTER_API_AUDIENCES:-api://agentic-cluster}
+      Entra__Audiences__cluster__1: ${INSURFLOW_CLUSTER_CLIENT_ID:-}
       Entra__Audiences__calcul__0: ${CALCUL_API_AUDIENCES:-api://agentinsurflow-calcul}
       Entra__Audiences__calcul__1: ${CALCUL_API_CLIENT_ID:-}
       Entra__Audiences__llm__0: ${LLM_API_AUDIENCES:-api://agentinsurflow-llm}

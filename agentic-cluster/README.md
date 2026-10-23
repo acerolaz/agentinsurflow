@@ -24,6 +24,10 @@ flowchart LR
 | `POST /evaluations/{numero_contrat}/revue` `{decision, validation, motif (1-500)}` | `200 {statut}` ; `409 AUCUNE_REVUE_EN_ATTENTE` ; `422 REQUETE_INVALIDE` |
 | `GET /health` (sans jeton) | `200 {version, prompts, garde_fous}` ; `503` tant que LLM Guard n'est pas chargé |
 
+Routes publiques (gateway, T12) : `POST /v1/souscriptions/{numero_contrat}/evaluation` → `POST /evaluations/{numero_contrat}`, `POST /v1/souscriptions/{numero_contrat}/revue` → `POST /evaluations/{numero_contrat}/revue`, `GET /health/cluster` → `GET /health`. Le document OpenAPI du cluster (`/cluster/openapi.json`, servi par la gateway) déclare déjà ces chemins publics, pour que la page Swagger unique appelle la gateway.
+
+**Qui peut appeler le cluster (R18).** La gateway **relaie** le jeton du gestionnaire (audience du cluster), comme pour `/mcp` : elle ne l'échange pas. « N'accepte que la gateway » (D105) est garanti par l'**entrée interne** de la Container App (aucune adresse joignable hors de l'environnement) et par la **revalidation du jeton** par le cluster (signature, émetteur, audience, rôle `Gestionnaire`), et non par `azp = gateway`. Le cluster échange ensuite ce jeton pour chaque agent (On-Behalf-Of en deux sauts : cluster, puis agent vers le MCP), d'où un `azp` propre à chaque agent côté MCP.
+
 Erreurs : `application/problem+json` avec un `code` stable. Le message de `REVUE_HUMAINE` est neutre : jamais la cause ni le nom d'un détecteur.
 
 ## Concurrence et reprise

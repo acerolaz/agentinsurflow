@@ -3,7 +3,7 @@
 # Lancé À LA MAIN par Acerola, jamais par un agent ni par la CI. Prérequis : az login, `make entra` déjà passé
 # (inscription agentinsurflow-rag, identité managée uami-insurflow-rag), droit de créer des inscriptions d'application
 # ET d'attribuer/retirer des rôles Azure sur la ressource Foundry (Owner ou User Access Administrator).
-# Fait : inscription Entra agentinsurflow-llm (audience de la route /api/llm, rôle d'application LLM attribué à rag) ;
+# Fait : inscription Entra agentinsurflow-llm (audience de la route /api/llm, rôle d'application LLM attribué à rag et aux cinq agents du cluster) ;
 # inscription agentinsurflow-gateway-local (secret client pour le .env, affiché une seule fois) ; Foundry sans clé
 # (disableLocalAuth) ; rôle « Cognitive Services OpenAI User » réservé à l'identité managée de la gateway et à
 # agentinsurflow-gateway-local, RETIRÉ de toute autre identité, ainsi que les rôles qui ouvrent aussi l'inférence ou
@@ -53,7 +53,19 @@ if [ "$(az rest --uri "$GRAPH/servicePrincipals/$sp_llm/appRoleAssignedTo" \
     --headers content-type=application/json -o none \
     --body "{\"principalId\":\"$sp_rag\",\"resourceId\":\"$sp_llm\",\"appRoleId\":\"$LLM_ROLE\"}"
 fi
-# (les agents de #7 recevront ce même rôle quand ils seront inscrits)
+# Les cinq agents du cluster (#7, inscrits par make entra ⑧) reçoivent le même rôle : leur jeton d'application
+# (identité managée du cluster fédérée sur leur inscription) ouvre /api/llm, avec leur propre azp (limite de débit par agent).
+for agent in orchestrateur pieces analyste redacteur actuaire; do
+  app=$(az ad app list --display-name "agentinsurflow-agent-$agent" --query "[0].appId" -o tsv)
+  [ -n "$app" ] || { echo "✘ agentinsurflow-agent-$agent absente : lancer make entra d'abord"; exit 1; }
+  sp_agent=$(az ad sp show --id "$app" --query id -o tsv)
+  if [ "$(az rest --uri "$GRAPH/servicePrincipals/$sp_llm/appRoleAssignedTo" \
+    --query "length(value[?principalId=='$sp_agent' && appRoleId=='$LLM_ROLE'])" -o tsv)" = 0 ]; then
+    az rest --method POST --uri "$GRAPH/servicePrincipals/$sp_llm/appRoleAssignedTo" \
+      --headers content-type=application/json -o none \
+      --body "{\"principalId\":\"$sp_agent\",\"resourceId\":\"$sp_llm\",\"appRoleId\":\"$LLM_ROLE\"}"
+  fi
+done
 
 echo "③  Inscription agentinsurflow-gateway-local : identité de la gateway en local (secret client dans le .env)"
 gw_local=$(inscrire agentinsurflow-gateway-local)

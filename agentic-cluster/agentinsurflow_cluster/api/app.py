@@ -8,6 +8,7 @@ import os
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from importlib.metadata import version
+from typing import Any
 
 from fastapi import FastAPI
 from jwt import PyJWKClient
@@ -57,6 +58,14 @@ async def composition_reelle(cfg: ConfigCluster) -> AsyncIterator[ServiceEvaluat
         yield ServiceEvaluation(deps, saver)
 
 
+# Chemins publics de la gateway (T12) : la page Swagger unique appelle la gateway, pas le cluster.
+CHEMINS_PUBLICS = {
+    "/evaluations/{numero_contrat}": "/v1/souscriptions/{numero_contrat}/evaluation",
+    "/evaluations/{numero_contrat}/revue": "/v1/souscriptions/{numero_contrat}/revue",
+    "/health": "/health/cluster",
+}
+
+
 def creer_app(composition: Composition = composition_reelle) -> FastAPI:
     async def preparer(app: FastAPI) -> None:
         # tâche de fond : /health répond 503 tant que les modèles ne sont pas chargés
@@ -96,6 +105,14 @@ def creer_app(composition: Composition = composition_reelle) -> FastAPI:
     app.state.config = None
     app.state.jwks = None
     app.state.service = None
+    schema_interne = app.openapi
+
+    def openapi_public() -> dict[str, Any]:
+        schema = schema_interne()  # mis en cache par FastAPI : le renommage est idempotent
+        schema["paths"] = {CHEMINS_PUBLICS.get(c, c): v for c, v in schema["paths"].items()}
+        return schema
+
+    app.openapi = openapi_public  # type: ignore[method-assign]
     problemes.installer(app)
     app.include_router(routeur)
     FastAPIInstrumentor.instrument_app(

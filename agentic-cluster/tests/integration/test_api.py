@@ -319,3 +319,13 @@ async def test_audit_agent_un_enregistrement_par_agent_sans_donnee_personnelle(
     assert premier.version_prompt == "vp" and premier.garde_fous == []  # type: ignore[attr-defined]
     brut = " ".join(str(vars(r)) for r in registres)
     assert "Client fidèle" not in brut and "Bearer" not in brut
+
+
+async def test_openapi_documente_les_chemins_publics_de_la_gateway() -> None:
+    async with client(Banc()) as c:
+        chemins = (await c.get("/openapi.json")).json()["paths"]
+    assert set(chemins) == {
+        "/v1/souscriptions/{numero_contrat}/evaluation",
+        "/v1/souscriptions/{numero_contrat}/revue",
+        "/health/cluster",
+    }

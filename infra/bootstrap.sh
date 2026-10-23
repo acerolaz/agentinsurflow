@@ -7,7 +7,7 @@
 set -euo pipefail
 
 for v in AZURE_SUBSCRIPTION_ID AZURE_LOCATION AZURE_RESOURCE_GROUP ACR_NAME CONTAINERAPPS_ENV \
-  APP_STAGING APP_PRODUCTION MCP_APP_STAGING MCP_APP_PRODUCTION UW_APP_STAGING UW_APP_PRODUCTION RAG_APP_STAGING RAG_APP_PRODUCTION PG_APP_STAGING PG_APP_PRODUCTION GITHUB_REPO; do
+  APP_STAGING APP_PRODUCTION MCP_APP_STAGING MCP_APP_PRODUCTION CLUSTER_APP_STAGING CLUSTER_APP_PRODUCTION UW_APP_STAGING UW_APP_PRODUCTION RAG_APP_STAGING RAG_APP_PRODUCTION PG_APP_STAGING PG_APP_PRODUCTION GITHUB_REPO; do
   [ -n "${!v:-}" ] || { echo "✘ $v manquant dans .env"; exit 1; }
 done
 RG=$AZURE_RESOURCE_GROUP
@@ -30,7 +30,7 @@ existe az acr show -n "$ACR_NAME" || az acr create -n "$ACR_NAME" -g "$RG" --sku
 existe az containerapp env show -n "$CONTAINERAPPS_ENV" -g "$RG" ||
   az containerapp env create -n "$CONTAINERAPPS_ENV" -g "$RG" -l "$AZURE_LOCATION" -o none
 
-echo "② Image d'amorçage + Container Apps principales (gateway), underwriting-admin, serveur MCP, rag et base annexe (staging, production)"
+echo "② Image d'amorçage + Container Apps principales (gateway), underwriting-admin, serveur MCP, cluster d'agents, rag et base annexe (staging, production)"
 amorce="$ACR_NAME.azurecr.io/agentinsurflow:amorce"
 az acr login -n "$ACR_NAME"
 docker build --platform linux/amd64 -f rag/Dockerfile --build-arg APP_VERSION=amorce -t "$amorce" .
@@ -58,6 +58,15 @@ for app in "$MCP_APP_STAGING" "$MCP_APP_PRODUCTION"; do
     az containerapp create -n "$app" -g "$RG" --environment "$CONTAINERAPPS_ENV" \
       --image "$amorce" --registry-server "$ACR_NAME.azurecr.io" --registry-identity system \
       --ingress internal --target-port 8003 --min-replicas 0 --max-replicas 1 -o none
+done
+# Cluster d'agents (#7) : sa propre Container App, entrée INTERNE (port 8004) : joignable par la gateway seulement,
+# jamais depuis Internet. Même image d'amorçage ; son identité managée propre (uami-insurflow-cluster) est rattachée par
+# infra/entra.sh ⑧, son secret checkpoint-dsn posé par infra/postgres-annexe.sh, son modèle par deploy.yml.
+for app in "$CLUSTER_APP_STAGING" "$CLUSTER_APP_PRODUCTION"; do
+  existe az containerapp show -n "$app" -g "$RG" ||
+    az containerapp create -n "$app" -g "$RG" --environment "$CONTAINERAPPS_ENV" \
+      --image "$amorce" --registry-server "$ACR_NAME.azurecr.io" --registry-identity system \
+      --ingress internal --target-port 8004 --min-replicas 0 --max-replicas 1 -o none
 done
 # Base annexe (#70) : sa propre Container App, entrée TCP INTERNE 5432 (les autres apps joignent <nom de l'app>:5432).
 # Seule l'entrée TCP EXTERNE exige un VNet (doc Microsoft « Ingress in Azure Container Apps ») : l'entrée TCP interne
@@ -110,12 +119,14 @@ cat <<FIN
   Env. staging        CONTAINER_APP_NAME=$APP_STAGING
                       UW_APP_NAME=$UW_APP_STAGING
                       MCP_APP_NAME=$MCP_APP_STAGING
+                      CLUSTER_APP_NAME=$CLUSTER_APP_STAGING
                       RAG_APP_NAME=$RAG_APP_STAGING
                       PG_APP_NAME=$PG_APP_STAGING
   Env. production     CONTAINER_APP_NAME=$APP_PRODUCTION
                       UW_APP_NAME=$UW_APP_PRODUCTION
                       MCP_APP_NAME=$MCP_APP_PRODUCTION
+                      CLUSTER_APP_NAME=$CLUSTER_APP_PRODUCTION
                       RAG_APP_NAME=$RAG_APP_PRODUCTION
                       PG_APP_NAME=$PG_APP_PRODUCTION
-  (les FQDN internes d'underwriting-admin, du serveur MCP et de rag sont lus par deploy.yml : rien à reporter ; PG_HOST = PG_APP_NAME)
+  (les FQDN internes d'underwriting-admin, du serveur MCP, du cluster et de rag sont lus par deploy.yml : rien à reporter ; PG_HOST = PG_APP_NAME)
 FIN

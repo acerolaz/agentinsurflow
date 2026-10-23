@@ -22,6 +22,7 @@ internal static class JetonsDeTest
     public const string AudienceMcp = "api://agentinsurflow-mcp";
     public const string AudienceCalcul = "api://agentinsurflow-calcul";
     public const string AudienceLlm = "api://agentinsurflow-llm";
+    public const string AudienceCluster = "api://agentic-cluster";
     public static readonly string[] TousLesRoles = ["Gestionnaire", "Ingestion", "Telemetrie"];
 
     public static readonly string EmetteurV2 = $"https://login.microsoftonline.com/{Tenant}/v2.0";
@@ -31,7 +32,7 @@ internal static class JetonsDeTest
 
     public static RsaSecurityKey NouvelleCle(string id) => new(RSA.Create(2048)) { KeyId = id };
 
-    public static string Audience(string backend) => backend switch { "rag" => AudienceRag, "mcp" => AudienceMcp, _ => AudienceUnderwriting };
+    public static string Audience(string backend) => backend switch { "rag" => AudienceRag, "mcp" => AudienceMcp, "cluster" => AudienceCluster, _ => AudienceUnderwriting };
 
     public static string Creer(
         string audience, string[] roles, string oid = "oid-a",
@@ -60,6 +61,7 @@ internal static class JetonsDeTest
         .UseSetting("Entra:Audiences:mcp:0", AudienceMcp)
         .UseSetting("Entra:Audiences:calcul:0", AudienceCalcul)
         .UseSetting("Entra:Audiences:llm:0", AudienceLlm)
+        .UseSetting("Entra:Audiences:cluster:0", AudienceCluster)
         .ConfigureTestServices(s => s.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
         {
             var metadonnees = new OpenIdConnectConfiguration { Issuer = EmetteurV2 };

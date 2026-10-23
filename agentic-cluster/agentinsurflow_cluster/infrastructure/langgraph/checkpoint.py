@@ -36,7 +36,13 @@ async def checkpointer(dsn: str | None = None) -> AsyncIterator[Any]:
         open=False,
     ) as pool:  # fmt: skip
         async with pool.connection() as connexion:
-            await connexion.execute(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA}")
+            # Azure : schéma posé par infra/postgres/init.sh, compte sans droit de créer un schéma
+            # (CREATE SCHEMA IF NOT EXISTS vérifie ce droit même si le schéma existe)
+            cur = await connexion.execute(
+                "SELECT 1 FROM pg_namespace WHERE nspname = %s", (SCHEMA,)
+            )
+            if await cur.fetchone() is None:
+                await connexion.execute(f"CREATE SCHEMA {SCHEMA}")
         saver = AsyncPostgresSaver(pool)  # type: ignore[arg-type]
         await saver.setup()
         yield saver

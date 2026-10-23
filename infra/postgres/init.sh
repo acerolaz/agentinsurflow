@@ -3,25 +3,29 @@
 #   vecteurs  (rag)                : migrateur (propriétaire), writer, reader ; extension vector
 #   dossiers  (underwriting-admin) : migrateur (propriétaire), dossiers
 #   traces    (underwriting-admin) : migrateur (propriétaire), traces_writer, traces_reader
+#   dossiers  (cluster d'agents, #7)  : agent_state, propriétaire du seul schéma agent_state (points de reprise LangGraph) ;
+#                                        aucun droit sur les autres schémas ni de création de schéma
 # Les droits sur les tables sont posés par les migrations (Alembic, EF Core), pas ici.
 # PG_BASES_TEST=1 crée aussi vecteurs_test, dossiers_test et traces_test.
 set -euo pipefail
 
 for variable in PG_MIGRATEUR_PASSWORD PG_WRITER_PASSWORD PG_READER_PASSWORD PG_DOSSIERS_PASSWORD \
-  PG_TRACES_WRITER_PASSWORD PG_TRACES_READER_PASSWORD; do
+  PG_TRACES_WRITER_PASSWORD PG_TRACES_READER_PASSWORD PG_AGENT_STATE_PASSWORD; do
   : "${!variable:?$variable manquant}"
 done
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres \
   -v migrateur="$PG_MIGRATEUR_PASSWORD" -v writer="$PG_WRITER_PASSWORD" \
   -v reader="$PG_READER_PASSWORD" -v dossiers="$PG_DOSSIERS_PASSWORD" \
-  -v traces_writer="$PG_TRACES_WRITER_PASSWORD" -v traces_reader="$PG_TRACES_READER_PASSWORD" <<'SQL'
+  -v traces_writer="$PG_TRACES_WRITER_PASSWORD" -v traces_reader="$PG_TRACES_READER_PASSWORD" \
+  -v agent_state="$PG_AGENT_STATE_PASSWORD" <<'SQL'
 CREATE ROLE migrateur LOGIN PASSWORD :'migrateur';
 CREATE ROLE writer LOGIN PASSWORD :'writer';
 CREATE ROLE reader LOGIN PASSWORD :'reader';
 CREATE ROLE dossiers LOGIN PASSWORD :'dossiers';
 CREATE ROLE traces_writer LOGIN PASSWORD :'traces_writer';
 CREATE ROLE traces_reader LOGIN PASSWORD :'traces_reader';
+CREATE ROLE agent_state LOGIN PASSWORD :'agent_state';
 SQL
 
 bases="vecteurs dossiers traces"
@@ -32,7 +36,7 @@ fi
 for base in $bases; do
   case "$base" in
     vecteurs*) comptes="writer, reader" ;;
-    dossiers*) comptes="dossiers" ;;
+    dossiers*) comptes="dossiers, agent_state" ;;
     traces*) comptes="traces_writer, traces_reader" ;;
   esac
   # personne d'autre que les comptes prévus ne s'y connecte
@@ -40,6 +44,10 @@ for base in $bases; do
     -c "CREATE DATABASE $base OWNER migrateur" \
     -c "REVOKE ALL ON DATABASE $base FROM PUBLIC" \
     -c "GRANT CONNECT ON DATABASE $base TO $comptes"
+  if [[ "$base" == dossiers* ]]; then
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$base" \
+      -c "CREATE SCHEMA agent_state AUTHORIZATION agent_state"
+  fi
   if [[ "$base" == vecteurs* ]]; then
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$base" \
       -c "CREATE EXTENSION IF NOT EXISTS vector"

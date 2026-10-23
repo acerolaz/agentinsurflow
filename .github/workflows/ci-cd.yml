@@ -193,7 +193,13 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Construire et publier les images rag, underwriting, gateway et serveur MCP (tag = SHA, immuable)
+      # Image du cluster ≈ 9 Go (torch CPU + modèles LLM Guard) : le runner ubuntu-latest n'a ≈ 14 Go libres, on retire d'abord
+      # les chaînes d'outils que le build n'utilise pas (Docker seul)
+      - name: Libérer du disque pour l'image du cluster
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h / | tail -1
+      - name: Construire et publier les images rag, underwriting, gateway, serveur MCP et cluster (tag = SHA, immuable)
         env:
           ACR: ${{ vars.ACR_NAME }}.azurecr.io
           SHA: ${{ github.sha }}
@@ -210,10 +216,12 @@ jobs:
             -f gateway/Dockerfile -t "$ACR/agentinsurflow-gateway:$SHA" .
           docker build --build-arg APP_VERSION="$SHA" --build-arg APP_RELEASE="$RELEASE" \
             -f serveur-mcp/Dockerfile -t "$ACR/agentinsurflow-mcp:$SHA" .
+          docker build --build-arg APP_VERSION="$SHA" -f agentic-cluster/Dockerfile -t "$ACR/agentinsurflow-cluster:$SHA" .
           docker push "$ACR/agentinsurflow-rag:$SHA"
           docker push "$ACR/agentinsurflow-underwriting:$SHA"
           docker push "$ACR/agentinsurflow-gateway:$SHA"
           docker push "$ACR/agentinsurflow-mcp:$SHA"
+          docker push "$ACR/agentinsurflow-cluster:$SHA"
 
   staging:
     needs: build
@@ -271,6 +279,8 @@ jobs:
           E2E_STRICT: "1"
           # contrat d'un gestionnaire de la CI (témoin positif BOLA) : variable GitHub, pas un secret
           E2E_CONTRAT_PROPRE: ${{ vars.E2E_CONTRAT_PROPRE }}
+          E2E_CONTRAT_HOSTILE: ${{ vars.E2E_CONTRAT_HOSTILE }}
+          E2E_CLUSTER_INTERNE: https://${{ needs.staging.outputs.cluster_fqdn }}
         run: |
           # 🔴 A4 : l'identité de CI porte les rôles Gestionnaire/Ingestion (rag), Gestionnaire (underwriting et serveur MCP)
           jeton() { az account get-access-token --scope "api://$1/.default" --query accessToken -o tsv; }
@@ -278,7 +288,9 @@ jobs:
           E2E_JETON_INGESTION=$E2E_JETON_GESTIONNAIRE
           E2E_JETON_GESTIONNAIRE_UNDERWRITING=$(jeton agentinsurflow-underwriting); echo "::add-mask::$E2E_JETON_GESTIONNAIRE_UNDERWRITING"
           E2E_JETON_MCP=$(jeton agentinsurflow-mcp); echo "::add-mask::$E2E_JETON_MCP"
-          export E2E_JETON_GESTIONNAIRE E2E_JETON_INGESTION E2E_JETON_GESTIONNAIRE_UNDERWRITING E2E_JETON_MCP
+          # cluster d'agents : jeton d'application (CI), donc ses parcours d'évaluation (OBO) sont sautés ; la fumée et l'entrée interne tournent
+          E2E_JETON_CLUSTER=$(jeton agentic-cluster); echo "::add-mask::$E2E_JETON_CLUSTER"
+          export E2E_JETON_GESTIONNAIRE E2E_JETON_INGESTION E2E_JETON_GESTIONNAIRE_UNDERWRITING E2E_JETON_MCP E2E_JETON_CLUSTER
           make test-e2e URL="${{ needs.staging.outputs.url }}"
 
   release:

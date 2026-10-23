@@ -71,4 +71,5 @@ class EtatDossier:
     cause: str | None = None
     entree_bloquee: str | None = None
     tentative: int = 1
+    pieces_tentative: int | None = None  # tentative de la dernière écriture de `pieces`
     tours: tuple[dict[str, object], ...] = ()

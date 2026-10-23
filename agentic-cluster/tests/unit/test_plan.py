@@ -122,7 +122,8 @@ def _simuler(etat: EtatDossier, pieces, classe, decision) -> list[str]:
     while len(suite) < 10:
         appel, cause = prochaine_etape(etat)
         suite.append(appel)
-        assert precondition(appel, etat) is None or appel in ("proposer_au_gestionnaire",)
+        if appel != "orienter_revue_humaine":
+            assert precondition(appel, etat) is None
         if appel in ("orienter_revue_humaine", "proposer_au_gestionnaire"):
             return suite
         if appel == "appeler_pieces":
@@ -136,12 +137,65 @@ def _simuler(etat: EtatDossier, pieces, classe, decision) -> list[str]:
     return suite
 
 
-@pytest.mark.parametrize("bloque", [None, BLOQUE])
+DEPARTS = {
+    "vide": _etat(),
+    "pieces": _etat(pieces=COMPLET),
+    "risque": _etat(pieces=COMPLET, risque=_risque("acceptable")),
+    "cause": _etat(cause="not_found"),
+    "bloque": _etat(entree_bloquee=BLOQUE),
+}
+
+
+@pytest.mark.parametrize("depart", DEPARTS)
 @pytest.mark.parametrize("pieces", [COMPLET, INCOMPLET])
 @pytest.mark.parametrize(
-    "classe,decision", [("acceptable", "ACCEPTE"), ("refus", "REFUSE"), ("limite", "ACCEPTE")]
+    "classe,decision",
+    [
+        ("acceptable", "ACCEPTE"),
+        ("refus", "REFUSE"),
+        ("limite", "ACCEPTE"),
+        ("acceptable", "REVUE_HUMAINE"),
+    ],
 )
-def test_terminaison_en_5_etapes(bloque, pieces, classe, decision):
-    suite = _simuler(_etat(entree_bloquee=bloque), pieces, classe, decision)
+def test_terminaison_en_5_etapes(depart, pieces, classe, decision):
+    suite = _simuler(DEPARTS[depart], pieces, classe, decision)
     assert suite[-1] in ("orienter_revue_humaine", "proposer_au_gestionnaire")
     assert len(suite) <= 5
+
+
+def test_fiche_revue_humaine():
+    e = _etat(pieces=COMPLET, risque=_risque("acceptable"), fiche=_fiche("REVUE_HUMAINE"))
+    assert prochaine_etape(e) == ("orienter_revue_humaine", "fiche_revue_humaine")
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {},
+        {"pieces": COMPLET},
+        {"pieces": INCOMPLET, "entree_bloquee": BLOQUE},
+        {"pieces": COMPLET, "risque": _risque("limite")},
+        {"pieces": COMPLET, "risque": _risque("acceptable"), "entree_bloquee": BLOQUE},
+    ],
+)
+def test_cause_posee_prioritaire(extra):
+    assert prochaine_etape(_etat(cause="not_found", **extra)) == (
+        "orienter_revue_humaine",
+        "not_found",
+    )
+
+
+def test_messages_precondition():
+    base = _etat(pieces=COMPLET)
+    assert (
+        precondition("appeler_analyste_risque", replace(base, risque=_risque("acceptable")))
+        == "déjà fait"
+    )
+    assert precondition("appeler_analyste_risque", _etat(pieces=INCOMPLET)) == "pièces incomplètes"
+    assert precondition("appeler_redacteur", base) == "risque absent"
+    ok = replace(base, risque=_risque("acceptable"))
+    assert precondition("appeler_redacteur", replace(ok, fiche=_fiche("REFUSE"))) == "déjà fait"
+    assert (
+        precondition("appeler_redacteur", replace(base, risque=_risque("limite")))
+        == "classe limite"
+    )

@@ -47,19 +47,26 @@ class FusionRefusee(Exception):
 
 def fusionner(etat: EtatDossier, rapport: Rapport) -> EtatDossier:
     """Fusionne le rapport ou lève `FusionRefusee(code)` ; l'état d'entrée n'est jamais modifié."""
+    if not rapport.section:
+        # Aucune référence exploitable : la cause envoie en revue humaine, sinon rapport vide.
+        if rapport.cause is None:
+            raise FusionRefusee("RAPPORT_VIDE")
+        return replace(etat, cause=rapport.cause)
     for section, valeur in rapport.section.items():
         if PROPRIETAIRE.get(section) != rapport.agent:
             raise FusionRefusee("SECTION_NON_POSSEDEE")
         # Un type absent de _TYPES (pilotage) est invalide : l'orchestrateur seul le porte.
         if not isinstance(valeur, _TYPES.get(section, type(None))):
             raise FusionRefusee("TYPE_INVALIDE")
-        # `pieces` est réécrivable à partir de la 2e tentative (D89) ; ailleurs, une fois seulement.
-        reecriture_permise = section == "pieces" and etat.tentative > 1
+        # `pieces` est réécrivable une fois par tentative (D89).
+        reecriture_permise = (
+            section == "pieces"
+            and etat.pieces_tentative is not None
+            and etat.pieces_tentative < etat.tentative
+        )
         if getattr(etat, section) is not None and not reecriture_permise:
             raise FusionRefusee("DEJA_REMPLIE")
     champs: dict[str, Any] = {k: v for k, v in rapport.section.items()}
-    nouveau = replace(etat, **champs)
-    # Rédacteur en repli sans fiche : la cause envoie le dossier en revue humaine.
-    if rapport.agent == "redacteur" and rapport.cause and "fiche" not in rapport.section:
-        nouveau = replace(nouveau, cause=rapport.cause)
-    return nouveau
+    if "pieces" in champs:
+        champs["pieces_tentative"] = etat.tentative
+    return replace(etat, **champs)

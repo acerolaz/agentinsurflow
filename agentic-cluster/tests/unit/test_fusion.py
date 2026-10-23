@@ -57,17 +57,35 @@ def test_rapport_atomique():
         fusionner(_etat(), _rapport("redacteur", sources=(), fiche="x"))
 
 
-def test_pieces_reecrivable_a_partir_de_la_tentative_2():
-    e = fusionner(_etat(), _rapport("pieces", pieces=PIECES))
-    with pytest.raises(FusionRefusee):
-        fusionner(e, _rapport("pieces", pieces=PIECES))
+def test_pieces_reecriture_une_fois_par_tentative():
     neuf = Pieces("incomplet", ("permis",), "")
-    assert fusionner(replace(e, tentative=2), _rapport("pieces", pieces=neuf)).pieces == neuf
+    e = fusionner(_etat(), _rapport("pieces", pieces=PIECES))
+    assert e.pieces_tentative == 1
+    with pytest.raises(FusionRefusee) as exc:
+        fusionner(e, _rapport("pieces", pieces=neuf))
+    assert exc.value.code == "DEJA_REMPLIE"
+    e2 = fusionner(replace(e, tentative=2), _rapport("pieces", pieces=neuf))
+    assert e2.pieces == neuf and e2.pieces_tentative == 2
+    with pytest.raises(FusionRefusee) as exc:
+        fusionner(e2, _rapport("pieces", pieces=PIECES))
+    assert exc.value.code == "DEJA_REMPLIE"
 
 
-def test_redacteur_repli_pose_la_cause():
-    r = Rapport("redacteur", {}, "repli", "not_found", "p1")
+@pytest.mark.parametrize("agent", ["pieces", "analyste", "redacteur", "actuaire"])
+def test_rapport_vide_avec_cause_pose_la_cause(agent):
+    r = Rapport(agent, {}, "repli", "not_found", "p1")
     assert fusionner(_etat(), r).cause == "not_found"
+
+
+def test_rapport_vide_sans_cause_refuse():
+    with pytest.raises(FusionRefusee) as exc:
+        fusionner(_etat(), Rapport("analyste", {}, "llm", None, "p1"))
+    assert exc.value.code == "RAPPORT_VIDE"
+
+
+def test_rapport_rempli_garde_sa_cause_dans_le_rapport():
+    r = Rapport("analyste", {"risque": RISQUE}, "repli", "llm_ko", "p1")
+    assert fusionner(_etat(), r).cause is None
 
 
 def test_precondition_actuaire_sans_fiche():

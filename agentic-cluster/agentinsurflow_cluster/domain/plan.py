@@ -48,18 +48,19 @@ def precondition(appel: Appel, etat: EtatDossier) -> str | None:
                 return "dossier non chargé"
             return "déjà fait" if etat.pieces is not None else None
         case "appeler_analyste_risque":
+            if etat.risque is not None:
+                return "déjà fait"
             # R2 : entrée bloquée => exigence « pièces complètes » levée (pièces requises).
             ok = etat.pieces is not None and (
                 etat.pieces.statut == "complet" or bool(etat.entree_bloquee)
             )
-            return None if ok and etat.risque is None else "pièces incomplètes"
+            return None if ok else "pièces incomplètes"
         case "appeler_redacteur":
-            ok = (
-                etat.risque is not None
-                and etat.risque.classe in ("acceptable", "refus")
-                and etat.fiche is None
-            )
-            return None if ok else "classe limite"
+            if etat.fiche is not None:
+                return "déjà fait"
+            if etat.risque is None:
+                return "risque absent"
+            return None if etat.risque.classe in ("acceptable", "refus") else "classe limite"
         case "appeler_actuaire":
             ok = etat.fiche is not None and etat.fiche.decision == "ACCEPTE" and etat.prime is None
             return None if ok else "pas de prime sans ACCEPTE"

@@ -3,7 +3,14 @@ name = "agentinsurflow-cluster"
 version = "0.1.0"
 description = "AgentInsurFlow — cluster agentique : orchestrateur et agents (domaine pur, ports, adapters)."
 requires-python = ">=3.12,<3.13"
-dependencies = []  # les dépendances d'exécution arrivent avec la tâche 8
+dependencies = [
+    "langchain-openai==1.7.2",
+    "langchain-core==1.7.0",
+    "mcp==1.30.0",
+    "azure-identity>=1.17",
+    "pydantic-settings>=2.4",
+    "httpx>=0.28",
+]
 
 [build-system]
 requires = ["hatchling"]

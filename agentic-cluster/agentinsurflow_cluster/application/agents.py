@@ -74,6 +74,7 @@ async def executer_agent(
         codes,
         int((deps.horloge() - debut) * 1000),
         empreinte(replace(etat, observations=None)),  # la vue ne porte jamais les observations
+        empreinte_observations=empreinte_texte(etat.observations),
     )
     return rapport
 
@@ -85,6 +86,11 @@ def empreinte(valeur: object) -> str:
     """SHA-256 d'une valeur (dataclasses comprises) : seule trace d'un contenu dans l'audit."""
     texte = json.dumps(valeur, default=_json, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(texte.encode()).hexdigest()
+
+
+def empreinte_texte(texte: str | None) -> str:
+    """SHA-256 du texte seul (vérifiable par l'auditeur) ; vide sans texte."""
+    return hashlib.sha256(texte.encode()).hexdigest() if texte else ""
 
 
 def _json(valeur: object) -> object:

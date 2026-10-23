@@ -46,6 +46,7 @@ properties:
           - { name: INSURFLOW_AGENT_REDACTEUR_CLIENT_ID, value: "${INSURFLOW_AGENT_REDACTEUR_CLIENT_ID}" }
           - { name: INSURFLOW_AGENT_ACTUAIRE_CLIENT_ID, value: "${INSURFLOW_AGENT_ACTUAIRE_CLIENT_ID}" }
           - { name: INSURFLOW_BUDGET_S, value: "25" }
+          - { name: INSURFLOW_RESERVE_S, value: "2" }
           # points de reprise : DSN du compte agent_state (schéma agent_state seul, base dossiers), secret de l'app
           - { name: INSURFLOW_CHECKPOINT_DSN, secretRef: checkpoint-dsn }
           # Traces (R19), comme le serveur MCP : par la gateway (/v1/traces), jeton d'application de l'inscription du

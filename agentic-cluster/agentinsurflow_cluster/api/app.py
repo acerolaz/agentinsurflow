@@ -53,6 +53,7 @@ async def composition_reelle(cfg: ConfigCluster) -> AsyncIterator[ServiceEvaluat
         versions_prompt={a: version_prompt(a) for a in AGENTS},  # type: ignore[arg-type]
         trace_id=trace_id_courant,
         budget_global_s=float(os.environ.get("INSURFLOW_BUDGET_S") or 25),
+        reserve_s=float(os.environ.get("INSURFLOW_RESERVE_S") or 2),
     )
     async with checkpointer() as saver:
         yield ServiceEvaluation(deps, saver)

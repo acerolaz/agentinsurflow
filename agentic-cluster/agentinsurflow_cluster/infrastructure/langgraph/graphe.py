@@ -20,12 +20,16 @@ from agentinsurflow_cluster.application import evaluation
 from agentinsurflow_cluster.application.agents import Dependances
 from agentinsurflow_cluster.application.evaluation import (
     AucuneRevueEnAttente,
+    DelaiDepasse,
     DossierDecide,
     EvaluationEnAttente,
     Revue,
 )
 from agentinsurflow_cluster.application.serialisation import etat_depuis_dict, etat_vers_dict
 from agentinsurflow_cluster.domain.models import EtatDossier
+from agentinsurflow_cluster.domain.ports import ErreurOutil
+
+FINALISATION_S = 3.0  # budget 25 s + réserve 2 s + 3 s pour conclure : jamais plus de 30 s
 
 
 @dataclass(frozen=True)
@@ -42,6 +46,8 @@ class Contexte:
 
 class EtatGraphe(TypedDict, total=False):
     numero: str
+    oid: str  # gestionnaire du dossier : posé au premier ``charger``, jamais écrasé par un autre
+    tentative: int
     etat: dict[str, Any]
     debut: float
     statut: str | None
@@ -57,7 +63,9 @@ class Resultat:
 def construire_graphe(deps: Dependances, checkpointer: Any) -> Any:
     async def charger(e: EtatGraphe, runtime: Runtime[Contexte]) -> EtatGraphe:
         debut = deps.horloge()
-        etat = await evaluation.charger(e["numero"], runtime.context.jeton, deps)
+        etat = await evaluation.charger(
+            e["numero"], runtime.context.jeton, deps, e.get("tentative", 1)
+        )
         runtime.context.memoire["observations"] = etat.observations
         etat = replace(etat, observations=None)
         return {"etat": etat_vers_dict(etat), "debut": debut, "statut": None, "revue": None}
@@ -116,6 +124,7 @@ class ServiceEvaluation:
 
     def __init__(self, deps: Dependances, checkpointer: Any) -> None:
         self._graphe = construire_graphe(deps, checkpointer)
+        self._budget_s = deps.budget_global_s + deps.reserve_s
         self._verrous: dict[str, asyncio.Lock] = {}
 
     @staticmethod
@@ -142,21 +151,54 @@ class ServiceEvaluation:
         valeurs = (await self._etat(numero)).values
         return Resultat(valeurs["statut"] or "EN_ANALYSE", etat_depuis_dict(valeurs["etat"]))
 
-    async def evaluer(self, numero: str, jeton: str) -> Resultat:
+    async def _controler_proprietaire(self, numero: str, oid: str) -> Any:
+        """BOLA : un dossier dont le point de reprise porte un autre ``oid`` n'existe pas (404)."""
+        instantane = await self._etat(numero)
+        proprietaire = instantane.values.get("oid")
+        if proprietaire is not None and proprietaire != oid:
+            raise ErreurOutil("CONTRAT_INTROUVABLE")
+        return instantane
+
+    async def evaluer(self, numero: str, jeton: str, oid: str) -> Resultat:
         async with self._verrou(numero):
-            instantane = await self._etat(numero)
+            instantane = await self._controler_proprietaire(numero, oid)
             if self._en_pause(instantane) or self._a_rejouer(instantane):
                 raise EvaluationEnAttente(numero)
             if instantane.values.get("statut") in ("ACCEPTE", "REFUSE"):
                 raise DossierDecide(numero)
-            await self._graphe.ainvoke(
-                {"numero": numero}, self._config(numero), context=Contexte(jeton)
-            )
+            precedente = (instantane.values.get("etat") or {}).get("tentative", 0)
+            entree = {"numero": numero, "oid": oid, "tentative": precedente + 1}
+            try:
+                async with asyncio.timeout(self._budget_s):
+                    await self._graphe.ainvoke(
+                        entree, self._config(numero), context=Contexte(jeton)
+                    )
+            except TimeoutError:
+                await self._conclure_en_revue(numero, jeton)
             return await self._resultat(numero)
 
-    async def reviser(self, numero: str, revue: Revue, jeton: str) -> Resultat:
+    async def _conclure_en_revue(self, numero: str, jeton: str) -> None:
+        """Budget épuisé : revue humaine « duree » si un agent était en cours, sinon 503.
+
+        Seul un point de reprise juste avant ``pas`` (dossier chargé, boucle des agents) permet de
+        conclure ; ailleurs (lecture du contrat, écriture du brouillon) rien n'est cohérent à
+        proposer, et l'évaluation peut être relancée telle quelle.
+        """
+        instantane = await self._etat(numero)
+        if tuple(instantane.next) != ("pas",):
+            raise DelaiDepasse(numero)
+        etat = evaluation.delai_depasse(etat_depuis_dict(instantane.values["etat"]))
+        config = self._config(numero)
+        await self._graphe.aupdate_state(config, {"etat": etat_vers_dict(etat)}, as_node="pas")
+        try:
+            async with asyncio.timeout(FINALISATION_S):
+                await self._graphe.ainvoke(None, config, context=Contexte(jeton))
+        except TimeoutError as e:
+            raise DelaiDepasse(numero) from e
+
+    async def reviser(self, numero: str, revue: Revue, jeton: str, oid: str) -> Resultat:
         async with self._verrou(numero):
-            instantane = await self._etat(numero)
+            instantane = await self._controler_proprietaire(numero, oid)
             if self._en_pause(instantane):
                 entree: Any = Command(resume=asdict(revue))
             elif self._a_rejouer(instantane):  # la décision la plus récente l'emporte

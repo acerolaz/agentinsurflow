@@ -75,7 +75,9 @@ class AuditPort(Protocol):
         duree_ms: int,
         empreinte_vue: str = "",
         signal_injection: float | None = None,
+        empreinte_observations: str = "",
     ) -> None:
         """``empreinte_vue`` : SHA-256 de la vue de l'agent (jamais son contenu) ;
-        ``signal_injection`` : score seul du modèle d'injection (jamais le texte)."""
+        ``signal_injection`` : score seul du modèle d'injection (jamais le texte) ;
+        ``empreinte_observations`` : SHA-256 des observations évaluées (jamais le texte)."""
         ...

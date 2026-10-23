@@ -164,6 +164,7 @@ class FakeAudit:
         duree_ms: int,
         empreinte_vue: str = "",
         signal_injection: float | None = None,
+        empreinte_observations: str = "",
     ) -> None:
         if signal_injection is not None:
             self.signaux.append(signal_injection)

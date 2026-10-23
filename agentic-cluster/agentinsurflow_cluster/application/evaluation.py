@@ -8,11 +8,12 @@ Aucune trace ni écriture ne porte les observations du dossier (seules des empre
 from __future__ import annotations
 
 import asyncio
+import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any, Literal, get_args
 
-from agentinsurflow_cluster.application.agents import Dependances, executer_agent
+from agentinsurflow_cluster.application.agents import Dependances, empreinte_texte, executer_agent
 from agentinsurflow_cluster.application.serialisation import vers_json
 from agentinsurflow_cluster.domain.fusion import FusionRefusee, fusionner
 from agentinsurflow_cluster.domain.models import (
@@ -56,6 +57,10 @@ class AucuneRevueEnAttente(Exception):
     """Aucune évaluation n'attend la revue du gestionnaire."""
 
 
+class DelaiDepasse(Exception):
+    """Budget global épuisé, et l'état du dossier ne permet pas de conclure en revue humaine."""
+
+
 @dataclass(frozen=True)
 class Revue:
     decision: Literal["ACCEPTE", "REFUSE"]
@@ -63,7 +68,7 @@ class Revue:
     motif: str
 
 
-async def charger(numero: str, jeton: str, deps: Dependances) -> EtatDossier:
+async def charger(numero: str, jeton: str, deps: Dependances, tentative: int = 1) -> EtatDossier:
     """``get_contrat`` (orchestrateur) puis garde d'entrée sur les observations."""
     contrat = await deps.outils.appeler(
         ORCHESTRATEUR, jeton, "get_contrat", {"numero_contrat": numero}
@@ -79,9 +84,16 @@ async def charger(numero: str, jeton: str, deps: Dependances) -> EtatDossier:
         # le score du modèle est journalisé (score seul) : il ne bloque jamais
         mode: Literal["llm", "repli"] = "repli" if codes else "llm"
         await deps.audit.tracer(
-            numero, Rapport(ORCHESTRATEUR, {}, mode, bloquee, ""), codes, 0, "", signal
-        )
-    return EtatDossier(numero, dossier=dossier, observations=observations, entree_bloquee=bloquee)
+            numero, Rapport(ORCHESTRATEUR, {}, mode, bloquee, ""), codes, 0, "", signal,
+            empreinte_texte(observations),
+        )  # fmt: skip
+    return EtatDossier(
+        numero,
+        dossier=dossier,
+        observations=observations,
+        entree_bloquee=bloquee,
+        tentative=tentative,
+    )
 
 
 def _etat_a_enregistrer(etat: EtatDossier, statut_parcours: str) -> dict[str, Any]:
@@ -143,6 +155,13 @@ async def pas(
     return neuf
 
 
+def delai_depasse(etat: EtatDossier) -> EtatDossier:
+    """Budget global épuisé en cours de route : revue humaine, cause « duree » (comme ``pas``)."""
+    appel, _ = prochaine_etape(etat)
+    tour = {"tour": len(etat.tours) + 1, "outil_appele": appel, "precondition": None}
+    return replace(etat, cause="duree", tours=(*etat.tours, {**tour, "mode": "repli"}))
+
+
 def _rapport(rapport: Rapport, trace_id: str) -> dict[str, object]:
     return {
         "agent": rapport.agent,
@@ -150,7 +169,7 @@ def _rapport(rapport: Rapport, trace_id: str) -> dict[str, object]:
         "mode": rapport.mode,
         "cause": rapport.cause,
         "version_prompt": rapport.version_prompt,
-        "trace_id": trace_id,
+        "trace_id": trace_id or uuid.uuid4().hex,  # jamais vide : clé de l'idempotence côté admin
     }
 
 

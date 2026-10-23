@@ -20,7 +20,7 @@ journal = logging.getLogger("insurflow.audit")
 tracer = trace.get_tracer("agentinsurflow")
 CHAMPS = (
     "trace_id", "numero_contrat", "agent", "mode", "cause", "version_prompt", "garde_fous",
-    "vue_sha256", "rapport_sha256", "duree_ms", "signal_injection",
+    "vue_sha256", "rapport_sha256", "duree_ms", "signal_injection", "observations_sha256",
 )  # fmt: skip
 
 
@@ -54,6 +54,7 @@ class AuditOtel:
         duree_ms: int,
         empreinte_vue: str = "",
         signal_injection: float | None = None,
+        empreinte_observations: str = "",
     ) -> None:
         fin = time.time_ns()
         span = tracer.start_span(
@@ -87,5 +88,6 @@ class AuditOtel:
                 "rapport_sha256": empreinte(vers_json(rapport.section)),
                 "duree_ms": duree_ms,
                 "signal_injection": signal_injection,
+                "observations_sha256": empreinte_observations,
             },
         )

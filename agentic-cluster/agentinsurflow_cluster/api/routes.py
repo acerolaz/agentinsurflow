@@ -11,6 +11,7 @@ from ..application.evaluation import (
     MESSAGE_INDISPONIBLE,
     MESSAGE_REVUE_HUMAINE,
     AucuneRevueEnAttente,
+    DelaiDepasse,
     DossierDecide,
     EvaluationEnAttente,
     Revue,
@@ -33,7 +34,9 @@ from .securite import gestionnaire_courant
 
 routeur = APIRouter()
 AGENTS = ("pieces", "analyste", "redacteur", "actuaire")
-_REPONSES: dict[int | str, dict[str, Any]] = {401: {}, 403: {}, 404: {}, 409: {}, 502: {}}
+_REPONSES: dict[int | str, dict[str, Any]] = {
+    401: {}, 403: {}, 404: {}, 409: {}, 502: {}, 503: {}
+}  # fmt: skip
 
 Courant = Annotated[Gestionnaire, Depends(gestionnaire_courant)]
 
@@ -86,13 +89,17 @@ def _evaluation(r: Resultat) -> EvaluationReponse:
 )
 async def evaluer(numero_contrat: str, request: Request, courant: Courant) -> EvaluationReponse:
     try:
-        return _evaluation(await _service(request).evaluer(numero_contrat, courant.jeton))
+        return _evaluation(
+            await _service(request).evaluer(numero_contrat, courant.jeton, courant.oid)
+        )
     except EvaluationEnAttente as e:
         raise Probleme(
             409, "EVALUATION_EN_ATTENTE", "Une revue est déjà en attente pour ce dossier"
         ) from e
     except DossierDecide as e:
         raise Probleme(409, "DOSSIER_DECIDE", "Ce dossier a déjà reçu sa décision") from e
+    except DelaiDepasse as e:
+        raise Probleme(503, "DELAI_DEPASSE", "Le délai d'évaluation est dépassé, réessayez") from e
     except ErreurOutil as e:
         raise _outil_en_echec(e) from e
 
@@ -107,7 +114,9 @@ async def reviser(
 ) -> RevueReponse:
     revue = Revue(corps.decision, corps.validation, corps.motif)
     try:
-        resultat = await _service(request).reviser(numero_contrat, revue, courant.jeton)
+        resultat = await _service(request).reviser(
+            numero_contrat, revue, courant.jeton, courant.oid
+        )
     except AucuneRevueEnAttente as e:
         raise Probleme(409, "AUCUNE_REVUE_EN_ATTENTE", "Aucune revue en attente") from e
     except ErreurOutil as e:

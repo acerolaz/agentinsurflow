@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from typing import Any
 
 import httpx
@@ -186,6 +188,109 @@ async def test_statut_fige_de_l_admin_devient_409_dossier_decide_sur_les_deux_ro
     assert r.status_code == 409 and r.json()["code"] == "DOSSIER_DECIDE"
 
 
+def _jeton_de(oid: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {creer(oid=oid)}"}
+
+
+def _points_de_reprise(banc: Banc) -> str:
+    s = banc.saver
+    return repr(s.storage) + repr(s.blobs) + repr(s.writes)
+
+
+async def test_bola_un_autre_gestionnaire_ne_voit_ni_ne_reprend_le_dossier_en_pause() -> None:
+    banc = Banc()
+    async with client(banc) as c:
+        assert (await c.post("/evaluations/C-1")).status_code == 200  # A : en pause
+        avant = _points_de_reprise(banc)
+        b = _jeton_de("oid-gestionnaire-b")
+        evaluer = await c.post("/evaluations/C-1", headers=b)
+        reviser = await c.post("/evaluations/C-1/revue", json=REVUE, headers=b)
+        assert _points_de_reprise(banc) == avant  # le point de reprise de A est intact
+        for r in (evaluer, reviser):
+            assert r.status_code == 404 and r.json()["code"] == "CONTRAT_INTROUVABLE"
+        ok = await c.post("/evaluations/C-1/revue", json=REVUE)  # A reprend toujours
+        assert ok.status_code == 200 and ok.json() == {"statut": "ACCEPTE"}
+        # dossier décidé : B reçoit encore 404 (jamais 409, qui révélerait l'existence)
+        for r in (
+            await c.post("/evaluations/C-1", headers=b),
+            await c.post("/evaluations/C-1/revue", json=REVUE, headers=b),
+        ):
+            assert r.status_code == 404
+    assert [a["statut"] for a in banc.outils.corps("update_statut_dossier")] == [
+        "EN_ANALYSE", "ACCEPTE"
+    ]  # fmt: skip
+
+
+async def test_tentative_incrementee_a_chaque_evaluation_et_trace_id_jamais_vide() -> None:
+    banc = Banc(garde=FakeGarde(entree=["prompt_injection"]))  # REVUE_HUMAINE : on peut réévaluer
+    async with client(banc) as c:
+        await c.post("/evaluations/C-1")
+        premiere = len(banc.outils.corps("enregistrer_etat"))
+        assert (await c.post("/evaluations/C-1")).status_code == 200
+    etats = [a["etat"] for a in banc.outils.corps("enregistrer_etat")]
+    assert {e["tentative"] for e in etats[:premiere]} == {1}
+    seconde = etats[premiere:]
+    assert {e["tentative"] for e in seconde} == {2}
+    assert seconde[-1]["tours"] and seconde[-1]["tours"][0]["tour"] == 1  # tours de la 2e conservés
+    rapports = [r for e in etats for r in e["rapports"]]
+    assert rapports and all(r["trace_id"] for r in rapports)
+
+
+class OutilsLents(FakeOutils):
+    """Un MCP factice qui ne répond pas dans les temps pour l'un de ses outils."""
+
+    def __init__(self, lent: str) -> None:
+        super().__init__()
+        self.lent = lent
+
+    async def appeler(self, agent: str, jeton: str, outil: str, arguments: dict[str, Any]) -> Any:
+        if outil == self.lent:
+            await asyncio.sleep(30)
+        return await super().appeler(agent, jeton, outil, arguments)
+
+
+def _banc_presse(lent: str) -> Banc:
+    banc = Banc(outils=OutilsLents(lent))
+    banc.deps = replace(banc.deps, budget_global_s=1.0, reserve_s=0.2)
+    return banc
+
+
+async def test_budget_depasse_dans_un_agent_revue_humaine_cause_duree() -> None:
+    banc = _banc_presse("lister_pieces")
+    debut = time.monotonic()
+    async with client(banc) as c:
+        r = await c.post("/evaluations/C-1")
+    assert time.monotonic() - debut < 6
+    corps = r.json()
+    assert r.status_code == 200 and corps["statut"] == "REVUE_HUMAINE"
+    assert corps["message"] == "Ce dossier nécessite une revue humaine." and "duree" not in r.text
+    assert [a["statut"] for a in banc.outils.corps("update_statut_dossier")] == ["REVUE_HUMAINE"]
+    assert banc.outils.corps("enregistrer_brouillon")  # la fiche provisoire est écrite
+
+
+async def test_budget_depasse_avant_tout_etat_503_delai_depasse() -> None:
+    banc = _banc_presse("get_contrat")
+    async with client(banc) as c:
+        r = await c.post("/evaluations/C-1")
+    assert r.status_code == 503 and r.json()["code"] == "DELAI_DEPASSE"
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert banc.outils.corps("update_statut_dossier") == []
+
+
+async def test_motif_avec_donnee_personnelle_422_sans_reprendre_la_revue() -> None:
+    banc = Banc()
+    async with client(banc) as c:
+        await c.post("/evaluations/C-1")
+        avant = _points_de_reprise(banc)
+        r = await c.post(
+            "/evaluations/C-1/revue", json={**REVUE, "motif": "Voir jean.dupont@exemple.fr"}
+        )
+        assert r.status_code == 422 and r.json()["code"] == "REQUETE_INVALIDE"
+        assert r.json()["champs"] == ["motif"] and "dupont" not in r.text
+        assert _points_de_reprise(banc) == avant
+        assert (await c.post("/evaluations/C-1/revue", json=REVUE)).status_code == 200
+
+
 async def test_deux_evaluations_concurrentes_un_seul_brouillon() -> None:
     banc = Banc()
     async with client(banc) as c:
@@ -360,8 +465,12 @@ async def test_audit_agent_un_enregistrement_par_agent_sans_donnee_personnelle(
         async with client(banc) as c:
             await c.post("/evaluations/C-1")
     registres = [r for r in caplog.records if r.name == "insurflow.audit"]
-    assert [r.agent for r in registres] == ["pieces", "analyste", "redacteur", "actuaire"]  # type: ignore[attr-defined]
-    premier = registres[0]
+    assert [r.agent for r in registres] == [  # type: ignore[attr-defined]
+        "orchestrateur", "pieces", "analyste", "redacteur", "actuaire"
+    ]  # fmt: skip
+    empreinte_obs = hashlib.sha256(CONTRAT["observations"].encode()).hexdigest()
+    assert {r.observations_sha256 for r in registres} == {empreinte_obs}  # type: ignore[attr-defined]
+    premier = registres[1]
     assert premier.getMessage() == "audit.agent"
     assert premier.numero_contrat == "C-1" and premier.mode == "llm"  # type: ignore[attr-defined]
     assert len(premier.vue_sha256) == 64 and len(premier.rapport_sha256) == 64  # type: ignore[attr-defined]

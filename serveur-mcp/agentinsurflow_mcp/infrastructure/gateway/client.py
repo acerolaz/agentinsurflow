@@ -16,6 +16,7 @@ from ...domain.models import (
     CONTRAT_INTROUVABLE,
     DOSSIERS_INDISPONIBLES,
     NOT_FOUND_IN_CORPUS,
+    STATUT_FIGE,
     ErreurOutil,
 )
 from ..otel.telemetrie import echec, tracer
@@ -108,6 +109,8 @@ class ClientGateway:
             span.set_attribute("http.status_code", reponse.status_code)
         if reponse.status_code == 404:
             raise ErreurOutil(code_404, "Ressource introuvable")
+        if reponse.status_code == 409:  # seul 409 de l'admin : dossier déjà décidé
+            raise ErreurOutil(STATUT_FIGE, "Dossier déjà décidé")
         if reponse.status_code in (400, 422):
             raise ErreurOutil(ARGUMENTS_INVALIDES, f"Arguments refusés{_code_refus(reponse)}")
         if not reponse.is_success:

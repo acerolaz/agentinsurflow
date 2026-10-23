@@ -82,6 +82,14 @@ async def test_statuts_http_vers_codes(statut: int, code: str) -> None:
     assert exc.value.code == code
 
 
+@pytest.mark.parametrize("ecriture", ["changer_statut", "enregistrer_brouillon"])
+async def test_409_dossier_decide_devient_le_code_d_outil_statut_fige(ecriture: str) -> None:
+    c = client(httpx.Response(409, json={"code": "STATUT_FIGE"}))
+    with pytest.raises(ErreurOutil) as exc:
+        await getattr(c, ecriture)("j", "X", {})
+    assert exc.value.code == "STATUT_FIGE"
+
+
 async def test_transport_en_echec_dossiers_indisponibles() -> None:
     with pytest.raises(ErreurOutil) as exc:
         await client(httpx.ConnectError("boom")).lire_contrat("j", "X")

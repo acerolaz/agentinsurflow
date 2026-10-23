@@ -148,7 +148,7 @@ services:
       Entra__Audiences__underwriting__0: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
       Entra__Audiences__mcp__0: ${MCP_API_AUDIENCES:-api://agentinsurflow-mcp}
       Entra__McpClientId: ${MCP_API_CLIENT_ID:-}  # azp des jetons OBO du MCP (vide : PUT …/etat refusé)
-      Entra__Audiences__cluster__0: ${CLUSTER_API_AUDIENCES:-api://agentic-cluster}
+      Entra__Audiences__cluster__0: ${CLUSTER_API_AUDIENCES:-api://agentinsurflow-cluster}
       Entra__Audiences__cluster__1: ${INSURFLOW_CLUSTER_CLIENT_ID:-}
       Entra__Audiences__calcul__0: ${CALCUL_API_AUDIENCES:-api://agentinsurflow-calcul}
       Entra__Audiences__calcul__1: ${CALCUL_API_CLIENT_ID:-}

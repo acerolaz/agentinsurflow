@@ -173,6 +173,19 @@ async def test_revue_non_perdue_si_l_enregistrement_echoue_puis_rejoue() -> None
     assert len(ecrits) == 1
 
 
+async def test_statut_fige_de_l_admin_devient_409_dossier_decide_sur_les_deux_routes() -> None:
+    outils = FakeOutils(update_statut_dossier=ErreurOutil("STATUT_FIGE"))
+    async with client(Banc(outils=outils)) as c:
+        r = await c.post("/evaluations/C-1")
+        assert r.status_code == 409 and r.json()["code"] == "DOSSIER_DECIDE"
+    outils = FakeOutils()
+    async with client(Banc(outils=outils)) as c:
+        await c.post("/evaluations/C-1")
+        outils.reponses["update_statut_dossier"] = ErreurOutil("STATUT_FIGE")
+        r = await c.post("/evaluations/C-1/revue", json=REVUE)
+    assert r.status_code == 409 and r.json()["code"] == "DOSSIER_DECIDE"
+
+
 async def test_deux_evaluations_concurrentes_un_seul_brouillon() -> None:
     banc = Banc()
     async with client(banc) as c:

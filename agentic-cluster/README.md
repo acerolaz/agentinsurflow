@@ -20,7 +20,7 @@ flowchart LR
 
 | Route | Réponses |
 |---|---|
-| `POST /evaluations/{numero_contrat}` | `200 {statut, fiche, prime, message, synthese}` ; `404 CONTRAT_INTROUVABLE` ; `409 EVALUATION_EN_ATTENTE` ; `502 OUTIL_INDISPONIBLE` |
+| `POST /evaluations/{numero_contrat}` | `200 {statut, fiche, prime, score, message, synthese}` ; `404 CONTRAT_INTROUVABLE` ; `409 EVALUATION_EN_ATTENTE` ; `502 OUTIL_INDISPONIBLE` |
 | `POST /evaluations/{numero_contrat}/revue` `{decision, validation, motif (1-500)}` | `200 {statut}` ; `409 AUCUNE_REVUE_EN_ATTENTE` ; `422 REQUETE_INVALIDE` |
 | `GET /health` (sans jeton) | `200 {version, prompts, garde_fous}` ; `503` tant que LLM Guard n'est pas chargé |
 
@@ -33,7 +33,8 @@ Erreurs : `application/problem+json` avec un `code` stable. Le message de `REVUE
 ## Concurrence et reprise
 
 - Un `asyncio.Lock` par numéro de contrat sérialise `evaluer` et `reviser` : il ne vaut que pour **une réplique** (`maxReplicas: 1` en T12) ; plusieurs répliques demanderaient un verrou en base. **Limite (R17)** : pendant un déploiement, l'ancienne et la nouvelle révision peuvent coexister brièvement (même avec `maxReplicas: 1`) ; le verrou par dossier n'est pas garanti pendant cette fenêtre.
-- Un dossier `ACCEPTE` ou `REFUSE` ne se réévalue pas : `409 DOSSIER_DECIDE`.
+- Un dossier `ACCEPTE` ou `REFUSE` ne se réévalue pas : `409 DOSSIER_DECIDE`. L'administration le fige aussi (`409 STATUT_FIGE` sur `PUT …/statut` et `…/brouillon`, code d'outil `STATUT_FIGE` côté MCP) : le cluster le traduit en `409 DOSSIER_DECIDE`, la décision humaine n'est pas réversible.
+- **Décider un dossier en `REVUE_HUMAINE` (7a).** Il n'y a pas de pause : le graphe est terminé et `/revue` répond `409 AUCUNE_REVUE_EN_ATTENTE`. Le gestionnaire décide lui-même par `PUT /api/contrats/{numero}/statut` (`{"statut": "ACCEPTE"|"REFUSE", "validation": "VALIDEE"|"CORRIGEE"}`) sur la gateway, avec son propre jeton ; la fiche provisoire est le brouillon à valider. Une réévaluation (`POST /evaluations/{n}`) reste possible tant que le dossier n'est pas décidé.
 - Si l'écriture de la décision échoue (`502`), la revue reste posée : un second `/revue` rejoue `enregistrer` (la décision la plus récente l'emporte) ; `POST /evaluations/{n}` répond `409 EVALUATION_EN_ATTENTE` entre-temps.
 - Les observations du dossier ne sont jamais dans l'état du graphe ni dans un point de reprise : elles passent par le contexte d'exécution (en mémoire).
 

@@ -48,6 +48,8 @@ def _service(request: Request) -> ServiceEvaluation:
 def _outil_en_echec(e: ErreurOutil) -> Probleme:
     if e.code == "CONTRAT_INTROUVABLE":
         return Probleme(404, "CONTRAT_INTROUVABLE", "Contrat introuvable")
+    if e.code == "STATUT_FIGE":  # l'admin a refusé : le dossier est déjà décidé
+        return Probleme(409, "DOSSIER_DECIDE", "Ce dossier a déjà reçu sa décision")
     return Probleme(502, "OUTIL_INDISPONIBLE", "Un service du cluster est indisponible")
 
 

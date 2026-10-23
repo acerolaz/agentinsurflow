@@ -42,6 +42,9 @@ public sealed class ObservationsTests : IDisposable
                     new DateOnly(2026, 1, 1), 91, 5, "prive", 0, 0, true, c.Observations)
                 : null);
 
+        public Task<IReadOnlyList<PieceDeclaree>?> ListerPieces(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
+            throw new NotSupportedException();
+
         public Task<IReadOnlyList<VueContrat>> Lister(string gestionnaireId, int limit, int offset, CancellationToken ct) =>
             throw new NotSupportedException();
 

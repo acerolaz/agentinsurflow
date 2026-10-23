@@ -18,6 +18,9 @@ public sealed class CasDUsageTests
                 lignes.Where(l => l.Gestionnaire == gestionnaireId).Select(l => l.Vue).ToList());
         }
 
+        public Task<IReadOnlyList<PieceDeclaree>?> ListerPieces(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
+            throw new NotSupportedException();
+
         public Task<VueContrat?> Trouver(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
             Task.FromResult(lignes.Where(l => l.Gestionnaire == gestionnaireId && l.Vue.NumeroContrat == numeroContrat)
                 .Select(l => l.Vue).FirstOrDefault());

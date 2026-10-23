@@ -94,7 +94,7 @@ var connexions = new ConnexionsDossiers(
     builder.Configuration["PG_MIGRATEUR_PASSWORD"],
     MotDePasse("PG_DOSSIERS_PASSWORD"));
 builder.Services.AjouterDossiers(connexions);
-builder.Services.AddScoped<ListerPortefeuille>().AddScoped<ConsulterContrat>()
+builder.Services.AddScoped<ListerPortefeuille>().AddScoped<ConsulterContrat>().AddScoped<ListerPieces>()
     .AddScoped<EnregistrerBrouillon>().AddScoped<ChangerStatut>().AddScoped<EnregistrerObservations>();
 
 // Base traces : écriture par traces_writer, relecture par traces_reader ; migrations par `migrateur`.

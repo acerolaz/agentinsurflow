@@ -29,6 +29,9 @@ public sealed class ContratsTests : IDisposable
             Task.FromResult<IReadOnlyList<VueContrat>>(
                 Lignes.Where(l => l.Gestionnaire == gestionnaireId).Select(l => l.Vue).Skip(offset).Take(limit).ToList());
 
+        public Task<IReadOnlyList<PieceDeclaree>?> ListerPieces(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
+            throw new NotSupportedException();
+
         public Task<VueContrat?> Trouver(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
             Task.FromResult(Lignes.Where(l => l.Gestionnaire == gestionnaireId && l.Vue.NumeroContrat == numeroContrat)
                 .Select(l => l.Vue).FirstOrDefault());

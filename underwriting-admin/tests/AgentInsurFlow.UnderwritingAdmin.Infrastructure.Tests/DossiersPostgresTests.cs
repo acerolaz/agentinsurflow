@@ -62,7 +62,7 @@ public sealed class DossiersPostgresTests
         await Preparer();
 
         await using var db = DossiersDbContextFactory.Creer(Connexions().Migrateur);
-        Assert.Equal(6, (await db.Database.GetAppliedMigrationsAsync(TestContext.Current.CancellationToken)).Count());
+        Assert.Equal(7, (await db.Database.GetAppliedMigrationsAsync(TestContext.Current.CancellationToken)).Count());
         Assert.Empty(await db.Database.GetPendingMigrationsAsync(TestContext.Current.CancellationToken));
         var tables = await Lire(Connexions().Migrateur,
             "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '__EFMigrationsHistory'");
@@ -268,6 +268,28 @@ public sealed class DossiersPostgresTests
             Assert.Equal(Annees((DateOnly)l[2], aujourdhui), vue.AnciennetePermisAns);
             Assert.Equal(Departement.Depuis((string)l[3]), vue.Departement);
         }
+    }
+
+    [Fact]
+    public async Task Pieces_du_seed_dossier_complet_et_dossier_sans_releve_bornes_au_gestionnaire()
+    {
+        await Preparer();
+        await using var db = DossiersDbContextFactory.Creer(Connexions().Dossiers);
+        var depot = new DepotDossiersEf(db);
+        var ct = TestContext.Current.CancellationToken;
+
+        var complet = await depot.ListerPieces(GestionnaireA, "AIF-2026-000001", ct);
+        var sansReleve = await depot.ListerPieces(GestionnaireA, "AIF-2026-000003", ct);
+
+        Assert.NotNull(complet);
+        var releve = Assert.Single(complet, p => p.Type == TypesPiece.ReleveInformation);
+        Assert.InRange(releve.DateEmission, new DateOnly(2025, 10, 1), new DateOnly(2026, 1, 1)); // moins de 3 mois avant la date d'effet
+        Assert.Contains(complet, p => p.Type == TypesPiece.Permis);
+        Assert.NotNull(sansReleve);
+        Assert.DoesNotContain(sansReleve, p => p.Type == TypesPiece.ReleveInformation);
+        Assert.Null(await depot.ListerPieces(GestionnaireB, "AIF-2026-000001", ct));
+        // Le compte `dossiers` ne lit ni le nom de fichier ni l'URL du blob.
+        await Assert.ThrowsAsync<PostgresException>(() => Lire(Connexions().Dossiers, "SELECT nom_fichier FROM piece_justificative"));
     }
 
     private static int Annees(DateOnly depuis, DateOnly jusqua) =>

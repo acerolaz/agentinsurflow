@@ -24,6 +24,21 @@ internal sealed class DepotDossiersEf(DossiersDbContext db) : IDepotDossiers
             .Select(l => Vers(l))
             .FirstOrDefaultAsync(ct);
 
+    public async Task<IReadOnlyList<PieceDeclaree>?> ListerPieces(string gestionnaireId, string numeroContrat, CancellationToken ct)
+    {
+        // BOLA : le contrat est d'abord résolu pour ce gestionnaire ; le compte `dossiers` ne lit que ces colonnes.
+        var contratId = await db.Set<Contrat>().AsNoTracking()
+            .Where(c => c.GestionnaireId == gestionnaireId && c.NumeroContrat == numeroContrat)
+            .Select(c => (Guid?)c.Id)
+            .FirstOrDefaultAsync(ct);
+        if (contratId is null) return null;
+        return await db.Set<PieceJustificative>().AsNoTracking()
+            .Where(p => p.ContratId == contratId)
+            .OrderBy(p => p.DateEmission).ThenBy(p => p.Type)
+            .Select(p => new PieceDeclaree(p.Type, p.DateEmission))
+            .ToListAsync(ct);
+    }
+
     private static VueContrat Vers(LigneVue l) => new(l.NumeroContrat, l.TrancheAge, l.AnciennetePermisAns, l.Departement,
         l.CrmBonusMalus, l.NbSinistres, l.Suspensions, l.Resiliations, l.Formule, l.MisAJour,
         l.DateEffet, l.AnciennetePermisMois, l.PuissanceFiscaleCv, l.TypeUsage, l.NbSinistresTroisAns, l.NbSinistresResponsablesTroisAns,

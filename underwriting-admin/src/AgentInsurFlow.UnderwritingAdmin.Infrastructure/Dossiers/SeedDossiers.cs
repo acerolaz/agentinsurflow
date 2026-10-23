@@ -41,6 +41,39 @@ internal static class SeedDossiers
         return sql.ToString();
     }
 
+    /// <summary>
+    /// Pièces déclarées des dossiers de démonstration (migration PiecesDeclarees) : relevé d'information daté de moins de
+    /// 3 mois avant la date d'effet (2026-01-01) et permis, sauf le dossier n° 3, sans relevé. Même garde que <see cref="Sql"/>.
+    /// </summary>
+    public static string SqlPieces(string? gestionnaireA, string? gestionnaireB)
+    {
+        if (string.IsNullOrWhiteSpace(gestionnaireA) || string.IsNullOrWhiteSpace(gestionnaireB))
+        {
+            return "SELECT 1";
+        }
+        var sql = new StringBuilder();
+        var c = CultureInfo.InvariantCulture;
+        foreach (var d in Dossiers)
+        {
+            if (d.N != DossierSansReleve)
+            {
+                sql.AppendLine(c, $"""
+                    INSERT INTO piece_justificative (id, contrat_id, type, nom_fichier, url_blob, date_emission, declaree_le, declaree_par)
+                    VALUES ('{Id(9, d.N, 1)}', '{Id(2, d.N)}', 'releve_information', 'releve-{d.N}.pdf', 'blob://demo/releve-{d.N}.pdf', '2025-11-20', '2026-10-01T08:00:00Z', 'seed')
+                    ON CONFLICT DO NOTHING;
+                    """);
+            }
+            sql.AppendLine(c, $"""
+                INSERT INTO piece_justificative (id, contrat_id, type, nom_fichier, url_blob, date_emission, declaree_le, declaree_par)
+                VALUES ('{Id(9, d.N, 2)}', '{Id(2, d.N)}', 'permis', 'permis-{d.N}.pdf', 'blob://demo/permis-{d.N}.pdf', '{d.Permis:yyyy-MM-dd}', '2026-10-01T08:00:00Z', 'seed')
+                ON CONFLICT DO NOTHING;
+                """);
+        }
+        return sql.ToString();
+    }
+
+    private const int DossierSansReleve = 3;
+
     private static string Id(int genre, int n, int rang = 0) => $"{genre:x8}-0000-0000-0000-{(n * 100) + rang:x12}";
 
     private static string Oid(string valeur, string variable) =>

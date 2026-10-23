@@ -345,6 +345,19 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("contrat_id");
 
+                    b.Property<DateOnly>("DateEmission")
+                        .HasColumnType("date")
+                        .HasColumnName("date_emission");
+
+                    b.Property<DateTimeOffset>("DeclareeLe")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("declaree_le");
+
+                    b.Property<string>("DeclareePar")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("declaree_par");
+
                     b.Property<string>("NomFichier")
                         .IsRequired()
                         .HasColumnType("text")

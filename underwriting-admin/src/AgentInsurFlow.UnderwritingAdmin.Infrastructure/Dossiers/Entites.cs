@@ -135,6 +135,13 @@ internal sealed class PieceJustificative
     public string Type { get; set; } = "";
     public string NomFichier { get; set; } = "";
     public string UrlBlob { get; set; } = "";
+
+    /// <summary>Date d'émission de la pièce (ex. du relevé d'information), lue par l'agent Pièces.</summary>
+    public DateOnly DateEmission { get; set; }
+    public DateTimeOffset DeclareeLe { get; set; }
+
+    /// <summary>Identifiant (oid) de l'auteur de la déclaration : jamais exposé par l'API.</summary>
+    public string DeclareePar { get; set; } = "";
 }
 
 internal sealed class SignalementFraude

@@ -287,6 +287,70 @@
         }
       }
     },
+    "/api/contrats/{numero_contrat}/pieces": {
+      "get": {
+        "tags": [
+          "Contrats"
+        ],
+        "summary": "Pièces déclarées du contrat (type et date d'émission seulement)",
+        "operationId": "ListerPieces",
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PieceDeclaree"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/contrats/{numero_contrat}/brouillon": {
       "put": {
         "tags": [
@@ -596,6 +660,22 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "PieceDeclaree": {
+        "required": [
+          "type",
+          "date_emission"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "date_emission": {
+            "type": "string",
+            "format": "date"
           }
         }
       },

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from azure.core.exceptions import AzureError
 
 from agentinsurflow_cluster.domain.ports import ErreurOutil
 from agentinsurflow_cluster.infrastructure.entra.config import ConfigCluster
@@ -15,6 +16,7 @@ class FauxObo:
     """Enregistre chaque échange ; le jeton rendu nomme sa cible."""
 
     journal: list[dict[str, Any]] = []
+    refus_au_client: str | None = None
 
     def __init__(self, tenant: str, client_id: str, *, user_assertion: str, **assertion: Any):
         self.client_id, self.entree, self.assertion = client_id, user_assertion, assertion
@@ -28,7 +30,9 @@ class FauxObo:
                 "assertion": sorted(self.assertion),
             }
         )
-        return type("Jeton", (), {"token": f"jeton[{portee}]"})()
+        if FauxObo.refus_au_client == self.client_id:
+            raise AzureError("refusé")
+        return type("Jeton", (), {"token": f"jeton[{portee}]", "expires_on": 1000.0})()
 
 
 def _cfg(**surcharge: Any) -> ConfigCluster:
@@ -45,6 +49,7 @@ def _cfg(**surcharge: Any) -> ConfigCluster:
 @pytest.fixture(autouse=True)
 def _vide() -> None:
     FauxObo.journal = []
+    FauxObo.refus_au_client = None
 
 
 def test_pour_mcp_fait_deux_echanges_dans_l_ordre() -> None:
@@ -89,17 +94,31 @@ def test_agent_sans_application_refuse() -> None:
     assert FauxObo.journal == []
 
 
-def test_pour_llm_est_un_jeton_d_application_de_l_agent() -> None:
-    appels: list[tuple[str, str]] = []
+def test_deuxieme_appel_identique_sans_nouvel_echange() -> None:
+    jetons = JetonsAgents(_cfg(), fabrique_obo=FauxObo, horloge=lambda: 0.0)
+    premier = jetons.pour_mcp("analyste", "j")
+    assert jetons.pour_mcp("analyste", "j") == premier
+    assert len(FauxObo.journal) == 2
 
-    def fabrique(tenant: str, client_id: str, secret: str | None, uami: str | None) -> Any:
-        class Cred:
-            def get_token(self, *portees: str, **_: Any) -> Any:
-                appels.append((client_id, portees[0]))
-                return type("T", (), {"token": "jeton-llm", "expires_on": 4_000_000_000})()
 
-        return Cred()
+def test_jeton_proche_de_l_expiration_est_rechange() -> None:
+    maintenant = [0.0]
+    jetons = JetonsAgents(_cfg(), fabrique_obo=FauxObo, horloge=lambda: maintenant[0])
+    jetons.pour_mcp("analyste", "j")
+    maintenant[0] = 941.0  # 1000 - 60 s de marge = 940 : expiré
+    jetons.pour_mcp("analyste", "j")
+    assert len(FauxObo.journal) == 4
 
-    cfg = _cfg(llm_audience="api://llm")
-    assert JetonsAgents(cfg, fabrique_credential=fabrique).pour_llm("analyste") == "jeton-llm"
-    assert appels == [("app-analyste", "api://llm/.default")]
+
+def test_autre_jeton_gestionnaire_est_rechange() -> None:
+    jetons = JetonsAgents(_cfg(), fabrique_obo=FauxObo, horloge=lambda: 0.0)
+    jetons.pour_mcp("analyste", "j1")
+    jetons.pour_mcp("analyste", "j2")
+    assert len(FauxObo.journal) == 4
+
+
+def test_refus_entra_au_second_saut() -> None:
+    FauxObo.refus_au_client = "app-analyste"
+    with pytest.raises(ErreurOutil) as exc:
+        JetonsAgents(_cfg(), fabrique_obo=FauxObo).pour_mcp("analyste", "j")
+    assert exc.value.code == "OBO_REFUSE"

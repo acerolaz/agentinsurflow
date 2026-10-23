@@ -20,6 +20,7 @@ from agentinsurflow_cluster.domain.ports import ErreurOutil
 from agentinsurflow_cluster.infrastructure.mcp.client import ClientMcpGateway
 
 recus: list[dict[str, str]] = []
+TRACEPARENT = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
 
 
 def _serveur() -> FastMCP:
@@ -56,7 +57,12 @@ async def _client() -> AsyncIterator[ClientMcpGateway]:
             base_url="http://test",
             event_hooks={"request": [trace]},
         )
-        yield ClientMcpGateway("http://test", _FauxJetons(), fabrique_http=lambda e: _avec(http, e))
+        yield ClientMcpGateway(
+            "http://test",
+            _FauxJetons(),
+            traceparent=lambda: TRACEPARENT,
+            fabrique_http=lambda e: _avec(http, e),
+        )
         await http.aclose()
 
 
@@ -72,12 +78,15 @@ def _avec(http: httpx.AsyncClient, entetes: dict[str, str]) -> httpx.AsyncClient
 
 
 async def test_appel_autorise_rend_le_dict() -> None:
+    recus.clear()
     async with _client() as client:
         resultat = await client.appeler(
             "analyste", "jeton-gestionnaire", "lister_pieces", {"numero_contrat": "A"}
         )
     assert resultat == {"statut": "complet", "numero_contrat": "A"}
+    assert recus
     assert all(r.get("authorization") == "Bearer jeton-mcp" for r in recus)
+    assert all(r.get("traceparent") == TRACEPARENT for r in recus)
 
 
 async def test_refus_leve_erreur_outil_avec_le_code() -> None:

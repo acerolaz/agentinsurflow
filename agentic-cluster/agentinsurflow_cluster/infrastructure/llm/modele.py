@@ -8,17 +8,19 @@ from __future__ import annotations
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 
-from ...domain.ports import ErreurOutil
+from ...domain.ports import AgentOuOrchestrateur, ErreurOutil
 from ..entra.config import ConfigCluster
 from ..entra.obo import JetonsAgents
 
 
-def modele_chat(agent: str, cfg: ConfigCluster, jetons: JetonsAgents) -> BaseChatModel | None:
+def modele_chat(
+    agent: AgentOuOrchestrateur, cfg: ConfigCluster, jetons: JetonsAgents
+) -> BaseChatModel | None:
     """``None`` (⇒ repli) si le LLM est désactivé ou non configuré."""
     if not (cfg.insurflow_llm_actif and cfg.azure_openai_deployment and cfg.llm_audience):
         return None
     try:
-        fournisseur = jetons.fournisseur_llm(agent)  # type: ignore[arg-type]
+        fournisseur = jetons.fournisseur_llm(agent)
     except ErreurOutil:
         return None
     return ChatOpenAI(

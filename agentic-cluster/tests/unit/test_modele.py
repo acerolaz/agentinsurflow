@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import Any
 
 from agentinsurflow_cluster.infrastructure.entra.config import ConfigCluster
@@ -33,3 +34,13 @@ def test_desactive_ou_non_configure_rend_none() -> None:
     for surcharge in ({"insurflow_llm_actif": False}, {"azure_openai_deployment": ""}):
         cfg = _cfg(**surcharge)
         assert modele_chat("analyste", cfg, JetonsAgents(cfg)) is None
+
+
+def test_le_client_asynchrone_recoit_un_fournisseur_awaitable() -> None:
+    # langchain-openai enveloppe le callable synchrone (run_in_executor) : le jeton n'est pas
+    # obtenu dans la boucle d'événements.
+    cfg = _cfg()
+    modele = modele_chat("analyste", cfg, JetonsAgents(cfg))
+    assert modele is not None
+    fournisseur = modele.root_async_client._api_key_provider  # type: ignore[attr-defined]
+    assert inspect.iscoroutinefunction(fournisseur)

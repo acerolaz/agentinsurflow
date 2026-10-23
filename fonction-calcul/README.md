@@ -7,6 +7,14 @@ donnent toujours le même résultat. La protection est Easy Auth (niveau `ANONYM
 Architecture hexagonale : `agentinsurflow_calcul/domain/` (stdlib seule) porte le barème et la
 formule ; `function_app.py` n'est que l'adaptateur HTTP.
 
+**D'où ça vient, qui l'appelle** : cette Function **implémente le barème déterministe de D28** (le LLM ne calcule
+jamais le score) et la prime de D65, sous la forme décidée par **D70** : barème et formule versionnés dans le code,
+changer = redéployer. Le barème suit la matrice d'évaluation déterministe (règles **R01 → R06**, D50 amendée) et
+non plus un fichier `bareme-v1.yaml`. Elle est appelée par les outils **`evaluer_risque`** et **`calculer_prime`** du
+[serveur MCP](../serveur-mcp/README.md) (adaptateur `CalculateurPort`, `infrastructure/fonction_calcul/client.py`),
+par la gateway (`/api/calcul/evaluer`, `/api/calcul/calculer`) : `evaluer_risque` → gateway → `function_app._risque()`
+→ `domain.bareme.evaluer()`. Conception : `docs/superpowers/specs/2026-10-22-calcul-risque-prime-design.md`.
+
 ## Barème de risque — `bareme-2026.10-v1`
 
 Toutes les règles sont évaluées ; une seule suffit à refuser, le score est le nombre de règles

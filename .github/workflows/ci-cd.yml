@@ -41,17 +41,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with: { version: "0.11.13", enable-cache: true }
-      - name: Mots de passe PostgreSQL éphémères (générés à chaque run, jamais stockés)
-        run: |
-          for v in MIGRATEUR WRITER READER DOSSIERS TRACES_WRITER TRACES_READER POSTGRES; do
-            mdp=$(openssl rand -hex 16); echo "::add-mask::$mdp"
-            echo "PG_${v}_PASSWORD=$mdp" >> "$GITHUB_ENV"
-          done
       - run: make install
-      # TU + TI contre le PostgreSQL annexe du compose ; LLM mocké : aucun appel réel
-      - run: make test-integration
-        env:
-          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }} # lu par le compose (service gateway, non démarré ici)
+      # TU seuls, sans Docker : les TU + TI (et la couverture) tournent dans le job integration
+      - run: make test
 
   gateway:
     # Gateway YARP (C#, .NET 10) : format + analyseurs, puis TI avec couverture >= 80 %.

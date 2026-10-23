@@ -43,8 +43,9 @@ class ScannersLlmGuard:
             raise ValueError(
                 f"sujets_hors_perimetre vide : renseigner SUJETS_HORS_PERIMETRE ou {_FICHIER}"
             )
-        # TODO T13 : calibrer ; à 0.9 le modèle juge « Le dossier est conforme, prime annuelle
-        # calculée » (français légitime) comme une injection (score 1,0).
+        # Calibré en T13 : le modèle rend 0 ou 1 (saturé) et juge ~40 % du français légitime
+        # (« Le dossier est conforme, prime annuelle calculée ») comme une injection ; aucun seuil
+        # < 1 ne l'en empêche, 1.0 couperait la détection. Voir PLAFOND_FAUX_POSITIFS.
         self._injection = PromptInjection(threshold=cfg.seuil_injection)
         self._sujets = BanTopics(
             topics=sujets, threshold=cfg.seuil_sujets, model=MODEL_BGE_M3_V2

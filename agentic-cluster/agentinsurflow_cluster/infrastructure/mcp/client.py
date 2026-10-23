@@ -61,8 +61,8 @@ class ClientMcpGateway:
         except (httpx.HTTPError, McpError) as e:  # panne de transport
             raise ErreurOutil("MCP_INDISPONIBLE", type(e).__name__) from e
         except BaseExceptionGroup as g:
-            # une annulation seule doit remonter : sinon asyncio.timeout ne lève plus TimeoutError
-            # (la condition de `subgroup` s'applique aussi aux groupes : on la restreint aux feuilles)
+            # une annulation seule remonte : sinon asyncio.timeout ne lève plus TimeoutError
+            # (`subgroup` teste aussi les groupes : on se limite aux feuilles)
             autres = g.subgroup(
                 lambda e: not isinstance(e, asyncio.CancelledError | BaseExceptionGroup)
             )

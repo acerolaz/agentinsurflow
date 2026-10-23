@@ -9,6 +9,7 @@ Section = Literal[
     "dossier", "pieces", "risque", "sources", "fiche", "prime", "validation", "pilotage"
 ]
 NomAgent = Literal["pieces", "analyste", "redacteur", "actuaire"]
+Emetteur = NomAgent | Literal["orchestrateur"]
 
 
 @dataclass(frozen=True)
@@ -50,7 +51,7 @@ class Prime:
 
 @dataclass(frozen=True)
 class Rapport:
-    agent: NomAgent
+    agent: Emetteur
     section: dict[Section, object]
     mode: Literal["llm", "repli"]
     cause: str | None
@@ -73,3 +74,4 @@ class EtatDossier:
     tentative: int = 1
     pieces_tentative: int | None = None  # tentative de la dernière écriture de `pieces`
     tours: tuple[dict[str, object], ...] = ()
+    rapports: tuple[dict[str, object], ...] = ()  # rapports d'agents déjà fusionnés (JSON-safe)

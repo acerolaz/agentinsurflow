@@ -33,6 +33,14 @@ PRIME = {
 }
 
 
+CONTRAT = {
+    "numero_contrat": "C-1",
+    "formule": "tiers",
+    "date_effet": "2026-10-01",
+    "observations": "Client fidèle depuis dix ans.",
+}
+
+
 class FakeOutils:
     """`reponses[outil]` : un dict, ou une `ErreurOutil` à lever. Trace (agent, outil)."""
 
@@ -41,14 +49,23 @@ class FakeOutils:
             "lister_pieces": PIECES_OK,
             "evaluer_risque": RISQUE_ACCEPTABLE,
             "calculer_prime": PRIME,
+            "get_contrat": CONTRAT,
+            "enregistrer_brouillon": {"ok": True},
+            "enregistrer_etat": {"ok": True},
+            "update_statut_dossier": {"ok": True},
             **reponses,
         }
         self.appels: list[tuple[str, str, str]] = []
+        self.arguments: list[tuple[str, dict[str, Any]]] = []  # (outil, arguments)
+
+    def corps(self, outil: str) -> list[dict[str, Any]]:
+        return [a for o, a in self.arguments if o == outil]
 
     async def appeler(
         self, agent: str, jeton_gestionnaire: str, outil: str, arguments: dict[str, Any]
     ) -> dict[str, Any]:
         self.appels.append((agent, jeton_gestionnaire, outil))
+        self.arguments.append((outil, arguments))
         r = self.reponses[outil]
         if isinstance(r, ErreurOutil):
             raise r
@@ -110,12 +127,15 @@ class FakeRedaction:
 
 
 class FakeGarde:
-    def __init__(self, sortie: list[str] | None = None) -> None:
+    def __init__(self, sortie: list[str] | None = None, entree: list[str] | None = None) -> None:
         self._sortie = sortie or []
+        self._entree = entree or []
         self.textes: list[str] = []
+        self.entrees: list[str] = []
 
     def entree(self, texte: str) -> list[str]:
-        return []
+        self.entrees.append(texte)
+        return list(self._entree)
 
     def sortie(self, texte: str) -> list[str]:
         self.textes.append(texte)
@@ -127,6 +147,11 @@ class FakeAudit:
         self.traces: list[tuple[str, Rapport, list[str], int]] = []
 
     async def tracer(
-        self, numero_contrat: str, rapport: Rapport, garde_fous: list[str], duree_ms: int
+        self,
+        numero_contrat: str,
+        rapport: Rapport,
+        garde_fous: list[str],
+        duree_ms: int,
+        empreinte_vue: str = "",
     ) -> None:
         self.traces.append((numero_contrat, rapport, garde_fous, duree_ms))

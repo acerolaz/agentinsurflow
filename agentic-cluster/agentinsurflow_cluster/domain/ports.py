@@ -64,5 +64,12 @@ class GardeTextePort(Protocol):
 
 class AuditPort(Protocol):
     async def tracer(
-        self, numero_contrat: str, rapport: Rapport, garde_fous: list[str], duree_ms: int
-    ) -> None: ...
+        self,
+        numero_contrat: str,
+        rapport: Rapport,
+        garde_fous: list[str],
+        duree_ms: int,
+        empreinte_vue: str = "",
+    ) -> None:
+        """``empreinte_vue`` : SHA-256 de la vue de l'agent (jamais son contenu)."""
+        ...

@@ -6,9 +6,11 @@ au garde de sortie ; au moindre doute, repli sur la référence et un texte type
 
 from __future__ import annotations
 
+import hashlib
+import json
 import time
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, is_dataclass, replace
 from datetime import date
 from typing import Any, Literal
 
@@ -49,6 +51,9 @@ class Dependances:
     pieces_exigees: tuple[str, ...] = ("releve_information", "permis")  # P24 : toute formule
     horloge: Callable[[], float] = time.monotonic
     versions_prompt: Mapping[str, str] = field(default_factory=dict)
+    trace_id: Callable[[], str] = lambda: ""  # trace OpenTelemetry courante, injectée (hexa ou "")
+    budget_global_s: float = 25.0  # garde globale d'une évaluation (§ 4.9)
+    reserve_s: float = 2.0
 
 
 async def executer_agent(
@@ -63,12 +68,26 @@ async def executer_agent(
     except _ERREURS_REFERENCE:  # référence introuvable ou outil refusé : revue humaine
         rapport, codes = Rapport(nom, {}, "repli", "erreur", version), []
     await deps.audit.tracer(
-        etat.numero_contrat, rapport, codes, int((deps.horloge() - debut) * 1000)
+        etat.numero_contrat,
+        rapport,
+        codes,
+        int((deps.horloge() - debut) * 1000),
+        empreinte(replace(etat, observations=None)),  # la vue ne porte jamais les observations
     )
     return rapport
 
 
 Resultat = tuple[Rapport, list[str]]
+
+
+def empreinte(valeur: object) -> str:
+    """SHA-256 d'une valeur (dataclasses comprises) : seule trace d'un contenu dans l'audit."""
+    texte = json.dumps(valeur, default=_json, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(texte.encode()).hexdigest()
+
+
+def _json(valeur: object) -> object:
+    return asdict(valeur) if is_dataclass(valeur) and not isinstance(valeur, type) else str(valeur)
 
 
 async def _rediger(

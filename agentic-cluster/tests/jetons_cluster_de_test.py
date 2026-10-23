@@ -15,7 +15,7 @@ from agentinsurflow_cluster.infrastructure.entra.config import ConfigCluster
 
 TENANT = "00000000-0000-0000-0000-000000000001"
 CLIENT_CLUSTER = "33333333-3333-3333-3333-333333333333"
-AUDIENCE_CLUSTER = "api://agentic-cluster"
+AUDIENCE_CLUSTER = "api://agentinsurflow-cluster"
 EMETTEUR_V2 = f"https://login.microsoftonline.com/{TENANT}/v2.0"
 EMETTEUR_V1 = f"https://sts.windows.net/{TENANT}/"
 

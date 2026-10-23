@@ -203,7 +203,7 @@ attribuer "$uw" "$UW_TELEMETRIE" "$(az ad sp show --id "$rag" --query id -o tsv)
 
 echo "⑧ Cluster d'agents (#7) : API agentinsurflow-cluster, cinq agents, identité managée propre fédérée sur chacun"
 # L'API du cluster pré-autorise le client de la page Swagger (rag, comme SWAGGER_CLIENT_ID) et Azure CLI
-# (jetons de l'E2E, du poste et de la CI : `az account get-access-token --resource api://agentic-cluster`,
+# (jetons de l'E2E, du poste et de la CI : `az account get-access-token --resource api://agentinsurflow-cluster`,
 # comme pour les autres API) ; rôle Gestionnaire.
 cluster=$(inscrire agentinsurflow-cluster "$CLUSTER_SCOPE" "$CLI $rag" "Gestionnaire=$CLUSTER_GESTIONNAIRE")
 attribuer "$cluster" "$CLUSTER_GESTIONNAIRE" "$moi" "toi → Gestionnaire (cluster)"

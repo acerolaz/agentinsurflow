@@ -1,4 +1,4 @@
-"""Validation d'un jeton de gestionnaire (audience ``api://agentic-cluster`` ou appId du cluster).
+"""Validation d'un jeton de gestionnaire (audience ``api://agentinsurflow-cluster`` ou appId).
 
 Même contrôle que serveur-mcp (RS256, émetteur v1 ou v2, audience, ``exp``, ``oid``) ; copie
 adaptée, aucun import entre services.
@@ -13,7 +13,7 @@ import jwt
 
 from .config import ConfigCluster
 
-AUDIENCE_PAR_DEFAUT = "api://agentic-cluster"
+AUDIENCE_PAR_DEFAUT = "api://agentinsurflow-cluster"
 
 
 class ErreurAuth(Exception):

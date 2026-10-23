@@ -285,7 +285,7 @@ jobs:
           E2E_JETON_GESTIONNAIRE_UNDERWRITING=$(jeton agentinsurflow-underwriting); echo "::add-mask::$E2E_JETON_GESTIONNAIRE_UNDERWRITING"
           E2E_JETON_MCP=$(jeton agentinsurflow-mcp); echo "::add-mask::$E2E_JETON_MCP"
           # cluster d'agents : jeton d'application (CI), donc ses parcours d'évaluation (OBO) sont sautés ; la fumée et l'entrée interne tournent
-          E2E_JETON_CLUSTER=$(jeton agentic-cluster); echo "::add-mask::$E2E_JETON_CLUSTER"
+          E2E_JETON_CLUSTER=$(jeton agentinsurflow-cluster); echo "::add-mask::$E2E_JETON_CLUSTER"
           export E2E_JETON_GESTIONNAIRE E2E_JETON_INGESTION E2E_JETON_GESTIONNAIRE_UNDERWRITING E2E_JETON_MCP E2E_JETON_CLUSTER
           make test-e2e URL="${{ needs.staging.outputs.url }}"
 

@@ -22,7 +22,7 @@ properties:
           - { name: Entra__Audiences__mcp__0, value: api://agentinsurflow-mcp }
           - { name: Entra__Audiences__mcp__1, value: "${MCP_API_CLIENT_ID}" }
           - { name: Entra__McpClientId, value: "${MCP_API_CLIENT_ID}" } # azp des jetons OBO du MCP : seul appelant de PUT …/etat
-          - { name: Entra__Audiences__cluster__0, value: api://agentic-cluster }
+          - { name: Entra__Audiences__cluster__0, value: api://agentinsurflow-cluster }
           - { name: Entra__Audiences__cluster__1, value: "${INSURFLOW_CLUSTER_CLIENT_ID}" }
           - { name: Entra__Audiences__calcul__0, value: "${CALCUL_AUDIENCE}" }
           - { name: Entra__Audiences__calcul__1, value: "${CALCUL_API_CLIENT_ID}" }

@@ -60,3 +60,13 @@ def test_phrase_legitime_ne_declenche_pas_l_injection(garde: ScannersLlmGuard) -
     assert "prompt_injection" not in garde.entree(
         "Le dossier est conforme, prime annuelle calculée"
     )
+
+
+def test_construction_ne_mute_pas_la_constante_d_entites() -> None:
+    from agentinsurflow_cluster.infrastructure.garde_fous import llm_guard
+
+    avant = list(llm_guard._ENTITES_PII)
+    ScannersLlmGuard()
+    ScannersLlmGuard()
+    assert list(llm_guard._ENTITES_PII) == avant
+    assert "CUSTOM" not in llm_guard._ENTITES_PII

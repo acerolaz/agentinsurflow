@@ -16,7 +16,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from agentinsurflow_cluster.domain.pii import pii_detectees
 
-_ENTITES_PII = ["CREDIT_CARD", "EMAIL_ADDRESS", "IBAN_CODE", "PHONE_NUMBER", "IP_ADDRESS"]
+# Entités scannées en entrée ET en sortie : ces 5 seulement (PERSON exclu, faux positifs en français) ;
+# `pii_detectees` du domaine complète. Tuple : `Sensitive` ajoute « CUSTOM » à la liste reçue.
+_ENTITES_PII = ("CREDIT_CARD", "EMAIL_ADDRESS", "IBAN_CODE", "PHONE_NUMBER", "IP_ADDRESS")
 _FICHIER = Path(__file__).resolve().parents[3] / "garde_fous.env"
 
 
@@ -51,7 +53,7 @@ class ScannersLlmGuard:
         # Détection seule (aucun Vault : il retiendrait les PII en clair pour la vie du processus).
         # Sans PERSON : le NER anglais prend « Client fidèle » pour un nom ; les noms ne sont pas
         # détectables de façon fiable en français, e-mail/téléphone/IBAN le sont (domaine).
-        self._sensible = Sensitive(entity_types=_ENTITES_PII, redact=False)
+        self._sensible = Sensitive(entity_types=list(_ENTITES_PII), redact=False)
 
     def entree(self, texte: str) -> list[str]:
         codes = [

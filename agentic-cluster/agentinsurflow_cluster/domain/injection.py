@@ -18,15 +18,15 @@ _CIBLE = (
     r"prompts?|restrictions?)"
 )
 # s'adresse à l'assistant : possessif de 2e personne, « toutes », « précédentes »
-_DE_L_ASSISTANT = r"(?:tes|vos|ton|votre|your|toutes? (?:les )?|all (?:the )?|previous|prior|above)"
+_DE_L_ASSISTANT = r"(?:tes|vos|ton|votre|your|previous|prior|above|precedentes?)"
 _DECIDER = (
     r"(?:\b(?:accepte[rz]?|valide[rz]?|approuve[rz]?|approve)\s+(?:ce|cet|le|this|the|every|all|"
     r"tous les)\s+(?:dossiers?|contrats?|files?|applications?|contracts?)\b"
     r"|\bdecision\s+(?:accepte|approved)\b|\bstatut\s+(?:a|en)\s+accepte\b)"
 )
 _MARQUEUR = (
-    r"(?:quoi qu'il arrive|quel(?:le)? que soit|meme si|sans (?:aucune )?verif\w*|sans condition|"
-    r"obligatoire|whatever|regardless|no matter|c'est un ordre)"
+    r"(?:quoi qu'il arrive|quel(?:le)? que soit (?:le |la |l')?(?:risque|classe|bareme)|"
+    r"sans (?:aucune )?verif\w*|whatever|regardless|no matter)"
 )
 
 # nom : (description en une ligne, motif sur texte normalisé)

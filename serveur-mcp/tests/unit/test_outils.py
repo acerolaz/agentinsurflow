@@ -9,7 +9,9 @@ from fakes_mcp import FauxCorpus, FauxDossiers, FauxJetons, appelant
 
 from agentinsurflow_mcp.application.outils import (
     enregistrer_brouillon,
+    enregistrer_etat,
     get_contrat,
+    lister_pieces,
     search_rag,
     update_statut_dossier,
 )
@@ -129,4 +131,39 @@ async def test_ecriture_refusee_par_le_backend_propage_le_code() -> None:
         await update_statut_dossier(
             appelant("orchestrateur"), FauxJetons(), dossiers, "A", "ACCEPTE"
         )
+    assert exc.value.code == ARGUMENTS_INVALIDES
+
+
+async def test_lister_pieces_renvoie_les_metadonnees_du_depot() -> None:
+    dossiers = FauxDossiers()
+    resultat = await lister_pieces(appelant("pieces"), FauxJetons(), dossiers, "AIF/1")
+    assert resultat == {"pieces": [{"type": "releve_information", "date_emission": "2026-09-01"}]}
+    assert dossiers.appels == [("obo-underwriting", "AIF/1")]
+
+
+async def test_lister_pieces_contrat_hors_portefeuille() -> None:
+    dossiers = FauxDossiers(ErreurOutil(CONTRAT_INTROUVABLE, "introuvable"))
+    with pytest.raises(ErreurOutil) as exc:
+        await lister_pieces(appelant("pieces"), FauxJetons(), dossiers, "A")
+    assert exc.value.code == CONTRAT_INTROUVABLE
+
+
+async def test_enregistrer_etat_transmet_le_corps_tel_quel() -> None:
+    etat = {
+        "statut_parcours": "EN_COURS",
+        "tentative": 1,
+        "sections": [{"section": "pieces", "contenu": {"ok": True}}],
+        "rapports": [],
+        "tours": [],
+    }
+    dossiers = FauxDossiers()
+    resultat = await enregistrer_etat(appelant("orchestrateur"), FauxJetons(), dossiers, "A", etat)
+    assert resultat == {"ecrit": True}
+    assert dossiers.ecritures == [("etat", "obo-underwriting", "A", etat)]
+
+
+async def test_enregistrer_etat_refuse_par_le_backend_propage_le_code() -> None:
+    dossiers = FauxDossiers(ErreurOutil(ARGUMENTS_INVALIDES, "SECTION_INCONNUE"))
+    with pytest.raises(ErreurOutil) as exc:
+        await enregistrer_etat(appelant("orchestrateur"), FauxJetons(), dossiers, "A", {})
     assert exc.value.code == ARGUMENTS_INVALIDES

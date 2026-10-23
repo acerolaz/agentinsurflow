@@ -6,13 +6,14 @@ import datetime
 from dataclasses import dataclass, field
 from typing import Literal
 
-Agent = Literal["orchestrateur", "redacteur", "actuaire"]
+Agent = Literal["orchestrateur", "pieces", "analyste", "redacteur", "actuaire"]
 
 UNAUTHORIZED_TOOL = "UNAUTHORIZED_TOOL"
 NOT_FOUND_IN_CORPUS = "NOT_FOUND_IN_CORPUS"
 CONTRAT_INTROUVABLE = "CONTRAT_INTROUVABLE"
 DOSSIERS_INDISPONIBLES = "DOSSIERS_INDISPONIBLES"
 ARGUMENTS_INVALIDES = "ARGUMENTS_INVALIDES"
+STATUT_FIGE = "STATUT_FIGE"  # dossier déjà décidé (ACCEPTE/REFUSE) : plus d'écriture
 CALCUL_INDISPONIBLE = "CALCUL_INDISPONIBLE"
 DONNEE_HORS_BAREME = "DONNEE_HORS_BAREME"
 

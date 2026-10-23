@@ -26,6 +26,7 @@ public sealed class DossiersDbContext(DbContextOptions<DossiersDbContext> option
             e.Property(x => x.Id).ValueGeneratedNever();
             e.HasIndex(x => x.NumeroContrat).IsUnique();
             e.HasIndex(x => x.GestionnaireId);
+            e.ToTable(t => t.HasCheckConstraint("ck_contrat_observations_longueur", "char_length(observations) <= 2000"));
             e.HasOne<Souscripteur>().WithOne().HasForeignKey<Contrat>(x => x.SouscripteurId);
         });
         // Relations 1 → 1 avec CONTRAT (MCD) : clé étrangère unique.
@@ -77,6 +78,32 @@ public sealed class DossiersDbContext(DbContextOptions<DossiersDbContext> option
             e.Property(x => x.Motifs).HasColumnType("jsonb");
             e.Property(x => x.Citations).HasColumnType("jsonb");
             e.HasOne<Contrat>().WithMany().HasForeignKey(x => x.ContratId);
+        });
+
+        // Mémoire long terme du dossier (D100) : les écritures passent par du SQL en upsert / insertion idempotente.
+        // Clés primaires composites = la contrainte d'unicité métier ; clés étrangères de l'ER : contrat ← état ← le reste.
+        modelBuilder.Entity<EtatDossier>(e =>
+        {
+            e.HasKey(x => x.NumeroContrat);
+            e.HasOne<Contrat>().WithOne().HasForeignKey<EtatDossier>(x => x.NumeroContrat).HasPrincipalKey<Contrat>(c => c.NumeroContrat);
+        });
+        modelBuilder.Entity<SectionEtat>(e =>
+        {
+            e.HasKey(x => new { x.NumeroContrat, x.Section, x.Tentative });
+            e.Property(x => x.Contenu).HasColumnType("jsonb");
+            e.HasOne<EtatDossier>().WithMany().HasForeignKey(x => x.NumeroContrat);
+        });
+        modelBuilder.Entity<RapportAgent>(e =>
+        {
+            e.HasKey(x => new { x.NumeroContrat, x.Agent, x.Tentative, x.TraceId });
+            e.Property(x => x.Rapport).HasColumnType("jsonb");
+            e.Property(x => x.CreeLe).HasDefaultValueSql("now()");
+            e.HasOne<EtatDossier>().WithMany().HasForeignKey(x => x.NumeroContrat);
+        });
+        modelBuilder.Entity<TourPilotage>(e =>
+        {
+            e.HasKey(x => new { x.NumeroContrat, x.Tentative, x.Tour });
+            e.HasOne<EtatDossier>().WithMany().HasForeignKey(x => x.NumeroContrat);
         });
 
         // Vue créée par SQL (migration VueEtDroits) : EF ne la crée pas, il la lit seulement.

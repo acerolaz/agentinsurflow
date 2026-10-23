@@ -9,7 +9,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et underwriting-admin/
 # (C#, leurs propres Makefile, appelés par gateway-<cible> et underwriting-<cible>).
-.PHONY: install fmt lint test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
+.PHONY: garde-fous install fmt lint test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked
@@ -21,11 +21,11 @@ fmt:
 lint:               ## porte 1 : style + typage
 	uv run ruff check .
 	uv run ruff format --check .
-	uv run mypy rag/agentinsurflow_rag serveur-mcp/agentinsurflow_mcp fonction-calcul/agentinsurflow_calcul fonction-calcul/function_app.py tools
+	uv run mypy rag/agentinsurflow_rag serveur-mcp/agentinsurflow_mcp fonction-calcul/agentinsurflow_calcul fonction-calcul/function_app.py agentic-cluster/agentinsurflow_cluster tools
 	uv export --package agentinsurflow-calcul --no-emit-workspace --no-dev --no-hashes | diff - fonction-calcul/requirements.txt
 
 test:               ## TU, sans Docker (rag + serveur-mcp, tests/unit + outillage de la racine)
-	uv run pytest tests rag/tests/unit serveur-mcp/tests/unit fonction-calcul/tests/unit --no-cov
+	uv run pytest tests rag/tests/unit serveur-mcp/tests/unit fonction-calcul/tests/unit agentic-cluster/tests/unit --no-cov
 
 test-integration:   ## porte 2 : TU + TI (PostgreSQL du compose), couverture >= 80 %
 	docker compose up -d --build --wait postgres
@@ -58,7 +58,7 @@ openapi:            ## docs/openapi/{rag,underwriting-admin}.json, générés de
 	ASPNETCORE_ENVIRONMENT=Development env -u VERSION dotnet build underwriting-admin/src/AgentInsurFlow.UnderwritingAdmin.Api -p:OpenApiGenerateDocuments=true -v q # VERSION (SHA) serait lu comme la propriété MSBuild Version ; Development : pas de mot de passe PostgreSQL exigé
 
 gateway-%:          ## cibles de gateway/Makefile : make gateway-test, gateway-lint, gateway-docker-build
-	$(MAKE) -C gateway $*
+	env -u VERSION $(MAKE) -C gateway $*  # VERSION (SHA git) serait lu comme la propriété MSBuild Version : restauration NuGet en échec (MSB4181)
 
 underwriting-%:     ## cibles de underwriting-admin/Makefile : make underwriting-test, underwriting-lint
 	$(MAKE) -C underwriting-admin $*
@@ -68,6 +68,9 @@ eval:               ## porte 3 : make eval [URL=…] — golden set + jeu de dé
 
 calibrer:           ## make calibrer URL=… — cosinus max par question, intervalle pour RAG_SEUIL
 	uv run python tools/evals.py --calibrer --url $(URL) --questions eval/questions-demo.jsonl
+
+garde-fous:         ## taux de blocage par catégorie et faux positifs (modèles LLM Guard, lent)
+	uv run python tools/garde_fous.py
 
 run:                ## http://localhost:8000
 	cd rag && uv run uvicorn agentinsurflow_rag.api:app --reload --port 8000

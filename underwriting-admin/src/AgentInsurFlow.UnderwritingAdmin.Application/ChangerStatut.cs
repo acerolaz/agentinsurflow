@@ -10,6 +10,8 @@ public sealed class ChangerStatut(IDepotEcritures depot)
     {
         var refus = ReglesStatut.Refus(changement.StatutCible, changement.Validation);
         if (refus is not null) return new(false, refus);
+        if (await depot.StatutContrat(gestionnaireId, numeroContrat, ct) is { } statut && ReglesStatut.Fige(statut))
+            return new(false, "STATUT_FIGE");
         return await depot.ChangerStatut(gestionnaireId, numeroContrat, changement, ct);
     }
 }

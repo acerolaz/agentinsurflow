@@ -62,11 +62,11 @@ public sealed class DossiersPostgresTests
         await Preparer();
 
         await using var db = DossiersDbContextFactory.Creer(Connexions().Migrateur);
-        Assert.Equal(5, (await db.Database.GetAppliedMigrationsAsync(TestContext.Current.CancellationToken)).Count());
+        Assert.Equal(8, (await db.Database.GetAppliedMigrationsAsync(TestContext.Current.CancellationToken)).Count());
         Assert.Empty(await db.Database.GetPendingMigrationsAsync(TestContext.Current.CancellationToken));
         var tables = await Lire(Connexions().Migrateur,
             "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '__EFMigrationsHistory'");
-        Assert.Equal(12L, tables[0][0]);
+        Assert.Equal(16L, tables[0][0]);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public sealed class DossiersPostgresTests
         Assert.Equal(
             ["anciennete_permis_ans", "anciennete_permis_mois", "crm_bonus_malus", "date_effet", "departement", "formule",
                 "gestionnaire_id", "mis_a_jour", "nb_sinistres", "nb_sinistres_responsables_trois_ans", "nb_sinistres_trois_ans",
-                "numero_contrat", "puissance_fiscale_cv", "releve_present", "resiliations", "suspensions", "tranche_age", "type_usage"],
+                "numero_contrat", "observations", "puissance_fiscale_cv", "releve_present", "resiliations", "suspensions", "tranche_age", "type_usage"],
             colonnes.Select(c => (string)c[0]).Order(StringComparer.Ordinal));
     }
 
@@ -267,6 +267,56 @@ public sealed class DossiersPostgresTests
             Assert.Equal(TrancheAge.Depuis(Annees((DateOnly)l[1], aujourdhui)), vue.TrancheAge);
             Assert.Equal(Annees((DateOnly)l[2], aujourdhui), vue.AnciennetePermisAns);
             Assert.Equal(Departement.Depuis((string)l[3]), vue.Departement);
+        }
+    }
+
+    [Fact]
+    public async Task Pieces_du_seed_dossier_complet_et_dossier_sans_releve_bornes_au_gestionnaire()
+    {
+        await Preparer();
+        await using var db = DossiersDbContextFactory.Creer(Connexions().Dossiers);
+        var depot = new DepotDossiersEf(db);
+        var ct = TestContext.Current.CancellationToken;
+
+        var complet = await depot.ListerPieces(GestionnaireA, "AIF-2026-000001", ct);
+        var sansReleve = await depot.ListerPieces(GestionnaireA, "AIF-2026-000003", ct);
+
+        Assert.NotNull(complet);
+        var releve = Assert.Single(complet, p => p.Type == TypesPiece.ReleveInformation);
+        Assert.InRange(releve.DateEmission, new DateOnly(2025, 10, 1), new DateOnly(2026, 1, 1)); // moins de 3 mois avant la date d'effet
+        Assert.Contains(complet, p => p.Type == TypesPiece.Permis);
+        Assert.NotNull(sansReleve);
+        Assert.DoesNotContain(sansReleve, p => p.Type == TypesPiece.ReleveInformation);
+        Assert.Null(await depot.ListerPieces(GestionnaireB, "AIF-2026-000001", ct));
+        // Le compte `dossiers` ne lit ni le nom de fichier ni l'URL du blob.
+        await Assert.ThrowsAsync<PostgresException>(() => Lire(Connexions().Dossiers, "SELECT nom_fichier FROM piece_justificative"));
+    }
+
+    [Fact]
+    public async Task Pieces_du_seed_sans_contrats_presents_n_echouent_pas_et_n_inserent_rien()
+    {
+        // Seed joué sans variables SEED_* (aucun contrat), puis variables fournies : l'insertion des pièces ne doit pas violer la FK.
+        try
+        {
+            Environment.SetEnvironmentVariable("SEED_GESTIONNAIRE_A", null);
+            Environment.SetEnvironmentVariable("SEED_GESTIONNAIRE_B", null);
+            await Lire(Connexions().Migrateur, "DROP SCHEMA public CASCADE");
+            await Lire(Connexions().Migrateur, "CREATE SCHEMA public");
+            await Preparer();
+            Assert.Equal(0L, await Compter("contrat"));
+
+            await Lire(Connexions().Migrateur, SeedDossiers.SqlPieces(GestionnaireA, GestionnaireB));
+
+            Assert.Equal(0L, await Compter("piece_justificative"));
+        }
+        finally
+        {
+            // Rend la base seedée aux autres tests de la collection.
+            Environment.SetEnvironmentVariable("SEED_GESTIONNAIRE_A", GestionnaireA);
+            Environment.SetEnvironmentVariable("SEED_GESTIONNAIRE_B", GestionnaireB);
+            await Lire(Connexions().Migrateur, "DROP SCHEMA public CASCADE");
+            await Lire(Connexions().Migrateur, "CREATE SCHEMA public");
+            await Preparer();
         }
     }
 

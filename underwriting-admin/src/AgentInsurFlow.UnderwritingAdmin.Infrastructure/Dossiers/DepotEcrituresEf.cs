@@ -80,6 +80,57 @@ internal sealed class DepotEcrituresEf(DossiersDbContext db, TimeProvider horlog
         return new(true, null);
     }
 
+    public async Task<string?> StatutContrat(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
+        await db.Set<Contrat>().AsNoTracking()
+            .Where(c => c.NumeroContrat == numeroContrat && c.GestionnaireId == gestionnaireId)
+            .Select(c => c.Statut)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<bool> EnregistrerObservations(string gestionnaireId, string numeroContrat, string observations,
+        CancellationToken ct)
+    {
+        var maintenant = horloge.GetUtcNow();
+        return await db.Set<Contrat>().Where(c => c.NumeroContrat == numeroContrat && c.GestionnaireId == gestionnaireId)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.Observations, observations).SetProperty(c => c.MisAJour, maintenant), ct) > 0;
+    }
+
+    public async Task<bool> EnregistrerEtat(string gestionnaireId, string numeroContrat, EtatEntrant etat, CancellationToken ct)
+    {
+        if (await IdContrat(gestionnaireId, numeroContrat, ct) is null) return false;
+        var maintenant = horloge.GetUtcNow();
+
+        // Idempotent (l'orchestrateur rejoue le même état) : upsert de l'état et des sections, insertion qui ignore un doublon
+        // pour les rapports et les tours. Une écriture périmée (tentative plus ancienne) ne remplace pas l'état. nb_relances n'est pas touché ici.
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlAsync($"""
+            INSERT INTO etat_dossier (numero_contrat, version_schema, statut_parcours, tentative, nb_relances, maj_le)
+            VALUES ({numeroContrat}, 1, {etat.StatutParcours}, {etat.Tentative}, 0, {maintenant})
+            ON CONFLICT (numero_contrat) DO UPDATE
+            SET statut_parcours = EXCLUDED.statut_parcours, tentative = EXCLUDED.tentative, maj_le = EXCLUDED.maj_le
+            WHERE etat_dossier.tentative <= EXCLUDED.tentative
+            """, ct);
+        foreach (var s in etat.Sections)
+            await db.Database.ExecuteSqlAsync($"""
+                INSERT INTO section_etat (numero_contrat, section, tentative, contenu)
+                VALUES ({numeroContrat}, {s.Section}, {etat.Tentative}, {s.Contenu}::jsonb)
+                ON CONFLICT (numero_contrat, section, tentative) DO UPDATE SET contenu = EXCLUDED.contenu
+                """, ct);
+        foreach (var r in etat.Rapports)
+            await db.Database.ExecuteSqlAsync($"""
+                INSERT INTO rapport_agent (numero_contrat, agent, tentative, rapport, mode, cause, version_prompt, trace_id)
+                VALUES ({numeroContrat}, {r.Agent}, {etat.Tentative}, {r.Rapport}::jsonb, {r.Mode}, {r.Cause}, {r.VersionPrompt}, {r.TraceId})
+                ON CONFLICT (numero_contrat, agent, tentative, trace_id) DO NOTHING
+                """, ct);
+        foreach (var t in etat.Tours)
+            await db.Database.ExecuteSqlAsync($"""
+                INSERT INTO tour_pilotage (numero_contrat, tentative, tour, outil_appele, precondition, mode)
+                VALUES ({numeroContrat}, {etat.Tentative}, {t.Tour}, {t.OutilAppele}, {t.Precondition}, {t.Mode})
+                ON CONFLICT (numero_contrat, tentative, tour) DO NOTHING
+                """, ct);
+        await transaction.CommitAsync(ct);
+        return true;
+    }
+
     private async Task<Guid?> IdContrat(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
         await db.Set<Contrat>().AsNoTracking()
             .Where(c => c.NumeroContrat == numeroContrat && c.GestionnaireId == gestionnaireId)

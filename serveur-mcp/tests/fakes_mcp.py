@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from agentinsurflow_mcp.domain.models import Appelant, ErreurOutil
+from agentinsurflow_mcp.domain.models import Agent, Appelant, ErreurOutil
 
 
-def appelant(agent: Literal["orchestrateur", "redacteur", "actuaire"] = "redacteur") -> Appelant:
+def appelant(agent: Agent = "redacteur") -> Appelant:
     return Appelant("oid-a", "azp-a", agent, frozenset({"Gestionnaire"}), "jeton-entrant")
 
 
@@ -58,6 +58,9 @@ class FauxDossiers:
     ) -> None:
         self.erreur = erreur
         self.vue = vue
+        self.pieces: list[dict[str, Any]] = [
+            {"type": "releve_information", "date_emission": "2026-09-01"}
+        ]
         self.appels: list[tuple[str, str]] = []
         self.ecritures: list[tuple[str, str, str, dict[str, Any]]] = []
 
@@ -76,6 +79,19 @@ class FauxDossiers:
 
     async def changer_statut(self, jeton: str, numero_contrat: str, corps: dict[str, Any]) -> None:
         self.ecritures.append(("statut", jeton, numero_contrat, corps))
+        if self.erreur:
+            raise self.erreur
+
+    async def lister_pieces(self, jeton: str, numero_contrat: str) -> list[dict[str, Any]]:
+        self.appels.append((jeton, numero_contrat))
+        if self.erreur:
+            raise self.erreur
+        return self.pieces
+
+    async def enregistrer_etat(
+        self, jeton: str, numero_contrat: str, corps: dict[str, Any]
+    ) -> None:
+        self.ecritures.append(("etat", jeton, numero_contrat, corps))
         if self.erreur:
             raise self.erreur
 

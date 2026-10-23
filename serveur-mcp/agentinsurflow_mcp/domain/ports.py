@@ -30,6 +30,12 @@ class DossiersPort(Protocol):
         self, jeton: str, numero_contrat: str, corps: dict[str, Any]
     ) -> None: ...
 
+    async def lister_pieces(self, jeton: str, numero_contrat: str) -> list[dict[str, Any]]: ...
+
+    async def enregistrer_etat(
+        self, jeton: str, numero_contrat: str, corps: dict[str, Any]
+    ) -> None: ...
+
 
 class CalculateurPort(Protocol):
     async def evaluer(self, faits: dict[str, Any]) -> dict[str, Any]:

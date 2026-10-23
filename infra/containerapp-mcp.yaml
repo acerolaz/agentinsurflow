@@ -26,6 +26,8 @@ properties:
           - { name: MCP_AZP_ORCHESTRATEUR, value: "${MCP_AZP_ORCHESTRATEUR}" }
           - { name: MCP_AZP_REDACTEUR, value: "${MCP_AZP_REDACTEUR}" }
           - { name: MCP_AZP_ACTUAIRE, value: "${MCP_AZP_ACTUAIRE}" }
+          - { name: MCP_AZP_PIECES, value: "${MCP_AZP_PIECES}" }
+          - { name: MCP_AZP_ANALYSTE, value: "${MCP_AZP_ANALYSTE}" }
           - { name: RAG_API_CLIENT_ID, value: "${RAG_API_CLIENT_ID}" }
           - { name: UNDERWRITING_API_CLIENT_ID, value: "${UNDERWRITING_API_CLIENT_ID}" }
           - { name: AZURE_UAMI_CLIENT_ID, value: "${AZURE_UAMI_MCP_CLIENT_ID}" }

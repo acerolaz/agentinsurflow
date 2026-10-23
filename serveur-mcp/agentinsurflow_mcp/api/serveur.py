@@ -76,6 +76,15 @@ class ServeurMcp(FastMCP):
             return await outils.get_contrat(appelant(), jetons, dossiers, numero_contrat)
 
         @self.tool()
+        async def lister_pieces(numero_contrat: str) -> dict[str, Any]:
+            """Liste les métadonnées des pièces d'un contrat : type et date d'émission (AAAA-MM-JJ).
+
+            Lecture seule, sans le contenu des pièces. Erreur CONTRAT_INTROUVABLE si le numéro est
+            inconnu ou hors du portefeuille du gestionnaire.
+            """
+            return await outils.lister_pieces(appelant(), jetons, dossiers, numero_contrat)
+
+        @self.tool()
         async def evaluer_risque(numero_contrat: str) -> dict[str, Any]:
             """Évalue le risque d'un contrat avec le barème déterministe versionné : classe, décision proposée (ACCEPTE ou REFUSE), score (nombre de règles déclenchées) et règles déclenchées avec leur motif. Ne décide rien : la décision reste soumise au gestionnaire. Erreur CONTRAT_INTROUVABLE si le numéro est inconnu, DONNEE_HORS_BAREME si une donnée du contrat manque ou sort du barème (revue humaine), CALCUL_INDISPONIBLE si le calcul ne répond pas."""  # noqa: E501
             return await outils.evaluer_risque(
@@ -102,6 +111,18 @@ class ServeurMcp(FastMCP):
             return await outils.enregistrer_brouillon(
                 appelant(), jetons, dossiers, numero_contrat, fiche, prime
             )
+
+        @self.tool()
+        async def enregistrer_etat(numero_contrat: str, etat: dict[str, Any]) -> dict[str, Any]:
+            """Enregistre l'état du parcours d'un dossier : statut, tentative, sections, rapports.
+
+            `etat` : `statut_parcours`, `tentative`, `sections` (`section`, `contenu`), `rapports`
+            (`agent`, `rapport`, `mode`, `cause`, `version_prompt`, `trace_id`) et `tours`
+            (`tour`, `outil_appele`, `precondition`, `mode`). Erreur CONTRAT_INTROUVABLE si le
+            numéro est inconnu, ARGUMENTS_INVALIDES si le backend refuse l'état (ex. section
+            inconnue).
+            """
+            return await outils.enregistrer_etat(appelant(), jetons, dossiers, numero_contrat, etat)
 
         @self.tool()
         async def update_statut_dossier(
@@ -186,6 +207,8 @@ def _attributs_des_arguments(span: Span, arguments: dict[str, Any]) -> None:
         )
     if "numero_contrat" in arguments:
         span.set_attribute("contrat.present", True)
+    if "etat" in arguments:  # le contenu (observations comprises) n'entre jamais dans la trace
+        span.set_attribute("etat.present", True)
     statut = arguments.get("statut")
     if statut is not None:  # une valeur saisie n'entre jamais dans la trace
         span.set_attribute(

@@ -82,6 +82,14 @@ async def test_statuts_http_vers_codes(statut: int, code: str) -> None:
     assert exc.value.code == code
 
 
+@pytest.mark.parametrize("ecriture", ["changer_statut", "enregistrer_brouillon"])
+async def test_409_dossier_decide_devient_le_code_d_outil_statut_fige(ecriture: str) -> None:
+    c = client(httpx.Response(409, json={"code": "STATUT_FIGE"}))
+    with pytest.raises(ErreurOutil) as exc:
+        await getattr(c, ecriture)("j", "X", {})
+    assert exc.value.code == "STATUT_FIGE"
+
+
 async def test_transport_en_echec_dossiers_indisponibles() -> None:
     with pytest.raises(ErreurOutil) as exc:
         await client(httpx.ConnectError("boom")).lire_contrat("j", "X")
@@ -108,3 +116,25 @@ async def test_400_relaie_le_code_du_problemdetails_sans_title_ni_detail() -> No
     assert "DECISION_ABSENTE" in str(exc.value)
     assert "secret-perso" not in str(exc.value)
     assert "Écriture refusée" not in str(exc.value)
+
+
+async def test_lister_pieces_get_et_liste_telle_quelle() -> None:
+    vues: list[httpx.Request] = []
+    pieces = [{"type": "releve_information", "date_emission": "2026-09-01"}]
+    gw = client(httpx.Response(200, json=pieces), vues)
+    assert await gw.lister_pieces("obo-u", "AIF/1") == pieces
+    assert (vues[0].method, vues[0].url.raw_path) == ("GET", b"/api/contrats/AIF%2F1/pieces")
+
+
+async def test_enregistrer_etat_put_du_corps() -> None:
+    vues: list[httpx.Request] = []
+    await client(httpx.Response(204), vues).enregistrer_etat("j", "AIF/1", {"tentative": 1})
+    assert (vues[0].method, vues[0].url.raw_path) == ("PUT", b"/api/contrats/AIF%2F1/etat")
+    assert json.loads(vues[0].content) == {"tentative": 1}
+
+
+async def test_lister_pieces_404_et_400() -> None:
+    for statut, code in ((404, "CONTRAT_INTROUVABLE"), (400, "ARGUMENTS_INVALIDES")):
+        with pytest.raises(ErreurOutil) as exc:
+            await client(httpx.Response(statut)).lister_pieces("j", "A")
+        assert exc.value.code == code

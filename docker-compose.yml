@@ -11,6 +11,7 @@ x-mots-de-passe: &mots-de-passe
   PG_DOSSIERS_PASSWORD: ${PG_DOSSIERS_PASSWORD:?PG_DOSSIERS_PASSWORD manquant (.env)}
   PG_TRACES_WRITER_PASSWORD: ${PG_TRACES_WRITER_PASSWORD:?PG_TRACES_WRITER_PASSWORD manquant (.env)}
   PG_TRACES_READER_PASSWORD: ${PG_TRACES_READER_PASSWORD:?PG_TRACES_READER_PASSWORD manquant (.env)}
+  PG_AGENT_STATE_PASSWORD: ${PG_AGENT_STATE_PASSWORD:?PG_AGENT_STATE_PASSWORD manquant (.env)}
 
 services:
   postgres:
@@ -62,6 +63,8 @@ services:
       MCP_AZP_ORCHESTRATEUR: ${MCP_AZP_ORCHESTRATEUR:-}
       MCP_AZP_REDACTEUR: ${MCP_AZP_REDACTEUR:-}
       MCP_AZP_ACTUAIRE: ${MCP_AZP_ACTUAIRE:-}
+      MCP_AZP_PIECES: ${MCP_AZP_PIECES:-}
+      MCP_AZP_ANALYSTE: ${MCP_AZP_ANALYSTE:-}
       # rag et dossiers en On-Behalf-Of, par la gateway (D22) ; secret : .env local seulement
       RAG_API_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
       UNDERWRITING_API_CLIENT_ID: ${UNDERWRITING_API_CLIENT_ID:-}
@@ -72,6 +75,33 @@ services:
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces  # direct en local (comme rag) ; Azure : par la gateway, rôle Telemetrie
       APP_ENV: local
     ports: ["8003:8003"]
+
+  # Cluster d'agents (graphe LangGraph) : aucun port publié, joint par la gateway (T12) ; il appelle
+  # le MCP et le LLM par la gateway seulement (D22). Modèles LLM Guard cuits dans l'image.
+  agentic-cluster:
+    build: { context: ., dockerfile: agentic-cluster/Dockerfile }
+    environment:
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
+      GATEWAY_URL: http://gateway:8000
+      MCP_API_CLIENT_ID: ${MCP_API_CLIENT_ID:-}
+      LLM_AUDIENCE: ${LLM_AUDIENCE:-}
+      AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT:-}
+      INSURFLOW_LLM_ACTIF: ${INSURFLOW_LLM_ACTIF:-true}
+      INSURFLOW_CLUSTER_CLIENT_ID: ${INSURFLOW_CLUSTER_CLIENT_ID:-}
+      INSURFLOW_AGENT_ORCHESTRATEUR_CLIENT_ID: ${INSURFLOW_AGENT_ORCHESTRATEUR_CLIENT_ID:-}
+      INSURFLOW_AGENT_PIECES_CLIENT_ID: ${INSURFLOW_AGENT_PIECES_CLIENT_ID:-}
+      INSURFLOW_AGENT_ANALYSTE_CLIENT_ID: ${INSURFLOW_AGENT_ANALYSTE_CLIENT_ID:-}
+      INSURFLOW_AGENT_REDACTEUR_CLIENT_ID: ${INSURFLOW_AGENT_REDACTEUR_CLIENT_ID:-}
+      INSURFLOW_AGENT_ACTUAIRE_CLIENT_ID: ${INSURFLOW_AGENT_ACTUAIRE_CLIENT_ID:-}
+      INSURFLOW_CLIENT_SECRET: ${INSURFLOW_CLIENT_SECRET:-} # .env local seulement
+      INSURFLOW_PIECES_EXIGEES: ${INSURFLOW_PIECES_EXIGEES:-}
+      INSURFLOW_BUDGET_S: ${INSURFLOW_BUDGET_S:-25}
+      INSURFLOW_RESERVE_S: ${INSURFLOW_RESERVE_S:-2}
+      INSURFLOW_CHECKPOINT_DSN: ${INSURFLOW_CHECKPOINT_DSN:-} # vide : points de reprise en mémoire
+      OTEL_SERVICE_NAME: agentic-cluster
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
+      APP_ENV: local
+    depends_on: [gateway]
 
   # Function de calcul (barème + formule) : réseau interne seulement, aucun port publié
   calcul:
@@ -109,6 +139,7 @@ services:
       ReverseProxy__Clusters__rag__Destinations__d1__Address: http://rag:8001
       ReverseProxy__Clusters__underwriting__Destinations__d1__Address: http://underwriting-admin:8002
       ReverseProxy__Clusters__mcp__Destinations__d1__Address: http://serveur-mcp:8003
+      ReverseProxy__Clusters__cluster__Destinations__d1__Address: http://agentic-cluster:8004
       ReverseProxy__Clusters__calcul__Destinations__d1__Address: http://calcul:80
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
       Entra__TenantId: ${AZURE_TENANT_ID:?AZURE_TENANT_ID manquant (.env)}
@@ -116,6 +147,9 @@ services:
       Entra__Audiences__rag__0: ${RAG_API_AUDIENCES:-api://agentinsurflow-rag}
       Entra__Audiences__underwriting__0: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
       Entra__Audiences__mcp__0: ${MCP_API_AUDIENCES:-api://agentinsurflow-mcp}
+      Entra__McpClientId: ${MCP_API_CLIENT_ID:-}  # azp des jetons OBO du MCP (vide : PUT …/etat refusé)
+      Entra__Audiences__cluster__0: ${CLUSTER_API_AUDIENCES:-api://agentic-cluster}
+      Entra__Audiences__cluster__1: ${INSURFLOW_CLUSTER_CLIENT_ID:-}
       Entra__Audiences__calcul__0: ${CALCUL_API_AUDIENCES:-api://agentinsurflow-calcul}
       Entra__Audiences__calcul__1: ${CALCUL_API_CLIENT_ID:-}
       Entra__Audiences__llm__0: ${LLM_API_AUDIENCES:-api://agentinsurflow-llm}

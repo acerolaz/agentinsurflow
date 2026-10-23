@@ -287,6 +287,70 @@
         }
       }
     },
+    "/api/contrats/{numero_contrat}/pieces": {
+      "get": {
+        "tags": [
+          "Contrats"
+        ],
+        "summary": "Pièces déclarées du contrat (type et date d'émission seulement)",
+        "operationId": "ListerPieces",
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PieceDeclaree"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/contrats/{numero_contrat}/brouillon": {
       "put": {
         "tags": [
@@ -347,6 +411,16 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -425,6 +499,168 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contrats/{numero_contrat}/observations": {
+      "put": {
+        "tags": [
+          "Contrats"
+        ],
+        "summary": "Écrase les observations du gestionnaire (2000 caractères au plus) tant que le statut n'est pas figé",
+        "operationId": "EnregistrerObservations",
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObservationsCorps"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contrats/{numero_contrat}/etat": {
+      "put": {
+        "tags": [
+          "Contrats"
+        ],
+        "summary": "Mémoire long terme du dossier (D100), idempotente : sections connues seulement, aucune donnée identifiante",
+        "operationId": "EnregistrerEtat",
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EtatCorps"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -451,6 +687,59 @@
                 "$ref": "#/components/schemas/PrimeBrouillon"
               }
             ]
+          }
+        }
+      },
+      "EtatCorps": {
+        "required": [
+          "statut_parcours",
+          "tentative",
+          "sections",
+          "rapports",
+          "tours"
+        ],
+        "type": "object",
+        "properties": {
+          "statut_parcours": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "tentative": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "sections": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/SectionCorps"
+            }
+          },
+          "rapports": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RapportCorps"
+            }
+          },
+          "tours": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TourCorps"
+            }
           }
         }
       },
@@ -504,6 +793,36 @@
         }
       },
       "JsonElement": { },
+      "ObservationsCorps": {
+        "required": [
+          "observations"
+        ],
+        "type": "object",
+        "properties": {
+          "observations": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PieceDeclaree": {
+        "required": [
+          "type",
+          "date_emission"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "date_emission": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
       "PrimeBrouillon": {
         "required": [
           "prime_ttc",
@@ -567,6 +886,59 @@
           }
         }
       },
+      "RapportCorps": {
+        "required": [
+          "agent",
+          "rapport",
+          "mode",
+          "cause",
+          "version_prompt",
+          "trace_id"
+        ],
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "rapport": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "mode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cause": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "version_prompt": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "trace_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "Sante": {
         "required": [
           "statut",
@@ -583,6 +955,31 @@
           },
           "release": {
             "type": "string"
+          }
+        }
+      },
+      "SectionCorps": {
+        "required": [
+          "section",
+          "contenu"
+        ],
+        "type": "object",
+        "properties": {
+          "section": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "contenu": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
           }
         }
       },
@@ -719,6 +1116,43 @@
           }
         }
       },
+      "TourCorps": {
+        "required": [
+          "tour",
+          "outil_appele",
+          "precondition",
+          "mode"
+        ],
+        "type": "object",
+        "properties": {
+          "tour": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "outil_appele": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "precondition": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "VueContrat": {
         "required": [
           "numero_contrat",
@@ -730,7 +1164,15 @@
           "suspensions",
           "resiliations",
           "formule",
-          "mis_a_jour"
+          "mis_a_jour",
+          "date_effet",
+          "anciennete_permis_mois",
+          "puissance_fiscale_cv",
+          "type_usage",
+          "nb_sinistres_trois_ans",
+          "nb_sinistres_responsables_trois_ans",
+          "releve_present",
+          "observations"
         ],
         "type": "object",
         "properties": {
@@ -789,6 +1231,59 @@
           "mis_a_jour": {
             "type": "string",
             "format": "date-time"
+          },
+          "date_effet": {
+            "type": "string",
+            "format": "date"
+          },
+          "anciennete_permis_mois": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "puissance_fiscale_cv": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "type_usage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nb_sinistres_trois_ans": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "nb_sinistres_responsables_trois_ans": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "releve_present": {
+            "type": "boolean"
+          },
+          "observations": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       }

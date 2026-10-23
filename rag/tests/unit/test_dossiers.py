@@ -157,7 +157,10 @@ def test_obo_en_azure_avec_l_identite_managee() -> None:
     assert "client_secret" not in appel and callable(appel["client_assertion_func"])
 
 
-def test_obo_sans_secret_ni_identite_erreur_dossiers() -> None:
+def test_obo_sans_secret_ni_identite_erreur_dossiers(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(
+        "AZURE_UAMI_CLIENT_ID", raising=False
+    )  # hermétique : `.env` exporté par make
     with pytest.raises(ErreurDossiers):
         obo.jeton_obo(_config(rag_client_secret=""), "jeton-utilisateur")
 

@@ -178,7 +178,10 @@ def test_sans_audience_erreur_explicite() -> None:
         client_openai(_config(llm_audience=""))
 
 
-def test_sans_identite_erreur_explicite() -> None:
+def test_sans_identite_erreur_explicite(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(
+        "AZURE_UAMI_CLIENT_ID", raising=False
+    )  # hermétique : `.env` exporté par make
     with pytest.raises(ErreurLLM, match="RAG_CLIENT_SECRET"):
         client_openai(_config(rag_client_secret=""))
 

@@ -10,10 +10,12 @@ from agentinsurflow_mcp.domain.models import Agent
 ATTENDU: dict[Agent, set[str]] = {
     "orchestrateur": {
         "get_contrat",
-        "evaluer_risque",
         "enregistrer_brouillon",
         "update_statut_dossier",
+        "enregistrer_etat",
     },
+    "pieces": {"lister_pieces"},
+    "analyste": {"evaluer_risque"},
     "redacteur": {"search_rag"},
     "actuaire": {"calculer_prime"},
 }
@@ -33,3 +35,14 @@ def test_agent_inconnu_n_a_aucun_outil() -> None:
 def test_redacteur_ne_peut_pas_ecrire() -> None:
     assert est_autorise("redacteur", "update_statut_dossier") is False
     assert est_autorise("redacteur", "search_rag") is True
+
+
+def test_evaluer_risque_est_reserve_a_l_analyste() -> None:
+    assert est_autorise("analyste", "evaluer_risque") is True
+    assert est_autorise("orchestrateur", "evaluer_risque") is False
+
+
+def test_separation_des_agents() -> None:
+    assert est_autorise("actuaire", "update_statut_dossier") is False
+    assert est_autorise("redacteur", "calculer_prime") is False
+    assert outils_autorises("pieces") == {"lister_pieces"}

@@ -44,6 +44,9 @@ internal sealed class Contrat
     public string Statut { get; set; } = "";
     public string Formule { get; set; } = "";
     public DateTimeOffset MisAJour { get; set; }
+
+    /// <summary>Observations libres du gestionnaire (≤ 2000 caractères), écrasées à chaque écriture.</summary>
+    public string? Observations { get; set; }
 }
 
 internal sealed class Vehicule
@@ -132,6 +135,13 @@ internal sealed class PieceJustificative
     public string Type { get; set; } = "";
     public string NomFichier { get; set; } = "";
     public string UrlBlob { get; set; } = "";
+
+    /// <summary>Date d'émission de la pièce (ex. du relevé d'information), lue par l'agent Pièces.</summary>
+    public DateOnly DateEmission { get; set; }
+    public DateTimeOffset DeclareeLe { get; set; }
+
+    /// <summary>Identifiant (oid) de l'auteur de la déclaration : jamais exposé par l'API.</summary>
+    public string DeclareePar { get; set; } = "";
 }
 
 internal sealed class SignalementFraude
@@ -184,4 +194,54 @@ internal sealed class LigneVue
     public int NbSinistresTroisAns { get; set; }
     public int NbSinistresResponsablesTroisAns { get; set; }
     public bool RelevePresent { get; set; }
+    public string? Observations { get; set; }
+}
+
+// Mémoire long terme du dossier (D100) : aucune colonne identifiante (nom, adresse…), la liste blanche des sections y veille.
+
+/// <summary>État courant du parcours d'un dossier (une ligne par contrat, clé étrangère vers `contrat.numero_contrat`).</summary>
+internal sealed class EtatDossier
+{
+    public string NumeroContrat { get; set; } = "";
+    public int VersionSchema { get; set; } = 1;
+    public string StatutParcours { get; set; } = "";
+    public int Tentative { get; set; }
+    public int NbRelances { get; set; }
+    public DateTimeOffset MajLe { get; set; }
+}
+
+internal sealed class SectionEtat
+{
+    public string NumeroContrat { get; set; } = "";
+    public string Section { get; set; } = "";
+    public int Tentative { get; set; }
+
+    /// <summary>JSON (jsonb).</summary>
+    public string Contenu { get; set; } = "{}";
+}
+
+/// <summary>Rapport d'un agent : append-only, unique par (contrat, agent, tentative, trace).</summary>
+internal sealed class RapportAgent
+{
+    public string NumeroContrat { get; set; } = "";
+    public string Agent { get; set; } = "";
+    public int Tentative { get; set; }
+
+    /// <summary>JSON (jsonb).</summary>
+    public string Rapport { get; set; } = "{}";
+    public string Mode { get; set; } = "";
+    public string? Cause { get; set; }
+    public string VersionPrompt { get; set; } = "";
+    public string TraceId { get; set; } = "";
+    public DateTimeOffset CreeLe { get; set; }
+}
+
+internal sealed class TourPilotage
+{
+    public string NumeroContrat { get; set; } = "";
+    public int Tentative { get; set; }
+    public int Tour { get; set; }
+    public string OutilAppele { get; set; } = "";
+    public string Precondition { get; set; } = "";
+    public string Mode { get; set; } = "";
 }

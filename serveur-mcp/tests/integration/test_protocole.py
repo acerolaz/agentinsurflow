@@ -8,7 +8,14 @@ from typing import Any
 
 import pytest
 from fakes_mcp import FauxCalculateur, FauxCorpus, FauxDossiers, FauxJetons
-from jetons_mcp_de_test import AZP_ORCHESTRATEUR, AZP_REDACTEUR, config_auth, creer
+from jetons_mcp_de_test import (
+    AZP_ACTUAIRE,
+    AZP_ORCHESTRATEUR,
+    AZP_PIECES,
+    AZP_REDACTEUR,
+    config_auth,
+    creer,
+)
 from jwt import PyJWKClientConnectionError
 from mcp import ClientSession
 from session_mcp import FauxJwks, client_http, session_mcp
@@ -97,7 +104,7 @@ async def test_orchestrateur_voit_ses_outils(ouvrir: Ouvrir) -> None:
             "update_statut_dossier",
             "enregistrer_brouillon",
             "get_contrat",
-            "evaluer_risque",
+            "enregistrer_etat",
         }
 
 
@@ -127,3 +134,36 @@ async def test_erreur_outil_en_resultat_is_error(ouvrir: Ouvrir) -> None:
         r = await s.call_tool("get_contrat", {"numero_contrat": "X"})
     assert r.isError is True
     assert r.structuredContent == {"code": "CONTRAT_INTROUVABLE"}
+
+
+async def test_pieces_ne_voit_que_lister_pieces(ouvrir: Ouvrir) -> None:
+    async with ouvrir(creer(AZP_PIECES)) as s:
+        assert [t.name for t in (await s.list_tools()).tools] == ["lister_pieces"]
+
+
+async def test_pieces_appelle_lister_pieces(ouvrir: Ouvrir, dossiers: FauxDossiers) -> None:
+    dossiers.erreur = None
+    async with ouvrir(creer(AZP_PIECES)) as s:
+        r = await s.call_tool("lister_pieces", {"numero_contrat": "AIF/1"})
+    assert r.isError is False
+    assert r.structuredContent == {
+        "pieces": [{"type": "releve_information", "date_emission": "2026-09-01"}]
+    }
+
+
+async def test_actuaire_appelle_enregistrer_etat_UNAUTHORIZED_TOOL_sans_appel_backend(
+    ouvrir: Ouvrir, dossiers: FauxDossiers
+) -> None:
+    async with ouvrir(creer(AZP_ACTUAIRE)) as s:
+        r = await s.call_tool("enregistrer_etat", {"numero_contrat": "A", "etat": {}})
+    assert dossiers.ecritures == []
+    assert (r.isError, r.structuredContent) == (True, {"code": "UNAUTHORIZED_TOOL"})
+
+
+async def test_orchestrateur_enregistre_l_etat(ouvrir: Ouvrir, dossiers: FauxDossiers) -> None:
+    dossiers.erreur = None
+    etat = {"statut_parcours": "EN_COURS", "tentative": 1, "sections": []}
+    async with ouvrir(creer(AZP_ORCHESTRATEUR)) as s:
+        r = await s.call_tool("enregistrer_etat", {"numero_contrat": "A", "etat": etat})
+    assert (r.isError, r.structuredContent) == (False, {"ecrit": True})
+    assert dossiers.ecritures == [("etat", "obo-underwriting", "A", etat)]

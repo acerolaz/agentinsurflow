@@ -9,4 +9,7 @@ public interface IDepotDossiers
 
     /// <summary>Rend <c>null</c> si le contrat n'existe pas ou appartient à un autre gestionnaire.</summary>
     Task<VueContrat?> Trouver(string gestionnaireId, string numeroContrat, CancellationToken ct);
+
+    /// <summary>Pièces déclarées du contrat ; <c>null</c> si le contrat n'existe pas ou appartient à un autre gestionnaire.</summary>
+    Task<IReadOnlyList<PieceDeclaree>?> ListerPieces(string gestionnaireId, string numeroContrat, CancellationToken ct);
 }

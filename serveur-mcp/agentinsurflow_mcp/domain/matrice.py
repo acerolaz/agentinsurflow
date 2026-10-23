@@ -8,8 +8,10 @@ from .models import Agent
 
 MATRICE: Mapping[Agent, frozenset[str]] = {
     "orchestrateur": frozenset(
-        {"get_contrat", "evaluer_risque", "enregistrer_brouillon", "update_statut_dossier"}
+        {"get_contrat", "enregistrer_brouillon", "update_statut_dossier", "enregistrer_etat"}
     ),
+    "pieces": frozenset({"lister_pieces"}),
+    "analyste": frozenset({"evaluer_risque"}),
     "redacteur": frozenset({"search_rag"}),
     "actuaire": frozenset({"calculer_prime"}),
 }

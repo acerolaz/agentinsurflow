@@ -13,11 +13,13 @@
 # (#70) underwriting-admin dans sa propre Container App (entrée interne) : plus d'identité partagée avec la gateway, et il n'en a
 # pas besoin (aucun appel Azure : base par secrets pg-*, image par l'identité système). La gateway envoie ses traces à son
 # /v1/traces avec un jeton d'application : rôle Telemetrie attribué à l'identité de la gateway (⑤).
-# Le rôle LLM de rag et l'accès Foundry relèvent de infra/llm.sh. Les inscriptions des agents (azp) relèvent de #7.
-# Prérequis : `make infra` (Container Apps MCP et rag).
+# Le rôle LLM de rag et des agents et l'accès Foundry relèvent de infra/llm.sh (à lancer APRÈS ce script).
+# ⑧ (#7, T12) : cluster d'agents agentinsurflow-cluster (Container App interne, identité managée propre uami-insurflow-cluster),
+# et une inscription par agent (azp du jeton final que filtre le serveur MCP) ; le MCP pré-autorise les cinq agents.
+# Prérequis : `make infra` (Container Apps MCP, rag et cluster).
 set -euo pipefail
 
-for v in AZURE_RESOURCE_GROUP APP_STAGING APP_PRODUCTION MCP_APP_STAGING MCP_APP_PRODUCTION RAG_APP_STAGING RAG_APP_PRODUCTION AZURE_CLIENT_ID; do
+for v in AZURE_RESOURCE_GROUP APP_STAGING APP_PRODUCTION MCP_APP_STAGING MCP_APP_PRODUCTION RAG_APP_STAGING RAG_APP_PRODUCTION CLUSTER_APP_STAGING CLUSTER_APP_PRODUCTION AZURE_CLIENT_ID; do
   [ -n "${!v:-}" ] || { echo "✘ $v manquant dans .env"; exit 1; }
 done
 GRAPH=https://graph.microsoft.com/v1.0
@@ -31,6 +33,11 @@ UW_GESTIONNAIRE=7a1d9e40-2c3b-4f58-8a6e-1b9c0d2e3f01
 UW_TELEMETRIE=7a1d9e40-2c3b-4f58-8a6e-1b9c0d2e3f02
 MCP_SCOPE=5b8e1c72-6d4a-4e39-b0f1-2a7c9d3e4f03
 MCP_GESTIONNAIRE=5b8e1c72-6d4a-4e39-b0f1-2a7c9d3e4f01
+CLUSTER_SCOPE=9c2d4e61-3a7b-4d85-a1f0-6e8b2c4d5b03
+CLUSTER_GESTIONNAIRE=9c2d4e61-3a7b-4d85-a1f0-6e8b2c4d5b01
+# un scope access_as_user par agent : 5a01 à 5a05, dans l'ordre de AGENTS
+AGENTS=(orchestrateur pieces analyste redacteur actuaire)
+agent_scope() { echo "9c2d4e61-3a7b-4d85-a1f0-6e8b2c4d5a0$1"; }
 
 echo "① Redirections SPA de la page Swagger unique (S3-24)"
 redirections=("http://localhost:8000/oauth2-redirect.html")
@@ -44,12 +51,14 @@ spa=$(printf '%s\n' "${redirections[@]}" | jq -R . | jq -s .)
 
 # inscrire <nom> <id du scope> "<appId client>…" <rôle>=<id>… : crée l'inscription au besoin, puis impose
 # l'URI d'API, le scope access_as_user, les rôles, les redirections et la pré-autorisation sur ce scope
-# d'Azure CLI et des clients donnés (#47 : leur OBO se passe du consentement administrateur du tenant).
+# des SEULS clients donnés (#47 : leur OBO se passe du consentement administrateur du tenant). Azure CLI
+# ($CLI : jetons du poste et de la CI) n'est pré-autorisé que si l'appelant le passe, pas par défaut :
+# les agents ne pré-autorisent que le cluster.
 # Deux URI d'API : api://<nom> (jetons du poste et de l'E2E) et api://<appId>, que l'OBO de rag et du
 # serveur MCP demande (sans elle : AADSTS500011, ressource introuvable).
 inscrire() {
   local nom=$1 scope=$2 clients app_id objet corps
-  clients=$(printf '%s\n' "$CLI" $3 | jq -R . | jq -s .)
+  clients=$(printf '%s\n' $3 | jq -R 'select(length > 0)' | jq -s .)
   shift 3
   app_id=$(az ad app list --display-name "$nom" --query "[0].appId" -o tsv)
   [ -n "$app_id" ] || app_id=$(az ad app create --display-name "$nom" --sign-in-audience AzureADMyOrg --query appId -o tsv)
@@ -57,7 +66,7 @@ inscrire() {
   corps=$(jq -n --arg uri "api://$nom" --arg uri_id "api://$app_id" --arg scope "$scope" \
     --argjson clients "$clients" --argjson spa "$spa" \
     --arg texte "Appeler $nom au nom de l'utilisateur connecté" \
-    --argjson roles "$(printf '%s\n' "$@" | jq -R 'split("=") | {value: .[0], id: .[1], displayName: .[0],
+    --argjson roles "$(printf '%s\n' "$@" | jq -R 'select(length > 0) | split("=") | {value: .[0], id: .[1], displayName: .[0],
       description: .[0], allowedMemberTypes: ["User", "Application"], isEnabled: true}' | jq -s .)" '{
     identifierUris: [$uri, $uri_id], spa: {redirectUris: $spa}, appRoles: $roles,
     api: {requestedAccessTokenVersion: 2,
@@ -76,9 +85,9 @@ inscrire() {
 
 echo "② Inscriptions agentinsurflow-mcp, agentinsurflow-rag et agentinsurflow-underwriting (A3)"
 # Les clients OBO d'abord : une API ne pré-autorise qu'un appId déjà inscrit
-mcp=$(inscrire agentinsurflow-mcp "$MCP_SCOPE" "" "Gestionnaire=$MCP_GESTIONNAIRE")
-rag=$(inscrire agentinsurflow-rag "$RAG_SCOPE" "$mcp" "Gestionnaire=$RAG_GESTIONNAIRE" "Ingestion=$RAG_INGESTION")
-uw=$(inscrire agentinsurflow-underwriting "$UW_SCOPE" "$rag $mcp" \
+mcp=$(inscrire agentinsurflow-mcp "$MCP_SCOPE" "$CLI" "Gestionnaire=$MCP_GESTIONNAIRE")
+rag=$(inscrire agentinsurflow-rag "$RAG_SCOPE" "$CLI $mcp" "Gestionnaire=$RAG_GESTIONNAIRE" "Ingestion=$RAG_INGESTION")
+uw=$(inscrire agentinsurflow-underwriting "$UW_SCOPE" "$CLI $rag $mcp" \
   "Gestionnaire=$UW_GESTIONNAIRE" "Telemetrie=$UW_TELEMETRIE")
 
 # attribuer <appId de l'API> <id du rôle> <objet du principal> <libellé> : seulement s'il manque
@@ -192,6 +201,66 @@ fi
 # rag envoie ses traces à la gateway (/v1/traces) avec un jeton d'application : rôle Telemetrie d'underwriting-admin
 attribuer "$uw" "$UW_TELEMETRIE" "$(az ad sp show --id "$rag" --query id -o tsv)" "rag → Telemetrie (underwriting)"
 
+echo "⑧ Cluster d'agents (#7) : API agentinsurflow-cluster, cinq agents, identité managée propre fédérée sur chacun"
+# L'API du cluster pré-autorise le client de la page Swagger (rag, comme SWAGGER_CLIENT_ID) et Azure CLI
+# (jetons de l'E2E, du poste et de la CI : `az account get-access-token --resource api://agentic-cluster`,
+# comme pour les autres API) ; rôle Gestionnaire.
+cluster=$(inscrire agentinsurflow-cluster "$CLUSTER_SCOPE" "$CLI $rag" "Gestionnaire=$CLUSTER_GESTIONNAIRE")
+attribuer "$cluster" "$CLUSTER_GESTIONNAIRE" "$moi" "toi → Gestionnaire (cluster)"
+attribuer "$cluster" "$CLUSTER_GESTIONNAIRE" "$ci" "CI → Gestionnaire (cluster)"
+[ -z "${DEMO_USER_ID:-}" ] || attribuer "$cluster" "$CLUSTER_GESTIONNAIRE" "$DEMO_USER_ID" "2e gestionnaire → Gestionnaire (cluster)"
+# Chaque agent expose access_as_user, pré-autorisé pour le cluster SEUL (ni Azure CLI ni autre client ; 1er saut OBO :
+# cluster → agent ; 2e saut : agent → MCP).
+# Aucun rôle d'application, aucun rôle utilisateur ; les URI et redirections posées par `inscrire` sont inoffensives ici.
+# (tableaux indexés, pas associatifs : bash 3.2 de macOS) agent_ids[i] = appId de AGENTS[i]
+agent_ids=()
+for i in "${!AGENTS[@]}"; do
+  agent_ids+=("$(inscrire "agentinsurflow-agent-${AGENTS[$i]}" "$(agent_scope $((i + 1)))" "$cluster")")
+done
+# Le MCP pré-autorise les cinq agents (2e saut sans consentement administrateur) : on relance son inscription, les
+# agents n'existaient pas en ②. Les clients rag et underwriting-admin ne dépendent pas de cette liste.
+mcp=$(inscrire agentinsurflow-mcp "$MCP_SCOPE" "$CLI ${agent_ids[*]}" "Gestionnaire=$MCP_GESTIONNAIRE")
+# Permission déléguée de chaque agent vers le MCP (même mécanique que mcp → rag en ⑥)
+for agent in "${agent_ids[@]}"; do
+  objet=$(az ad app show --id "$agent" --query id -o tsv)
+  acces=$(az ad app show --id "$agent" --query "requiredResourceAccess" -o json |
+    jq -c --arg mcp "$mcp" --arg scope "$MCP_SCOPE" \
+      'map(select(.resourceAppId != $mcp)) + [{resourceAppId: $mcp, resourceAccess: [{id: $scope, type: "Scope"}]}]')
+  az rest --method PATCH --uri "$GRAPH/applications/$objet" --headers content-type=application/json \
+    --body "{\"requiredResourceAccess\": $acces}" -o none
+done
+# Le cluster demande access_as_user de chaque agent (1er saut) ; remplace ces entrées, relancer ne les duplique pas
+objet=$(az ad app show --id "$cluster" --query id -o tsv)
+acces=$(az ad app show --id "$cluster" --query "requiredResourceAccess" -o json)
+for i in "${!AGENTS[@]}"; do
+  acces=$(jq -c --arg agent "${agent_ids[$i]}" --arg scope "$(agent_scope $((i + 1)))" \
+    'map(select(.resourceAppId != $agent)) + [{resourceAppId: $agent, resourceAccess: [{id: $scope, type: "Scope"}]}]' <<<"$acces")
+done
+az rest --method PATCH --uri "$GRAPH/applications/$objet" --headers content-type=application/json \
+  --body "{\"requiredResourceAccess\": $acces}" -o none
+# Traces (R19) : comme le serveur MCP (⑥), le cluster exporte par la gateway (/v1/traces) avec un jeton d'application
+# de son inscription : rôle Telemetrie d'underwriting-admin
+attribuer "$uw" "$UW_TELEMETRIE" "$(az ad sp show --id "$cluster" --query id -o tsv)" "cluster → Telemetrie (underwriting)"
+# Identité managée PROPRE au cluster : elle sert d'assertion fédérée à l'application du cluster ET aux cinq agents
+UAMI_CLUSTER=uami-insurflow-cluster
+az identity show -n "$UAMI_CLUSTER" -g "$AZURE_RESOURCE_GROUP" -o none 2>/dev/null ||
+  az identity create -n "$UAMI_CLUSTER" -g "$AZURE_RESOURCE_GROUP" -o none
+uami_cluster_id=$(az identity show -n "$UAMI_CLUSTER" -g "$AZURE_RESOURCE_GROUP" --query id -o tsv)
+uami_cluster_client=$(az identity show -n "$UAMI_CLUSTER" -g "$AZURE_RESOURCE_GROUP" --query clientId -o tsv)
+uami_cluster_principal=$(az identity show -n "$UAMI_CLUSTER" -g "$AZURE_RESOURCE_GROUP" --query principalId -o tsv)
+for app in "$CLUSTER_APP_STAGING" "$CLUSTER_APP_PRODUCTION"; do
+  az containerapp identity assign -n "$app" -g "$AZURE_RESOURCE_GROUP" --user-assigned "$uami_cluster_id" -o none
+done
+for cible in "$cluster" "${agent_ids[@]}"; do
+  sujet=$(az ad app federated-credential list --id "$cible" --query "[?name=='uami-cluster'].subject | [0]" -o tsv)
+  if [ "$sujet" != "$uami_cluster_principal" ]; then
+    [ -z "$sujet" ] || az ad app federated-credential delete --id "$cible" --federated-credential-id uami-cluster
+    az ad app federated-credential create --id "$cible" -o none --parameters "{
+      \"name\": \"uami-cluster\", \"issuer\": \"https://login.microsoftonline.com/$(az account show --query tenantId -o tsv)/v2.0\",
+      \"subject\": \"$uami_cluster_principal\", \"audiences\": [\"api://AzureADTokenExchange\"]}"
+  fi
+done
+
 echo "✔ Variables GitHub du repo à poser :"
 echo "   RAG_API_CLIENT_ID=$rag"
 echo "   UNDERWRITING_API_CLIENT_ID=$uw"
@@ -199,3 +268,11 @@ echo "   MCP_API_CLIENT_ID=$mcp"
 echo "   AZURE_UAMI_CLIENT_ID=$uami_client   (gateway seule depuis #70 ; Easy Auth de la Function : make calcul)"
 echo "   AZURE_UAMI_RAG_CLIENT_ID=$uami_rag_client   (rag seul)"
 echo "   AZURE_UAMI_MCP_CLIENT_ID=$uami_mcp_client   (serveur MCP seul)"
+echo "   INSURFLOW_CLUSTER_CLIENT_ID=$cluster   (cluster : audience de l'API et 1er saut OBO)"
+echo "   AZURE_UAMI_CLUSTER_CLIENT_ID=$uami_cluster_client   (cluster seul)"
+for i in "${!AGENTS[@]}"; do
+  A=$(echo "${AGENTS[$i]}" | tr '[:lower:]' '[:upper:]')
+  echo "   INSURFLOW_AGENT_${A}_CLIENT_ID=${agent_ids[$i]}"
+  echo "   MCP_AZP_${A}=${agent_ids[$i]}   (azp du jeton final : matrice d'accès du serveur MCP)"
+done
+echo "   Ensuite : make llm (rôle LLM des cinq agents), puis make annexe (secret du point de reprise du cluster)."

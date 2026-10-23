@@ -21,6 +21,9 @@ properties:
           - { name: Entra__Audiences__underwriting__1, value: "${UNDERWRITING_API_CLIENT_ID}" }
           - { name: Entra__Audiences__mcp__0, value: api://agentinsurflow-mcp }
           - { name: Entra__Audiences__mcp__1, value: "${MCP_API_CLIENT_ID}" }
+          - { name: Entra__McpClientId, value: "${MCP_API_CLIENT_ID}" } # azp des jetons OBO du MCP : seul appelant de PUT …/etat
+          - { name: Entra__Audiences__cluster__0, value: api://agentic-cluster }
+          - { name: Entra__Audiences__cluster__1, value: "${INSURFLOW_CLUSTER_CLIENT_ID}" }
           - { name: Entra__Audiences__calcul__0, value: "${CALCUL_AUDIENCE}" }
           - { name: Entra__Audiences__calcul__1, value: "${CALCUL_API_CLIENT_ID}" }
           # LLM par la gateway (#70) : rôle LLM + audience api://<appId llm> (__0) et GUID (__1, jetons v2)
@@ -33,10 +36,12 @@ properties:
           # échange de jeton vers la Function : identité managée partagée (Easy Auth n'accepte que son client id)
           - { name: Calcul__Portee, value: "${CALCUL_AUDIENCE}/.default" }
           - { name: Calcul__IdentiteClientId, value: "${AZURE_UAMI_CLIENT_ID}" }
-          # rag, underwriting-admin et serveur MCP : Container Apps internes du même environnement (FQDN lus par deploy.yml)
+          # rag, underwriting-admin, serveur MCP et cluster d'agents : Container Apps internes du même environnement (FQDN lus par deploy.yml)
           - { name: ReverseProxy__Clusters__underwriting__Destinations__d1__Address, value: "https://${UNDERWRITING_APP_FQDN}" }
           - { name: ReverseProxy__Clusters__rag__Destinations__d1__Address, value: "https://${RAG_APP_FQDN}" }
           - { name: ReverseProxy__Clusters__mcp__Destinations__d1__Address, value: "https://${MCP_APP_FQDN}" }
+          # cluster d'agents (#7) : relais du jeton du gestionnaire, qu'il revalide (R18)
+          - { name: ReverseProxy__Clusters__cluster__Destinations__d1__Address, value: "https://${CLUSTER_APP_FQDN}" }
           # ponytail: la page Swagger se connecte avec l'inscription de rag (A3 : pas d'inscription gateway)
           - { name: SWAGGER_CLIENT_ID, value: "${RAG_API_CLIENT_ID}" }
           # traces : récepteur OTLP d'underwriting-admin (adresse interne), jeton d'application de la gateway (rôle Telemetrie)

@@ -6,7 +6,7 @@ Serveur MCP (Python, architecture hexagonale) qui donne au cluster d'agents un a
 
 ```mermaid
 flowchart LR
-    CL["Cluster d'agents<br/>(orchestrateur, Rédacteur, Actuaire)"] -->|"POST/GET /mcp<br/>jeton OBO (azp = agent)"| GW["Gateway YARP"]
+    CL["Cluster d'agents<br/>(orchestrateur, Pièces, Analyste, Rédacteur, Actuaire)"] -->|"POST/GET /mcp<br/>jeton OBO (azp = agent)"| GW["Gateway YARP"]
     GW -->|"rôle + audience + débit<br/>sans tampon (SSE)"| MCP["Serveur MCP (Python)"]
     MCP -->|"OBO → rag<br/>/api/extraits"| GW
     MCP -->|"OBO → underwriting<br/>/api/contrats, écritures"| GW
@@ -16,7 +16,7 @@ flowchart LR
     MCP -->|"/api/calcul<br/>(jeton d'application, rôle Calcul)"| GW
 ```
 
-**Texte alternatif du diagramme.** Le cluster d'agents (orchestrateur, Rédacteur, Actuaire) envoie ses requêtes `POST` ou `GET` sur `/mcp` à la gateway, avec un jeton dont l'`azp` est celui de l'agent. La gateway contrôle le rôle, l'audience et le débit, puis transmet sans tampon (SSE) au serveur MCP. Le serveur MCP appelle `rag` (`/api/extraits`) et `underwriting-admin` (`/api/contrats` et les écritures) **en repassant par la gateway**, avec un jeton obtenu en On-Behalf-Of. En Azure, il exporte ses traces en OTLP par la gateway (`/v1/traces`, jeton d'application, rôle `Telemetrie` ; en local, export direct vers underwriting-admin) et appelle la Function de calcul par la gateway (`/api/calcul`, rôle `Calcul`) : aucun appel direct.
+**Texte alternatif du diagramme.** Le cluster d'agents (orchestrateur, Pièces, Analyste, Rédacteur, Actuaire) envoie ses requêtes `POST` ou `GET` sur `/mcp` à la gateway, avec un jeton dont l'`azp` est celui de l'agent. La gateway contrôle le rôle, l'audience et le débit, puis transmet sans tampon (SSE) au serveur MCP. Le serveur MCP appelle `rag` (`/api/extraits`) et `underwriting-admin` (`/api/contrats` et les écritures) **en repassant par la gateway**, avec un jeton obtenu en On-Behalf-Of. En Azure, il exporte ses traces en OTLP par la gateway (`/v1/traces`, jeton d'application, rôle `Telemetrie` ; en local, export direct vers underwriting-admin) et appelle la Function de calcul par la gateway (`/api/calcul`, rôle `Calcul`) : aucun appel direct.
 
 ### 1.1 Organisation du code
 
@@ -39,6 +39,8 @@ Les outils sont déclarés avec le SDK MCP officiel ; la docstring de chacun est
 | `get_contrat` | `numero_contrat` | Contrat : profil du conducteur, historique, formule (`GET /api/contrats/{numero}`) | Lecture |
 | `enregistrer_brouillon` | `numero_contrat`, `fiche` (`decision`, `contrat_type`, `score`, `version_bareme`, `regle_ids`, `motifs`, `citations`), `prime` facultative (`prime_ttc`, `periodicite`, `date_effet` AAAA-MM-JJ) | `{"ecrit": true}` | Écriture, brouillon seulement, idempotente |
 | `update_statut_dossier` | `numero_contrat`, `statut` (ex. `REVUE_HUMAINE`, `ACCEPTE`, `REFUSE`), `validation` (`VALIDEE` ou `CORRIGEE`, exigée avec `ACCEPTE` et `REFUSE`) | `{"ecrit": true}` | Écriture, seul outil qui écrit une décision |
+| `lister_pieces` | `numero_contrat` | `{"pieces": [{"type", "date_emission"}]}` | Lecture : métadonnées seulement, sans contenu de pièce |
+| `enregistrer_etat` | `numero_contrat`, `etat` (`statut_parcours`, `tentative`, `sections`, `rapports`, `tours`) | `{"ecrit": true}` | Écriture de l'état du parcours ; `ARGUMENTS_INVALIDES` si le backend refuse (ex. section inconnue) |
 | `evaluer_risque` | faits du contrat | Score, classe et règles déclenchées, versions du barème | Calcul (Function de calcul, par la gateway : `POST /api/calcul/evaluer`) |
 | `calculer_prime` | faits du contrat et de la formule | Prime détaillée, version de la formule | Calcul (Function de calcul, par la gateway : `POST /api/calcul/calculer`) |
 
@@ -50,7 +52,7 @@ Les deux outils appellent la Function de calcul **par la gateway** (`${GATEWAY_U
 |---|---|---|
 | `UNAUTHORIZED_TOOL` | Outil hors matrice pour l'`azp` du jeton (refus avant tout appel de backend) | tous |
 | `NOT_FOUND_IN_CORPUS` | Aucun extrait ne passe la porte de pertinence de rag | `search_rag` |
-| `CONTRAT_INTROUVABLE` | 404 d'underwriting-admin : contrat absent **ou** hors portefeuille (indiscernables) | `get_contrat`, `enregistrer_brouillon`, `update_statut_dossier` |
+| `CONTRAT_INTROUVABLE` | 404 d'underwriting-admin : contrat absent **ou** hors portefeuille (indiscernables) | `get_contrat`, `enregistrer_brouillon`, `update_statut_dossier`, `lister_pieces`, `enregistrer_etat` |
 | `DOSSIERS_INDISPONIBLES` | OBO refusé, backend en panne ou réponse inattendue | tous |
 | `CALCUL_INDISPONIBLE` | Function de calcul injoignable, jeton refusé ou requête malformée | `evaluer_risque`, `calculer_prime` |
 | `DONNEE_HORS_BAREME` | Donnée absente ou inconnue du barème (422) | `evaluer_risque`, `calculer_prime` |
@@ -62,7 +64,9 @@ Les erreurs de protocole restent des erreurs HTTP ou JSON-RPC : 401 `JETON_ABSEN
 
 | Appelant (`azp` de la variable) | Variable | Outils autorisés |
 |---|---|---|
-| Orchestrateur | `MCP_AZP_ORCHESTRATEUR` | `get_contrat`, `evaluer_risque`, `enregistrer_brouillon`, `update_statut_dossier` |
+| Orchestrateur | `MCP_AZP_ORCHESTRATEUR` | `get_contrat`, `enregistrer_brouillon`, `update_statut_dossier`, `enregistrer_etat` |
+| Agent Pièces | `MCP_AZP_PIECES` | `lister_pieces` |
+| Agent Analyste | `MCP_AZP_ANALYSTE` | `evaluer_risque` |
 | Agent Rédacteur | `MCP_AZP_REDACTEUR` | `search_rag` |
 | Agent Actuaire | `MCP_AZP_ACTUAIRE` | `calculer_prime` |
 | `azp` inconnu ou variable vide | — | aucun |
@@ -91,9 +95,9 @@ Export OTLP/HTTP (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) : en local, **direct** v
 | `mcp.outil` | `mcp.outil`, `appelant.azp`, `autorisation.decision` (allow/deny), `autorisation.regle`, `resultat.code`, `isError` |
 | `obo.echanger` | réussite ou échec, cible (rag, underwriting) |
 | Appel gateway | route (gabarit), statut HTTP |
-| Écritures | `statut.cible`, `contrat.present` |
+| Écritures | `statut.cible`, `contrat.present`, `etat.present` (présence seulement) |
 
-**Jamais tracé** (vérifié par les tests) : jeton, `numero_contrat`, identité du gestionnaire, texte de la question (seulement `question.sha256` et `question.longueur`), contenu de contrat, de fiche ou de prime, message d'une exception.
+**Jamais tracé** (vérifié par les tests) : jeton, `numero_contrat`, identité du gestionnaire, texte de la question (seulement `question.sha256` et `question.longueur`), contenu de contrat (observations comprises), de fiche, de prime ou d'état de parcours, message d'une exception.
 
 **Limite connue** : les spans HTTP de la gateway et d'underwriting-admin (instrumentation ASP.NET Core) contiennent `url.path`, donc le `numero_contrat` des routes `/api/contrats/{numero_contrat}…` ; antérieur au serveur MCP, à traiter dans une issue dédiée.
 
@@ -108,7 +112,7 @@ Aucune valeur dans le dépôt : clés dans `.env.example`, déploiement dans `do
 | `AZURE_TENANT_ID` | Tenant Entra | `.env` | variable GitHub |
 | `MCP_API_CLIENT_ID` | ID client de `agentinsurflow-mcp` | `.env` | variable GitHub |
 | `MCP_API_AUDIENCES` | Audiences acceptées, « a, b » (même liste que la gateway) | défaut `api://agentinsurflow-mcp` | `api://agentinsurflow-mcp,<ID client>` |
-| `MCP_AZP_ORCHESTRATEUR`, `MCP_AZP_REDACTEUR`, `MCP_AZP_ACTUAIRE` | `azp` des agents (matrice) | `.env` | variables GitHub (inscriptions de #7) |
+| `MCP_AZP_ORCHESTRATEUR`, `MCP_AZP_PIECES`, `MCP_AZP_ANALYSTE`, `MCP_AZP_REDACTEUR`, `MCP_AZP_ACTUAIRE` | `azp` des agents (matrice) | `.env` | variables GitHub (inscriptions de #7) |
 | `RAG_API_CLIENT_ID`, `UNDERWRITING_API_CLIENT_ID` | Cibles de l'OBO | `.env` | variables GitHub |
 | `GATEWAY_URL` | Adresse par laquelle rag et underwriting sont joints | `http://gateway:8000` | `http://localhost:8000` |
 | `MCP_CLIENT_SECRET` | Secret de l'OBO, **local seulement** | `.env` | jamais |

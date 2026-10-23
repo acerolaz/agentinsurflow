@@ -1,0 +1,32 @@
+[project]
+name = "agentinsurflow-cluster"
+version = "0.1.0"
+description = "AgentInsurFlow — cluster agentique : orchestrateur et agents (domaine pur, ports, adapters)."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "langchain-openai==1.7.2",
+    "langchain==1.4.7",
+    "langchain-core==1.7.0",
+    "mcp==1.30.0",
+    "azure-identity>=1.17",
+    "pydantic-settings>=2.4",
+    "httpx>=0.28",
+    "llm-guard==0.3.16",
+    "torch==2.14.1",  # build CPU (index pytorch-cpu du pyproject racine) : même version que le lock
+    "langgraph==1.2.16",
+    "langgraph-checkpoint-postgres==3.2.0",
+    "psycopg[binary]==3.3.6",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pyjwt[crypto]>=2.9",
+    "opentelemetry-sdk>=1.27",
+    "opentelemetry-exporter-otlp-proto-http>=1.27",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agentinsurflow_cluster"]

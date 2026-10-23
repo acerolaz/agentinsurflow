@@ -19,6 +19,8 @@ CLIENT_RAG = "11111111-1111-1111-1111-111111111111"
 AZP_ORCHESTRATEUR = "aaaaaaaa-0000-0000-0000-000000000001"
 AZP_REDACTEUR = "aaaaaaaa-0000-0000-0000-000000000002"
 AZP_ACTUAIRE = "aaaaaaaa-0000-0000-0000-000000000003"
+AZP_PIECES = "aaaaaaaa-0000-0000-0000-000000000004"
+AZP_ANALYSTE = "aaaaaaaa-0000-0000-0000-000000000005"
 EMETTEUR_V2 = f"https://login.microsoftonline.com/{TENANT}/v2.0"
 EMETTEUR_V1 = f"https://sts.windows.net/{TENANT}/"
 
@@ -62,4 +64,6 @@ def config_auth() -> ConfigAuth:
         mcp_azp_orchestrateur=AZP_ORCHESTRATEUR,
         mcp_azp_redacteur=AZP_REDACTEUR,
         mcp_azp_actuaire=AZP_ACTUAIRE,
+        mcp_azp_pieces=AZP_PIECES,
+        mcp_azp_analyste=AZP_ANALYSTE,
     )

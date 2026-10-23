@@ -18,6 +18,9 @@ public sealed class CasDUsageTests
                 lignes.Where(l => l.Gestionnaire == gestionnaireId).Select(l => l.Vue).ToList());
         }
 
+        public Task<IReadOnlyList<PieceDeclaree>?> ListerPieces(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
+            throw new NotSupportedException();
+
         public Task<VueContrat?> Trouver(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
             Task.FromResult(lignes.Where(l => l.Gestionnaire == gestionnaireId && l.Vue.NumeroContrat == numeroContrat)
                 .Select(l => l.Vue).FirstOrDefault());
@@ -25,7 +28,7 @@ public sealed class CasDUsageTests
 
     private static VueContrat Vue(string numero) =>
         new(numero, "25-39", 4, "75", 0.9, 1, 0, 0, "tous_risques", DateTimeOffset.UnixEpoch,
-            new DateOnly(2026, 1, 1), 91, 5, "prive", 0, 0, true);
+            new DateOnly(2026, 1, 1), 91, 5, "prive", 0, 0, true, null);
 
     [Fact]
     public async Task ConsulterContrat_d_un_autre_gestionnaire_rend_null()

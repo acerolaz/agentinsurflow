@@ -82,3 +82,22 @@ async def calculer_prime(
 ) -> dict[str, Any]:
     contrat = await get_contrat(appelant, jetons, dossiers, numero_contrat)
     return await calculateur.calculer(faits_prime(contrat))
+
+
+async def lister_pieces(
+    appelant: Appelant, jetons: JetonsPort, dossiers: DossiersPort, numero_contrat: str
+) -> dict[str, Any]:
+    jeton = await jetons.obo(appelant, "underwriting")
+    return {"pieces": await dossiers.lister_pieces(jeton, numero_contrat)}
+
+
+async def enregistrer_etat(
+    appelant: Appelant,
+    jetons: JetonsPort,
+    dossiers: DossiersPort,
+    numero_contrat: str,
+    etat: dict[str, Any],
+) -> dict[str, Any]:
+    jeton = await jetons.obo(appelant, "underwriting")
+    await dossiers.enregistrer_etat(jeton, numero_contrat, etat)
+    return {"ecrit": True}

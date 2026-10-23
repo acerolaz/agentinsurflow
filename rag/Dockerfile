@@ -10,6 +10,7 @@ COPY pyproject.toml uv.lock ./
 COPY rag/pyproject.toml rag/
 COPY serveur-mcp/pyproject.toml serveur-mcp/
 COPY fonction-calcul/pyproject.toml fonction-calcul/
+COPY agentic-cluster/pyproject.toml agentic-cluster/
 RUN uv sync --locked --no-dev --package agentinsurflow-rag --no-install-workspace
 COPY rag/agentinsurflow_rag rag/agentinsurflow_rag
 COPY rag/llm.env rag/alembic.ini rag/demarrer.sh rag/

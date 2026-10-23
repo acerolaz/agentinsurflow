@@ -9,6 +9,7 @@ import pytest
 from fakes_mcp import VUE_SEED_1, FauxCalculateur, FauxCorpus, FauxDossiers, FauxJetons
 from jetons_mcp_de_test import (
     AZP_ACTUAIRE,
+    AZP_ANALYSTE,
     AZP_ORCHESTRATEUR,
     AZP_REDACTEUR,
     config_auth,
@@ -31,9 +32,9 @@ def _app(calc: FauxCalculateur, dossiers: FauxDossiers | None = None) -> Any:
     return application
 
 
-async def test_orchestrateur_evalue_le_risque() -> None:
+async def test_analyste_evalue_le_risque() -> None:
     calc = FauxCalculateur()
-    async with session_mcp(_app(calc), creer(AZP_ORCHESTRATEUR)) as s:
+    async with session_mcp(_app(calc), creer(AZP_ANALYSTE)) as s:
         r = await s.call_tool("evaluer_risque", {"numero_contrat": "AIF-2026-000001"})
     assert r.isError is False
     assert r.structuredContent == {"classe": "A", "decision": "ACCEPTE", "score": 0, "regles": []}
@@ -51,6 +52,7 @@ async def test_actuaire_calcule_la_prime() -> None:
     ("azp", "outil"),
     [
         (AZP_ORCHESTRATEUR, "calculer_prime"),
+        (AZP_ORCHESTRATEUR, "evaluer_risque"),
         (AZP_ACTUAIRE, "evaluer_risque"),
         (AZP_REDACTEUR, "evaluer_risque"),
         (AZP_REDACTEUR, "calculer_prime"),
@@ -71,7 +73,7 @@ async def test_actuaire_ne_voit_que_calculer_prime() -> None:
 
 @pytest.mark.parametrize(
     ("azp", "outil"),
-    [(AZP_ORCHESTRATEUR, "evaluer_risque"), (AZP_ACTUAIRE, "calculer_prime")],
+    [(AZP_ANALYSTE, "evaluer_risque"), (AZP_ACTUAIRE, "calculer_prime")],
 )
 @pytest.mark.parametrize("code", ["DONNEE_HORS_BAREME", "CALCUL_INDISPONIBLE"])
 async def test_erreur_du_calcul_is_error_avec_code(azp: str, outil: str, code: str) -> None:
@@ -83,7 +85,7 @@ async def test_erreur_du_calcul_is_error_avec_code(azp: str, outil: str, code: s
 
 @pytest.mark.parametrize(
     ("azp", "outil"),
-    [(AZP_ORCHESTRATEUR, "evaluer_risque"), (AZP_ACTUAIRE, "calculer_prime")],
+    [(AZP_ANALYSTE, "evaluer_risque"), (AZP_ACTUAIRE, "calculer_prime")],
 )
 async def test_contrat_introuvable_is_error_avec_code(azp: str, outil: str) -> None:
     app = _app(FauxCalculateur(), FauxDossiers(ErreurOutil("CONTRAT_INTROUVABLE", "x")))
@@ -93,7 +95,7 @@ async def test_contrat_introuvable_is_error_avec_code(azp: str, outil: str) -> N
 
 
 async def test_docstrings_citent_les_erreurs() -> None:
-    async with session_mcp(_app(FauxCalculateur()), creer(AZP_ORCHESTRATEUR)) as s:
+    async with session_mcp(_app(FauxCalculateur()), creer(AZP_ANALYSTE)) as s:
         evaluer = next(t for t in (await s.list_tools()).tools if t.name == "evaluer_risque")
     async with session_mcp(_app(FauxCalculateur()), creer(AZP_ACTUAIRE)) as s:
         prime = (await s.list_tools()).tools[0]

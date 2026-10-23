@@ -10,6 +10,7 @@ dependencies = [
     "azure-identity>=1.17",
     "pydantic-settings>=2.4",
     "httpx>=0.28",
+    "llm-guard==0.3.16",
 ]
 
 [build-system]

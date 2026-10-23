@@ -7,6 +7,9 @@ dependencies = ["agentinsurflow-rag", "agentinsurflow-mcp", "agentinsurflow-calc
 
 [tool.uv]
 package = false # racine de l'espace de travail : outillage commun (tools/, e2e/), pas de paquet
+# llm-guard 0.3.16 épingle presidio 2.2.358 et regex 2024.11.6 (et fait rétrograder cryptography) :
+# décision d'Acerola du 23/10, aucune rétrogradation, on force les versions du lock actuel.
+override-dependencies = ["cryptography==50.0.2", "regex==2026.9.29"]
 
 [tool.uv.workspace]
 members = ["rag", "serveur-mcp", "fonction-calcul", "agentic-cluster"]
@@ -31,7 +34,8 @@ dev = [
 # tests/ : outillage de la racine (tools/) ; rag/tests : le service rag (unit = TU, integration = TI)
 testpaths = ["tests", "rag/tests", "serveur-mcp/tests", "fonction-calcul/tests", "agentic-cluster/tests"]
 pythonpath = [".", "fonction-calcul", "rag/tests", "serveur-mcp/tests", "fonction-calcul/tests"]
-addopts = "--cov=agentinsurflow_rag --cov=agentinsurflow_mcp --cov=agentinsurflow_calcul --cov=agentinsurflow_cluster --cov=function_app --cov-report=term-missing"
+addopts = "-m 'not lent' --cov=agentinsurflow_rag --cov=agentinsurflow_mcp --cov=agentinsurflow_calcul --cov=agentinsurflow_cluster --cov=function_app --cov-report=term-missing"
+markers = ["lent: TI qui charge de vrais modèles (LLM Guard, Hugging Face) ; exclu par défaut, lancer avec -m lent"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
@@ -64,3 +68,7 @@ known-first-party = [
 [tool.mypy]
 python_version = "3.12"
 strict = true
+
+[[tool.mypy.overrides]]
+module = ["llm_guard.*"]  # LLM Guard n'est pas typé (pas de py.typed)
+ignore_missing_imports = true

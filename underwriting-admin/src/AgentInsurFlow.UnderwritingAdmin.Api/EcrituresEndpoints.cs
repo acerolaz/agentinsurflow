@@ -68,7 +68,7 @@ internal sealed record StatutCorps(string? Statut, string? Validation);
 /// <summary>Corps de <c>PUT …/observations</c>.</summary>
 internal sealed record ObservationsCorps(string? Observations);
 
-/// <summary>Corps de <c>PUT …/etat</c> : l'état tel que le fusionne l'orchestrateur ; les contenus restent des documents JSON.</summary>
+/// <summary>Corps de <c>PUT …/etat</c> : l'état tel que le fusionne la Saga ; les contenus restent des documents JSON.</summary>
 internal sealed record EtatCorps(
     [property: JsonPropertyName("statut_parcours")] string? StatutParcours,
     int Tentative,

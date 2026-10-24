@@ -33,7 +33,7 @@ def _app(dossiers: FauxDossiers) -> Any:
     return application
 
 
-async def test_orchestrateur_enregistre_un_brouillon() -> None:
+async def test_saga_enregistre_un_brouillon() -> None:
     dossiers = FauxDossiers()
     args = {
         "numero_contrat": "AIF/1",
@@ -47,7 +47,7 @@ async def test_orchestrateur_enregistre_un_brouillon() -> None:
     assert dossiers.ecritures[0][3]["fiche"] == FICHE
 
 
-async def test_orchestrateur_change_le_statut() -> None:
+async def test_saga_change_le_statut() -> None:
     dossiers = FauxDossiers()
     args = {"numero_contrat": "AIF/1", "statut": "REVUE_HUMAINE"}
     async with session_mcp(_app(dossiers), creer(AZP_ORCHESTRATEUR)) as s:

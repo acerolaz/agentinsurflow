@@ -26,7 +26,7 @@ from agentinsurflow_cluster.domain.models import (
 from agentinsurflow_cluster.domain.plan import Appel, precondition, prochaine_etape
 from agentinsurflow_cluster.domain.specs import SPECS
 
-ORCHESTRATEUR: Literal["orchestrateur"] = "orchestrateur"
+SAGA: Literal["saga"] = "saga"
 SEUIL_BUDGET_S = 0.3  # en deçà, aucun agent n'a le temps de répondre : revue humaine (« duree »)
 MESSAGE_REVUE_HUMAINE = "Ce dossier nécessite une revue humaine."
 MESSAGE_INDISPONIBLE = "Service temporairement indisponible"  # K5 : cause « llm_ko »
@@ -69,10 +69,8 @@ class Revue:
 
 
 async def charger(numero: str, jeton: str, deps: Dependances, tentative: int = 1) -> EtatDossier:
-    """``get_contrat`` (orchestrateur) puis garde d'entrée sur les observations."""
-    contrat = await deps.outils.appeler(
-        ORCHESTRATEUR, jeton, "get_contrat", {"numero_contrat": numero}
-    )
+    """``get_contrat`` (Saga) puis garde d'entrée sur les observations."""
+    contrat = await deps.outils.appeler(SAGA, jeton, "get_contrat", {"numero_contrat": numero})
     observations = contrat.get("observations") or None
     dossier = {k: v for k, v in contrat.items() if k != "observations"}
     bloquee = None
@@ -84,7 +82,7 @@ async def charger(numero: str, jeton: str, deps: Dependances, tentative: int = 1
         # le score du modèle est journalisé (score seul) : il ne bloque jamais
         mode: Literal["llm", "repli"] = "repli" if codes else "llm"
         await deps.audit.tracer(
-            numero, Rapport(ORCHESTRATEUR, {}, mode, bloquee, ""), codes, 0, "", signal,
+            numero, Rapport(SAGA, {}, mode, bloquee, ""), codes, 0, "", signal,
             empreinte_texte(observations),
         )  # fmt: skip
     return EtatDossier(
@@ -115,7 +113,7 @@ async def _enregistrer_etat(
     etat: EtatDossier, statut_parcours: str, jeton: str, deps: Dependances
 ) -> None:
     await deps.outils.appeler(
-        ORCHESTRATEUR,
+        SAGA,
         jeton,
         "enregistrer_etat",
         {"numero_contrat": etat.numero_contrat, "etat": _etat_a_enregistrer(etat, statut_parcours)},
@@ -221,10 +219,10 @@ async def proposer(etat: EtatDossier, jeton: str, deps: Dependances) -> EtatDoss
             "periodicite": "annuelle",
             "date_effet": (etat.dossier or {})["date_effet"],
         }
-    await deps.outils.appeler(ORCHESTRATEUR, jeton, "enregistrer_brouillon", brouillon)
+    await deps.outils.appeler(SAGA, jeton, "enregistrer_brouillon", brouillon)
     await _enregistrer_etat(etat, statut, jeton, deps)
     await deps.outils.appeler(
-        ORCHESTRATEUR,
+        SAGA,
         jeton,
         "update_statut_dossier",
         {"numero_contrat": etat.numero_contrat, "statut": statut},
@@ -246,7 +244,7 @@ async def enregistrer_revue(
     )
     await _enregistrer_etat(etat, revue.decision, jeton, deps)
     await deps.outils.appeler(
-        ORCHESTRATEUR,
+        SAGA,
         jeton,
         "update_statut_dossier",
         {

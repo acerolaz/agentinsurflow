@@ -3,7 +3,7 @@
 # Lancé À LA MAIN par Acerola, jamais par un agent ni par la CI. Prérequis : az login, `make entra` déjà passé
 # (inscription agentinsurflow-rag, identité managée uami-insurflow-rag), droit de créer des inscriptions d'application
 # ET d'attribuer/retirer des rôles Azure sur la ressource Foundry (Owner ou User Access Administrator).
-# Fait : inscription Entra agentinsurflow-llm (audience de la route /api/llm, rôle d'application LLM attribué à rag et aux quatre sous-agents du cluster, RETIRÉ de l'orchestrateur) ;
+# Fait : inscription Entra agentinsurflow-llm (audience de la route /api/llm, rôle d'application LLM attribué à rag et aux quatre sous-agents du cluster, RETIRÉ de la Saga) ;
 # inscription agentinsurflow-gateway-local (secret client pour le .env, affiché une seule fois) ; Foundry sans clé
 # (disableLocalAuth) ; rôle « Cognitive Services OpenAI User » réservé à l'identité managée de la gateway et à
 # agentinsurflow-gateway-local, RETIRÉ de toute autre identité, ainsi que les rôles qui ouvrent aussi l'inférence ou
@@ -66,7 +66,7 @@ for agent in pieces analyste redacteur actuaire; do
       --body "{\"principalId\":\"$sp_agent\",\"resourceId\":\"$sp_llm\",\"appRoleId\":\"$LLM_ROLE\"}"
   fi
 done
-# L'orchestrateur est un automate déterministe (plan de référence, domain/plan.py) : jamais de LLM. Son rôle LLM,
+# La Saga est un automate déterministe (plan de référence, domain/plan.py) : jamais de LLM. Son rôle LLM,
 # attribué par une version antérieure de ce script, est retiré (moindre privilège : la gateway le refuse en 403).
 orch=$(az ad app list --display-name agentinsurflow-agent-orchestrateur --query "[0].appId" -o tsv)
 if [ -n "$orch" ]; then
@@ -74,7 +74,7 @@ if [ -n "$orch" ]; then
   for id in $(az rest --uri "$GRAPH/servicePrincipals/$sp_llm/appRoleAssignedTo" \
     --query "value[?principalId=='$sp_orch' && appRoleId=='$LLM_ROLE'].id" -o tsv); do
     az rest --method DELETE --uri "$GRAPH/servicePrincipals/$sp_llm/appRoleAssignedTo/$id" -o none
-    echo "   rôle LLM retiré de l'orchestrateur"
+    echo "   rôle LLM retiré de la Saga"
   done
 fi
 

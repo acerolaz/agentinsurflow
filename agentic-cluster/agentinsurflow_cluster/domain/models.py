@@ -9,7 +9,7 @@ Section = Literal[
     "dossier", "pieces", "risque", "sources", "fiche", "prime", "validation", "pilotage"
 ]
 NomAgent = Literal["pieces", "analyste", "redacteur", "actuaire"]
-Emetteur = NomAgent | Literal["orchestrateur"]
+Emetteur = NomAgent | Literal["saga"]
 
 
 @dataclass(frozen=True)

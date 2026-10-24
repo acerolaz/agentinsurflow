@@ -9,7 +9,7 @@ from typing import Any, Literal, Protocol
 
 from agentinsurflow_cluster.domain.models import NomAgent, Rapport
 
-AgentOuOrchestrateur = NomAgent | Literal["orchestrateur"]
+AgentOuSaga = NomAgent | Literal["saga"]
 
 
 class ErreurOutil(Exception):
@@ -24,7 +24,7 @@ class ErreurOutil(Exception):
 class OutilsPort(Protocol):
     async def appeler(
         self,
-        agent: AgentOuOrchestrateur,
+        agent: AgentOuSaga,
         jeton_gestionnaire: str,
         outil: str,
         arguments: dict[str, Any],

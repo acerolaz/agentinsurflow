@@ -259,8 +259,12 @@ await app.RunAsync();
 static IResult Probleme(int statut, string titre, string code) =>
     Results.Problem(statusCode: statut, title: titre, extensions: new Dictionary<string, object?> { ["code"] = code });
 
+// Utilisateur et application cliente : les agents du cluster appellent en OBO pour le même gestionnaire (même oid),
+// chacun avec son azp ; sans azp dans la clé, une évaluation épuiserait la fenêtre du gestionnaire.
 static string Partition(HttpContext ctx) =>
-    ctx.User.FindFirst("oid")?.Value is { } oid ? $"oid:{oid}" : $"ip:{ctx.Connection.RemoteIpAddress}";
+    ctx.User.FindFirst("oid")?.Value is { } oid
+        ? AzpOuAppid(ctx) is { } app ? $"oid:{oid}|azp:{app}" : $"oid:{oid}"
+        : $"ip:{ctx.Connection.RemoteIpAddress}";
 
 // Appelant de l'API LLM : l'application cliente (azp, ou appid d'un jeton v1), sinon repli sur l'utilisateur/IP.
 static string PartitionAppelant(HttpContext ctx) =>

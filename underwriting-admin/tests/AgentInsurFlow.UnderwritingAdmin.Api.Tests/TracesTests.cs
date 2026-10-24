@@ -55,7 +55,7 @@ public sealed class TracesTests : IDisposable
     }
 
     private readonly DepotEnMemoire _depot = new();
-    private readonly List<Activity> _activites = [];
+    private readonly List<Activity> _activites = []; // alimentée par l'exportateur sur un autre thread : lire par ToArray()
     private readonly WebApplicationFactory<Program> _usine;
 
     public TracesTests() => _usine = Usine(null);
@@ -263,12 +263,12 @@ public sealed class TracesTests : IDisposable
         (await Poster(Otlp(), "127.0.0.1")).Dispose();
         await Lire($"/api/traces/{TraceId}", "Gestionnaire"); // témoin : cette route-là est bien tracée
 
-        for (var i = 0; i < 40 && !_activites.Any(a => Chemin(a).StartsWith("/api/traces", StringComparison.Ordinal)); i++)
+        for (var i = 0; i < 40 && !_activites.ToArray().Any(a => Chemin(a).StartsWith("/api/traces", StringComparison.Ordinal)); i++)
         {
             await Task.Delay(50, TestContext.Current.CancellationToken);
         }
-        Assert.Contains(_activites, a => Chemin(a).StartsWith("/api/traces", StringComparison.Ordinal));
-        Assert.DoesNotContain(_activites, a => Chemin(a).StartsWith("/v1/traces", StringComparison.Ordinal));
+        Assert.Contains(_activites.ToArray(), a => Chemin(a).StartsWith("/api/traces", StringComparison.Ordinal));
+        Assert.DoesNotContain(_activites.ToArray(), a => Chemin(a).StartsWith("/v1/traces", StringComparison.Ordinal));
     }
 
     private static string Chemin(Activity a) => a.GetTagItem("url.path")?.ToString() ?? "";

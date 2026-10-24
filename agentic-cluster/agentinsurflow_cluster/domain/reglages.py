@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
@@ -26,7 +27,9 @@ class ReglageAgent:
 
 
 def _nombre(valeur: object) -> bool:
-    return isinstance(valeur, int | float) and not isinstance(valeur, bool)
+    return (
+        isinstance(valeur, int | float) and not isinstance(valeur, bool) and math.isfinite(valeur)
+    )
 
 
 def _refus(agent: str, cle: str, raison: str) -> ReglageInvalide:
@@ -36,6 +39,8 @@ def _refus(agent: str, cle: str, raison: str) -> ReglageInvalide:
 def _valider_agent(
     agent: str, section: Mapping[str, object], prompt_existe: Callable[[str], bool]
 ) -> ReglageAgent:
+    if not isinstance(section, Mapping):
+        raise ReglageInvalide(f"section « {agent} » : table attendue")
     for cle in section:
         if cle not in CLES:
             raise _refus(agent, str(cle), "clé inconnue")

@@ -143,3 +143,23 @@ def test_prompt_avec_chemin_refuse(p):
 def test_prompt_absent_refuse():
     with pytest.raises(ReglageInvalide, match="prompt"):
         valider(VALIDE, prompt_existe=lambda f: False)
+
+
+@pytest.mark.parametrize("v", [float("nan"), float("inf")])
+def test_delai_non_fini_refuse(v):
+    with pytest.raises(ReglageInvalide, match="pieces.*delai_s"):
+        valider(avec("pieces", "delai_s", v), budget=float("inf"))
+
+
+@pytest.mark.parametrize("v", [float("nan"), float("inf")])
+def test_temperature_non_finie_refusee(v):
+    with pytest.raises(ReglageInvalide, match="pieces.*temperature"):
+        valider(avec("pieces", "temperature", v))
+
+
+@pytest.mark.parametrize("section", [3, "x", None, ["a"]])
+def test_section_non_table_refusee(section):
+    brut = copy.deepcopy(VALIDE)
+    brut["pieces"] = section
+    with pytest.raises(ReglageInvalide, match="pieces"):
+        valider(brut)

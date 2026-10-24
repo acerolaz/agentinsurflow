@@ -291,9 +291,9 @@ jobs:
         run: |
           # comme le MCP : la gateway par le FQDN de sa Container App (entrée externe, https)
           GATEWAY_URL="https://$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)"
-          # version du modèle LLM : épinglée et versionnée avec rag (rag/llm.env), pas une variable GitHub
-          AZURE_OPENAI_DEPLOYMENT=$(sed -n 's/^AZURE_OPENAI_DEPLOYMENT=//p' rag/llm.env)
-          test -n "$AZURE_OPENAI_DEPLOYMENT" || { echo "::error::AZURE_OPENAI_DEPLOYMENT absent de rag/llm.env"; exit 1; }
+          # modèle des agents : épinglé et versionné (agentic-cluster/llm.env), pas une variable GitHub
+          AZURE_OPENAI_DEPLOYMENT=$(sed -n 's/^AZURE_OPENAI_DEPLOYMENT=//p' agentic-cluster/llm.env)
+          test -n "$AZURE_OPENAI_DEPLOYMENT" || { echo "::error::AZURE_OPENAI_DEPLOYMENT absent de agentic-cluster/llm.env"; exit 1; }
           export GATEWAY_URL AZURE_OPENAI_DEPLOYMENT
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
           envsubst '$IMAGE_CLUSTER $UNDERWRITING_API_CLIENT_ID $APP_ENV $AZURE_TENANT_ID $AZURE_UAMI_CLUSTER_CLIENT_ID $MCP_API_CLIENT_ID $LLM_AUDIENCE $AZURE_OPENAI_DEPLOYMENT $GATEWAY_URL $INSURFLOW_CLUSTER_CLIENT_ID $INSURFLOW_AGENT_ORCHESTRATEUR_CLIENT_ID $INSURFLOW_AGENT_PIECES_CLIENT_ID $INSURFLOW_AGENT_ANALYSTE_CLIENT_ID $INSURFLOW_AGENT_REDACTEUR_CLIENT_ID $INSURFLOW_AGENT_ACTUAIRE_CLIENT_ID' \

@@ -19,7 +19,6 @@ from ..application.evaluation import (
 from ..domain.ports import ErreurOutil
 from ..infrastructure.entra.verification import Gestionnaire
 from ..infrastructure.langgraph.graphe import Resultat, ServiceEvaluation
-from ..infrastructure.llm.fabrique import version_prompt
 from .problemes import Probleme, reponse
 from .schemas import (
     EtapeDto,
@@ -61,7 +60,7 @@ async def sante(request: Request) -> SanteReponse | JSONResponse:
     if request.app.state.service is None:
         return reponse(503, "GARDE_FOUS_EN_CHARGEMENT", "Garde-fous en cours de chargement")
     reglages = request.app.state.service.reglages
-    prompts = {a: version_prompt(g.prompt) for a, g in reglages.items()}
+    prompts = dict(request.app.state.service.versions_prompt)  # empreintes calculées au démarrage
     return SanteReponse(
         version=request.app.state.version,
         prompts=prompts,

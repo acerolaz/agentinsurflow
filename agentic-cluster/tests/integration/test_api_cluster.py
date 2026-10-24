@@ -35,6 +35,7 @@ from agentinsurflow_cluster.api.app import creer_app
 from agentinsurflow_cluster.application.agents import Dependances
 from agentinsurflow_cluster.domain.ports import ErreurOutil
 from agentinsurflow_cluster.infrastructure.langgraph.graphe import ServiceEvaluation
+from agentinsurflow_cluster.infrastructure.llm.fabrique import version_prompt
 
 REVUE = {"decision": "ACCEPTE", "validation": "VALIDEE", "motif": "Conforme au barème."}
 
@@ -46,7 +47,7 @@ class Banc:
         self.audit = FakeAudit()
         self.deps = Dependances(
             self.outils, self.redaction, garde or FakeGarde(), self.audit, REGLAGES,
-            versions_prompt={"pieces": "vp"},
+            versions_prompt={a: version_prompt(g.prompt) for a, g in REGLAGES.items()},
         )  # fmt: skip
 
     @asynccontextmanager
@@ -448,6 +449,15 @@ async def test_health_expose_les_reglages() -> None:
     assert set(corps["reglages"]["redacteur"]) == {
         "modele", "temperature", "max_tokens", "delai_s", "version_prompt"
     }  # fmt: skip
+
+
+async def test_health_reprend_les_empreintes_calculees_au_demarrage() -> None:
+    banc = Banc()
+    banc.deps = replace(banc.deps, versions_prompt={a: f"demarrage-{a}" for a in REGLAGES})
+    async with client(banc) as c:
+        corps = (await c.get("/health")).json()
+    assert corps["prompts"]["actuaire"] == "demarrage-actuaire"
+    assert corps["reglages"]["redacteur"]["version_prompt"] == "demarrage-redacteur"
 
 
 async def test_health_503_tant_que_les_scanners_ne_sont_pas_construits() -> None:

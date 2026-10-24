@@ -110,6 +110,7 @@ Liste de la spec § 8. Pour chaque signal : où il est émis **aujourd'hui** (no
 Émission aujourd'hui (`agentic-cluster/agentinsurflow_cluster/infrastructure/otel/audit.py`) :
 - journal `insurflow.audit`, message `audit.agent`, champs : `trace_id`, `numero_contrat`, `agent`, `mode`, `cause`, `version_prompt`, `garde_fous`, `vue_sha256`, `rapport_sha256`, `duree_ms`, `signal_injection` ;
 - span `invoke_agent`, attributs : `gen_ai.agent.name`, `insurflow.mode`, `insurflow.cause`, `insurflow.signal_injection`.
+- réglage par agent (`agentic-cluster/agents.toml` : modèle, température, `max_tokens`, délai) : validé au démarrage du cluster et, pour le modèle, au déploiement (existence sur Foundry, lecture seule) ; trace : `audit.agent` / span `invoke_agent` (modèle, température, `max_tokens`, tokens) et `GET /health` (`reglages`).
 
 | Signal | Émis aujourd'hui | KQL (une fois #54 branché) |
 |---|---|---|

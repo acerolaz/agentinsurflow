@@ -36,7 +36,6 @@ properties:
           - { name: MCP_API_CLIENT_ID, value: "${MCP_API_CLIENT_ID}" }
           - { name: UNDERWRITING_API_CLIENT_ID, value: "${UNDERWRITING_API_CLIENT_ID}" }
           - { name: LLM_AUDIENCE, value: "${LLM_AUDIENCE}" }
-          - { name: AZURE_OPENAI_DEPLOYMENT, value: "${AZURE_OPENAI_DEPLOYMENT}" }
           - { name: INSURFLOW_LLM_ACTIF, value: "true" }
           # application du cluster (audience de l'API et 1er saut OBO) puis une application par agent (azp du jeton final)
           - { name: INSURFLOW_CLUSTER_CLIENT_ID, value: "${INSURFLOW_CLUSTER_CLIENT_ID}" }

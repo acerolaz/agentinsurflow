@@ -7,6 +7,7 @@ public sealed class ReglesObservationsTests
     [InlineData("BROUILLON", 2000, null)]
     [InlineData("EN_ANALYSE", 1, null)]
     [InlineData("REVUE_HUMAINE", 0, null)]
+    [InlineData("actif", 1, null)] // statut du seed : dossier pas encore évalué
     [InlineData("BROUILLON", 2001, "OBSERVATIONS_TROP_LONGUES")]
     [InlineData("ACCEPTE", 1, "STATUT_FIGE")]
     [InlineData("REFUSE", 1, "STATUT_FIGE")]

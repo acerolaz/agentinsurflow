@@ -61,7 +61,7 @@ gateway-%:          ## cibles de gateway/Makefile : make gateway-test, gateway-l
 	env -u VERSION $(MAKE) -C gateway $*  # VERSION (SHA git) serait lu comme la propriété MSBuild Version : restauration NuGet en échec (MSB4181)
 
 underwriting-%:     ## cibles de underwriting-admin/Makefile : make underwriting-test, underwriting-lint
-	$(MAKE) -C underwriting-admin $*
+	env -u VERSION $(MAKE) -C underwriting-admin $*  # comme gateway-% : VERSION serait lu comme la propriété MSBuild Version
 
 eval:               ## porte 3 : make eval [URL=…] — golden set + jeu de démo (jeton : EVALS_JETON)
 	uv run python tools/evals.py --url $(URL) --questions eval/questions-demo.jsonl

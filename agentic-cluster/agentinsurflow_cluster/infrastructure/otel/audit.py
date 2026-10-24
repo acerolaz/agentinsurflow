@@ -61,7 +61,7 @@ class AuditOtel:
     ) -> None:
         fin = time.time_ns()
         # le réglage n'est lu qu'ici ; un agent sans réglage (la Saga) n'a ni modèle ni requête
-        r = (
+        r: dict[str, str | float] = (
             {
                 "model": reglage.modele,
                 "temperature": reglage.temperature,

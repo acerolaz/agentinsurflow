@@ -1,7 +1,7 @@
 [project]
 name = "agentinsurflow-cluster"
 version = "0.1.0"
-description = "AgentInsurFlow — cluster agentique : orchestrateur et agents (domaine pur, ports, adapters)."
+description = "AgentInsurFlow — cluster agentique : Saga et agents (domaine pur, ports, adapters)."
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "langchain-openai==1.7.2",

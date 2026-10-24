@@ -6,7 +6,7 @@ Serveur MCP (Python, architecture hexagonale) qui donne au cluster d'agents un a
 
 ```mermaid
 flowchart LR
-    CL["Cluster d'agents<br/>(orchestrateur, Pièces, Analyste, Rédacteur, Actuaire)"] -->|"POST/GET /mcp<br/>jeton OBO (azp = agent)"| GW["Gateway YARP"]
+    CL["Cluster d'agents<br/>(Saga, Pièces, Analyste, Rédacteur, Actuaire)"] -->|"POST/GET /mcp<br/>jeton OBO (azp = agent)"| GW["Gateway YARP"]
     GW -->|"rôle + audience + débit<br/>sans tampon (SSE)"| MCP["Serveur MCP (Python)"]
     MCP -->|"OBO → rag<br/>/api/extraits"| GW
     MCP -->|"OBO → underwriting<br/>/api/contrats, écritures"| GW
@@ -16,7 +16,7 @@ flowchart LR
     MCP -->|"/api/calcul<br/>(jeton d'application, rôle Calcul)"| GW
 ```
 
-**Texte alternatif du diagramme.** Le cluster d'agents (orchestrateur, Pièces, Analyste, Rédacteur, Actuaire) envoie ses requêtes `POST` ou `GET` sur `/mcp` à la gateway, avec un jeton dont l'`azp` est celui de l'agent. La gateway contrôle le rôle, l'audience et le débit, puis transmet sans tampon (SSE) au serveur MCP. Le serveur MCP appelle `rag` (`/api/extraits`) et `underwriting-admin` (`/api/contrats` et les écritures) **en repassant par la gateway**, avec un jeton obtenu en On-Behalf-Of. En Azure, il exporte ses traces en OTLP par la gateway (`/v1/traces`, jeton d'application, rôle `Telemetrie` ; en local, export direct vers underwriting-admin) et appelle la Function de calcul par la gateway (`/api/calcul`, rôle `Calcul`) : aucun appel direct.
+**Texte alternatif du diagramme.** Le cluster d'agents (Saga, Pièces, Analyste, Rédacteur, Actuaire) envoie ses requêtes `POST` ou `GET` sur `/mcp` à la gateway, avec un jeton dont l'`azp` est celui de l'agent. La gateway contrôle le rôle, l'audience et le débit, puis transmet sans tampon (SSE) au serveur MCP. Le serveur MCP appelle `rag` (`/api/extraits`) et `underwriting-admin` (`/api/contrats` et les écritures) **en repassant par la gateway**, avec un jeton obtenu en On-Behalf-Of. En Azure, il exporte ses traces en OTLP par la gateway (`/v1/traces`, jeton d'application, rôle `Telemetrie` ; en local, export direct vers underwriting-admin) et appelle la Function de calcul par la gateway (`/api/calcul`, rôle `Calcul`) : aucun appel direct.
 
 ### 1.1 Organisation du code
 
@@ -64,7 +64,7 @@ Les erreurs de protocole restent des erreurs HTTP ou JSON-RPC : 401 `JETON_ABSEN
 
 | Appelant (`azp` de la variable) | Variable | Outils autorisés |
 |---|---|---|
-| Orchestrateur | `MCP_AZP_ORCHESTRATEUR` | `get_contrat`, `enregistrer_brouillon`, `update_statut_dossier`, `enregistrer_etat` |
+| Saga | `MCP_AZP_ORCHESTRATEUR` | `get_contrat`, `enregistrer_brouillon`, `update_statut_dossier`, `enregistrer_etat` |
 | Agent Pièces | `MCP_AZP_PIECES` | `lister_pieces` |
 | Agent Analyste | `MCP_AZP_ANALYSTE` | `evaluer_risque` |
 | Agent Rédacteur | `MCP_AZP_REDACTEUR` | `search_rag` |

@@ -43,7 +43,7 @@ async def test_search_rag_propage_not_found_in_corpus() -> None:
 
 async def test_get_contrat_passe_le_jeton_obo_underwriting() -> None:
     jetons, dossiers = FauxJetons(), FauxDossiers()
-    resultat = await get_contrat(appelant("orchestrateur"), jetons, dossiers, "AIF/1")
+    resultat = await get_contrat(appelant("saga"), jetons, dossiers, "AIF/1")
     assert jetons.demandes == [("jeton-entrant", "underwriting")]
     assert dossiers.appels == [("obo-underwriting", "AIF/1")]
     assert resultat == {"numero_contrat": "AIF/1"}
@@ -52,14 +52,14 @@ async def test_get_contrat_passe_le_jeton_obo_underwriting() -> None:
 async def test_get_contrat_introuvable() -> None:
     dossiers = FauxDossiers(ErreurOutil(CONTRAT_INTROUVABLE, "introuvable"))
     with pytest.raises(ErreurOutil) as exc:
-        await get_contrat(appelant("orchestrateur"), FauxJetons(), dossiers, "X")
+        await get_contrat(appelant("saga"), FauxJetons(), dossiers, "X")
     assert exc.value.code == CONTRAT_INTROUVABLE
 
 
 async def test_obo_refuse_dossiers_indisponibles_sans_appel_backend() -> None:
     dossiers = FauxDossiers()
     with pytest.raises(ErreurOutil) as exc:
-        await get_contrat(appelant("orchestrateur"), FauxJetons(refuse=True), dossiers, "X")
+        await get_contrat(appelant("saga"), FauxJetons(refuse=True), dossiers, "X")
     assert exc.value.code == DOSSIERS_INDISPONIBLES
     assert dossiers.appels == []
 
@@ -71,7 +71,7 @@ async def test_enregistrer_brouillon_corps_snake_case_avec_prime() -> None:
     jetons, dossiers = FauxJetons(), FauxDossiers()
     prime = PrimeBrouillon(480.0, "mensuelle", datetime.date(2026, 11, 1))
     resultat = await enregistrer_brouillon(
-        appelant("orchestrateur"), jetons, dossiers, "AIF/1", FICHE, prime
+        appelant("saga"), jetons, dossiers, "AIF/1", FICHE, prime
     )
     assert resultat == {"ecrit": True}
     assert jetons.demandes == [("jeton-entrant", "underwriting")]
@@ -102,14 +102,14 @@ async def test_enregistrer_brouillon_corps_snake_case_avec_prime() -> None:
 
 async def test_enregistrer_brouillon_sans_prime_envoie_null() -> None:
     dossiers = FauxDossiers()
-    await enregistrer_brouillon(appelant("orchestrateur"), FauxJetons(), dossiers, "A", FICHE)
+    await enregistrer_brouillon(appelant("saga"), FauxJetons(), dossiers, "A", FICHE)
     assert dossiers.ecritures[0][3]["prime"] is None
 
 
 async def test_update_statut_sans_validation() -> None:
     dossiers = FauxDossiers()
     resultat = await update_statut_dossier(
-        appelant("orchestrateur"), FauxJetons(), dossiers, "AIF/1", "REVUE_HUMAINE"
+        appelant("saga"), FauxJetons(), dossiers, "AIF/1", "REVUE_HUMAINE"
     )
     assert resultat == {"ecrit": True}
     assert dossiers.ecritures == [
@@ -119,18 +119,14 @@ async def test_update_statut_sans_validation() -> None:
 
 async def test_update_statut_avec_validation() -> None:
     dossiers = FauxDossiers()
-    await update_statut_dossier(
-        appelant("orchestrateur"), FauxJetons(), dossiers, "A", "ACCEPTE", "VALIDEE"
-    )
+    await update_statut_dossier(appelant("saga"), FauxJetons(), dossiers, "A", "ACCEPTE", "VALIDEE")
     assert dossiers.ecritures[0][3] == {"statut": "ACCEPTE", "validation": "VALIDEE"}
 
 
 async def test_ecriture_refusee_par_le_backend_propage_le_code() -> None:
     dossiers = FauxDossiers(ErreurOutil(ARGUMENTS_INVALIDES, "VALIDATION_EXIGEE"))
     with pytest.raises(ErreurOutil) as exc:
-        await update_statut_dossier(
-            appelant("orchestrateur"), FauxJetons(), dossiers, "A", "ACCEPTE"
-        )
+        await update_statut_dossier(appelant("saga"), FauxJetons(), dossiers, "A", "ACCEPTE")
     assert exc.value.code == ARGUMENTS_INVALIDES
 
 
@@ -157,7 +153,7 @@ async def test_enregistrer_etat_transmet_le_corps_tel_quel() -> None:
         "tours": [],
     }
     dossiers = FauxDossiers()
-    resultat = await enregistrer_etat(appelant("orchestrateur"), FauxJetons(), dossiers, "A", etat)
+    resultat = await enregistrer_etat(appelant("saga"), FauxJetons(), dossiers, "A", etat)
     assert resultat == {"ecrit": True}
     assert dossiers.ecritures == [("etat", "obo-underwriting", "A", etat)]
 
@@ -165,5 +161,5 @@ async def test_enregistrer_etat_transmet_le_corps_tel_quel() -> None:
 async def test_enregistrer_etat_refuse_par_le_backend_propage_le_code() -> None:
     dossiers = FauxDossiers(ErreurOutil(ARGUMENTS_INVALIDES, "SECTION_INCONNUE"))
     with pytest.raises(ErreurOutil) as exc:
-        await enregistrer_etat(appelant("orchestrateur"), FauxJetons(), dossiers, "A", {})
+        await enregistrer_etat(appelant("saga"), FauxJetons(), dossiers, "A", {})
     assert exc.value.code == ARGUMENTS_INVALIDES

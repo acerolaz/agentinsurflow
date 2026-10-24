@@ -33,7 +33,7 @@ def test_section_non_possedee():
     assert exc.value.code == "SECTION_NON_POSSEDEE"
 
 
-def test_section_orchestrateur_refusee_aux_agents():
+def test_section_saga_refusee_aux_agents():
     with pytest.raises(FusionRefusee) as exc:
         fusionner(_etat(), _rapport("pieces", dossier={}))
     assert exc.value.code == "SECTION_NON_POSSEDEE"

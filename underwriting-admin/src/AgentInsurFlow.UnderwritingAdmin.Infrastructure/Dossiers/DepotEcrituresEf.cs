@@ -99,7 +99,7 @@ internal sealed class DepotEcrituresEf(DossiersDbContext db, TimeProvider horlog
         if (await IdContrat(gestionnaireId, numeroContrat, ct) is null) return false;
         var maintenant = horloge.GetUtcNow();
 
-        // Idempotent (l'orchestrateur rejoue le même état) : upsert de l'état et des sections, insertion qui ignore un doublon
+        // Idempotent (la Saga rejoue le même état) : upsert de l'état et des sections, insertion qui ignore un doublon
         // pour les rapports et les tours. Une écriture périmée (tentative plus ancienne) ne remplace pas l'état. nb_relances n'est pas touché ici.
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await db.Database.ExecuteSqlAsync($"""

@@ -35,4 +35,6 @@ class ConfigCluster(BaseSettings):
         return tuple(p.strip() for p in self.insurflow_pieces_exigees.split(",") if p.strip())
 
     def client_agent(self, agent: str) -> str:
-        return getattr(self, f"insurflow_agent_{agent}_client_id", "")
+        # la Saga garde l'inscription Entra (et sa variable) agentinsurflow-agent-orchestrateur
+        nom = "orchestrateur" if agent == "saga" else agent
+        return getattr(self, f"insurflow_agent_{nom}_client_id", "")

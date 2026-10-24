@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from .models import Agent
 
 MATRICE: Mapping[Agent, frozenset[str]] = {
-    "orchestrateur": frozenset(
+    "saga": frozenset(
         {"get_contrat", "enregistrer_brouillon", "update_statut_dossier", "enregistrer_etat"}
     ),
     "pieces": frozenset({"lister_pieces"}),

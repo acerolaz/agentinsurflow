@@ -16,7 +16,7 @@ from azure.core.exceptions import AzureError
 from azure.identity import OnBehalfOfCredential, get_bearer_token_provider
 
 from ...domain.models import NomAgent
-from ...domain.ports import AgentOuOrchestrateur, ErreurOutil
+from ...domain.ports import AgentOuSaga, ErreurOutil
 from .config import ConfigCluster
 from .jetons import credential_application, source_assertion
 
@@ -55,7 +55,7 @@ class JetonsAgents:
         except AzureError as exc:
             raise ErreurOutil("OBO_REFUSE", "Jeton On-Behalf-Of refusé") from exc
 
-    def pour_mcp(self, agent: AgentOuOrchestrateur, jeton_gestionnaire: str) -> str:
+    def pour_mcp(self, agent: AgentOuSaga, jeton_gestionnaire: str) -> str:
         """Synchrone (SDK azure-identity) : appelé hors de la boucle d'événements."""
         maintenant = self._horloge()
         cle = (agent, jeton_gestionnaire)

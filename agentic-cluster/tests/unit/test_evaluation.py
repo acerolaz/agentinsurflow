@@ -47,11 +47,11 @@ async def _boucle(etat: EtatDossier, deps: Dependances, ecoule_s: float = 0.0) -
     return etat
 
 
-async def test_charger_lit_le_contrat_avec_l_orchestrateur_et_retire_les_observations() -> None:
+async def test_charger_lit_le_contrat_avec_la_saga_et_retire_les_observations() -> None:
     outils = FakeOutils()
     garde = FakeGarde()
     etat = await charger("C-1", JETON, _deps(outils, garde=garde))
-    assert outils.appels == [("orchestrateur", JETON, "get_contrat")]
+    assert outils.appels == [("saga", JETON, "get_contrat")]
     assert etat.observations == CONTRAT["observations"]
     assert etat.dossier is not None and "observations" not in etat.dossier
     assert garde.entrees == [CONTRAT["observations"]] and etat.entree_bloquee is None
@@ -127,7 +127,7 @@ async def test_enregistrer_etat_apres_chaque_fusion_sans_observations() -> None:
         "mode": "llm",
     }
     assert CONTRAT["observations"] not in json.dumps(corps)  # type: ignore[operator]
-    assert {a for a, _, o in outils.appels if o == "enregistrer_etat"} == {"orchestrateur"}
+    assert {a for a, _, o in outils.appels if o == "enregistrer_etat"} == {"saga"}
     assert etat.fiche is not None
 
 

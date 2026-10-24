@@ -332,5 +332,5 @@ Le rollback redéploie **gateway, rag et underwriting-admin** au SHA de la révi
 ## Hors périmètre actuel
 
 Pas encore livrés : le point d'entrée **MCP** par la gateway (#15),
-l'orchestrateur et les agents avec **validation humaine** (#7), l'OCR en A2A (source : dossier-conception-v1.md).
+la Saga et les agents avec **validation humaine** (#7), l'OCR en A2A (source : dossier-conception-v1.md).
 Les sujets encore ouverts (découpage des agents, protocoles…) ne sont pas présumés.

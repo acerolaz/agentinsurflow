@@ -36,7 +36,7 @@ MCP_GESTIONNAIRE=5b8e1c72-6d4a-4e39-b0f1-2a7c9d3e4f01
 CLUSTER_SCOPE=9c2d4e61-3a7b-4d85-a1f0-6e8b2c4d5b03
 CLUSTER_GESTIONNAIRE=9c2d4e61-3a7b-4d85-a1f0-6e8b2c4d5b01
 # un scope access_as_user par agent : 5a01 à 5a05, dans l'ordre de AGENTS
-AGENTS=(orchestrateur pieces analyste redacteur actuaire)
+AGENTS=(orchestrateur pieces analyste redacteur actuaire) # « orchestrateur » : inscription Entra de la Saga (nom technique conservé)
 agent_scope() { echo "9c2d4e61-3a7b-4d85-a1f0-6e8b2c4d5a0$1"; }
 
 echo "① Redirections SPA de la page Swagger unique (S3-24)"

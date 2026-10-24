@@ -47,6 +47,7 @@ Pourquoi maintenant : le brief Sprint 4 exige « la composante en production, ga
 | A3 | Les garde-fous d'entrée s'exécutent **dans `agentic-cluster`**, au chargement du dossier (`charger`, harnais, 0 LLM), **avant tout appel LLM** de l'évaluation. `underwriting-admin` accepte la saisie telle quelle. | — |
 | A4 | L'**action sensible** à confirmer = toute décision qui requiert le gestionnaire : le brouillon (fiche + prime) attend `POST …/revue` derrière `interrupt()`. Pas de confirmation supplémentaire en 7a. | confirme K4, D9 |
 | A5 | Le **refus** est un message **neutre** pour l'appelant ; la cause détaillée part dans `audit.agent` (sans PII). | précise D91 |
+| A6 | L'orchestrateur du dossier s'appelle **Saga** (24/10) : automate déterministe (`prochaine_etape`, `precondition`) qui délègue aux sous-agents et écrit l'état, **sans rôle LLM**. Identifiant `saga` dans le code et la matrice MCP ; l'inscription Entra et les variables gardent `orchestrateur`. | renomme l'orchestrateur |
 
 ### 3.2 Ce que le dossier impose et que cette spec applique (rappel, pas avenant)
 

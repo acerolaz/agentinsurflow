@@ -5,10 +5,11 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import get_args
 
 from agentinsurflow_cluster.domain.models import NomAgent
 
-AGENTS_REGLES: tuple[NomAgent, ...] = ("pieces", "analyste", "redacteur", "actuaire")
+AGENTS_REGLES: tuple[NomAgent, ...] = get_args(NomAgent)  # une seule source des noms d'agents
 CLES = ("modele", "temperature", "max_tokens", "delai_s", "prompt")
 MAX_TOKENS_PLAFOND = 16_000
 
@@ -27,9 +28,19 @@ class ReglageAgent:
 
 
 def _nombre(valeur: object) -> bool:
+    """Entier ou flottant fini (``isfinite`` sur les seuls flottants : un entier géant déborde)."""
     return (
-        isinstance(valeur, int | float) and not isinstance(valeur, bool) and math.isfinite(valeur)
+        isinstance(valeur, int)
+        and not isinstance(valeur, bool)
+        or (isinstance(valeur, float) and math.isfinite(valeur))
     )
+
+
+def _flottant(valeur: float) -> float:
+    try:
+        return float(valeur)
+    except OverflowError:  # entier géant : la garde globale le refusera
+        return math.inf
 
 
 def _refus(agent: str, cle: str, raison: str) -> ReglageInvalide:
@@ -65,7 +76,7 @@ def _valider_agent(
         raise _refus(agent, "prompt", "nom de fichier simple attendu (sans chemin)")
     if not prompt_existe(prompt):
         raise _refus(agent, "prompt", f"fichier « {prompt} » introuvable")
-    return ReglageAgent(modele, float(temperature), max_tokens, float(delai_s), prompt)  # type: ignore[arg-type]
+    return ReglageAgent(modele, float(temperature), max_tokens, _flottant(delai_s), prompt)  # type: ignore[arg-type]
 
 
 def valider_reglages(

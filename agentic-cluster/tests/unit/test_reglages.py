@@ -62,7 +62,7 @@ def valider(brut, budget: float = 25.0, prompt_existe=existe):
 def test_reglages_valides_charges():
     r = valider(VALIDE)
     assert len(r) == 4
-    assert tuple(r) == AGENTS_REGLES
+    assert tuple(r) == AGENTS_REGLES == ("pieces", "analyste", "redacteur", "actuaire")
     assert r["redacteur"] == ReglageAgent("gpt-4.1-mini", 0.2, 1200, 8.0, "redacteur.md")
 
 
@@ -92,37 +92,35 @@ def test_cle_manquante_refusee():
         valider(brut)
 
 
-@pytest.mark.parametrize("t", [-0.1, 1.1, "0.5", True])
-def test_temperature_hors_bornes_refusee(t):
-    with pytest.raises(ReglageInvalide, match="temperature"):
-        valider(avec("pieces", "temperature", t))
+# (agent, clé, valeur, budget) -> ReglageInvalide dont le message nomme l'agent et la clé
+REFUS = [
+    *[("pieces", "temperature", t, 25.0) for t in (-0.1, 1.1, "0.5", True)],
+    *[("pieces", "temperature", v, 25.0) for v in (float("nan"), float("inf"), 10**400)],
+    *[("pieces", "max_tokens", m, 25.0) for m in (0, 16001, True, 1.5)],
+    *[("pieces", "delai_s", d, 25.0) for d in (0, -1)],
+    *[("pieces", "delai_s", v, float("inf")) for v in (float("nan"), float("inf"))],
+    ("pieces", "modele", "", 25.0),
+    *[("pieces", "prompt", p, 25.0) for p in ("../x.md", "a/b.md", "a\\b.md")],
+]
 
 
-@pytest.mark.parametrize("t", [0, 1])
-def test_temperature_aux_bornes_acceptee(t):
-    assert isinstance(valider(avec("pieces", "temperature", t))["pieces"].temperature, float)
+@pytest.mark.parametrize(("agent", "cle", "valeur", "budget"), REFUS)
+def test_valeur_refusee(agent, cle, valeur, budget):
+    with pytest.raises(ReglageInvalide, match=f"{agent}.*{cle}"):
+        valider(avec(agent, cle, valeur), budget=budget)
 
 
-@pytest.mark.parametrize("m", [0, 16001, True, 1.5])
-def test_max_tokens_refuse(m):
-    with pytest.raises(ReglageInvalide, match="max_tokens"):
-        valider(avec("pieces", "max_tokens", m))
-
-
-@pytest.mark.parametrize("m", [1, 16000])
-def test_max_tokens_aux_bornes_accepte(m):
-    assert valider(avec("pieces", "max_tokens", m))["pieces"].max_tokens == m
-
-
-@pytest.mark.parametrize("d", [0, -1])
-def test_delai_non_positif_refuse(d):
-    with pytest.raises(ReglageInvalide, match="delai_s"):
-        valider(avec("pieces", "delai_s", d))
-
-
-def test_modele_vide_refuse():
-    with pytest.raises(ReglageInvalide, match="modele"):
-        valider(avec("pieces", "modele", ""))
+@pytest.mark.parametrize(
+    ("cle", "valeur", "attendu"),
+    [
+        ("temperature", 0, 0.0),
+        ("temperature", 1, 1.0),
+        ("max_tokens", 1, 1),
+        ("max_tokens", 16000, 16000),
+    ],
+)
+def test_valeur_aux_bornes_acceptee(cle, valeur, attendu):
+    assert getattr(valider(avec("pieces", cle, valeur))["pieces"], cle) == attendu
 
 
 def test_somme_des_delais_egale_au_budget_acceptee():
@@ -134,27 +132,14 @@ def test_somme_des_delais_au_dela_refusee():
         valider(VALIDE, budget=12.9)
 
 
-@pytest.mark.parametrize("p", ["../x.md", "a/b.md", "a\\b.md"])
-def test_prompt_avec_chemin_refuse(p):
-    with pytest.raises(ReglageInvalide, match="prompt"):
-        valider(avec("pieces", "prompt", p))
+def test_delai_entier_geant_refuse_par_la_garde_globale():
+    with pytest.raises(ReglageInvalide, match="somme"):
+        valider(avec("pieces", "delai_s", 10**400))
 
 
 def test_prompt_absent_refuse():
     with pytest.raises(ReglageInvalide, match="prompt"):
         valider(VALIDE, prompt_existe=lambda f: False)
-
-
-@pytest.mark.parametrize("v", [float("nan"), float("inf")])
-def test_delai_non_fini_refuse(v):
-    with pytest.raises(ReglageInvalide, match="pieces.*delai_s"):
-        valider(avec("pieces", "delai_s", v), budget=float("inf"))
-
-
-@pytest.mark.parametrize("v", [float("nan"), float("inf")])
-def test_temperature_non_finie_refusee(v):
-    with pytest.raises(ReglageInvalide, match="pieces.*temperature"):
-        valider(avec("pieces", "temperature", v))
 
 
 @pytest.mark.parametrize("section", [3, "x", None, ["a"]])

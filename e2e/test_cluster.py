@@ -58,8 +58,13 @@ def test_seule_la_gateway_atteint_le_cluster(local, client, manque):
     if not interne:
         manque("E2E_CLUSTER_INTERNE requis (FQDN interne du cluster)")
     assert client.get("/health/cluster").status_code == 200
-    with pytest.raises(httpx.TransportError):
-        httpx.get(f"{interne}/health", timeout=10)
+    try:
+        r = httpx.get(f"{interne}/health", timeout=10)
+    except httpx.TransportError:
+        return  # injoignable
+    # Environnement Container Apps sans VNet : son frontal répond lui-même au trafic externe vers
+    # une application interne, page 404 « Azure Container App - Unavailable », sans la relayer
+    assert r.status_code == 404, f"cluster joignable hors gateway : {r.status_code} {r.text[:99]}"
 
 
 def test_dossier_complet_en_analyse_puis_revue(client, manque, utilisateur):

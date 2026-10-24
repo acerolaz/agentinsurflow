@@ -153,14 +153,18 @@ jobs:
       - name: Modèles du cluster présents sur Foundry (agentic-cluster/agents.toml du SHA déployé)
         env:
           FOUNDRY_ENDPOINT: ${{ vars.FOUNDRY_ENDPOINT }}
+          TAG: ${{ steps.image.outputs.tag }}
         run: |
+          test -f calcul-src/agentic-cluster/agents.toml ||
+            { echo "::error::agentic-cluster/agents.toml absent du SHA $TAG : rollback vers une version antérieure au réglage par agent refusé (voir docs/rollback.md)"; exit 1; }
           ressource=${FOUNDRY_ENDPOINT#https://}; ressource=${ressource%%.*}
           test -n "$ressource" || { echo "::error::FOUNDRY_ENDPOINT '$FOUNDRY_ENDPOINT' sans nom de ressource (https://<nom>.openai.azure.com)"; exit 1; }
           modeles=$(python3 -c 'import tomllib,sys; print(*sorted({a["modele"] for a in tomllib.load(open(sys.argv[1],"rb")).values()}), sep="\n")' calcul-src/agentic-cluster/agents.toml)
           test -n "$modeles" || { echo "::error::aucun modèle dans agentic-cluster/agents.toml"; exit 1; }
           while read -r m; do
-            az cognitiveservices account deployment show -n "$ressource" -g "$RG" --deployment-name "$m" -o none 2>/dev/null ||
-              { echo "::error::modèle $m absent de Foundry $ressource : déploiement refusé (agentic-cluster/agents.toml)"; exit 1; }
+            # stderr conservé : droits, groupe ou réseau ne doivent pas passer pour « modèle absent »
+            err=$(az cognitiveservices account deployment show -n "$ressource" -g "$RG" --deployment-name "$m" -o none 2>&1 >/dev/null) ||
+              { echo "::error::modèle $m absent de Foundry $ressource : déploiement refusé (agentic-cluster/agents.toml) — $err"; exit 1; }
             echo "✔ modèle $m présent sur $ressource"
           done <<<"$modeles"
 

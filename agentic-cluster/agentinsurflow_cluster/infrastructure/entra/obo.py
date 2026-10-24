@@ -15,6 +15,7 @@ from typing import Any
 from azure.core.exceptions import AzureError
 from azure.identity import OnBehalfOfCredential, get_bearer_token_provider
 
+from ...domain.models import NomAgent
 from ...domain.ports import AgentOuOrchestrateur, ErreurOutil
 from .config import ConfigCluster
 from .jetons import credential_application, source_assertion
@@ -72,7 +73,7 @@ class JetonsAgents:
         self._cache[cle] = (str(final.token), float(final.expires_on))
         return str(final.token)
 
-    def fournisseur_llm(self, agent: AgentOuOrchestrateur) -> Callable[[], str]:
+    def fournisseur_llm(self, agent: NomAgent) -> Callable[[], str]:
         """Fournisseur de jeton rafraîchi par azure-identity, mémorisé par agent."""
         if agent not in self._fournisseurs:
             cfg = self._cfg

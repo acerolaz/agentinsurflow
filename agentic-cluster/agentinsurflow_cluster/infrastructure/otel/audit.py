@@ -15,12 +15,14 @@ from opentelemetry import trace
 from agentinsurflow_cluster.application.agents import empreinte
 from agentinsurflow_cluster.application.serialisation import vers_json
 from agentinsurflow_cluster.domain.models import Rapport
+from agentinsurflow_cluster.domain.reglages import ReglageAgent
 
 journal = logging.getLogger("insurflow.audit")
 tracer = trace.get_tracer("agentinsurflow")
 CHAMPS = (
     "trace_id", "numero_contrat", "agent", "mode", "cause", "version_prompt", "garde_fous",
     "vue_sha256", "rapport_sha256", "duree_ms", "signal_injection", "observations_sha256",
+    "modele", "temperature", "max_tokens", "tokens_entree", "tokens_sortie",
 )  # fmt: skip
 
 
@@ -55,6 +57,7 @@ class AuditOtel:
         empreinte_vue: str = "",
         signal_injection: float | None = None,
         empreinte_observations: str = "",
+        reglage: ReglageAgent | None = None,
     ) -> None:
         fin = time.time_ns()
         span = tracer.start_span(
@@ -67,6 +70,17 @@ class AuditOtel:
                 **(
                     {"insurflow.signal_injection": signal_injection}
                     if signal_injection is not None
+                    else {}
+                ),
+                **(
+                    {
+                        "gen_ai.request.model": reglage.modele,
+                        "gen_ai.request.temperature": reglage.temperature,
+                        "gen_ai.request.max_tokens": reglage.max_tokens,
+                        "gen_ai.usage.input_tokens": rapport.tokens_entree,
+                        "gen_ai.usage.output_tokens": rapport.tokens_sortie,
+                    }
+                    if reglage is not None
                     else {}
                 ),
             },
@@ -89,5 +103,10 @@ class AuditOtel:
                 "duree_ms": duree_ms,
                 "signal_injection": signal_injection,
                 "observations_sha256": empreinte_observations,
+                "modele": reglage.modele if reglage else None,
+                "temperature": reglage.temperature if reglage else None,
+                "max_tokens": reglage.max_tokens if reglage else None,
+                "tokens_entree": rapport.tokens_entree,
+                "tokens_sortie": rapport.tokens_sortie,
             },
         )

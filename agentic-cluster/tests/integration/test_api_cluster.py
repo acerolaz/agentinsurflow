@@ -440,6 +440,16 @@ async def test_health_200_une_fois_les_garde_fous_prets() -> None:
     assert all(len(v) == 12 for v in corps["prompts"].values())
 
 
+async def test_health_expose_les_reglages() -> None:
+    async with client(Banc()) as c:
+        corps = (await c.get("/health")).json()
+    assert corps["reglages"]["actuaire"]["max_tokens"] == 400
+    assert corps["reglages"]["actuaire"]["version_prompt"] == corps["prompts"]["actuaire"]
+    assert set(corps["reglages"]["redacteur"]) == {
+        "modele", "temperature", "max_tokens", "delai_s", "version_prompt"
+    }  # fmt: skip
+
+
 async def test_health_503_tant_que_les_scanners_ne_sont_pas_construits() -> None:
     libere = asyncio.Event()
 

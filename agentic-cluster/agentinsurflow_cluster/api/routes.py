@@ -26,6 +26,7 @@ from .schemas import (
     EvaluationReponse,
     FicheDto,
     PrimeDto,
+    ReglageDto,
     RevueCorps,
     RevueReponse,
     SanteReponse,
@@ -59,10 +60,20 @@ def _outil_en_echec(e: ErreurOutil) -> Probleme:
 async def sante(request: Request) -> SanteReponse | JSONResponse:
     if request.app.state.service is None:
         return reponse(503, "GARDE_FOUS_EN_CHARGEMENT", "Garde-fous en cours de chargement")
+    reglages = request.app.state.service.reglages
+    prompts = {a: version_prompt(g.prompt) for a, g in reglages.items()}
     return SanteReponse(
         version=request.app.state.version,
-        prompts={
-            a: version_prompt(g.prompt) for a, g in request.app.state.service.reglages.items()
+        prompts=prompts,
+        reglages={
+            a: ReglageDto(
+                modele=g.modele,
+                temperature=g.temperature,
+                max_tokens=g.max_tokens,
+                delai_s=g.delai_s,
+                version_prompt=prompts[a],
+            )  # fmt: skip
+            for a, g in reglages.items()
         },
         garde_fous="prets",
     )

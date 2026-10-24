@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any, Literal, Protocol
 
 from agentinsurflow_cluster.domain.models import NomAgent, Rapport
+from agentinsurflow_cluster.domain.reglages import ReglageAgent
 
 AgentOuOrchestrateur = NomAgent | Literal["orchestrateur"]
 
@@ -76,8 +77,10 @@ class AuditPort(Protocol):
         empreinte_vue: str = "",
         signal_injection: float | None = None,
         empreinte_observations: str = "",
+        reglage: ReglageAgent | None = None,
     ) -> None:
-        """``empreinte_vue`` : SHA-256 de la vue de l'agent (jamais son contenu) ;
+        """``reglage`` : valeurs de réglage de l'agent (``None`` pour la Saga, sans LLM) ;
+        ``empreinte_vue`` : SHA-256 de la vue de l'agent (jamais son contenu) ;
         ``signal_injection`` : score seul du modèle d'injection (jamais le texte) ;
         ``empreinte_observations`` : SHA-256 des observations évaluées (jamais le texte)."""
         ...

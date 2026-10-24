@@ -78,6 +78,7 @@ async def executer_agent(
         int((deps.horloge() - debut) * 1000),
         empreinte(replace(etat, observations=None)),  # la vue ne porte jamais les observations
         empreinte_observations=empreinte_texte(etat.observations),
+        reglage=deps.reglages[nom],
     )
     return rapport
 

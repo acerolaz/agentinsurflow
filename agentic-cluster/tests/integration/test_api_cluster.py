@@ -474,7 +474,7 @@ async def test_health_503_tant_que_les_scanners_ne_sont_pas_construits() -> None
 
 
 async def test_audit_agent_un_enregistrement_par_agent_sans_donnee_personnelle(
-    caplog: pytest.LogCaptureFixture,
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from agentinsurflow_cluster.infrastructure.otel.audit import AuditOtel
 
@@ -483,7 +483,7 @@ async def test_audit_agent_un_enregistrement_par_agent_sans_donnee_personnelle(
         banc.outils, banc.redaction, banc.deps.garde, AuditOtel(), REGLAGES,
         versions_prompt={"pieces": "vp", "analyste": "va", "redacteur": "vr", "actuaire": "vc"},
     )  # fmt: skip
-    logging.getLogger("insurflow.audit").propagate = True
+    monkeypatch.setattr(logging.getLogger("insurflow.audit"), "propagate", True)
     with caplog.at_level(logging.INFO, logger="insurflow.audit"):
         async with client(banc) as c:
             await c.post("/evaluations/C-1")
@@ -498,6 +498,9 @@ async def test_audit_agent_un_enregistrement_par_agent_sans_donnee_personnelle(
     assert premier.numero_contrat == "C-1" and premier.mode == "llm"  # type: ignore[attr-defined]
     assert len(premier.vue_sha256) == 64 and len(premier.rapport_sha256) == 64  # type: ignore[attr-defined]
     assert premier.version_prompt == "vp" and premier.garde_fous == []  # type: ignore[attr-defined]
+    # D3 : executer_agent transmet bien deps.reglages[nom] à l'audit (la Saga n'en a pas)
+    assert (premier.modele, premier.max_tokens) == ("gpt-4.1-mini", 400)  # type: ignore[attr-defined]
+    assert registres[0].modele is None  # type: ignore[attr-defined]
     brut = " ".join(str(vars(r)) for r in registres)
     assert "Client fidèle" not in brut and "Bearer" not in brut
 
@@ -525,4 +528,23 @@ def test_reglage_invalide_empeche_le_demarrage() -> None:
     app.state.config = config_cluster()
     app.state.jwks = FauxJwks()
     with pytest.raises(ReglageInvalide), TestClient(app):
+        pass
+
+
+def test_composition_reelle_refuse_un_reglage_invalide_au_demarrage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """TI (D2) : le vrai chemin `composition_reelle` lit `agents.toml` avant toute I/O.
+
+    Somme des délais (4 s) > garde globale (1 s) ⇒ `ReglageInvalide`, démarrage arrêté.
+    """
+    from fastapi.testclient import TestClient
+
+    from agentinsurflow_cluster.domain.reglages import ReglageInvalide
+
+    monkeypatch.setenv("INSURFLOW_BUDGET_S", "1")
+    app = creer_app()
+    app.state.config = config_cluster()
+    app.state.jwks = FauxJwks()
+    with pytest.raises(ReglageInvalide, match="somme"), TestClient(app):
         pass

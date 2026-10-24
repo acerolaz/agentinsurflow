@@ -44,11 +44,13 @@ async def test_span_invoke_agent_porte_l_agent_le_mode_et_la_cause_seulement(
 
 
 async def test_span_et_journal_portent_le_reglage_et_les_tokens(
-    spans: InMemorySpanExporter, caplog: pytest.LogCaptureFixture
+    spans: InMemorySpanExporter,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     rapport = Rapport("redacteur", {}, "llm", None, "v1", tokens_entree=30, tokens_sortie=12)
     reglage = ReglageAgent("gpt-4.1-mini", 0.2, 1200, 8.0, "redacteur.md")
-    logging.getLogger("insurflow.audit").propagate = True
+    monkeypatch.setattr(logging.getLogger("insurflow.audit"), "propagate", True)
     with caplog.at_level(logging.INFO, logger="insurflow.audit"):
         await audit.AuditOtel().tracer("C-1", rapport, [], 10, reglage=reglage)
     (span,) = spans.get_finished_spans()

@@ -17,15 +17,15 @@ from agentinsurflow_cluster.domain.models import (
     Section,
 )
 
-PROPRIETAIRE: Mapping[Section, NomAgent | Literal["orchestrateur"]] = {
-    "dossier": "orchestrateur",
+PROPRIETAIRE: Mapping[Section, NomAgent | Literal["saga"]] = {
+    "dossier": "saga",
     "pieces": "pieces",
     "risque": "analyste",
     "sources": "redacteur",
     "fiche": "redacteur",
     "prime": "actuaire",
-    "validation": "orchestrateur",
-    "pilotage": "orchestrateur",
+    "validation": "saga",
+    "pilotage": "saga",
 }
 
 _TYPES: Mapping[Section, type] = {
@@ -55,7 +55,7 @@ def fusionner(etat: EtatDossier, rapport: Rapport) -> EtatDossier:
     for section, valeur in rapport.section.items():
         if PROPRIETAIRE.get(section) != rapport.agent:
             raise FusionRefusee("SECTION_NON_POSSEDEE")
-        # Un type absent de _TYPES (pilotage) est invalide : l'orchestrateur seul le porte.
+        # Un type absent de _TYPES (pilotage) est invalide : la Saga seule le porte.
         if not isinstance(valeur, _TYPES.get(section, type(None))):
             raise FusionRefusee("TYPE_INVALIDE")
         # `pieces` est réécrivable une fois par tentative (D89).

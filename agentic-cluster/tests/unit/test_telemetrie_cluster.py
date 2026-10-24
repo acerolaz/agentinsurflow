@@ -69,7 +69,7 @@ async def test_span_et_journal_portent_le_reglage_et_les_tokens(
 async def test_span_de_la_saga_sans_reglage_n_a_aucun_attribut_de_requete(
     spans: InMemorySpanExporter,
 ) -> None:
-    await audit.AuditOtel().tracer("C-1", Rapport("orchestrateur", {}, "llm", None, ""), [], 0)
+    await audit.AuditOtel().tracer("C-1", Rapport("saga", {}, "llm", None, ""), [], 0)
     (span,) = spans.get_finished_spans()
     assert not [k for k in (span.attributes or {}) if k.startswith("gen_ai.request.")]
 

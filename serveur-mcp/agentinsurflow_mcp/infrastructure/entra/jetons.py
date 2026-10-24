@@ -47,7 +47,7 @@ class ConfigAuth(BaseSettings):
 
     def agent_de(self, azp: str) -> Agent | None:
         agents: dict[str, Agent] = {
-            self.mcp_azp_orchestrateur: "orchestrateur",
+            self.mcp_azp_orchestrateur: "saga",
             self.mcp_azp_redacteur: "redacteur",
             self.mcp_azp_actuaire: "actuaire",
             self.mcp_azp_pieces: "pieces",

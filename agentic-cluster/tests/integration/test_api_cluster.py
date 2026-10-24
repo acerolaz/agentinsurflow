@@ -499,7 +499,7 @@ async def test_audit_agent_un_enregistrement_par_agent_sans_donnee_personnelle(
             await c.post("/evaluations/C-1")
     registres = [r for r in caplog.records if r.name == "insurflow.audit"]
     assert [r.agent for r in registres] == [  # type: ignore[attr-defined]
-        "orchestrateur", "pieces", "analyste", "redacteur", "actuaire"
+        "saga", "pieces", "analyste", "redacteur", "actuaire"
     ]  # fmt: skip
     empreinte_obs = hashlib.sha256(CONTRAT["observations"].encode()).hexdigest()
     assert {r.observations_sha256 for r in registres} == {empreinte_obs}  # type: ignore[attr-defined]

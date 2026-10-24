@@ -8,7 +8,7 @@ from agentinsurflow_mcp.domain.matrice import MATRICE, est_autorise, outils_auto
 from agentinsurflow_mcp.domain.models import Agent
 
 ATTENDU: dict[Agent, set[str]] = {
-    "orchestrateur": {
+    "saga": {
         "get_contrat",
         "enregistrer_brouillon",
         "update_statut_dossier",
@@ -39,7 +39,7 @@ def test_redacteur_ne_peut_pas_ecrire() -> None:
 
 def test_evaluer_risque_est_reserve_a_l_analyste() -> None:
     assert est_autorise("analyste", "evaluer_risque") is True
-    assert est_autorise("orchestrateur", "evaluer_risque") is False
+    assert est_autorise("saga", "evaluer_risque") is False
 
 
 def test_separation_des_agents() -> None:

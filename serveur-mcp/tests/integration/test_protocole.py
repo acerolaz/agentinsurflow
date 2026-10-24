@@ -98,7 +98,7 @@ async def test_redacteur_ne_voit_que_search_rag(ouvrir: Ouvrir) -> None:
         assert [t.name for t in (await s.list_tools()).tools] == ["search_rag"]
 
 
-async def test_orchestrateur_voit_ses_outils(ouvrir: Ouvrir) -> None:
+async def test_saga_voit_ses_outils(ouvrir: Ouvrir) -> None:
     async with ouvrir(creer(AZP_ORCHESTRATEUR)) as s:
         assert {t.name for t in (await s.list_tools()).tools} == {
             "update_statut_dossier",
@@ -160,7 +160,7 @@ async def test_actuaire_appelle_enregistrer_etat_UNAUTHORIZED_TOOL_sans_appel_ba
     assert (r.isError, r.structuredContent) == (True, {"code": "UNAUTHORIZED_TOOL"})
 
 
-async def test_orchestrateur_enregistre_l_etat(ouvrir: Ouvrir, dossiers: FauxDossiers) -> None:
+async def test_saga_enregistre_l_etat(ouvrir: Ouvrir, dossiers: FauxDossiers) -> None:
     dossiers.erreur = None
     etat = {"statut_parcours": "EN_COURS", "tentative": 1, "sections": []}
     async with ouvrir(creer(AZP_ORCHESTRATEUR)) as s:

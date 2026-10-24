@@ -47,6 +47,23 @@ public sealed class DebitTests(Backends backends) : IClassFixture<Backends>
     }
 
     [Fact]
+    public async Task Mcp_limite_par_application_et_utilisateur()
+    {
+        // les agents du cluster appellent /mcp en OBO pour le même gestionnaire (même oid) : chaque application
+        // (azp) a sa propre fenêtre, sinon deux évaluations épuisent la limite de l'utilisateur (429, puis 502)
+        using var usine = backends.Gateway(("RateLimit:Mcp:PermitLimit", "1"));
+        using var client = usine.CreateClient();
+        string Jeton(string azp) => Creer(AudienceMcp, ["Gestionnaire"], oid: "oid-a", azp: azp);
+
+        await Envoyer(client, "POST", "/mcp", Jeton("agent-pieces"));
+        var encorePieces = await Envoyer(client, "POST", "/mcp", Jeton("agent-pieces"));
+        var analyste = await Envoyer(client, "POST", "/mcp", Jeton("agent-analyste"));
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, encorePieces.StatusCode);
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, analyste.StatusCode);
+    }
+
+    [Fact]
     public async Task Reponses_limite_plus_stricte()
     {
         using var usine = backends.Gateway(("RateLimit:Global:PermitLimit", "5"), ("RateLimit:Reponses:PermitLimit", "1"));

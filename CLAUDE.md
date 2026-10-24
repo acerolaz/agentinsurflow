@@ -15,7 +15,7 @@ Chaque projet a son README : [`gateway/`](gateway/README.md) (C#, YARP, seule en
 - **Seule la gateway est exposée** ; elle valide le jeton et le rôle par route, et **chaque service revalide** le jeton.
 - **API REST** documentées en OpenAPI, consultables dans la page Swagger unique de la gateway ; erreurs en ProblemDetails avec un `code`.
 - **Git** : une branche par projet (`feat/gateway` → `feat/rag` → `feat/underwriting-admin` → `feat/mcp`), PR en brouillon ; jamais de push sur `main`, jamais de force-push.
-- **Français** partout (code métier, tests, docs) ; vocabulaire « superviseur / orchestrateur ».
+- **Français** partout (code métier, tests, docs) ; vocabulaire « superviseur / Saga » (la Saga : automate déterministe qui orchestre les agents du cluster et écrit l’état).
 
 ## Commandes (racine)
 

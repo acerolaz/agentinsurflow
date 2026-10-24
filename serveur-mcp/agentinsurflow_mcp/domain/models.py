@@ -6,7 +6,7 @@ import datetime
 from dataclasses import dataclass, field
 from typing import Literal
 
-Agent = Literal["orchestrateur", "pieces", "analyste", "redacteur", "actuaire"]
+Agent = Literal["saga", "pieces", "analyste", "redacteur", "actuaire"]
 
 UNAUTHORIZED_TOOL = "UNAUTHORIZED_TOOL"
 NOT_FOUND_IN_CORPUS = "NOT_FOUND_IN_CORPUS"

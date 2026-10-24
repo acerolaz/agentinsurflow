@@ -15,7 +15,8 @@ from typing import Any
 from azure.core.exceptions import AzureError
 from azure.identity import OnBehalfOfCredential, get_bearer_token_provider
 
-from ...domain.ports import AgentOuOrchestrateur, ErreurOutil
+from ...domain.models import NomAgent
+from ...domain.ports import AgentOuSaga, ErreurOutil
 from .config import ConfigCluster
 from .jetons import credential_application, source_assertion
 
@@ -54,7 +55,7 @@ class JetonsAgents:
         except AzureError as exc:
             raise ErreurOutil("OBO_REFUSE", "Jeton On-Behalf-Of refusé") from exc
 
-    def pour_mcp(self, agent: AgentOuOrchestrateur, jeton_gestionnaire: str) -> str:
+    def pour_mcp(self, agent: AgentOuSaga, jeton_gestionnaire: str) -> str:
         """Synchrone (SDK azure-identity) : appelé hors de la boucle d'événements."""
         maintenant = self._horloge()
         cle = (agent, jeton_gestionnaire)
@@ -72,7 +73,7 @@ class JetonsAgents:
         self._cache[cle] = (str(final.token), float(final.expires_on))
         return str(final.token)
 
-    def fournisseur_llm(self, agent: AgentOuOrchestrateur) -> Callable[[], str]:
+    def fournisseur_llm(self, agent: NomAgent) -> Callable[[], str]:
         """Fournisseur de jeton rafraîchi par azure-identity, mémorisé par agent."""
         if agent not in self._fournisseurs:
             cfg = self._cfg

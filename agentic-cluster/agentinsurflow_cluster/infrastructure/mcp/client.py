@@ -17,11 +17,11 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 from mcp.shared.exceptions import McpError
 
-from ...domain.ports import AgentOuOrchestrateur, ErreurOutil
+from ...domain.ports import AgentOuSaga, ErreurOutil
 
 
 class _Jetons(Protocol):
-    def pour_mcp(self, agent: AgentOuOrchestrateur, jeton_gestionnaire: str) -> str: ...
+    def pour_mcp(self, agent: AgentOuSaga, jeton_gestionnaire: str) -> str: ...
 
 
 def _http_par_defaut(entetes: dict[str, str]) -> httpx.AsyncClient:
@@ -43,7 +43,7 @@ class ClientMcpGateway:
 
     async def appeler(
         self,
-        agent: AgentOuOrchestrateur,
+        agent: AgentOuSaga,
         jeton_gestionnaire: str,
         outil: str,
         arguments: dict[str, Any],

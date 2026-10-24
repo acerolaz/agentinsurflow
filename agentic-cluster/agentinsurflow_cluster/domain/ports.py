@@ -10,7 +10,7 @@ from typing import Any, Literal, Protocol
 from agentinsurflow_cluster.domain.models import NomAgent, Rapport
 from agentinsurflow_cluster.domain.reglages import ReglageAgent
 
-AgentOuOrchestrateur = NomAgent | Literal["orchestrateur"]
+AgentOuSaga = NomAgent | Literal["saga"]
 
 # Causes que `RedactionPort.rediger` transporte dans `{"erreur": …}` (une seule définition)
 CAUSE_PII = "garde_fou:pii"
@@ -29,7 +29,7 @@ class ErreurOutil(Exception):
 class OutilsPort(Protocol):
     async def appeler(
         self,
-        agent: AgentOuOrchestrateur,
+        agent: AgentOuSaga,
         jeton_gestionnaire: str,
         outil: str,
         arguments: dict[str, Any],

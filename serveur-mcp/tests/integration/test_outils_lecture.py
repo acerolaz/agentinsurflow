@@ -21,7 +21,7 @@ def _app(corpus: FauxCorpus, dossiers: FauxDossiers) -> Any:
     return application
 
 
-async def test_orchestrateur_lit_un_contrat() -> None:
+async def test_saga_lit_un_contrat() -> None:
     app = _app(FauxCorpus(), FauxDossiers())
     async with session_mcp(app, creer(AZP_ORCHESTRATEUR)) as s:
         r = await s.call_tool("get_contrat", {"numero_contrat": "AIF/1"})

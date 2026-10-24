@@ -27,6 +27,8 @@ from agentinsurflow_cluster.domain.models import (
 )
 from agentinsurflow_cluster.domain.pii import pii_detectees
 from agentinsurflow_cluster.domain.ports import (
+    CAUSE_BUDGET,
+    CAUSE_PII,
     AuditPort,
     ErreurOutil,
     GardeTextePort,
@@ -38,8 +40,6 @@ from agentinsurflow_cluster.domain.reglages import ReglageAgent
 from agentinsurflow_cluster.domain.specs import SPECS
 
 NOT_FOUND = "NOT_FOUND_IN_CORPUS"
-CAUSE_PII = "garde_fou:pii"  # même valeur que l'adapter LLM (le port la transporte)
-CAUSE_BUDGET = "budget_tokens"  # idem : réponse coupée par max_tokens
 HORS_BAREME = "DONNEE_HORS_BAREME"
 _ERREURS_REFERENCE = (ErreurOutil, KeyError, TypeError, ValueError)
 _ERREURS_SORTIE = (KeyError, TypeError, ValueError)

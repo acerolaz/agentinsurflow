@@ -56,7 +56,7 @@ class Rapport:
     mode: Literal["llm", "repli"]
     cause: str | None
     version_prompt: str
-    tokens_entree: int = 0  # défauts : les points de reprise existants restent relisibles
+    tokens_entree: int = 0  # 0 : repli sans appel au LLM (spec § 6) ; jamais persistés (audit et span seulement)
     tokens_sortie: int = 0
 
 

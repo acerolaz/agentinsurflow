@@ -14,6 +14,7 @@ from fakes_cluster import REGLAGES, FakeOutils
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
+from openai.types import CompletionUsage
 from openai.types.chat import ChatCompletion
 
 from agentinsurflow_cluster.domain.ports import ErreurOutil
@@ -167,17 +168,15 @@ async def test_reponse_tronquee_budget_tokens() -> None:
     coupe = _appel("Note", {"note": "x"}).model_copy(
         update={"response_metadata": {"finish_reason": "length"}}
     )
-    assert await _red(FauxModele(messages=[coupe])).rediger("pieces", {}, 5) == {
-        "erreur": "budget_tokens"
-    }
+    sortie = await _red(FauxModele(messages=[coupe])).rediger("pieces", {}, 5)
+    assert sortie is not None and sortie["erreur"] == "budget_tokens"
 
     class ModeleLongueur(FauxModele):
         def _generate(self, *a: Any, **kw: Any) -> ChatResult:
             raise openai.LengthFinishReasonError(completion=ChatCompletion.model_construct())
 
-    assert await _red(ModeleLongueur(messages=[])).rediger("pieces", {}, 5) == {
-        "erreur": "budget_tokens"
-    }
+    sortie = await _red(ModeleLongueur(messages=[])).rediger("pieces", {}, 5)
+    assert sortie is not None and sortie["erreur"] == "budget_tokens"
 
 
 async def test_usage_additionne() -> None:
@@ -196,3 +195,33 @@ async def test_usage_additionne() -> None:
     )
     sortie = await _red(m, outils).rediger("redacteur", {}, 5, "J")
     assert sortie is not None and sortie["usage"] == {"entree": 30, "sortie": 12}
+
+
+async def test_troncature_apres_un_premier_appel_compte_les_tokens_consommes() -> None:
+    """TU : la cause reste `budget_tokens`, mais les tokens déjà dépensés sont comptés."""
+
+    def msg(m: AIMessage, e: int, s: int, **meta: Any) -> AIMessage:
+        usage = {"input_tokens": e, "output_tokens": s, "total_tokens": e + s}
+        return m.model_copy(update={"usage_metadata": usage, "response_metadata": meta})
+
+    outils = FakeOutils(search_rag={"statut": "OK", "resultats": []})
+    m = FauxModele(
+        messages=[
+            msg(_appel("search_rag", {"question": "q"}), 10, 5),
+            msg(_appel("FicheRedigee", FICHE), 20, 400, finish_reason="length"),
+        ]
+    )
+    sortie = await _red(m, outils).rediger("redacteur", {}, 5, "J")
+    assert sortie == {"erreur": "budget_tokens", "usage": {"entree": 30, "sortie": 405}}
+
+
+async def test_length_finish_reason_error_compte_l_usage_de_la_completion() -> None:
+    class ModeleLongueur(FauxModele):
+        def _generate(self, *a: Any, **kw: Any) -> ChatResult:
+            completion = ChatCompletion.model_construct(
+                usage=CompletionUsage(prompt_tokens=12, completion_tokens=400, total_tokens=412)
+            )
+            raise openai.LengthFinishReasonError(completion=completion)
+
+    sortie = await _red(ModeleLongueur(messages=[])).rediger("pieces", {}, 5)
+    assert sortie == {"erreur": "budget_tokens", "usage": {"entree": 12, "sortie": 400}}

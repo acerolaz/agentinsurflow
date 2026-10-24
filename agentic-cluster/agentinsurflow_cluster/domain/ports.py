@@ -12,6 +12,10 @@ from agentinsurflow_cluster.domain.reglages import ReglageAgent
 
 AgentOuOrchestrateur = NomAgent | Literal["orchestrateur"]
 
+# Causes que `RedactionPort.rediger` transporte dans `{"erreur": …}` (une seule définition)
+CAUSE_PII = "garde_fou:pii"
+CAUSE_BUDGET = "budget_tokens"  # réponse coupée par max_tokens
+
 
 class ErreurOutil(Exception):
     """Échec d'un outil MCP ; ``code`` est celui du serveur (``UNAUTHORIZED_TOOL``,

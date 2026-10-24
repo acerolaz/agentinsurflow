@@ -31,14 +31,12 @@ from pydantic import BaseModel, ValidationError
 
 from ...domain.balises import DEBUT_BALISE, FIN_BALISE
 from ...domain.models import NomAgent
-from ...domain.ports import ErreurOutil, OutilsPort
+from ...domain.ports import CAUSE_BUDGET, CAUSE_PII, ErreurOutil, OutilsPort
 from ...domain.reglages import ReglageAgent
 from ...domain.specs import SPECS
 
 PROMPTS = Path(__file__).parent / "prompts"
 MAX_RECHERCHES = 5
-CAUSE_PII = "garde_fou:pii"
-CAUSE_BUDGET = "budget_tokens"
 
 
 class _Tronque(Exception):
@@ -46,10 +44,19 @@ class _Tronque(Exception):
 
 
 class _DetecteTroncature(AgentMiddleware):
-    """Voit la réponse brute, avant l'analyse du format : une sortie coupée n'est pas analysable."""
+    """Voit la réponse brute, avant l'analyse du format : une sortie coupée n'est pas analysable.
+
+    Une instance par appel de ``rediger`` : ``usage`` somme les tokens de tous ses appels.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.usage = {"entree": 0, "sortie": 0}
 
     async def awrap_model_call(self, request: Any, handler: Any) -> Any:
         reponse = await handler(request)
+        for cle, v in _usage(reponse.result).items():
+            self.usage[cle] += v
         if any(m.response_metadata.get("finish_reason") == "length" for m in reponse.result):
             raise _Tronque
         return reponse
@@ -145,9 +152,10 @@ class RedactionLangChain:
         sources: list[dict[str, Any]] = []
         erreurs: list[str] = []
         outils = [self._search_rag(jeton, sources, erreurs)] if agent == "redacteur" else []
+        troncature = _DetecteTroncature()
         middleware: list[Any] = [
             ModelCallLimitMiddleware(run_limit=SPECS[agent].tours_max),
-            _DetecteTroncature(),
+            troncature,
         ]
         if outils:
             middleware.append(ToolCallLimitMiddleware(run_limit=MAX_RECHERCHES))
@@ -165,8 +173,11 @@ class RedactionLangChain:
                 resultat = await lc.ainvoke(entree)  # type: ignore[call-overload]
         except PIIDetectionError:  # K5 : un garde-fou, pas une panne du LLM
             return {"erreur": CAUSE_PII}
-        except (_Tronque, openai.LengthFinishReasonError):  # avant _ERREURS_LLM (sous-classe)
-            return {"erreur": CAUSE_BUDGET}
+        except (_Tronque, openai.LengthFinishReasonError) as e:  # avant _ERREURS_LLM (sous-classe)
+            if isinstance(e, openai.LengthFinishReasonError) and e.completion.usage:
+                troncature.usage["entree"] += e.completion.usage.prompt_tokens
+                troncature.usage["sortie"] += e.completion.usage.completion_tokens
+            return {"erreur": CAUSE_BUDGET, "usage": troncature.usage}
         except _ERREURS_LLM:
             return None
         champs = resultat.get("structured_response")

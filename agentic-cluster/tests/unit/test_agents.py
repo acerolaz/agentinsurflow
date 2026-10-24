@@ -150,6 +150,14 @@ async def test_budget_tokens_repli_cause_distincte() -> None:
     assert r.section == {} and r.cause == "budget_tokens" and r.mode == "repli"
 
 
+async def test_troncature_garde_les_tokens_deja_consommes() -> None:
+    red = FakeRedaction(
+        lambda a, v: {"erreur": "budget_tokens", "usage": {"entree": 10, "sortie": 5}}
+    )
+    r = await executer_agent("redacteur", _etat(risque=_risque()), "j", _deps(redaction=red), 5)
+    assert r.cause == "budget_tokens" and (r.tokens_entree, r.tokens_sortie) == (10, 5)
+
+
 async def test_tokens_dans_le_rapport() -> None:
     def scenario(agent: Any, vue: dict[str, Any]) -> dict[str, Any] | None:
         return {**(redaction_fidele(agent, vue) or {}), "usage": {"entree": 30, "sortie": 12}}

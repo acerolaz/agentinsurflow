@@ -39,6 +39,7 @@ from agentinsurflow_cluster.domain.specs import SPECS
 
 NOT_FOUND = "NOT_FOUND_IN_CORPUS"
 CAUSE_PII = "garde_fou:pii"  # même valeur que l'adapter LLM (le port la transporte)
+CAUSE_BUDGET = "budget_tokens"  # idem : réponse coupée par max_tokens
 HORS_BAREME = "DONNEE_HORS_BAREME"
 _ERREURS_REFERENCE = (ErreurOutil, KeyError, TypeError, ValueError)
 _ERREURS_SORTIE = (KeyError, TypeError, ValueError)
@@ -118,15 +119,20 @@ async def _rediger(
     """LLM puis garde-fous ; `repli=None` ⇒ section vide (Rédacteur), sinon section de référence."""
     section = SPECS[nom].section
 
+    usage: dict[str, int] = {}
+
     def echec(cause: str, codes: list[str]) -> Resultat:
         contenu = {} if repli is None else {section: repli}
-        return Rapport(nom, contenu, "repli", cause, version), codes
+        return Rapport(nom, contenu, "repli", cause, version, **_tokens(usage)), codes
 
     if etat.entree_bloquee:
         return echec("entree_bloquee", [])
     sortie = await deps.redaction.rediger(nom, vue, budget_s, jeton)
     if sortie is None:
         return echec("llm_ko", [])
+    usage = sortie.get("usage") or {}
+    if sortie.get("erreur") == CAUSE_BUDGET:
+        return echec(CAUSE_BUDGET, [])
     if sortie.get("erreur") == CAUSE_PII:  # K5 : détection PII ≠ panne du LLM (« llm_ko »)
         return echec(CAUSE_PII, ["pii"])
     if "erreur" in sortie:
@@ -139,7 +145,11 @@ async def _rediger(
     if codes:
         return echec(f"garde_fou:{codes[0]}", codes)
     contenu = {section: finaliser(candidat), **extra(sortie)}
-    return Rapport(nom, contenu, "llm", None, version), []  # type: ignore[arg-type]
+    return Rapport(nom, contenu, "llm", None, version, **_tokens(usage)), []  # type: ignore[arg-type]
+
+
+def _tokens(usage: Mapping[str, int]) -> dict[str, int]:
+    return {"tokens_entree": usage.get("entree", 0), "tokens_sortie": usage.get("sortie", 0)}
 
 
 def _tuple(sortie: Mapping[str, Any], cle: str, defaut: tuple[str, ...]) -> tuple[str, ...]:

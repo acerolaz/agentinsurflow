@@ -9,10 +9,12 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+import openai
 from fakes_cluster import REGLAGES, FakeOutils
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
+from openai.types.chat import ChatCompletion
 
 from agentinsurflow_cluster.domain.ports import ErreurOutil
 from agentinsurflow_cluster.infrastructure.llm import fabrique
@@ -63,7 +65,7 @@ def _red(
 async def test_agent_sans_outil_rend_le_champ_structure() -> None:
     m = FauxModele(messages=[_appel("Note", {"note": "Pièces complètes."})])
     sortie = await _red(m).rediger("pieces", {"statut": "complet"}, 5)
-    assert sortie == {"note": "Pièces complètes."}
+    assert sortie == {"note": "Pièces complètes.", "usage": {"entree": 0, "sortie": 0}}
 
 
 async def test_modele_absent_ou_trop_lent_rendent_none_et_email_garde_fou_pii() -> None:
@@ -158,3 +160,39 @@ async def test_prompt_systeme_du_reglage() -> None:
     premier = m.recus[0][0]
     assert premier.type == "system"
     assert premier.content == (fabrique.PROMPTS / "analyste.md").read_text(encoding="utf-8")
+
+
+async def test_reponse_tronquee_budget_tokens() -> None:
+    """TU : `finish_reason == "length"` ou `LengthFinishReasonError` ⇒ cause budget, pas llm_ko."""
+    coupe = _appel("Note", {"note": "x"}).model_copy(
+        update={"response_metadata": {"finish_reason": "length"}}
+    )
+    assert await _red(FauxModele(messages=[coupe])).rediger("pieces", {}, 5) == {
+        "erreur": "budget_tokens"
+    }
+
+    class ModeleLongueur(FauxModele):
+        def _generate(self, *a: Any, **kw: Any) -> ChatResult:
+            raise openai.LengthFinishReasonError(completion=ChatCompletion.model_construct())
+
+    assert await _red(ModeleLongueur(messages=[])).rediger("pieces", {}, 5) == {
+        "erreur": "budget_tokens"
+    }
+
+
+async def test_usage_additionne() -> None:
+    """TU : le `usage` est la somme des `usage_metadata` des appels de l'agent."""
+
+    def msg(msg_: AIMessage, e: int, s: int) -> AIMessage:
+        usage = {"input_tokens": e, "output_tokens": s, "total_tokens": e + s}
+        return msg_.model_copy(update={"usage_metadata": usage})
+
+    outils = FakeOutils(search_rag={"statut": "OK", "resultats": []})
+    m = FauxModele(
+        messages=[
+            msg(_appel("search_rag", {"question": "q"}), 10, 5),
+            msg(_appel("FicheRedigee", FICHE), 20, 7),
+        ]
+    )
+    sortie = await _red(m, outils).rediger("redacteur", {}, 5, "J")
+    assert sortie is not None and sortie["usage"] == {"entree": 30, "sortie": 12}

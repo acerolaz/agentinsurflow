@@ -18,6 +18,7 @@ import httpx
 import openai
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
+    AgentMiddleware,
     ModelCallLimitMiddleware,
     PIIDetectionError,
     PIIMiddleware,
@@ -37,6 +38,29 @@ from ...domain.specs import SPECS
 PROMPTS = Path(__file__).parent / "prompts"
 MAX_RECHERCHES = 5
 CAUSE_PII = "garde_fou:pii"
+CAUSE_BUDGET = "budget_tokens"
+
+
+class _Tronque(Exception):
+    """Une réponse du modèle a été coupée par ``max_tokens`` (``finish_reason == "length"``)."""
+
+
+class _DetecteTroncature(AgentMiddleware):
+    """Voit la réponse brute, avant l'analyse du format : une sortie coupée n'est pas analysable."""
+
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        reponse = await handler(request)
+        if any(m.response_metadata.get("finish_reason") == "length" for m in reponse.result):
+            raise _Tronque
+        return reponse
+
+
+def _usage(messages: list[Any]) -> dict[str, int]:
+    metas = [m.usage_metadata or {} for m in messages if m.type == "ai"]
+    return {
+        "entree": sum(u.get("input_tokens", 0) for u in metas),
+        "sortie": sum(u.get("output_tokens", 0) for u in metas),
+    }
 
 
 class Note(BaseModel):
@@ -121,7 +145,10 @@ class RedactionLangChain:
         sources: list[dict[str, Any]] = []
         erreurs: list[str] = []
         outils = [self._search_rag(jeton, sources, erreurs)] if agent == "redacteur" else []
-        middleware: list[Any] = [ModelCallLimitMiddleware(run_limit=SPECS[agent].tours_max)]
+        middleware: list[Any] = [
+            ModelCallLimitMiddleware(run_limit=SPECS[agent].tours_max),
+            _DetecteTroncature(),
+        ]
         if outils:
             middleware.append(ToolCallLimitMiddleware(run_limit=MAX_RECHERCHES))
         middleware.append(PIIMiddleware("email", strategy="block", apply_to_output=True))
@@ -138,13 +165,16 @@ class RedactionLangChain:
                 resultat = await lc.ainvoke(entree)  # type: ignore[call-overload]
         except PIIDetectionError:  # K5 : un garde-fou, pas une panne du LLM
             return {"erreur": CAUSE_PII}
+        except (_Tronque, openai.LengthFinishReasonError):  # avant _ERREURS_LLM (sous-classe)
+            return {"erreur": CAUSE_BUDGET}
         except _ERREURS_LLM:
             return None
         champs = resultat.get("structured_response")
         if champs is None:
             return None
+        usage = _usage(resultat.get("messages", []))
         if agent != "redacteur":
-            return champs.model_dump()  # type: ignore[no-any-return]
+            return {**champs.model_dump(), "usage": usage}
         if erreurs and not sources:  # rien de citable : l'application en tire la cause
             return {"erreur": erreurs[-1]}
-        return {**champs.model_dump(), "sources": sources}
+        return {**champs.model_dump(), "sources": sources, "usage": usage}

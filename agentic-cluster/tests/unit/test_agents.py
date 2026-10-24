@@ -144,6 +144,22 @@ async def test_pii_en_sortie_cause_garde_fou_pii_jamais_llm_ko() -> None:
     assert r.section == {} and r.cause == "garde_fou:pii" and r.mode == "repli"
 
 
+async def test_budget_tokens_repli_cause_distincte() -> None:
+    red = FakeRedaction(lambda a, v: {"erreur": "budget_tokens"})
+    r = await executer_agent("redacteur", _etat(risque=_risque()), "j", _deps(redaction=red), 5)
+    assert r.section == {} and r.cause == "budget_tokens" and r.mode == "repli"
+
+
+async def test_tokens_dans_le_rapport() -> None:
+    def scenario(agent: Any, vue: dict[str, Any]) -> dict[str, Any] | None:
+        return {**(redaction_fidele(agent, vue) or {}), "usage": {"entree": 30, "sortie": 12}}
+
+    r = await executer_agent("pieces", _etat(), "j", _deps(redaction=FakeRedaction(scenario)), 5)
+    assert r.mode == "llm" and r.tokens_entree == 30 and r.tokens_sortie == 12
+    sans = await executer_agent("pieces", _etat(), "j", _deps(), 5)
+    assert sans.tokens_entree == 0
+
+
 async def test_intrus_unauthorized_tool_section_vide_cause_erreur() -> None:
     outils = FakeOutils(lister_pieces=ErreurOutil("UNAUTHORIZED_TOOL"))
     red = FakeRedaction()

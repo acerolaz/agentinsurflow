@@ -3,7 +3,7 @@
 # Lancé À LA MAIN par Acerola, jamais par un agent ni par la CI. Prérequis : az login, `make entra` déjà passé
 # (inscription agentinsurflow-rag, identité managée uami-insurflow-rag), droit de créer des inscriptions d'application
 # ET d'attribuer/retirer des rôles Azure sur la ressource Foundry (Owner ou User Access Administrator).
-# Fait : inscription Entra agentinsurflow-llm (audience de la route /api/llm, rôle d'application LLM attribué à rag et aux cinq agents du cluster) ;
+# Fait : inscription Entra agentinsurflow-llm (audience de la route /api/llm, rôle d'application LLM attribué à rag et aux quatre sous-agents du cluster, RETIRÉ de l'orchestrateur) ;
 # inscription agentinsurflow-gateway-local (secret client pour le .env, affiché une seule fois) ; Foundry sans clé
 # (disableLocalAuth) ; rôle « Cognitive Services OpenAI User » réservé à l'identité managée de la gateway et à
 # agentinsurflow-gateway-local, RETIRÉ de toute autre identité, ainsi que les rôles qui ouvrent aussi l'inférence ou
@@ -53,9 +53,9 @@ if [ "$(az rest --uri "$GRAPH/servicePrincipals/$sp_llm/appRoleAssignedTo" \
     --headers content-type=application/json -o none \
     --body "{\"principalId\":\"$sp_rag\",\"resourceId\":\"$sp_llm\",\"appRoleId\":\"$LLM_ROLE\"}"
 fi
-# Les cinq agents du cluster (#7, inscrits par make entra ⑧) reçoivent le même rôle : leur jeton d'application
+# Les quatre sous-agents du cluster (#7, inscrits par make entra ⑧) reçoivent le même rôle : leur jeton d'application
 # (identité managée du cluster fédérée sur leur inscription) ouvre /api/llm, avec leur propre azp (limite de débit par agent).
-for agent in orchestrateur pieces analyste redacteur actuaire; do
+for agent in pieces analyste redacteur actuaire; do
   app=$(az ad app list --display-name "agentinsurflow-agent-$agent" --query "[0].appId" -o tsv)
   [ -n "$app" ] || { echo "✘ agentinsurflow-agent-$agent absente : lancer make entra d'abord"; exit 1; }
   sp_agent=$(az ad sp show --id "$app" --query id -o tsv)
@@ -66,6 +66,17 @@ for agent in orchestrateur pieces analyste redacteur actuaire; do
       --body "{\"principalId\":\"$sp_agent\",\"resourceId\":\"$sp_llm\",\"appRoleId\":\"$LLM_ROLE\"}"
   fi
 done
+# L'orchestrateur est un automate déterministe (plan de référence, domain/plan.py) : jamais de LLM. Son rôle LLM,
+# attribué par une version antérieure de ce script, est retiré (moindre privilège : la gateway le refuse en 403).
+orch=$(az ad app list --display-name agentinsurflow-agent-orchestrateur --query "[0].appId" -o tsv)
+if [ -n "$orch" ]; then
+  sp_orch=$(az ad sp show --id "$orch" --query id -o tsv)
+  for id in $(az rest --uri "$GRAPH/servicePrincipals/$sp_llm/appRoleAssignedTo" \
+    --query "value[?principalId=='$sp_orch' && appRoleId=='$LLM_ROLE'].id" -o tsv); do
+    az rest --method DELETE --uri "$GRAPH/servicePrincipals/$sp_llm/appRoleAssignedTo/$id" -o none
+    echo "   rôle LLM retiré de l'orchestrateur"
+  done
+fi
 
 echo "③  Inscription agentinsurflow-gateway-local : identité de la gateway en local (secret client dans le .env)"
 gw_local=$(inscrire agentinsurflow-gateway-local)

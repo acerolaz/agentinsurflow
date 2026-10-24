@@ -60,6 +60,16 @@ class AuditOtel:
         reglage: ReglageAgent | None = None,
     ) -> None:
         fin = time.time_ns()
+        # le réglage n'est lu qu'ici ; un agent sans réglage (la Saga) n'a ni modèle ni requête
+        r = (
+            {
+                "model": reglage.modele,
+                "temperature": reglage.temperature,
+                "max_tokens": reglage.max_tokens,
+            }
+            if reglage
+            else {}
+        )
         span = tracer.start_span(
             "invoke_agent",
             start_time=fin - duree_ms * 1_000_000,
@@ -74,13 +84,11 @@ class AuditOtel:
                 ),
                 **(
                     {
-                        "gen_ai.request.model": reglage.modele,
-                        "gen_ai.request.temperature": reglage.temperature,
-                        "gen_ai.request.max_tokens": reglage.max_tokens,
+                        **{f"gen_ai.request.{k}": v for k, v in r.items()},
                         "gen_ai.usage.input_tokens": rapport.tokens_entree,
                         "gen_ai.usage.output_tokens": rapport.tokens_sortie,
                     }
-                    if reglage is not None
+                    if r
                     else {}
                 ),
             },
@@ -103,9 +111,9 @@ class AuditOtel:
                 "duree_ms": duree_ms,
                 "signal_injection": signal_injection,
                 "observations_sha256": empreinte_observations,
-                "modele": reglage.modele if reglage else None,
-                "temperature": reglage.temperature if reglage else None,
-                "max_tokens": reglage.max_tokens if reglage else None,
+                "modele": r.get("model"),
+                "temperature": r.get("temperature"),
+                "max_tokens": r.get("max_tokens"),
                 "tokens_entree": rapport.tokens_entree,
                 "tokens_sortie": rapport.tokens_sortie,
             },

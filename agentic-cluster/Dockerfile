@@ -14,7 +14,7 @@ COPY agentic-cluster/pyproject.toml agentic-cluster/
 RUN uv sync --locked --no-dev --package agentinsurflow-cluster --no-install-workspace
 # le paquet porte les prompts versionnés (infrastructure/llm/prompts) ; garde_fous.env : seuils et sujets
 COPY agentic-cluster/agentinsurflow_cluster agentic-cluster/agentinsurflow_cluster
-COPY agentic-cluster/garde_fous.env agentic-cluster/
+COPY agentic-cluster/garde_fous.env agentic-cluster/agents.toml agentic-cluster/
 RUN uv sync --locked --no-dev --package agentinsurflow-cluster
 
 # Modèles LLM Guard / Hugging Face téléchargés au build (≈ 2,5 Go) : le démarrage n'a plus besoin

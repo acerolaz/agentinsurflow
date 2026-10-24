@@ -5,10 +5,11 @@ from __future__ import annotations
 import asyncio
 import hashlib
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from fakes_cluster import FakeOutils
+from fakes_cluster import REGLAGES, FakeOutils
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
@@ -50,9 +51,13 @@ def _appel(nom: str, args: dict[str, Any], id_: str = "1") -> AIMessage:
 
 
 def _red(
-    agent_modele: BaseChatModel | None, outils: FakeOutils | None = None
+    agent_modele: BaseChatModel | None,
+    outils: FakeOutils | None = None,
+    reglages: Any = None,
 ) -> RedactionLangChain:
-    return RedactionLangChain(lambda nom: agent_modele, outils or FakeOutils())
+    return RedactionLangChain(
+        lambda nom: agent_modele, outils or FakeOutils(), reglages or REGLAGES
+    )
 
 
 async def test_agent_sans_outil_rend_le_champ_structure() -> None:
@@ -127,11 +132,14 @@ async def test_search_rag_plafonne_a_cinq_appels() -> None:
 
 def test_version_prompt_est_le_sha256_court_du_fichier() -> None:
     fichier = Path(fabrique.__file__).parent / "prompts" / "analyste.md"
-    assert version_prompt("analyste") == hashlib.sha256(fichier.read_bytes()).hexdigest()[:12]
+    assert version_prompt("analyste.md") == hashlib.sha256(fichier.read_bytes()).hexdigest()[:12]
 
 
 def test_prompts_presents_et_distincts() -> None:
-    assert len({version_prompt(n) for n in ("pieces", "analyste", "redacteur", "actuaire")}) == 4
+    assert (
+        len({version_prompt(f"{n}.md") for n in ("pieces", "analyste", "redacteur", "actuaire")})
+        == 4
+    )
 
 
 async def test_search_rag_en_panne_rend_le_code_sans_exception() -> None:
@@ -140,3 +148,13 @@ async def test_search_rag_en_panne_rend_le_code_sans_exception() -> None:
         messages=[_appel("search_rag", {"question": "q"}), _appel("FicheRedigee", FICHE)]
     )
     assert await _red(m, outils).rediger("redacteur", {}, 5, "J") == {"erreur": "MCP_INDISPONIBLE"}
+
+
+async def test_prompt_systeme_du_reglage() -> None:
+    """TU : le prompt système vient du réglage de l'agent, pas du nom de l'agent."""
+    reglages = {**REGLAGES, "pieces": replace(REGLAGES["pieces"], prompt="analyste.md")}
+    m = FauxModele(messages=[_appel("Note", {"note": "x"})])
+    await _red(m, reglages=reglages).rediger("pieces", {}, 5)
+    premier = m.recus[0][0]
+    assert premier.type == "system"
+    assert premier.content == (fabrique.PROMPTS / "analyste.md").read_text(encoding="utf-8")

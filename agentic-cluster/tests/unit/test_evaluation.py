@@ -7,6 +7,7 @@ from typing import Any
 
 from fakes_cluster import (
     CONTRAT,
+    REGLAGES,
     FakeAudit,
     FakeGarde,
     FakeOutils,
@@ -30,12 +31,15 @@ from agentinsurflow_cluster.domain.ports import ErreurOutil
 JETON = "jeton-gestionnaire"
 
 
-def _deps(outils=None, redaction=None, garde=None, audit=None, **kw: Any) -> Dependances:
+def _deps(
+    outils=None, redaction=None, garde=None, audit=None, reglages=None, **kw: Any
+) -> Dependances:
     return Dependances(
         outils=outils or FakeOutils(),
         redaction=redaction or FakeRedaction(),
         garde=garde or FakeGarde(),
         audit=audit or FakeAudit(),
+        reglages=reglages or REGLAGES,
         versions_prompt={"pieces": "vp", "analyste": "va", "redacteur": "vr", "actuaire": "vc"},
         **kw,
     )

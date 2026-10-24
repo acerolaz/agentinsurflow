@@ -93,6 +93,6 @@ def test_precondition_actuaire_sans_fiche():
 
 
 def test_specs():
-    assert SPECS["redacteur"].delai_s == 8 and SPECS["redacteur"].tours_max == 5
+    assert SPECS["redacteur"].tours_max == 5
     assert {s.section for s in SPECS.values()} == {"pieces", "risque", "fiche", "prime"}
     assert SPECS["actuaire"].outils_mcp == {"calculer_prime"}

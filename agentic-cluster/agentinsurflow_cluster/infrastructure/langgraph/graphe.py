@@ -123,6 +123,7 @@ class ServiceEvaluation:
     """
 
     def __init__(self, deps: Dependances, checkpointer: Any) -> None:
+        self.reglages = deps.reglages  # lu par /health
         self._graphe = construire_graphe(deps, checkpointer)
         self._budget_s = deps.budget_global_s + deps.reserve_s
         self._verrous: dict[str, asyncio.Lock] = {}

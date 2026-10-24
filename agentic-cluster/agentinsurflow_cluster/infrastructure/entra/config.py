@@ -25,7 +25,6 @@ class ConfigCluster(BaseSettings):
     telemetrie_audience: str = (
         ""  # api://<appId underwriting> : posée en Azure (export OTLP avec jeton)
     )
-    azure_openai_deployment: str = ""
     insurflow_llm_actif: bool = True
     insurflow_llm_delai_s: float = 30
     # P24 (ouverte) : mêmes pièces exigées pour toute formule, séparées par des virgules

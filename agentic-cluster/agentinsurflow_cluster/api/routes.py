@@ -33,7 +33,6 @@ from .schemas import (
 from .securite import gestionnaire_courant
 
 routeur = APIRouter()
-AGENTS = ("pieces", "analyste", "redacteur", "actuaire")
 _REPONSES: dict[int | str, dict[str, Any]] = {
     401: {}, 403: {}, 404: {}, 409: {}, 502: {}, 503: {}
 }  # fmt: skip
@@ -62,7 +61,9 @@ async def sante(request: Request) -> SanteReponse | JSONResponse:
         return reponse(503, "GARDE_FOUS_EN_CHARGEMENT", "Garde-fous en cours de chargement")
     return SanteReponse(
         version=request.app.state.version,
-        prompts={a: version_prompt(a) for a in AGENTS},  # type: ignore[arg-type]
+        prompts={
+            a: version_prompt(g.prompt) for a, g in request.app.state.service.reglages.items()
+        },
         garde_fous="prets",
     )
 

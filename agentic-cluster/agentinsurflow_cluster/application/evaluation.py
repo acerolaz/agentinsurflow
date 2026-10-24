@@ -24,7 +24,6 @@ from agentinsurflow_cluster.domain.models import (
     Section,
 )
 from agentinsurflow_cluster.domain.plan import Appel, precondition, prochaine_etape
-from agentinsurflow_cluster.domain.specs import SPECS
 
 ORCHESTRATEUR: Literal["orchestrateur"] = "orchestrateur"
 SEUIL_BUDGET_S = 0.3  # en deçà, aucun agent n'a le temps de répondre : revue humaine (« duree »)
@@ -141,7 +140,7 @@ async def pas(
     if raison or budget <= SEUIL_BUDGET_S:  # GO2 refusée ou garde globale : revue humaine
         cause = "precondition" if raison else "duree"
         return replace(etat, cause=cause, tours=(*etat.tours, {**tour, "mode": "repli"}))
-    rapport = await executer_agent(nom, etat, jeton, deps, min(SPECS[nom].delai_s, budget))
+    rapport = await executer_agent(nom, etat, jeton, deps, min(deps.reglages[nom].delai_s, budget))
     try:
         neuf = fusionner(etat, rapport)
     except FusionRefusee:

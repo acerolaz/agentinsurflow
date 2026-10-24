@@ -13,13 +13,12 @@ class SpecAgent:
     section: Section
     champ_llm: str  # seul champ de la section rédigé par le LLM
     outils_mcp: frozenset[str]
-    delai_s: float
     tours_max: int
 
 
 SPECS: Mapping[NomAgent, SpecAgent] = {
-    "pieces": SpecAgent("pieces", "note", frozenset({"lister_pieces"}), 1.5, 2),
-    "analyste": SpecAgent("risque", "note", frozenset({"evaluer_risque"}), 2.0, 2),
-    "redacteur": SpecAgent("fiche", "motifs", frozenset({"search_rag"}), 8.0, 5),
-    "actuaire": SpecAgent("prime", "explication", frozenset({"calculer_prime"}), 1.5, 2),
+    "pieces": SpecAgent("pieces", "note", frozenset({"lister_pieces"}), 2),
+    "analyste": SpecAgent("risque", "note", frozenset({"evaluer_risque"}), 2),
+    "redacteur": SpecAgent("fiche", "motifs", frozenset({"search_rag"}), 5),
+    "actuaire": SpecAgent("prime", "explication", frozenset({"calculer_prime"}), 2),
 }

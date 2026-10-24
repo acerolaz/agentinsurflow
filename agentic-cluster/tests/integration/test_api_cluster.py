@@ -15,6 +15,7 @@ import httpx
 import pytest
 from fakes_cluster import (
     CONTRAT,
+    REGLAGES,
     FakeAudit,
     FakeGarde,
     FakeOutils,
@@ -44,7 +45,7 @@ class Banc:
         self.redaction = FakeRedaction()
         self.audit = FakeAudit()
         self.deps = Dependances(
-            self.outils, self.redaction, garde or FakeGarde(), self.audit,
+            self.outils, self.redaction, garde or FakeGarde(), self.audit, REGLAGES,
             versions_prompt={"pieces": "vp"},
         )  # fmt: skip
 
@@ -469,7 +470,7 @@ async def test_audit_agent_un_enregistrement_par_agent_sans_donnee_personnelle(
 
     banc = Banc()
     banc.deps = Dependances(
-        banc.outils, banc.redaction, banc.deps.garde, AuditOtel(),
+        banc.outils, banc.redaction, banc.deps.garde, AuditOtel(), REGLAGES,
         versions_prompt={"pieces": "vp", "analyste": "va", "redacteur": "vr", "actuaire": "vc"},
     )  # fmt: skip
     logging.getLogger("insurflow.audit").propagate = True
@@ -499,3 +500,19 @@ async def test_openapi_documente_les_chemins_publics_de_la_gateway() -> None:
         "/v1/souscriptions/{numero_contrat}/revue",
         "/health/cluster",
     }
+
+
+def test_reglage_invalide_empeche_le_demarrage() -> None:
+    """TI : une `ReglageInvalide` de la composition arrête le démarrage (pas de 503 silencieux)."""
+    from fastapi.testclient import TestClient
+
+    from agentinsurflow_cluster.domain.reglages import ReglageInvalide
+
+    def composition(_cfg: Any) -> Any:
+        raise ReglageInvalide("pieces : temperature hors [0, 1]")
+
+    app = creer_app(composition)
+    app.state.config = config_cluster()
+    app.state.jwks = FauxJwks()
+    with pytest.raises(ReglageInvalide), TestClient(app):
+        pass

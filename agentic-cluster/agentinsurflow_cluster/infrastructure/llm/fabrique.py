@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, Literal
 
@@ -31,6 +31,7 @@ from pydantic import BaseModel, ValidationError
 from ...domain.balises import DEBUT_BALISE, FIN_BALISE
 from ...domain.models import NomAgent
 from ...domain.ports import ErreurOutil, OutilsPort
+from ...domain.reglages import ReglageAgent
 from ...domain.specs import SPECS
 
 PROMPTS = Path(__file__).parent / "prompts"
@@ -68,8 +69,8 @@ _ERREURS_LLM = (
 )
 
 
-def version_prompt(nom: NomAgent) -> str:
-    return hashlib.sha256((PROMPTS / f"{nom}.md").read_bytes()).hexdigest()[:12]
+def version_prompt(fichier: str) -> str:
+    return hashlib.sha256((PROMPTS / fichier).read_bytes()).hexdigest()[:12]
 
 
 def _source(extrait: dict[str, Any]) -> dict[str, Any]:
@@ -85,8 +86,13 @@ def _balisee(sources: list[dict[str, Any]]) -> str:
 class RedactionLangChain:
     """Adapter de ``RedactionPort`` ; `modele(nom)` rend ``None`` quand le LLM est désactivé."""
 
-    def __init__(self, modele: Callable[[NomAgent], BaseChatModel | None], outils: OutilsPort):
-        self._modele, self._outils = modele, outils
+    def __init__(
+        self,
+        modele: Callable[[NomAgent], BaseChatModel | None],
+        outils: OutilsPort,
+        reglages: Mapping[NomAgent, ReglageAgent],
+    ):
+        self._modele, self._outils, self._reglages = modele, outils, reglages
 
     def _search_rag(
         self, jeton: str, sources: list[dict[str, Any]], erreurs: list[str]
@@ -122,7 +128,7 @@ class RedactionLangChain:
         lc = create_agent(
             model=modele,
             tools=outils,
-            system_prompt=(PROMPTS / f"{agent}.md").read_text(encoding="utf-8"),
+            system_prompt=(PROMPTS / self._reglages[agent].prompt).read_text(encoding="utf-8"),
             response_format=FORMATS[agent],
             middleware=middleware,
         )

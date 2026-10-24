@@ -34,6 +34,7 @@ from agentinsurflow_cluster.domain.ports import (
     RedactionPort,
 )
 from agentinsurflow_cluster.domain.references import prime_de, risque_de, verifier_completude
+from agentinsurflow_cluster.domain.reglages import ReglageAgent
 from agentinsurflow_cluster.domain.specs import SPECS
 
 NOT_FOUND = "NOT_FOUND_IN_CORPUS"
@@ -49,6 +50,7 @@ class Dependances:
     redaction: RedactionPort
     garde: GardeTextePort
     audit: AuditPort
+    reglages: Mapping[NomAgent, ReglageAgent]
     pieces_exigees: tuple[str, ...] = ("releve_information", "permis")  # P24 : toute formule
     horloge: Callable[[], float] = time.monotonic
     versions_prompt: Mapping[str, str] = field(default_factory=dict)
@@ -63,7 +65,7 @@ async def executer_agent(
     """Rapport de l'agent `nom` ; ne lève jamais pour une panne d'outil, de LLM ou de garde."""
     debut = deps.horloge()
     version = deps.versions_prompt.get(nom, "")
-    budget = min(budget_s, SPECS[nom].delai_s)
+    budget = min(budget_s, deps.reglages[nom].delai_s)
     try:
         rapport, codes = await _EXECUTEURS[nom](nom, etat, jeton, deps, budget, version)
     except _ERREURS_REFERENCE:  # référence introuvable ou outil refusé : revue humaine

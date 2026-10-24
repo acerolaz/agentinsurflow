@@ -15,12 +15,14 @@ from opentelemetry import trace
 from agentinsurflow_cluster.application.agents import empreinte
 from agentinsurflow_cluster.application.serialisation import vers_json
 from agentinsurflow_cluster.domain.models import Rapport
+from agentinsurflow_cluster.domain.reglages import ReglageAgent
 
 journal = logging.getLogger("insurflow.audit")
 tracer = trace.get_tracer("agentinsurflow")
 CHAMPS = (
     "trace_id", "numero_contrat", "agent", "mode", "cause", "version_prompt", "garde_fous",
     "vue_sha256", "rapport_sha256", "duree_ms", "signal_injection", "observations_sha256",
+    "modele", "temperature", "max_tokens", "tokens_entree", "tokens_sortie",
 )  # fmt: skip
 
 
@@ -55,8 +57,19 @@ class AuditOtel:
         empreinte_vue: str = "",
         signal_injection: float | None = None,
         empreinte_observations: str = "",
+        reglage: ReglageAgent | None = None,
     ) -> None:
         fin = time.time_ns()
+        # le réglage n'est lu qu'ici ; un agent sans réglage (la Saga) n'a ni modèle ni requête
+        r: dict[str, str | float] = (
+            {
+                "model": reglage.modele,
+                "temperature": reglage.temperature,
+                "max_tokens": reglage.max_tokens,
+            }
+            if reglage
+            else {}
+        )
         span = tracer.start_span(
             "invoke_agent",
             start_time=fin - duree_ms * 1_000_000,
@@ -67,6 +80,15 @@ class AuditOtel:
                 **(
                     {"insurflow.signal_injection": signal_injection}
                     if signal_injection is not None
+                    else {}
+                ),
+                **(
+                    {
+                        **{f"gen_ai.request.{k}": v for k, v in r.items()},
+                        "gen_ai.usage.input_tokens": rapport.tokens_entree,
+                        "gen_ai.usage.output_tokens": rapport.tokens_sortie,
+                    }
+                    if r
                     else {}
                 ),
             },
@@ -89,5 +111,10 @@ class AuditOtel:
                 "duree_ms": duree_ms,
                 "signal_injection": signal_injection,
                 "observations_sha256": empreinte_observations,
+                "modele": r.get("model"),
+                "temperature": r.get("temperature"),
+                "max_tokens": r.get("max_tokens"),
+                "tokens_entree": rapport.tokens_entree,
+                "tokens_sortie": rapport.tokens_sortie,
             },
         )

@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, Literal
 
@@ -18,6 +18,7 @@ import httpx
 import openai
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
+    AgentMiddleware,
     ModelCallLimitMiddleware,
     PIIDetectionError,
     PIIMiddleware,
@@ -30,12 +31,43 @@ from pydantic import BaseModel, ValidationError
 
 from ...domain.balises import DEBUT_BALISE, FIN_BALISE
 from ...domain.models import NomAgent
-from ...domain.ports import ErreurOutil, OutilsPort
+from ...domain.ports import CAUSE_BUDGET, CAUSE_PII, ErreurOutil, OutilsPort
+from ...domain.reglages import ReglageAgent
 from ...domain.specs import SPECS
 
 PROMPTS = Path(__file__).parent / "prompts"
 MAX_RECHERCHES = 5
-CAUSE_PII = "garde_fou:pii"
+
+
+class _Tronque(Exception):
+    """Une réponse du modèle a été coupée par ``max_tokens`` (``finish_reason == "length"``)."""
+
+
+class _DetecteTroncature(AgentMiddleware):
+    """Voit la réponse brute, avant l'analyse du format : une sortie coupée n'est pas analysable.
+
+    Une instance par appel de ``rediger`` : ``usage`` somme les tokens de tous ses appels.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.usage = {"entree": 0, "sortie": 0}
+
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        reponse = await handler(request)
+        for cle, v in _usage(reponse.result).items():
+            self.usage[cle] += v
+        if any(m.response_metadata.get("finish_reason") == "length" for m in reponse.result):
+            raise _Tronque
+        return reponse
+
+
+def _usage(messages: list[Any]) -> dict[str, int]:
+    metas = [m.usage_metadata or {} for m in messages if m.type == "ai"]
+    return {
+        "entree": sum(u.get("input_tokens", 0) for u in metas),
+        "sortie": sum(u.get("output_tokens", 0) for u in metas),
+    }
 
 
 class Note(BaseModel):
@@ -68,8 +100,8 @@ _ERREURS_LLM = (
 )
 
 
-def version_prompt(nom: NomAgent) -> str:
-    return hashlib.sha256((PROMPTS / f"{nom}.md").read_bytes()).hexdigest()[:12]
+def version_prompt(fichier: str) -> str:
+    return hashlib.sha256((PROMPTS / fichier).read_bytes()).hexdigest()[:12]
 
 
 def _source(extrait: dict[str, Any]) -> dict[str, Any]:
@@ -85,8 +117,13 @@ def _balisee(sources: list[dict[str, Any]]) -> str:
 class RedactionLangChain:
     """Adapter de ``RedactionPort`` ; `modele(nom)` rend ``None`` quand le LLM est désactivé."""
 
-    def __init__(self, modele: Callable[[NomAgent], BaseChatModel | None], outils: OutilsPort):
-        self._modele, self._outils = modele, outils
+    def __init__(
+        self,
+        modele: Callable[[NomAgent], BaseChatModel | None],
+        outils: OutilsPort,
+        reglages: Mapping[NomAgent, ReglageAgent],
+    ):
+        self._modele, self._outils, self._reglages = modele, outils, reglages
 
     def _search_rag(
         self, jeton: str, sources: list[dict[str, Any]], erreurs: list[str]
@@ -115,14 +152,18 @@ class RedactionLangChain:
         sources: list[dict[str, Any]] = []
         erreurs: list[str] = []
         outils = [self._search_rag(jeton, sources, erreurs)] if agent == "redacteur" else []
-        middleware: list[Any] = [ModelCallLimitMiddleware(run_limit=SPECS[agent].tours_max)]
+        troncature = _DetecteTroncature()
+        middleware: list[Any] = [
+            ModelCallLimitMiddleware(run_limit=SPECS[agent].tours_max),
+            troncature,
+        ]
         if outils:
             middleware.append(ToolCallLimitMiddleware(run_limit=MAX_RECHERCHES))
         middleware.append(PIIMiddleware("email", strategy="block", apply_to_output=True))
         lc = create_agent(
             model=modele,
             tools=outils,
-            system_prompt=(PROMPTS / f"{agent}.md").read_text(encoding="utf-8"),
+            system_prompt=(PROMPTS / self._reglages[agent].prompt).read_text(encoding="utf-8"),
             response_format=FORMATS[agent],
             middleware=middleware,
         )
@@ -132,13 +173,19 @@ class RedactionLangChain:
                 resultat = await lc.ainvoke(entree)  # type: ignore[call-overload]
         except PIIDetectionError:  # K5 : un garde-fou, pas une panne du LLM
             return {"erreur": CAUSE_PII}
+        except (_Tronque, openai.LengthFinishReasonError) as e:  # avant _ERREURS_LLM (sous-classe)
+            if isinstance(e, openai.LengthFinishReasonError) and e.completion.usage:
+                troncature.usage["entree"] += e.completion.usage.prompt_tokens
+                troncature.usage["sortie"] += e.completion.usage.completion_tokens
+            return {"erreur": CAUSE_BUDGET, "usage": troncature.usage}
         except _ERREURS_LLM:
             return None
         champs = resultat.get("structured_response")
         if champs is None:
             return None
+        usage = _usage(resultat.get("messages", []))
         if agent != "redacteur":
-            return champs.model_dump()  # type: ignore[no-any-return]
+            return {**champs.model_dump(), "usage": usage}
         if erreurs and not sources:  # rien de citable : l'application en tire la cause
             return {"erreur": erreurs[-1]}
-        return {**champs.model_dump(), "sources": sources}
+        return {**champs.model_dump(), "sources": sources, "usage": usage}

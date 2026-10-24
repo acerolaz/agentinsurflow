@@ -148,6 +148,26 @@ jobs:
           ref: ${{ steps.image.outputs.tag }}
           path: calcul-src
 
+      # Lecture seule, avant toute écriture : chaque modèle de agents.toml (celui du SHA déployé, donc un rollback
+      # vérifie l'ancien réglage) doit être un déploiement de la ressource Foundry (identité de CI, Contributor).
+      - name: Modèles du cluster présents sur Foundry (agentic-cluster/agents.toml du SHA déployé)
+        env:
+          FOUNDRY_ENDPOINT: ${{ vars.FOUNDRY_ENDPOINT }}
+          TAG: ${{ steps.image.outputs.tag }}
+        run: |
+          test -f calcul-src/agentic-cluster/agents.toml ||
+            { echo "::error::agentic-cluster/agents.toml absent du SHA $TAG : rollback vers une version antérieure au réglage par agent refusé (voir docs/rollback.md)"; exit 1; }
+          ressource=${FOUNDRY_ENDPOINT#https://}; ressource=${ressource%%.*}
+          test -n "$ressource" || { echo "::error::FOUNDRY_ENDPOINT '$FOUNDRY_ENDPOINT' sans nom de ressource (https://<nom>.openai.azure.com)"; exit 1; }
+          modeles=$(python3 -c 'import tomllib,sys; print(*sorted({a["modele"] for a in tomllib.load(open(sys.argv[1],"rb")).values()}), sep="\n")' calcul-src/agentic-cluster/agents.toml)
+          test -n "$modeles" || { echo "::error::aucun modèle dans agentic-cluster/agents.toml"; exit 1; }
+          while read -r m; do
+            # stderr conservé : droits, groupe ou réseau ne doivent pas passer pour « modèle absent »
+            err=$(az cognitiveservices account deployment show -n "$ressource" -g "$RG" --deployment-name "$m" -o none 2>&1 >/dev/null) ||
+              { echo "::error::modèle $m absent de Foundry $ressource : déploiement refusé (agentic-cluster/agents.toml) — $err"; exit 1; }
+            echo "✔ modèle $m présent sur $ressource"
+          done <<<"$modeles"
+
       - name: Déployer la Function de calcul
         env:
           CALCUL_APP_NAME: ${{ vars.CALCUL_APP_NAME }}
@@ -291,12 +311,9 @@ jobs:
         run: |
           # comme le MCP : la gateway par le FQDN de sa Container App (entrée externe, https)
           GATEWAY_URL="https://$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)"
-          # modèle des agents : épinglé et versionné (agentic-cluster/llm.env), pas une variable GitHub
-          AZURE_OPENAI_DEPLOYMENT=$(sed -n 's/^AZURE_OPENAI_DEPLOYMENT=//p' agentic-cluster/llm.env)
-          test -n "$AZURE_OPENAI_DEPLOYMENT" || { echo "::error::AZURE_OPENAI_DEPLOYMENT absent de agentic-cluster/llm.env"; exit 1; }
-          export GATEWAY_URL AZURE_OPENAI_DEPLOYMENT
+          export GATEWAY_URL
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
-          envsubst '$IMAGE_CLUSTER $UNDERWRITING_API_CLIENT_ID $APP_ENV $AZURE_TENANT_ID $AZURE_UAMI_CLUSTER_CLIENT_ID $MCP_API_CLIENT_ID $LLM_AUDIENCE $AZURE_OPENAI_DEPLOYMENT $GATEWAY_URL $INSURFLOW_CLUSTER_CLIENT_ID $INSURFLOW_AGENT_ORCHESTRATEUR_CLIENT_ID $INSURFLOW_AGENT_PIECES_CLIENT_ID $INSURFLOW_AGENT_ANALYSTE_CLIENT_ID $INSURFLOW_AGENT_REDACTEUR_CLIENT_ID $INSURFLOW_AGENT_ACTUAIRE_CLIENT_ID' \
+          envsubst '$IMAGE_CLUSTER $UNDERWRITING_API_CLIENT_ID $APP_ENV $AZURE_TENANT_ID $AZURE_UAMI_CLUSTER_CLIENT_ID $MCP_API_CLIENT_ID $LLM_AUDIENCE $GATEWAY_URL $INSURFLOW_CLUSTER_CLIENT_ID $INSURFLOW_AGENT_ORCHESTRATEUR_CLIENT_ID $INSURFLOW_AGENT_PIECES_CLIENT_ID $INSURFLOW_AGENT_ANALYSTE_CLIENT_ID $INSURFLOW_AGENT_REDACTEUR_CLIENT_ID $INSURFLOW_AGENT_ACTUAIRE_CLIENT_ID' \
             < infra/containerapp-cluster.yaml > "$RUNNER_TEMP/containerapp-cluster.yaml"
           az containerapp update -n "$CLUSTER_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-cluster.yaml" -o none
           fqdn=$(az containerapp show -n "$CLUSTER_APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)

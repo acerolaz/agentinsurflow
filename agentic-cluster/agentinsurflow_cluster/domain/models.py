@@ -56,6 +56,9 @@ class Rapport:
     mode: Literal["llm", "repli"]
     cause: str | None
     version_prompt: str
+    # tokens : 0 en repli sans appel au LLM (spec § 6) ; jamais persistés (audit et span seulement)
+    tokens_entree: int = 0
+    tokens_sortie: int = 0
 
 
 @dataclass(frozen=True)

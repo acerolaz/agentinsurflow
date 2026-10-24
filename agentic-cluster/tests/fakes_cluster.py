@@ -7,6 +7,15 @@ from typing import Any
 
 from agentinsurflow_cluster.domain.models import NomAgent, Rapport
 from agentinsurflow_cluster.domain.ports import ErreurOutil
+from agentinsurflow_cluster.domain.reglages import ReglageAgent
+
+# Valeurs initiales du § 3 de la spec, construites sans lire agents.toml (TU : aucun I/O)
+REGLAGES: dict[NomAgent, ReglageAgent] = {
+    "pieces": ReglageAgent("gpt-4.1-mini", 0.0, 400, 1.5, "pieces.md"),
+    "analyste": ReglageAgent("gpt-4.1-mini", 0.0, 400, 2.0, "analyste.md"),
+    "redacteur": ReglageAgent("gpt-4.1-mini", 0.2, 1200, 8.0, "redacteur.md"),
+    "actuaire": ReglageAgent("gpt-4.1-mini", 0.0, 400, 1.5, "actuaire.md"),
+}
 
 PIECES_OK = {
     "pieces": [
@@ -165,6 +174,7 @@ class FakeAudit:
         empreinte_vue: str = "",
         signal_injection: float | None = None,
         empreinte_observations: str = "",
+        reglage: ReglageAgent | None = None,
     ) -> None:
         if signal_injection is not None:
             self.signaux.append(signal_injection)

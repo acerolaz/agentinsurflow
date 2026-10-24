@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 from fakes_cluster import (
+    REGLAGES,
     RISQUE_REFUS,
     FakeAudit,
     FakeGarde,
@@ -58,6 +59,7 @@ async def _proposition(observations: str, redaction: FakeRedaction) -> tuple[Any
         redaction=redaction,
         garde=FakeGarde(),
         audit=FakeAudit(),
+        reglages=REGLAGES,
         versions_prompt={"pieces": "vp", "analyste": "va", "redacteur": "vr", "actuaire": "vc"},
     )
     etat = await charger("C-1", JETON, deps)

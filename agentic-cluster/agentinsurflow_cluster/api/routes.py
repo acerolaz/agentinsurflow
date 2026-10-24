@@ -19,13 +19,13 @@ from ..application.evaluation import (
 from ..domain.ports import ErreurOutil
 from ..infrastructure.entra.verification import Gestionnaire
 from ..infrastructure.langgraph.graphe import Resultat, ServiceEvaluation
-from ..infrastructure.llm.fabrique import version_prompt
 from .problemes import Probleme, reponse
 from .schemas import (
     EtapeDto,
     EvaluationReponse,
     FicheDto,
     PrimeDto,
+    ReglageDto,
     RevueCorps,
     RevueReponse,
     SanteReponse,
@@ -33,7 +33,6 @@ from .schemas import (
 from .securite import gestionnaire_courant
 
 routeur = APIRouter()
-AGENTS = ("pieces", "analyste", "redacteur", "actuaire")
 _REPONSES: dict[int | str, dict[str, Any]] = {
     401: {}, 403: {}, 404: {}, 409: {}, 502: {}, 503: {}
 }  # fmt: skip
@@ -60,9 +59,21 @@ def _outil_en_echec(e: ErreurOutil) -> Probleme:
 async def sante(request: Request) -> SanteReponse | JSONResponse:
     if request.app.state.service is None:
         return reponse(503, "GARDE_FOUS_EN_CHARGEMENT", "Garde-fous en cours de chargement")
+    reglages = request.app.state.service.reglages
+    prompts = dict(request.app.state.service.versions_prompt)  # empreintes calculées au démarrage
     return SanteReponse(
         version=request.app.state.version,
-        prompts={a: version_prompt(a) for a in AGENTS},  # type: ignore[arg-type]
+        prompts=prompts,
+        reglages={
+            a: ReglageDto(
+                modele=g.modele,
+                temperature=g.temperature,
+                max_tokens=g.max_tokens,
+                delai_s=g.delai_s,
+                version_prompt=prompts[a],
+            )  # fmt: skip
+            for a, g in reglages.items()
+        },
         garde_fous="prets",
     )
 

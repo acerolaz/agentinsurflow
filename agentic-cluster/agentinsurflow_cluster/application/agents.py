@@ -27,6 +27,8 @@ from agentinsurflow_cluster.domain.models import (
 )
 from agentinsurflow_cluster.domain.pii import pii_detectees
 from agentinsurflow_cluster.domain.ports import (
+    CAUSE_BUDGET,
+    CAUSE_PII,
     AuditPort,
     ErreurOutil,
     GardeTextePort,
@@ -34,10 +36,10 @@ from agentinsurflow_cluster.domain.ports import (
     RedactionPort,
 )
 from agentinsurflow_cluster.domain.references import prime_de, risque_de, verifier_completude
+from agentinsurflow_cluster.domain.reglages import ReglageAgent
 from agentinsurflow_cluster.domain.specs import SPECS
 
 NOT_FOUND = "NOT_FOUND_IN_CORPUS"
-CAUSE_PII = "garde_fou:pii"  # même valeur que l'adapter LLM (le port la transporte)
 HORS_BAREME = "DONNEE_HORS_BAREME"
 _ERREURS_REFERENCE = (ErreurOutil, KeyError, TypeError, ValueError)
 _ERREURS_SORTIE = (KeyError, TypeError, ValueError)
@@ -49,6 +51,7 @@ class Dependances:
     redaction: RedactionPort
     garde: GardeTextePort
     audit: AuditPort
+    reglages: Mapping[NomAgent, ReglageAgent]
     pieces_exigees: tuple[str, ...] = ("releve_information", "permis")  # P24 : toute formule
     horloge: Callable[[], float] = time.monotonic
     versions_prompt: Mapping[str, str] = field(default_factory=dict)
@@ -63,7 +66,7 @@ async def executer_agent(
     """Rapport de l'agent `nom` ; ne lève jamais pour une panne d'outil, de LLM ou de garde."""
     debut = deps.horloge()
     version = deps.versions_prompt.get(nom, "")
-    budget = min(budget_s, SPECS[nom].delai_s)
+    budget = min(budget_s, deps.reglages[nom].delai_s)
     try:
         rapport, codes = await _EXECUTEURS[nom](nom, etat, jeton, deps, budget, version)
     except _ERREURS_REFERENCE:  # référence introuvable ou outil refusé : revue humaine
@@ -75,6 +78,7 @@ async def executer_agent(
         int((deps.horloge() - debut) * 1000),
         empreinte(replace(etat, observations=None)),  # la vue ne porte jamais les observations
         empreinte_observations=empreinte_texte(etat.observations),
+        reglage=deps.reglages[nom],
     )
     return rapport
 
@@ -116,15 +120,20 @@ async def _rediger(
     """LLM puis garde-fous ; `repli=None` ⇒ section vide (Rédacteur), sinon section de référence."""
     section = SPECS[nom].section
 
+    usage: dict[str, int] = {}
+
     def echec(cause: str, codes: list[str]) -> Resultat:
         contenu = {} if repli is None else {section: repli}
-        return Rapport(nom, contenu, "repli", cause, version), codes
+        return Rapport(nom, contenu, "repli", cause, version, **_tokens(usage)), codes
 
     if etat.entree_bloquee:
         return echec("entree_bloquee", [])
     sortie = await deps.redaction.rediger(nom, vue, budget_s, jeton)
     if sortie is None:
         return echec("llm_ko", [])
+    usage = sortie.get("usage") or {}
+    if sortie.get("erreur") == CAUSE_BUDGET:
+        return echec(CAUSE_BUDGET, [])
     if sortie.get("erreur") == CAUSE_PII:  # K5 : détection PII ≠ panne du LLM (« llm_ko »)
         return echec(CAUSE_PII, ["pii"])
     if "erreur" in sortie:
@@ -137,7 +146,11 @@ async def _rediger(
     if codes:
         return echec(f"garde_fou:{codes[0]}", codes)
     contenu = {section: finaliser(candidat), **extra(sortie)}
-    return Rapport(nom, contenu, "llm", None, version), []  # type: ignore[arg-type]
+    return Rapport(nom, contenu, "llm", None, version, **_tokens(usage)), []  # type: ignore[arg-type]
+
+
+def _tokens(usage: Mapping[str, int]) -> dict[str, int]:
+    return {"tokens_entree": usage.get("entree", 0), "tokens_sortie": usage.get("sortie", 0)}
 
 
 def _tuple(sortie: Mapping[str, Any], cle: str, defaut: tuple[str, ...]) -> tuple[str, ...]:

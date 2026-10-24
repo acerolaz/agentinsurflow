@@ -5,13 +5,17 @@ from __future__ import annotations
 import asyncio
 import hashlib
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from fakes_cluster import FakeOutils
+import openai
+from fakes_cluster import REGLAGES, FakeOutils
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
+from openai.types import CompletionUsage
+from openai.types.chat import ChatCompletion
 
 from agentinsurflow_cluster.domain.ports import ErreurOutil
 from agentinsurflow_cluster.infrastructure.llm import fabrique
@@ -50,15 +54,19 @@ def _appel(nom: str, args: dict[str, Any], id_: str = "1") -> AIMessage:
 
 
 def _red(
-    agent_modele: BaseChatModel | None, outils: FakeOutils | None = None
+    agent_modele: BaseChatModel | None,
+    outils: FakeOutils | None = None,
+    reglages: Any = None,
 ) -> RedactionLangChain:
-    return RedactionLangChain(lambda nom: agent_modele, outils or FakeOutils())
+    return RedactionLangChain(
+        lambda nom: agent_modele, outils or FakeOutils(), reglages or REGLAGES
+    )
 
 
 async def test_agent_sans_outil_rend_le_champ_structure() -> None:
     m = FauxModele(messages=[_appel("Note", {"note": "Pièces complètes."})])
     sortie = await _red(m).rediger("pieces", {"statut": "complet"}, 5)
-    assert sortie == {"note": "Pièces complètes."}
+    assert sortie == {"note": "Pièces complètes.", "usage": {"entree": 0, "sortie": 0}}
 
 
 async def test_modele_absent_ou_trop_lent_rendent_none_et_email_garde_fou_pii() -> None:
@@ -127,11 +135,14 @@ async def test_search_rag_plafonne_a_cinq_appels() -> None:
 
 def test_version_prompt_est_le_sha256_court_du_fichier() -> None:
     fichier = Path(fabrique.__file__).parent / "prompts" / "analyste.md"
-    assert version_prompt("analyste") == hashlib.sha256(fichier.read_bytes()).hexdigest()[:12]
+    assert version_prompt("analyste.md") == hashlib.sha256(fichier.read_bytes()).hexdigest()[:12]
 
 
 def test_prompts_presents_et_distincts() -> None:
-    assert len({version_prompt(n) for n in ("pieces", "analyste", "redacteur", "actuaire")}) == 4
+    assert (
+        len({version_prompt(f"{n}.md") for n in ("pieces", "analyste", "redacteur", "actuaire")})
+        == 4
+    )
 
 
 async def test_search_rag_en_panne_rend_le_code_sans_exception() -> None:
@@ -140,3 +151,77 @@ async def test_search_rag_en_panne_rend_le_code_sans_exception() -> None:
         messages=[_appel("search_rag", {"question": "q"}), _appel("FicheRedigee", FICHE)]
     )
     assert await _red(m, outils).rediger("redacteur", {}, 5, "J") == {"erreur": "MCP_INDISPONIBLE"}
+
+
+async def test_prompt_systeme_du_reglage() -> None:
+    """TU : le prompt système vient du réglage de l'agent, pas du nom de l'agent."""
+    reglages = {**REGLAGES, "pieces": replace(REGLAGES["pieces"], prompt="analyste.md")}
+    m = FauxModele(messages=[_appel("Note", {"note": "x"})])
+    await _red(m, reglages=reglages).rediger("pieces", {}, 5)
+    premier = m.recus[0][0]
+    assert premier.type == "system"
+    assert premier.content == (fabrique.PROMPTS / "analyste.md").read_text(encoding="utf-8")
+
+
+async def test_reponse_tronquee_budget_tokens() -> None:
+    """TU : `finish_reason == "length"` ou `LengthFinishReasonError` ⇒ cause budget, pas llm_ko."""
+    coupe = _appel("Note", {"note": "x"}).model_copy(
+        update={"response_metadata": {"finish_reason": "length"}}
+    )
+    sortie = await _red(FauxModele(messages=[coupe])).rediger("pieces", {}, 5)
+    assert sortie is not None and sortie["erreur"] == "budget_tokens"
+
+    class ModeleLongueur(FauxModele):
+        def _generate(self, *a: Any, **kw: Any) -> ChatResult:
+            raise openai.LengthFinishReasonError(completion=ChatCompletion.model_construct())
+
+    sortie = await _red(ModeleLongueur(messages=[])).rediger("pieces", {}, 5)
+    assert sortie is not None and sortie["erreur"] == "budget_tokens"
+
+
+async def test_usage_additionne() -> None:
+    """TU : le `usage` est la somme des `usage_metadata` des appels de l'agent."""
+
+    def msg(msg_: AIMessage, e: int, s: int) -> AIMessage:
+        usage = {"input_tokens": e, "output_tokens": s, "total_tokens": e + s}
+        return msg_.model_copy(update={"usage_metadata": usage})
+
+    outils = FakeOutils(search_rag={"statut": "OK", "resultats": []})
+    m = FauxModele(
+        messages=[
+            msg(_appel("search_rag", {"question": "q"}), 10, 5),
+            msg(_appel("FicheRedigee", FICHE), 20, 7),
+        ]
+    )
+    sortie = await _red(m, outils).rediger("redacteur", {}, 5, "J")
+    assert sortie is not None and sortie["usage"] == {"entree": 30, "sortie": 12}
+
+
+async def test_troncature_apres_un_premier_appel_compte_les_tokens_consommes() -> None:
+    """TU : la cause reste `budget_tokens`, mais les tokens déjà dépensés sont comptés."""
+
+    def msg(m: AIMessage, e: int, s: int, **meta: Any) -> AIMessage:
+        usage = {"input_tokens": e, "output_tokens": s, "total_tokens": e + s}
+        return m.model_copy(update={"usage_metadata": usage, "response_metadata": meta})
+
+    outils = FakeOutils(search_rag={"statut": "OK", "resultats": []})
+    m = FauxModele(
+        messages=[
+            msg(_appel("search_rag", {"question": "q"}), 10, 5),
+            msg(_appel("FicheRedigee", FICHE), 20, 400, finish_reason="length"),
+        ]
+    )
+    sortie = await _red(m, outils).rediger("redacteur", {}, 5, "J")
+    assert sortie == {"erreur": "budget_tokens", "usage": {"entree": 30, "sortie": 405}}
+
+
+async def test_length_finish_reason_error_compte_l_usage_de_la_completion() -> None:
+    class ModeleLongueur(FauxModele):
+        def _generate(self, *a: Any, **kw: Any) -> ChatResult:
+            completion = ChatCompletion.model_construct(
+                usage=CompletionUsage(prompt_tokens=12, completion_tokens=400, total_tokens=412)
+            )
+            raise openai.LengthFinishReasonError(completion=completion)
+
+    sortie = await _red(ModeleLongueur(messages=[])).rediger("pieces", {}, 5)
+    assert sortie == {"erreur": "budget_tokens", "usage": {"entree": 12, "sortie": 400}}

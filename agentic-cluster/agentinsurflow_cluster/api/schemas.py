@@ -59,7 +59,16 @@ class RevueReponse(BaseModel):
     statut: Literal["ACCEPTE", "REFUSE"]
 
 
+class ReglageDto(BaseModel):
+    modele: str
+    temperature: float
+    max_tokens: int
+    delai_s: float
+    version_prompt: str
+
+
 class SanteReponse(BaseModel):
     version: str
     prompts: dict[str, str]
+    reglages: dict[str, ReglageDto]
     garde_fous: Literal["prets"]

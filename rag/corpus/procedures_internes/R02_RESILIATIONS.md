@@ -15,7 +15,7 @@ Motif retenu par le barème : « Le relevé d'information mentionne au moins deu
 
 ## Pièces à vérifier
 - Relevé d'information de chaque assureur des cinq dernières années.
-- Motif de chaque résiliation (sinistre, non-paiement, fausse déclaration) ; une résiliation à l'initiative de l'assuré ne compte pas.
+- Motif de chaque résiliation (sinistre, non-paiement, fausse déclaration).
 
 ## Fondement
 Les contrats de responsabilité civile automobile comportent une clause-type de résiliation par l'assureur (article A. 211-1-1), qui permet notamment de résilier après un sinistre causé en état d'imprégnation alcoolique, sous l'emprise de stupéfiants ou par une infraction entraînant une suspension du permis (article A. 211-1-2). Le seuil de deux résiliations relève de la politique de souscription AgentInsurFlow.

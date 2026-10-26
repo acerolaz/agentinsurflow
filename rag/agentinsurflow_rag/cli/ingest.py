@@ -102,8 +102,11 @@ def lire_instantane(chemin: Path) -> tuple[list[dict[str, Any]], str, Date]:
 
 def lire_markdown(dossier: Path, collection: str) -> list[dict[str, Any]]:
     """Un article par ``*.md`` du dossier, trié par nom ; le corps part tel quel (texte brut)."""
+    fichiers = sorted(dossier.glob("*.md"))
+    if not fichiers:  # glob ne lève rien sur un dossier absent : un SOURCE mal saisi passerait
+        raise ErreurEnvoi(f"aucun fichier .md dans {dossier}")
     articles = []
-    for fichier in sorted(dossier.glob("*.md")):
+    for fichier in fichiers:
         lignes = fichier.read_text(encoding="utf-8").split("\n")
         if lignes[0].strip() != "---" or "---" not in lignes[1:]:
             raise ErreurEnvoi(f"{fichier.name} : en-tête « --- » absent")

@@ -205,6 +205,14 @@ def test_markdown_invalide_erreur_qui_nomme_le_fichier(tmp_path: Path, contenu: 
         lire_markdown(tmp_path, "notices_produits")
 
 
+@pytest.mark.parametrize("sous_dossier", ["vide", "inexistant"])
+def test_dossier_sans_markdown_echoue(tmp_path: Path, sous_dossier: str) -> None:
+    # un SOURCE mal saisi dans deploy.yml ne doit pas passer pour « 0 inséré »
+    (tmp_path / "vide").mkdir()
+    with pytest.raises(ErreurEnvoi, match=sous_dossier):
+        lire_markdown(tmp_path / sous_dossier, "notices_produits")
+
+
 def test_procedure_sans_regle_id_refusee(tmp_path: Path) -> None:
     # sans regle_id, GF5 échouerait en silence sur chaque refus fondé sur cette procédure
     _md(tmp_path, "R01.md", "doc_id: PI-R01\nversion: v1\narticle: PI-R01\ndate_debut: 2026-10-26")

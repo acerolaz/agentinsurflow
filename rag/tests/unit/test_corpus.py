@@ -9,6 +9,7 @@ import pytest
 
 from agentinsurflow_rag.domain.corpus import (
     TEXTE_MIN,
+    collections_pour,
     decider,
     decouper,
     hash_contenu,
@@ -121,6 +122,25 @@ def test_nettoyer_rejette_partiel(champ: str) -> None:
     )
 
 
+def test_nettoyer_recopie_regle_id() -> None:
+    propre = nettoyer(_brut(regle_id="R01_SUSPENSION"))
+    assert isinstance(propre, ArticlePropre) and propre.regle_id == "R01_SUSPENSION"
+
+
+def test_nettoyer_sans_regle_id_garde_le_hash_du_texte() -> None:
+    propre = nettoyer(_brut())
+    assert isinstance(propre, ArticlePropre) and propre.regle_id is None
+    assert propre.hash_contenu == hash_contenu(propre.texte)
+
+
+def test_regle_id_change_le_hash() -> None:
+    # même texte, autre règle : la dédup doit le voir (sinon l'ancien regle_id resterait)
+    a = nettoyer(_brut(regle_id="R01_SUSPENSION"))
+    b = nettoyer(_brut(regle_id="R02_RESILIATIONS"))
+    assert isinstance(a, ArticlePropre) and isinstance(b, ArticlePropre)
+    assert a.hash_contenu != b.hash_contenu
+
+
 def test_nettoyer_champ_vide_est_partiel() -> None:
     assert nettoyer(_brut(url_source="  ")) == Rejet("LEGIARTI000006800836", "partiel:url_source")
 
@@ -209,3 +229,18 @@ def test_porte() -> None:
 )
 def test_porte_bornes_du_seuil(cosinus: float, seuil: float, attendu: bool) -> None:
     assert passe_la_porte(cosinus, False, seuil) is attendu
+
+
+# ---------------------------------------------------------------- collections par rôle
+
+
+def test_gestionnaire_lit_les_trois_collections() -> None:
+    assert collections_pour(frozenset({"Gestionnaire"})) == [
+        "notices_produits",
+        "procedures_internes",
+        "textes_reglementaires",
+    ]
+
+
+def test_role_absent_ne_lit_rien() -> None:
+    assert collections_pour(frozenset({"Ingestion"})) == []

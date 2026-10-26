@@ -27,6 +27,7 @@ class ArticlePropre:
     url_source: str
     texte: str
     hash_contenu: str
+    regle_id: str | None = None  # règle du barème que le document fonde (procédures internes)
 
 
 @dataclass(frozen=True)
@@ -87,6 +88,7 @@ class CitationRag:
     date_debut: date | None
     url_source: str
     chunk_id: int
+    regle_id: str | None = None
 
 
 @dataclass(frozen=True)

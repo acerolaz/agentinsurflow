@@ -50,7 +50,7 @@ SQL_HYBRIDE = text(
         GROUP BY id
     )
     SELECT c.id AS chunk_id, c.article, c.texte, d.doc_id, d.version, d.collection,
-           d.date_debut, d.url_source, f.score AS score_rrf,
+           d.date_debut, d.url_source, d.regle_id, f.score AS score_rrf,
            1 - (c.embedding <=> CAST(:v AS vector)) AS cosinus
     FROM fusion f JOIN chunk c ON c.id = f.id JOIN document d ON d.id = c.document_id
     ORDER BY f.score DESC, c.id
@@ -61,7 +61,7 @@ SQL_HYBRIDE = text(
 SQL_PAR_ARTICLES = text(
     """
     SELECT c.id AS chunk_id, c.article, c.texte, d.doc_id, d.version, d.collection,
-           d.date_debut, d.url_source, 0.0 AS score_rrf, NULL AS cosinus
+           d.date_debut, d.url_source, d.regle_id, 0.0 AS score_rrf, NULL AS cosinus
     FROM chunk c JOIN document d ON d.id = c.document_id
     WHERE NOT d.obsolete AND d.collection = ANY(:collections) AND c.article = ANY(:articles)
     ORDER BY array_position(CAST(:articles AS text[]), c.article), c.ordre
@@ -127,8 +127,9 @@ class PgDepotCorpus:
             await self._conn.execute(
                 text(
                     "INSERT INTO document (doc_id, collection, version, date_debut, etat, "
-                    "url_source, hash_contenu, extrait_le) VALUES (:doc_id, :collection, :version, "
-                    ":date_debut, :etat, :url_source, :hash, :extrait_le) RETURNING id"
+                    "url_source, hash_contenu, extrait_le, regle_id) VALUES (:doc_id, :collection, "
+                    ":version, :date_debut, :etat, :url_source, :hash, :extrait_le, :regle_id) "
+                    "RETURNING id"
                 ),
                 {
                     "doc_id": article.doc_id,
@@ -139,6 +140,7 @@ class PgDepotCorpus:
                     "url_source": article.url_source,
                     "hash": article.hash_contenu,
                     "extrait_le": extrait_le,
+                    "regle_id": article.regle_id,
                 },
             )
         ).scalar_one()

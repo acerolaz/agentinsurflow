@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ...domain.attribution import Attribution, VersionIntrouvable
+from ...domain.corpus import COLLECTION_S3
 from ...domain.models import DocumentTrace, EtatCorpus, IngestionJournalisee
 from ...domain.ports import DepotCorpus
 
@@ -20,10 +21,11 @@ async def attribuer(
 ) -> Attribution | None:
     """Mentions Etalab d'une version d'article (par défaut la courante, une obsolète reste citable).
 
-    ``None`` si l'article est inconnu ou hors des collections ; ``VersionIntrouvable`` sinon.
+    ``None`` si l'article est inconnu, hors des collections, ou rédigé pour le projet (seuls les
+    textes Légifrance relèvent d'Etalab) ; ``VersionIntrouvable`` sinon.
     """
     document = await lire_document(depot, doc_id, collections)
-    if document is None:
+    if document is None or document.collection != COLLECTION_S3:
         return None
     choisie = next(
         (v for v in document.versions if (v.version == version if version else not v.obsolete)),

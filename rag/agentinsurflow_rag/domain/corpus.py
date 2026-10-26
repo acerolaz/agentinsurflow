@@ -28,8 +28,12 @@ _BLOCS = {"p", "div", "br", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "tab
 Decision = Literal["nouveau", "inchange", "nouvelle_version", "conflit_version"]
 
 COLLECTION_S3 = "textes_reglementaires"
+COLLECTION_NOTICES = "notices_produits"
+COLLECTION_PROCEDURES = "procedures_internes"
 # Refus par défaut : un rôle absent de la table ne lit aucune collection (spec §4.1)
-COLLECTIONS_PAR_ROLE: dict[str, tuple[str, ...]] = {"Gestionnaire": (COLLECTION_S3,)}
+COLLECTIONS_PAR_ROLE: dict[str, tuple[str, ...]] = {
+    "Gestionnaire": (COLLECTION_S3, COLLECTION_NOTICES, COLLECTION_PROCEDURES)
+}
 
 
 def collections_pour(roles: frozenset[str]) -> list[str]:
@@ -106,6 +110,10 @@ def nettoyer(brut: Mapping[str, object]) -> ArticlePropre | Rejet:
         date_debut = _date(brut.get("date_debut"))
     except ValueError:
         return Rejet(identifiant, "date_invalide")
+    regle = brut.get("regle_id")
+    regle_id = regle.strip() if isinstance(regle, str) and regle.strip() else None
+    # le hash couvre la règle : la changer sous la même version est un conflit, pas un « inchangé »
+    empreinte = texte if regle_id is None else f"{texte}\n{regle_id}"
     return ArticlePropre(
         doc_id=str(identifiant),
         version=str(brut["version"]).strip(),
@@ -114,7 +122,8 @@ def nettoyer(brut: Mapping[str, object]) -> ArticlePropre | Rejet:
         etat=etat,
         url_source=str(brut["url_source"]).strip(),
         texte=texte,
-        hash_contenu=hash_contenu(texte),
+        hash_contenu=hash_contenu(empreinte),
+        regle_id=regle_id,
     )
 
 

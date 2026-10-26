@@ -37,8 +37,8 @@ test-e2e:           ## make test-e2e URL=<gateway> : la solution qui tourne (com
 migrate:            ## migrations Alembic de la base vecteurs (compte migrateur, PG_* du .env)
 	cd rag && uv run alembic -n vecteurs upgrade head
 
-ingest:             ## make ingest [URL=<gateway>] [INSTANTANE=data/raw/…] : Légifrance ou rejeu → /api/ingestions
-	uv run python -m agentinsurflow_rag.cli.ingest --url $(URL) $(if $(INSTANTANE),--instantane $(INSTANTANE))
+ingest:             ## make ingest [URL=<gateway>] [INSTANTANE=data/raw/…] [COLLECTION=… SOURCE=rag/corpus/…] : Légifrance, rejeu ou Markdown → /api/ingestions
+	uv run python -m agentinsurflow_rag.cli.ingest --url $(URL) $(if $(INSTANTANE),--instantane $(INSTANTANE)) $(if $(SOURCE),--collection $(COLLECTION) --source $(SOURCE))
 
 extraire:           ## extraction Légifrance seule → data/raw/ (identifiants PISTE du .env, bac à sable)
 	uv run python -m agentinsurflow_rag.cli.ingest --sans-envoi

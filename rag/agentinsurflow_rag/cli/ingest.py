@@ -1,6 +1,7 @@
 """CLI d'ingestion (spec §3.2, ① à ④) : Légifrance → instantané versionné → ``/api/ingestions``.
 
     make ingest [URL=https://<gateway>] [INSTANTANE=data/raw/code-assurances-<date>.json]
+    make ingest [URL=…] COLLECTION=notices_produits SOURCE=rag/corpus/notices_produits
 
 ① jeton PISTE (``.env`` local) ; ② plan du code, filtre du périmètre, ``getArticle`` séquentiel ;
 ③ instantané écrit dans un fichier temporaire puis renommé (jamais partiel), avec son manifeste ;
@@ -8,6 +9,8 @@
 ``--instantane`` rejoue un fichier et saute ① à ③ (CI, staging, production : pas de PISTE).
 Les traces de la CLI partent aussi par la gateway (``/v1/traces``, rôle ``Telemetrie``) ;
 leur échec ne fait jamais échouer l'ingestion.
+``--collection`` + ``--source`` : documents rédigés pour le projet (Markdown du dépôt, en-tête
+``cle: valeur`` entre deux ``---``), sans PISTE ni instantané.
 """
 
 from __future__ import annotations
@@ -43,6 +46,9 @@ from ..infrastructure.legifrance.client import (
 
 TAILLE_LOT = 50
 DELAI_API_S = 120
+COLLECTIONS = ("textes_reglementaires", "notices_produits", "procedures_internes")
+URL_DEPOT = "https://github.com/acerolaz/agentinsurflow/blob/main/rag/corpus"
+EN_TETE_OBLIGATOIRE = ("doc_id", "version", "article", "date_debut")
 
 journal = logging.getLogger("agentinsurflow.ingest")
 
@@ -94,6 +100,37 @@ def lire_instantane(chemin: Path) -> tuple[list[dict[str, Any]], str, Date]:
     return articles, sha, Date.fromisoformat(contenu["manifeste"]["date"])
 
 
+def lire_markdown(dossier: Path, collection: str) -> list[dict[str, Any]]:
+    """Un article par ``*.md`` du dossier, trié par nom ; le corps part tel quel (texte brut)."""
+    fichiers = sorted(dossier.glob("*.md"))
+    if not fichiers:  # glob ne lève rien sur un dossier absent : un SOURCE mal saisi passerait
+        raise ErreurEnvoi(f"aucun fichier .md dans {dossier}")
+    articles = []
+    for fichier in fichiers:
+        lignes = fichier.read_text(encoding="utf-8").split("\n")
+        if lignes[0].strip() != "---" or "---" not in lignes[1:]:
+            raise ErreurEnvoi(f"{fichier.name} : en-tête « --- » absent")
+        fin = lignes.index("---", 1)
+        en_tete = dict(
+            (cle.strip(), valeur.strip())
+            for cle, _, valeur in (ligne.partition(":") for ligne in lignes[1:fin])
+        )
+        obligatoires = EN_TETE_OBLIGATOIRE + (("regle_id",) if collection == COLLECTIONS[2] else ())
+        manquants = [c for c in obligatoires if not en_tete.get(c)]
+        if manquants:
+            raise ErreurEnvoi(f"{fichier.name} : en-tête sans {', '.join(manquants)}")
+        articles.append(
+            {
+                **{c: en_tete[c] for c in EN_TETE_OBLIGATOIRE},
+                "regle_id": en_tete.get("regle_id") or None,
+                "etat": "VIGUEUR",
+                "texte_html": "\n".join(lignes[fin + 1 :]).strip(),
+                "url_source": f"{URL_DEPOT}/{collection}/{fichier.name}",
+            }
+        )
+    return articles
+
+
 # ---------------------------------------------------------------- envoi
 
 
@@ -118,6 +155,7 @@ def envoyer(
     sha: str,
     instantane_date: Date,
     tracer: Tracer,
+    collection: str = "textes_reglementaires",
 ) -> dict[str, Any]:
     rapports = []
     for debut in range(0, len(articles), TAILLE_LOT):
@@ -127,7 +165,7 @@ def envoyer(
             entetes = {"Authorization": f"Bearer {jeton}"}
             propagate.inject(entetes)  # une seule trace : CLI → gateway → rag
             corps = {
-                "collection": "textes_reglementaires",
+                "collection": collection,
                 "instantane_sha256": sha,
                 "instantane_date": instantane_date.isoformat(),
                 "articles": lot,
@@ -190,6 +228,8 @@ def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
     )
     parser.add_argument("--url", default="http://localhost:8000", help="gateway (ou rag en direct)")
     parser.add_argument("--instantane", type=Path, help="rejouer un instantané (saute PISTE)")
+    parser.add_argument("--collection", choices=COLLECTIONS, default=COLLECTIONS[0])
+    parser.add_argument("--source", type=Path, help="dossier de Markdown (documents rédigés)")
     parser.add_argument("--date", default=Date.today().isoformat())
     parser.add_argument("--dossier", type=Path, default=Path("data/raw"))
     parser.add_argument("--preuves", type=Path, default=Path("eval/preuves"))
@@ -201,6 +241,11 @@ def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
 
 
 def _instantane(args: argparse.Namespace) -> tuple[list[dict[str, Any]], str, Date, str]:
+    if (args.source is None) != (args.collection == COLLECTIONS[0]):
+        raise ErreurEnvoi("--source va avec --collection notices_produits ou procedures_internes")
+    if args.source:
+        articles = lire_markdown(args.source, args.collection)
+        return articles, sha_articles(articles), Date.fromisoformat(args.date), "markdown"
     if args.instantane:
         articles, sha, jour = lire_instantane(args.instantane)
         return articles, sha, jour, "instantane"
@@ -242,9 +287,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "ingest.mode": mode,
                 }
             )
-            rapport = envoyer(client, args.url, jeton, articles, sha, jour, tracer)
+            rapport = envoyer(client, args.url, jeton, articles, sha, jour, tracer, args.collection)
         args.preuves.mkdir(parents=True, exist_ok=True)
-        preuve = args.preuves / f"ingestion-{args.date}-{args.environnement}.json"
+        prefixe = "" if args.collection == COLLECTIONS[0] else f"{args.collection}-"
+        preuve = args.preuves / f"ingestion-{prefixe}{args.date}-{args.environnement}.json"
         preuve.write_text(
             json.dumps(
                 {

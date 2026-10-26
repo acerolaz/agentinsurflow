@@ -78,3 +78,13 @@ async def test_article_inconnu_ou_hors_collection_rend_none():
     depot = await _depot()
     assert await attribuer(depot, "INCONNU", None, COLLECTIONS) is None
     assert await attribuer(depot, "LEGIARTI1", None, ["autre"]) is None
+
+
+async def test_pas_d_attribution_etalab_pour_une_notice() -> None:
+    # texte rédigé pour le projet : le présenter comme Légifrance / Licence Ouverte serait faux
+    depot = FakeDepotCorpus()
+    await depot.inserer(
+        _article("v1", "NP-TIERS"), "notices_produits", ["c"], [[1.0]], date(2026, 10, 26)
+    )
+    collections = ["notices_produits", *COLLECTIONS]
+    assert await attribuer(depot, "LEGIARTI1", None, collections) is None

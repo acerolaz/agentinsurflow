@@ -5,6 +5,7 @@ PostgreSQL : SQL RRF réel, porte de pertinence, références exactes, versions 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -15,12 +16,14 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from agentinsurflow_rag.api import app
 from agentinsurflow_rag.api.dependances import ConfigRag, charger_rag, connexion_reader
+from agentinsurflow_rag.cli.ingest import lire_markdown
 from agentinsurflow_rag.infrastructure.postgres import corpus as pg_corpus
 from agentinsurflow_rag.infrastructure.postgres.connexions import ConfigBD, creer_moteurs
 from conftest import config_bd, entetes
-from corpus_de_test import CORPUS, DATE_ISO, SHA
+from corpus_de_test import CORPUS, DATE_ISO, SHA, article
 
 GESTIONNAIRE = entetes("Gestionnaire")
+RACINE = Path(__file__).resolve().parents[2]  # rag/
 
 
 async def _extraits(api: httpx.AsyncClient, question: str, **parametres: Any) -> dict[str, Any]:
@@ -180,3 +183,102 @@ async def test_erreur_sql_503_sans_la_question_dans_les_traces(
     ]
     assert any("table_absente" in t for t in textes)  # l'exception est bien enregistrée…
     assert not any("Dupont" in t for t in textes)  # … sans la question
+
+
+# ---------------------------------------------------------------- notices, procédures (#98)
+
+NOTICE = article(
+    "tiers",
+    "NP-TIERS",
+    "Formule tiers : la garantie responsabilité civile couvre les dommages causés aux tiers.",
+    url_source="https://github.com/acerolaz/agentinsurflow/blob/main/rag/corpus/notices_produits/tiers.md",
+)
+PROCEDURE = article(
+    "PI-R01_SUSPENSION",
+    "PI-R01-SUSPENSION",
+    "Suspension de permis dans les trois dernières années : la souscription est refusée.",
+    url_source="https://github.com/acerolaz/agentinsurflow/blob/main/rag/corpus/procedures_internes/R01_SUSPENSION.md",
+    regle_id="R01_SUSPENSION",
+)
+
+
+async def _ingerer(api: httpx.AsyncClient, collection: str, *articles: dict[str, Any]) -> None:
+    corps = {"collection": collection, "instantane_sha256": SHA, "instantane_date": DATE_ISO,
+             "articles": list(articles)}  # fmt: skip
+    reponse = await api.post("/api/ingestions", json=corps, headers=entetes("Ingestion"))
+    assert reponse.status_code == 201, reponse.text
+
+
+async def test_notice_ingeree_puis_citee_avec_sa_collection(api: httpx.AsyncClient) -> None:
+    await _ingerer(api, "notices_produits", NOTICE)
+    resultat = await _extraits(api, "garantie responsabilité civile formule tiers")
+    citation = resultat["resultats"][0]["citation"]
+    assert (citation["collection"], citation["doc_id"]) == ("notices_produits", "tiers")
+    assert citation["regle_id"] is None
+
+
+async def test_regle_id_aller_retour(api: httpx.AsyncClient) -> None:
+    await _ingerer(api, "procedures_internes", PROCEDURE)
+    resultat = await _extraits(api, "suspension de permis souscription refusée")
+    citation = resultat["resultats"][0]["citation"]
+    assert (citation["collection"], citation["regle_id"]) == (
+        "procedures_internes",
+        "R01_SUSPENSION",
+    )
+
+
+async def test_texte_legifrance_regle_id_null(corpus: httpx.AsyncClient) -> None:
+    resultat = await _extraits(corpus, "coefficient bonus malus appliqué à la prime")
+    assert resultat["resultats"][0]["citation"]["regle_id"] is None
+
+
+async def test_role_ingestion_seul_ne_lit_pas_les_notices(api: httpx.AsyncClient) -> None:
+    await _ingerer(api, "notices_produits", NOTICE)
+    reponse = await api.get(
+        "/api/extraits", params={"question": "formule tiers"}, headers=entetes("Ingestion")
+    )
+    assert reponse.status_code == 403
+
+
+async def test_meme_version_regle_id_change_conflit(api: httpx.AsyncClient) -> None:
+    await _ingerer(api, "procedures_internes", PROCEDURE)
+    autre_regle = PROCEDURE | {"regle_id": "R02_RESILIATIONS"}
+    corps = {"collection": "procedures_internes", "instantane_sha256": SHA,
+             "instantane_date": DATE_ISO, "articles": [autre_regle]}  # fmt: skip
+    rapport = (await api.post("/api/ingestions", json=corps, headers=entetes("Ingestion"))).json()
+    assert [r["raison"] for r in rapport["rejets"]] == ["conflit_version"]
+
+
+@pytest.mark.parametrize(
+    ("question", "collection", "doc_id", "regle_id"),
+    [
+        (
+            "formule tous risques dommages tous accidents garantie du conducteur",
+            "notices_produits",
+            "tous_risques",
+            None,
+        ),
+        ("formule tiers responsabilité civile minimale", "notices_produits", "tiers", None),
+        ("formule intermédiaire tiers étendu", "notices_produits", "tiers_etendu", None),
+        (
+            "coefficient jeunes conducteurs première année de permis",
+            "notices_produits",
+            "jeunes_conducteurs",
+            None,
+        ),
+        ("coefficient bonus-malus dépasse 1,25", "procedures_internes", "PI-R03_CRM", "R03_CRM"),
+    ],
+)
+async def test_corpus_redige_du_depot_ingere_et_retrouve(
+    api: httpx.AsyncClient, question: str, collection: str, doc_id: str, regle_id: str | None
+) -> None:
+    # les vrais fichiers de rag/corpus, par la CLI (lecture) puis la vraie route (écriture) ;
+    # seuil à 0 : les embeddings factices ne disent rien de la porte sur une notice entière
+    app.dependency_overrides[charger_rag] = lambda: ConfigRag(_env_file=None, rag_seuil=0.0)  # type: ignore[call-arg]
+    for nom in ("notices_produits", "procedures_internes"):
+        await _ingerer(api, nom, *lire_markdown(RACINE / "corpus" / nom, nom))
+    # GF5/GF6 cherchent la source parmi tous les extraits renvoyés, pas seulement le premier
+    cites = [r["citation"] for r in (await _extraits(api, question))["resultats"]]
+    assert (collection, doc_id, regle_id) in [
+        (c["collection"], c["doc_id"], c["regle_id"]) for c in cites
+    ]

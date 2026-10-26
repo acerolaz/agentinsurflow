@@ -25,10 +25,17 @@ class ArticleEntrant(BaseModel):
     etat: str | None = Field(default=None, examples=["VIGUEUR"])
     texte_html: str | None = None
     url_source: str | None = None
+    regle_id: str | None = Field(
+        default=None,
+        pattern=r"^R\d{2}_[A-Z0-9_]+$",
+        max_length=64,
+        description="Règle du barème que le document fonde (procédures internes)",
+        examples=["R01_SUSPENSION"],
+    )
 
 
 class LotIngestion(BaseModel):
-    collection: Literal["textes_reglementaires"]
+    collection: Literal["textes_reglementaires", "notices_produits", "procedures_internes"]
     instantane_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     instantane_date: date = Field(examples=["2026-10-20"])
     articles: list[ArticleEntrant] = Field(min_length=1, max_length=50)
@@ -79,6 +86,9 @@ class CitationRagDTO(DTO):
     date_debut: date | None
     url_source: str
     chunk_id: int
+    regle_id: str | None = Field(
+        description="Règle du barème fondée par le document ; null pour un texte réglementaire"
+    )
 
 
 class ExtraitDTO(DTO):

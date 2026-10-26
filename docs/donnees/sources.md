@@ -2,15 +2,15 @@
 
 *Livrable L1 · compétence C1. Spec §3.1, §5.3 ; CGU de l'API Légifrance (DILA, 15/12/2022).*
 
-| | API Légifrance (REST) | Instantané JSON (fichier) | Dossiers de démonstration (base de données) |
-|---|---|---|---|
-| **Origine** | DILA, via la plateforme PISTE (bac à sable) | Sortie de la CLI d'extraction, versionnée dans `data/raw/` | Migration `Seed` d'`underwriting-admin` (données synthétiques) |
-| **Contenu** | Code des assurances, périmètre auto : `L121-*`, `A121-1`, `L211-*`, `R211-*`, `A211-*` (S3-2) | Les mêmes articles, figés à une date (`code-assurances-2026-10-20.json`) + manifeste (date, périmètre, nb d'articles, sha256) | Souscripteurs, contrats, relevés, sinistres pour deux gestionnaires |
-| **Format** | JSON (OAuth 2.0 `client_credentials`) | JSON | Tables PostgreSQL (base `dossiers`) |
-| **Licence** | Licence Ouverte / Open Licence **Etalab 2.0** : citer la source et la date de mise à jour | Idem (dérivé de Légifrance) | Données inventées, aucune licence |
-| **Données personnelles** | Aucune (textes de loi) | Aucune | Fictives mais au format personnel (nom, adresse, permis) → **exposées seulement par la vue minimisée** |
-| **Contraintes** | Quotas PISTE par seconde, minute et jour (🔴 valeurs) ; bac à sable possiblement en retard sur Légifrance ; identifiants dans le `.env` local seulement | Rejouable sans réseau ni identifiants ; à régénérer quand le texte change | Accès en lecture par le compte `dossiers`, contrôle BOLA par `gestionnaire_id` |
-| **Rôle** | Source primaire | Source de rejeu (CI, démo) | Ancrage SQL de l'agent (`numero_contrat`) |
+| | API Légifrance (REST) | Instantané JSON (fichier) | Dossiers de démonstration (base de données) | Documents rédigés (`rag/corpus/`) |
+|---|---|---|---|---|
+| **Origine** | DILA, via la plateforme PISTE (bac à sable) | Sortie de la CLI d'extraction, versionnée dans `data/raw/` | Migration `Seed` d'`underwriting-admin` (données synthétiques) | Rédigés pour le projet, versionnés dans le dépôt (#98) |
+| **Contenu** | Code des assurances, périmètre auto : `L121-*`, `A121-1`, `L211-*`, `R211-*`, `A211-*` (S3-2) | Les mêmes articles, figés à une date (`code-assurances-2026-10-20.json`) + manifeste (date, périmètre, nb d'articles, sha256) | Souscripteurs, contrats, relevés, sinistres pour deux gestionnaires | Notices produits (`tiers`, `tiers_etendu`, `tous_risques`, plus `jeunes_conducteurs` en complément) et procédures internes (une par règle `R01`→`R06` du barème, avec `regle_id`) |
+| **Format** | JSON (OAuth 2.0 `client_credentials`) | JSON | Tables PostgreSQL (base `dossiers`) | Markdown, en-tête `cle: valeur` |
+| **Licence** | Licence Ouverte / Open Licence **Etalab 2.0** : citer la source et la date de mise à jour | Idem (dérivé de Légifrance) | Données inventées, aucune licence | Droits détenus par le projet : pas d'attribution Etalab (`/attribution` → 404) |
+| **Données personnelles** | Aucune (textes de loi) | Aucune | Fictives mais au format personnel (nom, adresse, permis) → **exposées seulement par la vue minimisée** | Aucune |
+| **Contraintes** | Quotas PISTE par seconde, minute et jour (🔴 valeurs) ; bac à sable possiblement en retard sur Légifrance ; identifiants dans le `.env` local seulement | Rejouable sans réseau ni identifiants ; à régénérer quand le texte change | Accès en lecture par le compte `dossiers`, contrôle BOLA par `gestionnaire_id` | Fictifs ; n'y citer que des articles présents dans l'instantané |
+| **Rôle** | Source primaire | Source de rejeu (CI, démo) | Ancrage SQL de l'agent (`numero_contrat`) | Sources des garde-fous GF6 (notice = `contrat_type`) et GF5 (`regle_id` d'un refus) |
 
 **Attribution Etalab** : chaque article cité expose son attribution (concédant DILA, licence, lien vers
 l'original, date d'extraction, mention des modifications) via `GET /api/documents/{doc_id}/attribution`.

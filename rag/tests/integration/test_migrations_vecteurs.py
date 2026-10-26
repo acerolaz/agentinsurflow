@@ -88,6 +88,16 @@ async def test_pas_de_colonne_regle_id(conn_reader: AsyncConnection) -> None:
     assert "regle_id" not in colonnes
 
 
+async def test_document_regle_id_facultatif(conn_reader: AsyncConnection) -> None:
+    nullable = await conn_reader.scalar(
+        text(
+            "SELECT is_nullable FROM information_schema.columns "
+            "WHERE table_name = 'document' AND column_name = 'regle_id'"
+        )
+    )
+    assert nullable == "YES"
+
+
 async def test_collection_hors_liste_refusee(conn_writer: AsyncConnection) -> None:
     with pytest.raises(IntegrityError):
         await conn_writer.execute(

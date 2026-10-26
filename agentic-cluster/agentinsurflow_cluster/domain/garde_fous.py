@@ -83,8 +83,8 @@ def gf(
 ) -> list[str]:
     """GF1–GF7.
 
-    GF6 : seule l'appartenance du contrat type à `notices_produits` est vérifiée ; sa
-    correspondance à la `formule` est 🔴 P13 (non tranchée) : `formule` n'est pas utilisée.
+    GF6 (P13, tranché le 26/10) : le contrat type est la notice de la `formule` du dossier
+    (`doc_id` = formule), présente dans les sources et issue de `notices_produits`.
     """
     sources = list(sources)
     codes: list[str] = []
@@ -111,8 +111,11 @@ def gf(
         s["doc_id"] in fiche.citations and s.get("regle_id") in risque.regle_ids for s in sources
     ):
         codes.append("GF5")
-    if fiche.decision == "ACCEPTE" and not any(
-        s["collection"] == COLLECTION_NOTICES and s["doc_id"] == fiche.contrat_type for s in sources
+    if fiche.decision == "ACCEPTE" and (
+        fiche.contrat_type != formule
+        or not any(
+            s["collection"] == COLLECTION_NOTICES and s["doc_id"] == formule for s in sources
+        )
     ):
         codes.append("GF6")
     if any(pii_detectees(m) for m in fiche.motifs):

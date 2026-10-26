@@ -112,7 +112,8 @@ def lire_markdown(dossier: Path, collection: str) -> list[dict[str, Any]]:
             (cle.strip(), valeur.strip())
             for cle, _, valeur in (ligne.partition(":") for ligne in lignes[1:fin])
         )
-        manquants = [c for c in EN_TETE_OBLIGATOIRE if not en_tete.get(c)]
+        obligatoires = EN_TETE_OBLIGATOIRE + (("regle_id",) if collection == COLLECTIONS[2] else ())
+        manquants = [c for c in obligatoires if not en_tete.get(c)]
         if manquants:
             raise ErreurEnvoi(f"{fichier.name} : en-tête sans {', '.join(manquants)}")
         articles.append(

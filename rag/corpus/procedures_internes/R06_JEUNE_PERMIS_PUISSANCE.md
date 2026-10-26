@@ -24,4 +24,4 @@ Règle de la politique de souscription AgentInsurFlow : aucune disposition du Co
 La règle conduit à proposer un refus de souscription (barème bareme-2026.10-v1). La proposition reste soumise à la validation du gestionnaire, qui peut la confirmer ou la renvoyer en revue humaine ; aucun refus n'est notifié sans cette validation.
 
 ## Information du demandeur
-Le courrier de refus indique le motif ci-dessus, sans autre donnée personnelle. Il rappelle que le demandeur peut s'adresser à un autre assureur et, en cas de refus répétés pour la responsabilité civile obligatoire (article L. 211-1 du Code des assurances), saisir le Bureau central de tarification.
+Le courrier de refus indique le motif ci-dessus, sans autre donnée personnelle. Il rappelle que la responsabilité civile est obligatoire (article L. 211-1 du Code des assurances) et que le demandeur à qui elle est refusée peut saisir le Bureau central de tarification, qui fixe la prime à laquelle un assureur de son choix est tenu de le garantir.

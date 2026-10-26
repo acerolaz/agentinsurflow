@@ -205,6 +205,13 @@ def test_markdown_invalide_erreur_qui_nomme_le_fichier(tmp_path: Path, contenu: 
         lire_markdown(tmp_path, "notices_produits")
 
 
+def test_procedure_sans_regle_id_refusee(tmp_path: Path) -> None:
+    # sans regle_id, GF5 échouerait en silence sur chaque refus fondé sur cette procédure
+    _md(tmp_path, "R01.md", "doc_id: PI-R01\nversion: v1\narticle: PI-R01\ndate_debut: 2026-10-26")
+    with pytest.raises(ErreurEnvoi, match="R01.md.*regle_id"):
+        lire_markdown(tmp_path, "procedures_internes")
+
+
 def test_source_envoie_la_collection_et_ecrit_sa_preuve(
     tmp_path: Path, appels: list[httpx.Request]
 ) -> None:

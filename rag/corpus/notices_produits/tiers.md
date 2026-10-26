@@ -18,7 +18,7 @@ La formule Tiers est la formule d'assurance automobile minimale : elle couvre la
 
 ## Plafonds
 - Dommages corporels : sans limitation de somme (article R. 211-7).
-- Dommages matériels : 100 millions d'euros par sinistre, au-delà du minimum réglementaire d'un million d'euros (article R. 211-7).
+- Dommages matériels : 100 millions d'euros par sinistre, au-delà du montant minimal fixé par arrêté, qui ne peut être inférieur à un million d'euros (article R. 211-7).
 - Défense pénale et recours : 15 000 euros par litige.
 
 ## Franchises

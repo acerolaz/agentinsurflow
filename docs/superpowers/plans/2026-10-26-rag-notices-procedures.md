@@ -35,7 +35,7 @@ Décisions validées :
 4. **Collection inconnue ou `regle_id` mal formé** dans un lot : 422, rien d'écrit. Tests en Task 2.
 5. **Rôle sans table** (ex. `Ingestion` seul) sur `/api/extraits` : 403 ou zéro collection, jamais une notice. Test en Task 2.
 
-Hors périmètre, connu : un contrat en `tiers_etendu` n'a pas de notice → `REVUE_HUMAINE` (P13).
+Hors périmètre, connu : un contrat en `tiers_etendu` n'a pas de notice ; GF6 ne compare pas `contrat_type` à la formule (P13, risque R6 de `docs/contrat-personnel.md`), donc le Rédacteur peut citer la notice `tiers` et la fiche passer GF6 — le gestionnaire le voit à la revue.
 
 ---
 

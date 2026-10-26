@@ -101,11 +101,11 @@ n'est pas un GUID fait échouer la migration. La migration n'est jouée qu'une f
 
 Une table `span` au modèle de données OTLP : voir [`traces.md`](traces.md).
 
-## 4. MPD — base `vecteurs` (Alembic `0001_corpus`, `0002_extrait_le`)
+## 4. MPD — base `vecteurs` (Alembic `0001_corpus`, `0002_extrait_le`, `0003_regle_id`)
 
 | Table | Colonnes | Contraintes et index |
 |---|---|---|
-| `document` (une **version** d'un article) | `id` bigserial, `doc_id`, `collection`, `version`, `date_debut`, `etat`, `url_source`, `hash_contenu` char(64), `obsolete`, `ingere_le`, `extrait_le` | UNIQUE (`doc_id`, `version`) · CHECK `collection` ∈ {`textes_reglementaires`, `procedures_internes`, `cgv_conditions`, `notices_produits`} · index partiel (`collection`) WHERE NOT `obsolete` · UNIQUE partiel (`doc_id`) WHERE NOT `obsolete` (une seule version courante) |
+| `document` (une **version** d'un article) | `id` bigserial, `doc_id`, `collection`, `version`, `date_debut`, `etat`, `url_source`, `hash_contenu` char(64), `obsolete`, `ingere_le`, `extrait_le`, `regle_id` text NULL (règle du barème fondée par une procédure interne, renvoyée dans la citation des extraits) | UNIQUE (`doc_id`, `version`) · CHECK `collection` ∈ {`textes_reglementaires`, `procedures_internes`, `cgv_conditions`, `notices_produits`} (l'API ingère toutes les collections sauf `cgv_conditions` ; le rôle `Gestionnaire` lit les trois autres) · index partiel (`collection`) WHERE NOT `obsolete` · UNIQUE partiel (`doc_id`) WHERE NOT `obsolete` (une seule version courante) |
 | `chunk` (unité de recherche et de citation) | `id`, `document_id` → `document` (ON DELETE CASCADE), `article`, `ordre`, `texte`, `embedding vector(1536)`, `tsv tsvector` **généré** (`to_tsvector('french', article ‖ ' ' ‖ texte)`) | **HNSW** `vector_cosine_ops` · **GIN** (`tsv`) · B-tree (`article`), (`document_id`) |
 | `ingestion` | `id`, `instantane_sha256`, `recu_le`, `rapport` jsonb | PK `id` |
 

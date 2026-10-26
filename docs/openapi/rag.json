@@ -86,7 +86,7 @@
             }
           },
           "503": {
-            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "description": "Dépendance indisponible (LLM_INDISPONIBLE, EMBEDDINGS_INDISPONIBLES…)",
             "content": {
               "application/problem+json": {},
               "application/json": {
@@ -181,7 +181,7 @@
             }
           },
           "503": {
-            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "description": "Dépendance indisponible (LLM_INDISPONIBLE, EMBEDDINGS_INDISPONIBLES…)",
             "content": {
               "application/problem+json": {},
               "application/json": {
@@ -277,7 +277,7 @@
             }
           },
           "503": {
-            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "description": "Dépendance indisponible (LLM_INDISPONIBLE, EMBEDDINGS_INDISPONIBLES…)",
             "content": {
               "application/problem+json": {},
               "application/json": {
@@ -369,7 +369,7 @@
             }
           },
           "503": {
-            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "description": "Dépendance indisponible (LLM_INDISPONIBLE, EMBEDDINGS_INDISPONIBLES…)",
             "content": {
               "application/problem+json": {},
               "application/json": {
@@ -469,7 +469,7 @@
             }
           },
           "503": {
-            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "description": "Dépendance indisponible (LLM_INDISPONIBLE, EMBEDDINGS_INDISPONIBLES…)",
             "content": {
               "application/problem+json": {},
               "application/json": {
@@ -560,7 +560,7 @@
             }
           },
           "503": {
-            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "description": "Dépendance indisponible (LLM_INDISPONIBLE, EMBEDDINGS_INDISPONIBLES…)",
             "content": {
               "application/problem+json": {},
               "application/json": {
@@ -673,7 +673,7 @@
             }
           },
           "503": {
-            "description": "Dépendance indisponible (EMBEDDINGS_INDISPONIBLES, DOSSIERS_INDISPONIBLES…)",
+            "description": "Dépendance indisponible (LLM_INDISPONIBLE, EMBEDDINGS_INDISPONIBLES…)",
             "content": {
               "application/problem+json": {},
               "application/json": {
@@ -786,6 +786,23 @@
               }
             ],
             "title": "Url Source"
+          },
+          "regle_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^R\\d{2}_[A-Z0-9_]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regle Id",
+            "description": "Règle du barème que le document fonde (procédures internes)",
+            "examples": [
+              "R01_SUSPENSION"
+            ]
           }
         },
         "type": "object",
@@ -929,6 +946,18 @@
           "chunk_id": {
             "type": "integer",
             "title": "Chunk Id"
+          },
+          "regle_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regle Id",
+            "description": "Règle du barème fondée par le document ; null pour un texte réglementaire"
           }
         },
         "type": "object",
@@ -939,7 +968,8 @@
           "collection",
           "date_debut",
           "url_source",
-          "chunk_id"
+          "chunk_id",
+          "regle_id"
         ],
         "title": "CitationRagDTO"
       },
@@ -1128,7 +1158,11 @@
         "properties": {
           "collection": {
             "type": "string",
-            "const": "textes_reglementaires",
+            "enum": [
+              "textes_reglementaires",
+              "notices_produits",
+              "procedures_internes"
+            ],
             "title": "Collection"
           },
           "instantane_sha256": {

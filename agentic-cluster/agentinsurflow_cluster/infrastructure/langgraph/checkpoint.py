@@ -34,6 +34,9 @@ async def checkpointer(dsn: str | None = None) -> AsyncIterator[Any]:
         kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row,
                 "options": options},
         open=False,
+        # connexion vérifiée avant d'être rendue : la base annexe change de révision au déploiement
+        # (connexions fermées côté serveur) ; sans cela, OperationalError puis 500 sur /evaluation
+        check=AsyncConnectionPool.check_connection,
     ) as pool:  # fmt: skip
         async with pool.connection() as connexion:
             # Azure : schéma posé par infra/postgres/init.sh, compte sans droit de créer un schéma

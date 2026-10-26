@@ -1,6 +1,6 @@
 # AgentInsurFlow — monorepo (v0.6.0)
 
-Assistant des **gestionnaires d'assurance auto** : une **gateway** (seule entrée publique) devant services,
+Assistant des **gestionnaires d'assurance auto** : une **gateway** (seule entrée publique) devant ses services,
 **underwriting-admin** (dossiers minimisés et référentiel SQL des traces), **rag**, qui ingère le **Code des assurances** depuis Légifrance, le cherche (recherche hybride pgvector) et répond par un
 **agent à réponses citées**, et le **cluster d'agents** (Saga déterministe et quatre sous-agents, revue humaine du gestionnaire). Les modèles sont des déploiements **Azure AI Foundry** (API v1 compatible OpenAI), un par usage : rag sur `Kimi-K2.5` (`rag/llm.env`), le cluster sur `gpt-4.1-mini` par agent (`agentic-cluster/agents.toml`). Le tout est
 livré par une **chaîne GitHub Actions CI/CD/Evals bloquante** jusqu'à la production (Azure Container Apps).
@@ -279,7 +279,7 @@ Ensuite, chaque **merge sur `main`** déclenche toute la chaîne, sans action ma
 | Version | Forme | Désigne | Où la lire |
 |---|---|---|---|
 | Release | `vX.Y.Z` (ex. `v0.2.0`) | le commit livré en production, tagué juste avant | `/health` → `release`, tags Git, résumé du run |
-| Image | SHA du commit | les cinq images (`agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`, `agentinsurflow-mcp`, `agentinsurflow-cluster`), même tag | `/health` (gateway), `/health/rag` et `/health/underwriting` → `version` |
+| Image | SHA du commit | les cinq images (`agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`, `agentinsurflow-mcp`, `agentinsurflow-cluster`), même tag | `/health` (gateway), `/health/rag`, `/health/underwriting`, `/health/mcp` et `/health/cluster` → `version` |
 | Manifeste | `X.Y.Z-build.N` (ex. `0.4.0-build.35`) | ce qui a été évalué : modèle, prompts, jeux d'évaluation | `/health/rag` → `manifeste`, rapport d'évaluation, tag `manifeste-…` |
 
 Les trois versions sont calculées par le job `changements` puis **gravées dans les images** : un rollback restaure aussi

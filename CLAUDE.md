@@ -1,6 +1,6 @@
 # AgentInsurFlow — contrat transverse du monorepo
 
-Chaque projet a son README : [`gateway/`](gateway/README.md) (C#, YARP, seule entrée publique ; porte aussi `/api/llm` vers Foundry et `/api/calcul` vers la Function), [`rag/`](rag/README.md) (Python, hexagonal), [`serveur-mcp/`](serveur-mcp/README.md) (Python, outils MCP), [`fonction-calcul/`](fonction-calcul/README.md) (Azure Function Python : risque et prime) et [`underwriting-admin/`](underwriting-admin/README.md) (C#, Clean Architecture : dossiers et référentiel des traces). En Azure, chacun (sauf la Function) a sa Container App, la gateway seule à entrée publique. Les tests E2E vivent dans [`e2e/`](e2e/README.md).
+Chaque projet a son README : [`gateway/`](gateway/README.md) (C#, YARP, seule entrée publique ; porte aussi `/api/llm` vers Foundry et `/api/calcul` vers la Function), [`rag/`](rag/README.md) (Python, hexagonal), [`serveur-mcp/`](serveur-mcp/README.md) (Python, outils MCP), [`fonction-calcul/`](fonction-calcul/README.md) (Azure Function Python : risque et prime), [`agentic-cluster/`](agentic-cluster/README.md) (Python, hexagonal, LangGraph : la Saga et les agents Pièces, Analyste, Rédacteur, Actuaire, revue humaine) et [`underwriting-admin/`](underwriting-admin/README.md) (C#, Clean Architecture : dossiers et référentiel des traces). En Azure, chacun (sauf la Function) a sa Container App, la gateway seule à entrée publique. Les tests E2E vivent dans [`e2e/`](e2e/README.md).
 
 ## Architectures
 
@@ -14,7 +14,7 @@ Chaque projet a son README : [`gateway/`](gateway/README.md) (C#, YARP, seule en
 - **Écritures Azure et Entra** (`az … create/update/set`) : rédigées dans `infra/*.sh`, lancées à la main par Acerola, jamais par un agent.
 - **Seule la gateway est exposée** ; elle valide le jeton et le rôle par route, et **chaque service revalide** le jeton.
 - **API REST** documentées en OpenAPI, consultables dans la page Swagger unique de la gateway ; erreurs en ProblemDetails avec un `code`.
-- **Git** : une branche par projet (`feat/gateway` → `feat/rag` → `feat/underwriting-admin` → `feat/mcp`), PR en brouillon ; jamais de push sur `main`, jamais de force-push.
+- **Git** : une branche par projet (`feat/gateway` → `feat/rag` → `feat/underwriting-admin` → `feat/mcp`), PR en brouillon. Pratique actuelle : une branche par sujet (`feat/…`, `fix/…`, `docs/…`, ex. `docs/maj-26-10`), une PR en brouillon par branche ; jamais de push sur `main`, jamais de force-push.
 - **Français** partout (code métier, tests, docs) ; vocabulaire « superviseur / Saga » (la Saga : automate déterministe qui orchestre les agents du cluster et écrit l’état).
 
 ## Commandes (racine)

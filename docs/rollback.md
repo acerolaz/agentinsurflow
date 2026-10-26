@@ -24,7 +24,7 @@ On peut aussi passer par l'interface : Actions › **deploy** › *Run workflow*
 4. Le run reste dans le journal Actions : c'est la trace du rollback.
 
 Aucune reconstruction : les images sont **immuables** (tag = SHA) et déjà dans l'ACR. Le prompt et la version
-du LLM (`llm.env`) étant **dans l'image**, le rollback les restaure aussi.
+du LLM (`rag/llm.env` pour rag, `agentic-cluster/agents.toml` pour le cluster) étant **dans les images**, le rollback les restaure aussi.
 
 ⚠️ **Base annexe éphémère** : la nouvelle révision repart d'une base vide (migrations au démarrage). Après la fumée,
 `deploy.yml` réingère le dernier instantané versionné (`data/raw/`) du commit qui lance le workflow : pour un

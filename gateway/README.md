@@ -10,7 +10,7 @@
 |---|---|
 | Router **par ressource REST** (table ci-dessous) | Remplacer la validation des services (BOLA, règles fines) |
 | **Valider le jeton Entra et exiger un rôle par route** (S3-25, issue #9) | Avoir sa propre inscription d'application |
-| **Limiter le débit** par utilisateur ou par IP, 429 (S3-27, issue #13) | Partager ses compteurs entre répliques |
+| **Limiter le débit** par utilisateur et application (`oid` + `azp`) ou par IP, 429 (S3-27, issue #13) | Partager ses compteurs entre répliques |
 | **Réécrire** `X-Forwarded-For`/`-Proto`/`-Host`/`-Prefix` (mode `Set`) : un client ne peut pas se faire passer pour un appel interne | Contenir une règle métier |
 | Transmettre tels quels `Authorization` et `traceparent` | Modifier un corps de requête |
 | Servir la **page Swagger** des 3 API, à la racine `/` | — |
@@ -40,12 +40,13 @@ Les routes de documentation n'ouvrent **que** le document OpenAPI de chaque serv
 
 ## Limitation de débit (S3-27, issue #13)
 
-Limiteur **natif** d'ASP.NET Core (aucun paquet), en fenêtre fixe de 60 s, par **utilisateur** (`oid` du jeton) ou, sans jeton, par **IP** :
+Limiteur **natif** d'ASP.NET Core (aucun paquet), en fenêtre fixe de 60 s, par **utilisateur et application cliente** (`oid` + `azp` du jeton, `Partition` de `Program.cs` ; sans `azp`, l'`oid` seul), ou, sans jeton, par **IP**. Les agents du cluster appellent en OBO pour le même gestionnaire, chacun avec son `azp` : sans `azp` dans la clé, une évaluation épuiserait la fenêtre du gestionnaire. La limite `llm` fait exception : par application appelante seule (`azp`, repli `appid`). Budgets :
 
 | Portée | Limite par défaut | Réglage |
 |---|---|---|
 | Toutes les routes | 120 requêtes/min | `RateLimit__Global__PermitLimit` |
 | `POST /api/reponses` (coût LLM), en plus de la limite globale | 10 requêtes/min | `RateLimit__Reponses__PermitLimit` |
+| `/v1/souscriptions/{numero_contrat}/evaluation` et `/revue` (cluster, plusieurs appels LLM par évaluation) | 10 requêtes/min (défaut du code) | `RateLimit__Cluster__PermitLimit` |
 | `/health`, `/health/rag`, `/health/underwriting` (sondes) | jamais limitées | — |
 
 Au-delà : **429** `TROP_DE_REQUETES` en ProblemDetails, avec `Retry-After` (secondes). Le débit est compté après l'authentification et avant l'autorisation : les requêtes refusées comptent aussi. Les compteurs sont en mémoire, par réplique (la Container App n'a qu'une réplique).
@@ -90,9 +91,13 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 
 - **Autorisation à deux niveaux** : la gateway exige un jeton d'audience `mcp` (`Entra__Audiences__mcp__0`, `api://agentinsurflow-mcp`) avec le rôle `Gestionnaire` ; le serveur MCP revalide le jeton, puis les services appelés revalident le leur.
 - **Flux sans tampon** : YARP relaie les événements SSE au fil de l'eau (testé) ; `ActivityTimeout` de 5 min sur le cluster `mcp`. `traceparent` est relayé.
-- **Débit** : `RateLimit__Mcp__PermitLimit` (60 requêtes/min par utilisateur), en plus de la limite globale.
+- **Débit** : `RateLimit__Mcp__PermitLimit` (60 requêtes/min par utilisateur et application), en plus de la limite globale.
 - Outils, codes d'erreur : voir `serveur-mcp/README.md`.
 - Les écritures `PUT /api/contrats/{numéro}/brouillon` et `/statut` passent par la route `underwriting-contrats` existante. `PUT /api/contrats/{numéro}/etat` (mémoire du dossier) a sa propre route `underwriting-etat`, déclarée avant : elle exige, en plus du rôle `Gestionnaire` et de l'audience underwriting, `azp` = `Entra:McpClientId` (`MCP_API_CLIENT_ID`, le client OBO du serveur MCP) ; un gestionnaire en direct reçoit `403`, et sans `Entra:McpClientId` la route est fermée.
+
+## Routes du cluster d'agents
+
+`POST /v1/souscriptions/{numero_contrat}/evaluation` est réécrite en `POST /evaluations/{numero_contrat}` et `POST /v1/souscriptions/{numero_contrat}/revue` en `POST /evaluations/{numero_contrat}/revue`, vers le cluster `cluster` (Container App interne ; compose : `http://agentic-cluster:8004`). Politique `cluster-gestionnaire` : rôle `Gestionnaire` **et** audience `Entra__Audiences__cluster__0` (`api://agentinsurflow-cluster`). Le jeton du gestionnaire est **relayé tel quel** (comme pour `/mcp`) : le cluster le revalide, puis l'échange en OBO. Débit : limite `cluster` (`RateLimit__Cluster__PermitLimit`, 10/min), par `oid` + `azp`. `GET /health/cluster` est anonyme ; le document OpenAPI du cluster est servi en `/cluster/openapi.json` (page Swagger unique). Voir [`agentic-cluster/README.md`](../agentic-cluster/README.md).
 
 ## Swagger
 
@@ -118,12 +123,13 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 | `Entra__Audiences__rag__0` | **obligatoire** | Audiences de `rag`, en liste « a, b » : la même valeur que `RAG_API_AUDIENCES`, lue par `rag` (`<ID client>,api://<ID client>`) |
 | `Entra__Audiences__underwriting__0` | **obligatoire** | Audiences d'`underwriting-admin`, en liste « a, b » (`UNDERWRITING_API_AUDIENCES`) |
 | `ReverseProxy__Clusters__mcp__Destinations__d1__Address` | `http://localhost:8003` | Adresse de `serveur-mcp` (compose : `http://serveur-mcp:8003` ; Azure : `https://<app MCP>.internal.<domaine de l'environnement>`, sa propre Container App à entrée interne) |
+| `Entra__Audiences__cluster__0` | `api://agentinsurflow-cluster` | Audiences du cluster d'agents, en liste « a, b » (compose : `CLUSTER_API_AUDIENCES`) |
 | `Entra__Audiences__mcp__0` | `api://agentinsurflow-mcp` | Audiences de `serveur-mcp`, en liste « a, b » |
 | `ReverseProxy__Clusters__calcul__Destinations__d1__Address` | `http://localhost:7071` | Adresse de la Function de calcul (compose : `http://calcul:80` ; Azure : `${CALCUL_URL}`) |
 | `Calcul__Portee`, `Calcul__IdentiteClientId` | _(vide)_ | Portée du jeton de la gateway pour la Function (`api://<appId calcul>/.default`) et client id de son identité managée ; sans portée, aucun jeton relayé |
 | `Entra__Audiences__calcul__0` | `api://agentinsurflow-calcul` | Audiences de la Function de calcul, en liste « a, b » (compose : `CALCUL_API_AUDIENCES` ; Azure : `${CALCUL_AUDIENCE}`) |
 | `Proxy__EnvoyDevant` | `false` | `true` en Azure : IP réelle reprise de l'envoy |
-| `RateLimit__Global__PermitLimit`, `RateLimit__Reponses__PermitLimit`, `RateLimit__Mcp__PermitLimit`, `RateLimit__Calcul__PermitLimit`, `RateLimit__FenetreSecondes` | `120`, `10`, `60`, `60`, `60` | Limitation de débit |
+| `RateLimit__Global__PermitLimit`, `RateLimit__Reponses__PermitLimit`, `RateLimit__Mcp__PermitLimit`, `RateLimit__Calcul__PermitLimit`, `RateLimit__Cluster__PermitLimit`, `RateLimit__Llm__PermitLimit`, `RateLimit__FenetreSecondes` | `120`, `10`, `60`, `60`, `10`, `30`, `60` | Limitation de débit |
 | `SWAGGER_CLIENT_ID` | vide | Client Entra public de la page Swagger |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | `http://localhost:8002/v1/traces` | Récepteur OTLP des traces (Azure : `https://<FQDN interne d'underwriting-admin>/v1/traces`) |
 | `Telemetrie__Audience` | (vide) | `api://<appId underwriting>` : la gateway envoie ses traces avec un jeton d'application (portée `<audience>/.default`, rôle `Telemetrie`, même credential que `calcul` et `llm`). Vide (local, compose) : export sans jeton. Échec d'obtention du jeton : export sans en-tête (401 côté récepteur), jamais de blocage ni de jeton journalisé |
@@ -182,7 +188,7 @@ gateway/
 
 ## Déploiement
 
-**Cinq Container Apps par environnement** : la principale (`infra/containerapp.yaml`, la gateway seule, 8000, **seule entrée externe**), celle d'underwriting-admin (`infra/containerapp-underwriting.yaml`, entrée interne 8002 ; cluster `underwriting` et traces de la gateway visent `https://<FQDN interne>`, lu par `deploy.yml`), la base annexe `postgres` (`infra/containerapp-postgres.yaml`, entrée TCP interne 5432, base éphémère), celle du serveur MCP (`infra/containerapp-mcp.yaml`) et celle de **rag** (`infra/containerapp-rag.yaml`, entrée interne 8001, identité managée propre). Le cluster `rag` de la gateway vise `https://<FQDN interne de rag>` (`deploy.yml` le lit) ; le cluster `llm` vise Foundry (`FOUNDRY_ENDPOINT`), joint seulement par la gateway avec son identité managée (`Calcul__IdentiteClientId`), `Llm__Portee` et les audiences `Entra__Audiences__llm__0/__1`. `deploy.yml` substitue les images et les variables dans chaque modèle, puis `az containerapp update --yaml` : base annexe, underwriting-admin, MCP, principale (gateway), puis rag (la base repart vide à chaque déploiement, ses clients y jouent leurs migrations ensuite). **Rollback** : les 4 images du SHA de la révision précédente (lu sur l'image de sa gateway).
+**Six Container Apps par environnement** : la principale (`infra/containerapp.yaml`, la gateway seule, 8000, **seule entrée externe**), celle d'underwriting-admin (`infra/containerapp-underwriting.yaml`, entrée interne 8002 ; cluster `underwriting` et traces de la gateway visent `https://<FQDN interne>`, lu par `deploy.yml`), la base annexe `postgres` (`infra/containerapp-postgres.yaml`, entrée TCP interne 5432, base éphémère), celle du serveur MCP (`infra/containerapp-mcp.yaml`) celle du **cluster d'agents** (`infra/containerapp-cluster.yaml`, entrée interne, identité managée propre) et celle de **rag** (`infra/containerapp-rag.yaml`, entrée interne 8001, identité managée propre). Le cluster `rag` de la gateway vise `https://<FQDN interne de rag>` (`deploy.yml` le lit) ; le cluster `llm` vise Foundry (`FOUNDRY_ENDPOINT`), joint seulement par la gateway avec son identité managée (`Calcul__IdentiteClientId`), `Llm__Portee` et les audiences `Entra__Audiences__llm__0/__1`. `deploy.yml` substitue les images et les variables dans chaque modèle, puis `az containerapp update --yaml` : base annexe, underwriting-admin, MCP, principale (gateway), puis rag (la base repart vide à chaque déploiement, ses clients y jouent leurs migrations ensuite). **Rollback** : les 4 images du SHA de la révision précédente (lu sur l'image de sa gateway).
 
 **Une fois, à la main (Acerola), avant le premier déploiement** : `make annexe` (image annexe + secrets PostgreSQL), `make entra DOMAINE=aibrokerflow.fr` (inscriptions `agentinsurflow-rag` et `agentinsurflow-underwriting`, rôles, redirections Swagger), `make llm` (canal LLM : inscriptions `agentinsurflow-llm` et `agentinsurflow-gateway-local`, Foundry sans clé), puis les variables GitHub affichées (`RAG_API_CLIENT_ID`, `UNDERWRITING_API_CLIENT_ID`, `LLM_AUDIENCE`, `LLM_API_CLIENT_ID`, `FOUNDRY_ENDPOINT`, `AZURE_UAMI_RAG_CLIENT_ID`…, voir `docs/secrets.md`).
 

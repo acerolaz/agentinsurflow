@@ -2,7 +2,9 @@
 
 *Script de la spec § 7 (`docs/superpowers/specs/2026-10-23-agentic-cluster-7a-design.md`). Tout se fait par la page Swagger unique de la **gateway** (`$PROD_URL/`), connecté en Entra avec le rôle `Gestionnaire` (gestionnaire A). Le cluster n'est jamais appelé directement : son URL est interne. Durée prévue : `🔴 À CONFIRMER` (répétition à faire).*
 
-*Prérequis `🔴 À CONFIRMER` : cluster déployé par Acerola (checklist de T12), deux contrats complets du portefeuille du gestionnaire A (un pour le cas légitime, un pour le cas hostile), un contrat du gestionnaire B.*
+*Prérequis : cluster déployé (staging et production depuis le 24/10, #116 ; modèle `gpt-4.1-mini` par agent, `agentic-cluster/agents.toml`). Deux contrats complets du portefeuille du gestionnaire connecté (un pour le cas légitime, un pour le cas hostile) et un contrat de l'autre gestionnaire. Le seed attribue `AIF-2026-000001` à `000003` au gestionnaire A et `000004` à `000006` au gestionnaire B ; avec le compte B (poste, `az login`), `E2E_CONTRAT_AUTRE=AIF-2026-000001` et des contrats propres parmi `000004` à `000006` (`e2e/README.md`). Les parcours du cluster exigent un compte humain (OBO).*
+
+*Limite connue au 26/10 : le dossier complet finit aujourd'hui en `REVUE_HUMAINE` et non en `EN_ANALYSE` (collection `notices_produits` absente de rag, garde-fous GF1/GF6, issue #98). C'est l'unique échec des 16 tests E2E du poste sur staging (`test_dossier_complet_en_analyse_puis_revue`). Les § 3 et § 5 (`EN_ANALYSE`, puis `ACCEPTE` par la revue) ne se déroulent pas tant que #98 n'est pas corrigée : `🔴 À CONFIRMER` après correction. Le § 4 (cas hostile) et les contrôles BOLA du § 7 ne dépendent pas de #98. La Saga (automate déterministe, sans LLM) enchaîne les agents ; seuls les quatre sous-agents appellent le modèle.*
 
 Documents de l'API du cluster dans Swagger : `/cluster/openapi.json` (déjà servi par la gateway).
 
@@ -13,7 +15,7 @@ Documents de l'API du cluster dans Swagger : `/cluster/openapi.json` (déjà ser
 ## 2. Observations du gestionnaire — 3 min
 
 1. `GET /api/contrats/{numero_contrat}` : la vue ne contient ni nom, ni adresse, ni permis ; noter `statut`.
-2. `PUT /api/contrats/{numero_contrat}/observations` avec `{"observations": "Client fidèle, relevé fourni le 12/10."}` → `204` (sans corps). La valeur est **écrasée** à chaque appel ; plus de 2000 caractères → `400` avec un `code` ; statut figé → `409` ; contrat d'un autre gestionnaire → `404`.
+2. `PUT /api/contrats/{numero_contrat}/observations` (acceptée tant que le dossier n'est pas décidé, #105) avec `{"observations": "Client fidèle, relevé fourni le 12/10."}` → `204` (sans corps). La valeur est **écrasée** à chaque appel ; plus de 2000 caractères → `400` avec un `code` ; statut figé → `409` ; contrat d'un autre gestionnaire → `404`.
 
 ## 3. Cas légitime — 4 min
 
@@ -48,7 +50,7 @@ Dire honnêtement les taux (`docs/contrat-personnel.md` § 3) : 84,2 % des hosti
 
 ## 7. Jetons des agents et gestionnaire B — 3 min (K3)
 
-- **Gestionnaire B** : avec son jeton, `PUT …/observations` ou `GET /api/contrats/{n}` sur un contrat du gestionnaire A → `404` (même corps qu'un contrat inexistant, BOLA).
+- **Gestionnaire B** (contrats `AIF-2026-000004` à `000006`) : avec son jeton, `PUT …/observations` ou `GET /api/contrats/{n}` sur un contrat du gestionnaire A (`AIF-2026-000001` à `000003`) → `404` (même corps qu'un contrat inexistant, BOLA).
 - **Actuaire et Rédacteur** : leurs jetons ne sont délivrés qu'au cluster (OBO). Les refus `UNAUTHORIZED_TOOL` se montrent par les tests :
   `uv run pytest serveur-mcp/tests/integration/test_protocole.py serveur-mcp/tests/integration/test_outils_calcul.py serveur-mcp/tests/integration/test_outils_ecriture.py --no-cov`
   (Rédacteur → `update_statut_dossier` / `calculer_prime`, Actuaire → `enregistrer_etat`, refus **avant** tout appel de backend).

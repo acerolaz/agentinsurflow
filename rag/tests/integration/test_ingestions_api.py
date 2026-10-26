@@ -156,7 +156,10 @@ async def test_quasi_doublon_signale_pas_rejete(api: httpx.AsyncClient) -> None:
 @pytest.mark.parametrize(
     "corps",
     [
-        lot(collection="procedures_internes"),
+        lot(collection="cgv_conditions"),  # dans le CHECK de la base, pas ingérable
+        lot(collection="inexistante"),
+        lot([CORPUS[0] | {"regle_id": "r01"}]),
+        lot([CORPUS[0] | {"regle_id": "R1_X"}]),
         lot(instantane_sha256="pas-un-sha"),
         lot([]),
         lot(CORPUS * 13),  # 52 articles > 50

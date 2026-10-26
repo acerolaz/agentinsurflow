@@ -5,6 +5,7 @@ PostgreSQL : SQL RRF réel, porte de pertinence, références exactes, versions 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -15,12 +16,14 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from agentinsurflow_rag.api import app
 from agentinsurflow_rag.api.dependances import ConfigRag, charger_rag, connexion_reader
+from agentinsurflow_rag.cli.ingest import lire_markdown
 from agentinsurflow_rag.infrastructure.postgres import corpus as pg_corpus
 from agentinsurflow_rag.infrastructure.postgres.connexions import ConfigBD, creer_moteurs
 from conftest import config_bd, entetes
 from corpus_de_test import CORPUS, DATE_ISO, SHA, article
 
 GESTIONNAIRE = entetes("Gestionnaire")
+RACINE = Path(__file__).resolve().parents[2]  # rag/
 
 
 async def _extraits(api: httpx.AsyncClient, question: str, **parametres: Any) -> dict[str, Any]:
@@ -244,3 +247,32 @@ async def test_meme_version_regle_id_change_conflit(api: httpx.AsyncClient) -> N
              "instantane_date": DATE_ISO, "articles": [autre_regle]}  # fmt: skip
     rapport = (await api.post("/api/ingestions", json=corps, headers=entetes("Ingestion"))).json()
     assert [r["raison"] for r in rapport["rejets"]] == ["conflit_version"]
+
+
+@pytest.mark.parametrize(
+    ("question", "collection", "doc_id", "regle_id"),
+    [
+        (
+            "garanties de la formule tous risques bris de glace",
+            "notices_produits",
+            "tous_risques",
+            None,
+        ),
+        ("formule tiers responsabilité civile minimale", "notices_produits", "tiers", None),
+        ("coefficient bonus-malus dépasse 1,25", "procedures_internes", "PI-R03_CRM", "R03_CRM"),
+    ],
+)
+async def test_corpus_redige_du_depot_ingere_et_retrouve(
+    api: httpx.AsyncClient, question: str, collection: str, doc_id: str, regle_id: str | None
+) -> None:
+    # les vrais fichiers de rag/corpus, par la CLI (lecture) puis la vraie route (écriture) ;
+    # seuil à 0 : les embeddings factices ne disent rien de la porte sur une notice entière
+    app.dependency_overrides[charger_rag] = lambda: ConfigRag(_env_file=None, rag_seuil=0.0)  # type: ignore[call-arg]
+    for nom in ("notices_produits", "procedures_internes"):
+        await _ingerer(api, nom, *lire_markdown(RACINE / "corpus" / nom, nom))
+    citation = (await _extraits(api, question))["resultats"][0]["citation"]
+    assert (citation["collection"], citation["doc_id"], citation["regle_id"]) == (
+        collection,
+        doc_id,
+        regle_id,
+    )

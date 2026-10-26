@@ -16,6 +16,7 @@ from agentinsurflow_rag.cli import ingest
 from agentinsurflow_rag.cli.ingest import (
     ErreurEnvoi,
     lire_instantane,
+    lire_markdown,
     sauvegarder_instantane,
     sha_articles,
 )
@@ -140,3 +141,93 @@ def test_option_date_malformee_message_clair(
     assert ingest.main(["--date", "20/10/2026", "--sans-envoi"]) == 1
     assert "Invalid isoformat string" in capsys.readouterr().err
     assert appels == []
+
+
+# ---------------------------------------------------------------- documents rédigés (#98)
+
+
+def _md(
+    dossier: Path, nom: str, en_tete: str, corps: str = "Corps du document, assez long."
+) -> None:
+    dossier.mkdir(parents=True, exist_ok=True)
+    (dossier / nom).write_text(f"---\n{en_tete}\n---\n{corps}\n", encoding="utf-8")
+
+
+def _procedure(regle_id: str) -> str:
+    en_tete = f"doc_id: PI-{regle_id}\nversion: v1\narticle: PI-{regle_id}\ndate_debut: 2026-10-26"
+    return f"{en_tete}\nregle_id: {regle_id}"
+
+
+TIERS = "doc_id: tiers\nversion: tiers-v1\narticle: NP-TIERS\ndate_debut: 2026-10-26"
+
+
+def test_lire_markdown_en_tete_et_corps(tmp_path: Path) -> None:
+    _md(tmp_path, "tiers.md", TIERS, "# Formule tiers\n\nLa responsabilité civile est couverte.")
+    [notice] = lire_markdown(tmp_path, "notices_produits")
+    assert (notice["doc_id"], notice["version"], notice["article"]) == (
+        "tiers",
+        "tiers-v1",
+        "NP-TIERS",
+    )
+    assert (notice["etat"], notice["date_debut"], notice["regle_id"]) == (
+        "VIGUEUR",
+        "2026-10-26",
+        None,
+    )
+    assert notice["url_source"] == (
+        "https://github.com/acerolaz/agentinsurflow/blob/main/rag/corpus/notices_produits/tiers.md"
+    )
+    assert "La responsabilité civile est couverte." in notice["texte_html"]
+    assert "doc_id:" not in notice["texte_html"]
+
+
+def test_lire_markdown_regle_id_et_ordre(tmp_path: Path) -> None:
+    _md(
+        tmp_path,
+        "R02.md",
+        _procedure("R02_RESILIATIONS"),
+    )
+    _md(
+        tmp_path,
+        "R01.md",
+        _procedure("R01_SUSPENSION"),
+    )
+    assert [a["regle_id"] for a in lire_markdown(tmp_path, "procedures_internes")] == [
+        "R01_SUSPENSION",
+        "R02_RESILIATIONS",
+    ]
+
+
+@pytest.mark.parametrize("contenu", ["Pas d'en-tête du tout.", "---\nversion: v1\n---\ncorps"])
+def test_markdown_invalide_erreur_qui_nomme_le_fichier(tmp_path: Path, contenu: str) -> None:
+    (tmp_path / "casse.md").write_text(contenu, encoding="utf-8")
+    with pytest.raises(ErreurEnvoi, match="casse.md"):
+        lire_markdown(tmp_path, "notices_produits")
+
+
+def test_source_envoie_la_collection_et_ecrit_sa_preuve(
+    tmp_path: Path, appels: list[httpx.Request]
+) -> None:
+    _md(tmp_path / "src", "tiers.md", TIERS)
+    code = ingest.main(
+        ["--collection", "notices_produits", "--source", str(tmp_path / "src"), "--url", "http://gw",
+         "--preuves", str(tmp_path / "preuves"), "--date", "2026-10-26", "--environnement", "local"]
+    )  # fmt: skip
+    assert code == 0
+    corps = json.loads(appels[0].content)
+    assert corps["collection"] == "notices_produits" and corps["articles"][0]["doc_id"] == "tiers"
+    preuve = json.loads(
+        (tmp_path / "preuves" / "ingestion-notices_produits-2026-10-26-local.json").read_text()
+    )
+    assert preuve["mode"] == "markdown"
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [["--source", "x"], ["--collection", "notices_produits"]],
+)
+def test_collection_et_source_vont_ensemble(
+    arguments: list[str], capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert ingest.main(arguments) == 1
+    assert "--source" in capsys.readouterr().err

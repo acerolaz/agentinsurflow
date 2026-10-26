@@ -182,7 +182,7 @@ async def test_erreur_sql_503_sans_la_question_dans_les_traces(
     assert not any("Dupont" in t for t in textes)  # … sans la question
 
 
-# ---------------------------------------------------------------- notices, procédures, regle_id (#98)
+# ---------------------------------------------------------------- notices, procédures (#98)
 
 NOTICE = article(
     "tiers",
@@ -218,7 +218,10 @@ async def test_regle_id_aller_retour(api: httpx.AsyncClient) -> None:
     await _ingerer(api, "procedures_internes", PROCEDURE)
     resultat = await _extraits(api, "suspension de permis souscription refusée")
     citation = resultat["resultats"][0]["citation"]
-    assert (citation["collection"], citation["regle_id"]) == ("procedures_internes", "R01_SUSPENSION")
+    assert (citation["collection"], citation["regle_id"]) == (
+        "procedures_internes",
+        "R01_SUSPENSION",
+    )
 
 
 async def test_texte_legifrance_regle_id_null(corpus: httpx.AsyncClient) -> None:
@@ -236,7 +239,8 @@ async def test_role_ingestion_seul_ne_lit_pas_les_notices(api: httpx.AsyncClient
 
 async def test_meme_version_regle_id_change_conflit(api: httpx.AsyncClient) -> None:
     await _ingerer(api, "procedures_internes", PROCEDURE)
+    autre_regle = PROCEDURE | {"regle_id": "R02_RESILIATIONS"}
     corps = {"collection": "procedures_internes", "instantane_sha256": SHA,
-             "instantane_date": DATE_ISO, "articles": [PROCEDURE | {"regle_id": "R02_RESILIATIONS"}]}  # fmt: skip
+             "instantane_date": DATE_ISO, "articles": [autre_regle]}  # fmt: skip
     rapport = (await api.post("/api/ingestions", json=corps, headers=entetes("Ingestion"))).json()
     assert [r["raison"] for r in rapport["rejets"]] == ["conflit_version"]

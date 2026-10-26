@@ -446,10 +446,12 @@ jobs:
         with: { version: "0.11.13", enable-cache: true }
 
       - name: Corpus — base annexe éphémère, chaque révision (déploiement ou rollback) repart vide
-        # dernier instantané versionné, rejoué par la gateway ; jeton az de la CI (rôle Ingestion)
+        # dernier instantané versionné puis documents rédigés (#98), par la gateway ; jeton az de la CI (rôle Ingestion)
         env:
           URL: ${{ steps.deployer.outputs.url }}
           APP_ENV: ${{ inputs.environnement }}
         run: |
           make install
           make ingest URL="$URL" INSTANTANE="$(ls data/raw/code-assurances-*.json | sort | tail -1)"
+          make ingest URL="$URL" COLLECTION=notices_produits SOURCE=rag/corpus/notices_produits
+          make ingest URL="$URL" COLLECTION=procedures_internes SOURCE=rag/corpus/procedures_internes

@@ -59,22 +59,31 @@ Hors périmètre, connu : un contrat en `tiers_etendu` n'a pas de notice → `RE
 ```python
 def test_gestionnaire_lit_les_trois_collections() -> None:
     assert collections_pour(frozenset({"Gestionnaire"})) == [
-        "notices_produits", "procedures_internes", "textes_reglementaires"
+        "notices_produits",
+        "procedures_internes",
+        "textes_reglementaires",
     ]
+
 
 def test_role_absent_ne_lit_rien() -> None:
     assert collections_pour(frozenset({"Ingestion"})) == []
+
 
 def test_nettoyer_recopie_regle_id() -> None:
     propre = nettoyer(article_valide() | {"regle_id": "R01_SUSPENSION"})
     assert isinstance(propre, ArticlePropre) and propre.regle_id == "R01_SUSPENSION"
 
+
 def test_nettoyer_sans_regle_id_garde_le_hash_du_texte() -> None:
     propre = nettoyer(article_valide())
     assert propre.regle_id is None and propre.hash_contenu == hash_contenu(propre.texte)
 
+
 def test_regle_id_change_le_hash() -> None:
-    a, b = nettoyer(article_valide() | {"regle_id": "R01_SUSPENSION"}), nettoyer(article_valide() | {"regle_id": "R02_RESILIATIONS"})
+    a, b = (
+        nettoyer(article_valide() | {"regle_id": "R01_SUSPENSION"}),
+        nettoyer(article_valide() | {"regle_id": "R02_RESILIATIONS"}),
+    )
     assert a.hash_contenu != b.hash_contenu
 ```
 (`article_valide()` = le brut déjà utilisé par `test_nettoyer_article_valide` ; le factoriser s'il ne l'est pas.)

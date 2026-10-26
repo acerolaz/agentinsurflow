@@ -253,12 +253,19 @@ async def test_meme_version_regle_id_change_conflit(api: httpx.AsyncClient) -> N
     ("question", "collection", "doc_id", "regle_id"),
     [
         (
-            "garanties de la formule tous risques bris de glace",
+            "formule tous risques dommages tous accidents garantie du conducteur",
             "notices_produits",
             "tous_risques",
             None,
         ),
         ("formule tiers responsabilité civile minimale", "notices_produits", "tiers", None),
+        ("formule intermédiaire tiers étendu", "notices_produits", "tiers_etendu", None),
+        (
+            "coefficient jeunes conducteurs première année de permis",
+            "notices_produits",
+            "jeunes_conducteurs",
+            None,
+        ),
         ("coefficient bonus-malus dépasse 1,25", "procedures_internes", "PI-R03_CRM", "R03_CRM"),
     ],
 )
@@ -270,9 +277,8 @@ async def test_corpus_redige_du_depot_ingere_et_retrouve(
     app.dependency_overrides[charger_rag] = lambda: ConfigRag(_env_file=None, rag_seuil=0.0)  # type: ignore[call-arg]
     for nom in ("notices_produits", "procedures_internes"):
         await _ingerer(api, nom, *lire_markdown(RACINE / "corpus" / nom, nom))
-    citation = (await _extraits(api, question))["resultats"][0]["citation"]
-    assert (citation["collection"], citation["doc_id"], citation["regle_id"]) == (
-        collection,
-        doc_id,
-        regle_id,
-    )
+    # GF5/GF6 cherchent la source parmi tous les extraits renvoyés, pas seulement le premier
+    cites = [r["citation"] for r in (await _extraits(api, question))["resultats"]]
+    assert (collection, doc_id, regle_id) in [
+        (c["collection"], c["doc_id"], c["regle_id"]) for c in cites
+    ]

@@ -9,7 +9,8 @@ REF_P = Pieces("incomplet", ("permis",), "")
 REF_R = Risque(2, "refus", ("R01_SUSPENSION",), "bareme-2026.10-v1", "")
 SOURCES = (
     {"doc_id": "legi-1", "collection": "legifrance", "regle_id": "R01_SUSPENSION"},
-    {"doc_id": "notice-1", "collection": "notices_produits", "regle_id": None},
+    {"doc_id": "tiers", "collection": "notices_produits", "regle_id": None},
+    {"doc_id": "jeunes_conducteurs", "collection": "notices_produits", "regle_id": None},
 )
 
 
@@ -33,7 +34,7 @@ def _risque(**kw: object) -> Risque:
 def _fiche(**kw: object) -> Fiche:
     base = {
         "decision": "REFUSE",
-        "contrat_type": "notice-1",
+        "contrat_type": "tiers",
         "score": 2.0,
         "version_bareme": "bareme-2026.10-v1",
         "regle_ids": ("R01_SUSPENSION",),
@@ -108,17 +109,28 @@ def test_gf4() -> None:
 
 
 def test_gf5() -> None:
-    assert "GF5" in gf(_fiche(citations=("notice-1",)), REF_R, SOURCES, "tiers")
+    assert "GF5" in gf(_fiche(citations=("tiers",)), REF_R, SOURCES, "tiers")
 
 
 def test_gf6() -> None:
     risque = Risque(0, "acceptable", (), "bareme-2026.10-v1", "")
-    ok = _fiche(decision="ACCEPTE", score=0.0, regle_ids=(), citations=("notice-1",))
+    ok = _fiche(decision="ACCEPTE", score=0.0, regle_ids=(), citations=("tiers",))
     assert gf(ok, risque, SOURCES, "tiers") == []
     ko = _fiche(
         decision="ACCEPTE", score=0.0, regle_ids=(), contrat_type="legi-1", citations=("legi-1",)
     )
     assert gf(ko, risque, SOURCES, "tiers") == ["GF6"]
+
+
+def test_gf6_contrat_type_doit_etre_la_notice_de_la_formule() -> None:
+    # P13 : une notice présente mais d'une autre formule (ou complémentaire) ne vaut pas
+    risque = Risque(0, "acceptable", (), "bareme-2026.10-v1", "")
+    for contrat_type in ("jeunes_conducteurs", "tiers"):
+        fiche = _fiche(
+            decision="ACCEPTE", score=0.0, regle_ids=(), contrat_type=contrat_type,
+            citations=(contrat_type,),
+        )  # fmt: skip
+        assert gf(fiche, risque, SOURCES, "tous_risques") == ["GF6"]
 
 
 def test_gf7() -> None:

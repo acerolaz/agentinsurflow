@@ -1,8 +1,8 @@
-# AgentInsurFlow — monorepo (sprint 3, v0.6.0)
+# AgentInsurFlow — monorepo (v0.6.0)
 
-Assistant des **gestionnaires d'assurance auto** : une **gateway** (seule entrée publique) devant deux services,
-**underwriting-admin** (dossiers minimisés et référentiel SQL des traces) et **rag**, qui ingère le **Code des assurances** depuis Légifrance, le cherche (recherche hybride pgvector) et répond par un
-**agent à réponses citées**, sur un modèle **Azure AI Foundry** (`Kimi-K2.5`, API v1 compatible OpenAI). Le tout est
+Assistant des **gestionnaires d'assurance auto** : une **gateway** (seule entrée publique) devant services,
+**underwriting-admin** (dossiers minimisés et référentiel SQL des traces), **rag**, qui ingère le **Code des assurances** depuis Légifrance, le cherche (recherche hybride pgvector) et répond par un
+**agent à réponses citées**, et le **cluster d'agents** (Saga déterministe et quatre sous-agents, revue humaine du gestionnaire). Les modèles sont des déploiements **Azure AI Foundry** (API v1 compatible OpenAI), un par usage : rag sur `Kimi-K2.5` (`rag/llm.env`), le cluster sur `gpt-4.1-mini` par agent (`agentic-cluster/agents.toml`). Le tout est
 livré par une **chaîne GitHub Actions CI/CD/Evals bloquante** jusqu'à la production (Azure Container Apps).
 
 Toutes les API sont **REST** et consultables dans **une seule page Swagger**, servie à la racine de la gateway.
@@ -37,7 +37,7 @@ Un merge sur `main` relance `lint`, `test` et `gateway` avant `build`. Les evals
 p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané du corpus ou la version du LLM changent
 (voir *Évaluer l'agent*). Le job `evals-pr` (avant merge) est **désactivé jusqu'à U5** : voir le tableau des jobs.
 
-## État au 22/10 (v0.6.0)
+## État au 26/10 (v0.6.0)
 
 | Projet | Langage | Rôle | État |
 |---|---|---|---|
@@ -45,16 +45,22 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 | [`rag/`](rag/README.md) | Python · hexagonal | Corpus Légifrance (ingestion, dédup, versions), recherche hybride, agent à 3 verrous, attribution Etalab 2.0 | ✅ déployé ; Code des assurances (instantané du 20/10, 119 articles lus, 107 insérés, [preuves](eval/preuves/)) réingéré à chaque déploiement |
 | [`underwriting-admin/`](underwriting-admin/README.md) | C# · Clean Architecture · .NET 10 | Dossiers (vue minimisée, BOLA) et référentiel SQL des traces OpenTelemetry (`/v1/traces`, `/api/traces/{trace_id}`) | ✅ déployé dans sa Container App (entrée interne) ; écritures brouillon/statut pour le serveur MCP (#66) ; OBO pré-autorisé (#47, vérification en production à faire) |
 | [`serveur-mcp/`](serveur-mcp/README.md) | Python · hexagonal | Outils MCP du cluster d'agents (`search_rag`, `get_contrat`, `evaluer_risque`, `calculer_prime`, `enregistrer_brouillon`, `update_statut_dossier`), matrice `azp` × outil | ✅ déployé dans sa Container App (entrée interne, identité propre), v0.6.0 (#15, #66) |
-| [`agentic-cluster/`](agentic-cluster/README.md) | Python · hexagonal · LangGraph | Cluster d'agents (Pièces, Analyste, Rédacteur, Actuaire) : évalue un dossier, écrit un brouillon, attend la revue du gestionnaire ; garde-fous LLM Guard ; joint MCP et LLM par la gateway | 🟡 code livré sur `feat/cluster` (v0.1.0) ; déploiement par Acerola (`infra/containerapp-cluster.yaml`) `🔴 À CONFIRMER` ; état du contrat : [`docs/contrat-personnel.md`](docs/contrat-personnel.md) |
+| [`agentic-cluster/`](agentic-cluster/README.md) | Python · hexagonal · LangGraph | Cluster d'agents (la Saga, automate déterministe sans LLM, puis Pièces, Analyste, Rédacteur, Actuaire) : évalue un dossier, écrit un brouillon, attend la revue du gestionnaire ; garde-fous LLM Guard ; joint MCP et LLM par la gateway | ✅ déployé (staging, production) dans sa Container App (entrée interne, `infra/containerapp-cluster.yaml`) depuis le 24/10 (#116) ; réglage par agent dans `agents.toml` (#117) ; ACCEPTE de bout en bout bloqué par #98 ; état du contrat : [`docs/contrat-personnel.md`](docs/contrat-personnel.md) |
 | [`fonction-calcul/`](fonction-calcul/README.md) | Python · Azure Functions | Risque (`bareme-2026.10-v1`) et prime (`formule-2026.10-v1`) déterministes ; n'accepte que la gateway | ✅ déployée (Flex Consumption, staging et production), v0.6.0 (#64, #74) |
 | [`e2e/`](e2e/README.md) | Python · pytest | Parcours bout en bout par la gateway (compose ou staging) | ✅ ; job `e2e-staging` bloquant avant la release |
 
 > **Pyramide au 20/10** : ≈ 52 % TU / 46 % TI / 2 % E2E, hors seuils ; le job `pyramide` est **informatif** en CI
 > (décision d'Acerola) jusqu'à une tâche dédiée aux tests unitaires.
 
-> **Production** : **`v0.6.0`** (`13874fd`) depuis le 22/10 (#66 : serveur MCP, calcul, canal LLM, une Container App
-> par service) ; `/health` et `/health/{rag,underwriting,mcp}` servent la même release, `/health/calcul` le barème et la
-> formule. Vérifications restantes en production : OBO (#47), mesure des tokens (#71).
+> **Production et staging** : **`v0.6.0`** au SHA `48dd220` (run CI 40298812671), déployé le 26/10 ; la version de la
+> solution reste fixée par Acerola. Depuis le 22/10 : le cluster d'agents (#92, production depuis le 24/10 par #116),
+> le job `test` limité aux TU (#93), le cache Docker inline depuis l'ACR (#95), l'audience `api://agentinsurflow-cluster` (#96),
+> l'isolement du cluster (le frontal Container Apps répond 404 à une application interne, #97), `E2E_CONTRAT_AUTRE` (#102),
+> le cluster sur `gpt-4.1-mini` (#105), la Saga sans rôle LLM (#106) et son nom (#107), les limites de débit par `oid` et `azp` (#116),
+> `agents.toml` (#117) et la vérification du pool du point de reprise (#118). `/health` et `/health/{rag,underwriting,mcp,cluster}` servent
+> la même release, `/health/calcul` le barème et la formule. Reste : **#98** (collection `notices_produits` absente de rag :
+> le dossier complet finit en `REVUE_HUMAINE` au lieu d'`EN_ANALYSE`, seul échec des 16 tests E2E du poste sur staging) ;
+> vérifications en production : OBO (#47), mesure des tokens (#71).
 > Evals de staging passées à **81,8 %** (9/11, porte 80 %) : marge d'un cas, deux échecs connus (réponse trop
 > longue sur `reference-exacte-l211-1`, annexe bonus-malus d'A121-1 absente de l'instantané).
 
@@ -65,10 +71,10 @@ d'ingestion, agent) dans [`rag/README.md`](rag/README.md). Tests : pyramide **70
 
 ### Architecture déployée
 
-Chaque environnement (staging, production) est **cinq Container Apps** du même environnement : la principale, qui ne contient que la **gateway**
+Chaque environnement (staging, production) est **six Container Apps** du même environnement : la principale, qui ne contient que la **gateway**
 ([`infra/containerapp.yaml`](infra/containerapp.yaml)), celle d'**underwriting-admin** ([`infra/containerapp-underwriting.yaml`](infra/containerapp-underwriting.yaml), entrée interne), celle du **serveur MCP**
-([`infra/containerapp-mcp.yaml`](infra/containerapp-mcp.yaml)) celle de **rag** ([`infra/containerapp-rag.yaml`](infra/containerapp-rag.yaml)), à entrée interne et identité managée propre, que seule la gateway appelle, et celle de la **base PostgreSQL annexe** ([`infra/containerapp-postgres.yaml`](infra/containerapp-postgres.yaml)), à entrée TCP interne 5432.
-**Foundry n'est joint que par la gateway** (route `/api/llm`, clés désactivées) : rag lui demande le modèle avec un jeton d'application (rôle `LLM`).
+([`infra/containerapp-mcp.yaml`](infra/containerapp-mcp.yaml)), celle du **cluster d'agents** ([`infra/containerapp-cluster.yaml`](infra/containerapp-cluster.yaml), entrée interne, `ai-cluster-{staging,production}`), celle de **rag** ([`infra/containerapp-rag.yaml`](infra/containerapp-rag.yaml)), à entrée interne et identité managée propre, que seule la gateway appelle, et celle de la **base PostgreSQL annexe** ([`infra/containerapp-postgres.yaml`](infra/containerapp-postgres.yaml)), à entrée TCP interne 5432.
+**Foundry n'est joint que par la gateway** (route `/api/llm`, clés désactivées) : rag et les quatre sous-agents du cluster lui demandent le modèle avec un jeton d'application (rôle `LLM`) ; la Saga n'a pas de LLM.
 La Function de calcul (Azure Functions) n'accepte que la gateway :
 
 | Conteneur | Port | Rôle |
@@ -95,6 +101,9 @@ démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `d
 │   ├── migrations/            #   Alembic, arbre « vecteurs » (SQL écrit à la main), rejoué au démarrage
 │   ├── demarrer.sh            #   point d'entrée du conteneur : migrations, puis uvicorn
 │   └── tests/                 #   unit/ (TU, sans I/O) · integration/ (TI) · fakes.py (doublures des ports)
+├── agentic-cluster/           # 🤖 cluster d'agents (Python, hexagonal, LangGraph) — README, agents.toml (réglage par agent), Dockerfile
+├── serveur-mcp/ · fonction-calcul/ · underwriting-admin/  # outils MCP · Function de calcul · dossiers et traces (README chacun)
+├── e2e/                       # parcours bout en bout par la gateway
 ├── gateway/                   # 🚪 gateway YARP (C#, .NET 10) — README, Makefile, Dockerfile, src/, tests/
 ├── tests/unit/                # tests de l'outillage de la racine (tools/)
 ├── tools/evals.py             # make eval / make calibrer : golden set + jeu de démo contre une API, manifeste
@@ -124,7 +133,7 @@ démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `d
 │   ├── preuves/               # journaux de chaîne, rapports d'evals et d'ingestion versionnés
 │   └── ateliers/              # grille de l'atelier croisé n°2
 ├── Makefile                   # orchestre : lint, test, up, ingest, eval, infra… ; gateway-<cible> → gateway/
-├── pyproject.toml · uv.lock   # espace de travail uv (membres : rag, serveur-mcp, fonction-calcul) ; version de la solution (0.6.0)
+├── pyproject.toml · uv.lock   # espace de travail uv (membres : rag, serveur-mcp, fonction-calcul, agentic-cluster) ; version de la solution (0.6.0)
 ├── global.json · Directory.Build.props  # SDK .NET 10 et règles communes des projets C#
 ├── .python-version
 └── .env.example               # toutes les clés, sans valeurs
@@ -173,7 +182,7 @@ dossier-conception-v1.md, K5). Pour un article cité, `GET /api/documents/{doc_i
 `${GATEWAY_URL}/api/llm`, `http://gateway:8000/api/llm` dans le compose) avec un jeton d'**application** pour
 l'audience `LLM_AUDIENCE` (rôle `LLM`) : secret de l'inscription rag (`RAG_CLIENT_SECRET`) en local, identité
 managée fédérée (`AZURE_UAMI_CLIENT_ID`) en Azure, comme l'OBO. La gateway échange son propre jeton avec Foundry.
-Le modèle est épinglé dans `rag/llm.env`.
+Le modèle de rag (`Kimi-K2.5`) est épinglé dans `rag/llm.env` ; celui du cluster (`gpt-4.1-mini`), par agent, dans `agentic-cluster/agents.toml`.
 
 ## Tester
 
@@ -236,7 +245,7 @@ le réévalue, même s'il ne touche pas ces fichiers. Sans aucun tag `manifeste-
 |---|---|
 | `version` | Version du manifeste : `X.Y.Z-build.N` (pyproject + n° de run GitHub) |
 | `date`, `commit`, `run`, `cible` | Quand, quel commit, lien du run GitHub, URL évaluée |
-| `modele` | Déploiement épinglé (`rag/llm.env`) **et** modèle observé dans les réponses de l'API |
+| `modele` | Déploiement de rag épinglé (`rag/llm.env`) **et** modèle observé dans les réponses de l'API |
 | `prompts` | Chaque prompt : fichier, empreinte sha256, contenu |
 | `golden`, `questions` | Fichier, empreinte sha256, identifiants des cas |
 | `corpus` | Dernier instantané ingéré et nombre de chunks (`/health`) |
@@ -252,7 +261,7 @@ Exemple du sprint 2 : `eval/preuves/evals-local-2026-10-15.json`.
 
 Installation, à faire une seule fois (écritures Azure et Entra : lancées à la main par Acerola) :
 
-1. `make infra` crée le groupe de ressources, l'ACR, l'environnement Container Apps et dix apps (cinq par environnement, staging et production : la principale, underwriting-admin, le serveur MCP, rag et la base annexe), reprend l'application Entra `agentinsurflow` et ses 4 fédérations OIDC (`main`, `staging`,
+1. `make infra` crée le groupe de ressources, l'ACR, l'environnement Container Apps et douze apps (six par environnement, staging et production : la principale, underwriting-admin, le serveur MCP, le cluster d'agents, rag et la base annexe), reprend l'application Entra `agentinsurflow` et ses 4 fédérations OIDC (`main`, `staging`,
    `production`, `pull_request`), puis attribue les rôles. Il affiche les valeurs à reporter. Attribuer des rôles
    exige *Owner* ou *User Access Administrator*.
 2. `make entra` inscrit les API `agentinsurflow-rag` (rôles `Gestionnaire`, `Ingestion`) et
@@ -270,7 +279,7 @@ Ensuite, chaque **merge sur `main`** déclenche toute la chaîne, sans action ma
 | Version | Forme | Désigne | Où la lire |
 |---|---|---|---|
 | Release | `vX.Y.Z` (ex. `v0.2.0`) | le commit livré en production, tagué juste avant | `/health` → `release`, tags Git, résumé du run |
-| Image | SHA du commit | les quatre images (`agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`, `agentinsurflow-mcp`), même tag | `/health` (gateway), `/health/rag` et `/health/underwriting` → `version` |
+| Image | SHA du commit | les cinq images (`agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`, `agentinsurflow-mcp`, `agentinsurflow-cluster`), même tag | `/health` (gateway), `/health/rag` et `/health/underwriting` → `version` |
 | Manifeste | `X.Y.Z-build.N` (ex. `0.4.0-build.35`) | ce qui a été évalué : modèle, prompts, jeux d'évaluation | `/health/rag` → `manifeste`, rapport d'évaluation, tag `manifeste-…` |
 
 Les trois versions sont calculées par le job `changements` puis **gravées dans les images** : un rollback restaure aussi
@@ -298,10 +307,10 @@ ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le L
 | Registre d'images | `acerolazacr` : `agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`, `agentinsurflow-mcp` (tag = SHA), `agentinsurflow-postgres:1` | ✅ |
 | Environnement Container Apps | `cae-insurflow` (profils de charge, sans VNet : l'entrée TCP interne de PostgreSQL n'en exige pas) | ✅ |
 | Container App staging | `insurflow-staging` (principale = gateway seule) → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ reçoit chaque merge |
-| Container Apps par service | `insurflow-{uw,mcp,rag,pg}-{staging,production}` : entrée interne (PostgreSQL en TCP 5432, base éphémère) | ✅ |
+| Container Apps par service | `insurflow-{uw,mcp,rag,pg}-{staging,production}` et `ai-cluster-{staging,production}` : entrée interne (PostgreSQL en TCP 5432, base éphémère) | ✅ |
 | Function de calcul | `acerolaz-calcul-{staging,production}` (Flex Consumption, Python 3.12), stockage `acerolazcalcul` ; Easy Auth : la gateway seule | ✅ |
 | Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.6.0` |
-| Modèles | `Kimi-K2.5` et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971`, **sans clé** (`disableLocalAuth`) : appelée par la gateway seule (`/api/llm`) | ✅ |
+| Modèles | `Kimi-K2.5` (rag), `gpt-4.1-mini` (cluster, `agents.toml`) et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971`, **sans clé** (`disableLocalAuth`) : appelée par la gateway seule (`/api/llm`) | ✅ |
 | Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag`, `-underwriting`, `-mcp`, `-calcul`, `-llm` ; `agentinsurflow-gateway-local` (secret dans le `.env` local seulement) | ✅ |
 | Identités managées | gateway `uami-insurflow-rag` (nom historique), rag `uami-insurflow-rag-app`, serveur MCP `uami-insurflow-mcp` ; underwriting-admin sans identité Azure | ✅ |
 | Rôles | CI : Contributor, AcrPush, AcrPull ; « Cognitive Services OpenAI User » sur Foundry : gateway et `gateway-local` **seulement** (`make llm` retire les autres) | ✅ attribués |
@@ -313,7 +322,7 @@ make rollback             # production → images précédentes, en une opérati
 make rollback ENV=staging TAG=<sha>   # ou une version précise
 ```
 
-Le rollback redéploie **gateway, rag et underwriting-admin** au SHA de la révision précédente, puis réingère le corpus (base annexe
+Le rollback redéploie **gateway, rag, underwriting-admin, serveur MCP et cluster** au SHA de la révision précédente, puis réingère le corpus (base annexe
 éphémère). Détails et scénario de répétition : [docs/rollback.md](docs/rollback.md).
 
 ## Preuves et atelier
@@ -331,6 +340,6 @@ Le rollback redéploie **gateway, rag et underwriting-admin** au SHA de la révi
 
 ## Hors périmètre actuel
 
-Pas encore livrés : le point d'entrée **MCP** par la gateway (#15),
-la Saga et les agents avec **validation humaine** (#7), l'OCR en A2A (source : dossier-conception-v1.md).
+Livrés depuis : le point d'entrée **MCP** par la gateway (#15), la Saga et les agents avec **validation humaine** (#7).
+Pas encore : l'OCR en A2A (source : dossier-conception-v1.md) et la décision `ACCEPTE` d'un dossier complet de bout en bout (#98).
 Les sujets encore ouverts (découpage des agents, protocoles…) ne sont pas présumés.

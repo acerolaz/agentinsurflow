@@ -28,6 +28,8 @@ Routes publiques (gateway, T12) : `POST /v1/souscriptions/{numero_contrat}/evalu
 
 **Qui peut appeler le cluster (R18).** La gateway **relaie** le jeton du gestionnaire (audience du cluster), comme pour `/mcp` : elle ne l'échange pas. « N'accepte que la gateway » (D105) est garanti par l'**entrée interne** de la Container App (aucune adresse joignable hors de l'environnement) et par la **revalidation du jeton** par le cluster (signature, émetteur, audience, rôle `Gestionnaire`), et non par `azp = gateway`. Le cluster échange ensuite ce jeton pour chaque agent (On-Behalf-Of en deux sauts : cluster, puis agent vers le MCP), d'où un `azp` propre à chaque agent côté MCP.
 
+**Débit.** Les routes publiques sont limitées à 10 requêtes/min (`RateLimit__Cluster__PermitLimit`) par `oid` et `azp` du jeton, côté gateway (`gateway/README.md`) : 429 au-delà.
+
 Erreurs : `application/problem+json` avec un `code` stable. Le message de `REVUE_HUMAINE` est neutre : jamais la cause ni le nom d'un détecteur.
 
 ## Concurrence et reprise
@@ -37,6 +39,7 @@ Erreurs : `application/problem+json` avec un `code` stable. Le message de `REVUE
 - **Décider un dossier en `REVUE_HUMAINE` (7a).** Il n'y a pas de pause : le graphe est terminé et `/revue` répond `409 AUCUNE_REVUE_EN_ATTENTE`. Le gestionnaire décide lui-même par `PUT /api/contrats/{numero}/statut` (`{"statut": "ACCEPTE"|"REFUSE", "validation": "VALIDEE"|"CORRIGEE"}`) sur la gateway, avec son propre jeton ; la fiche provisoire est le brouillon à valider. Une réévaluation (`POST /evaluations/{n}`) reste possible tant que le dossier n'est pas décidé.
 - Si l'écriture de la décision échoue (`502`), la revue reste posée : un second `/revue` rejoue `enregistrer` (la décision la plus récente l'emporte) ; `POST /evaluations/{n}` répond `409 EVALUATION_EN_ATTENTE` entre-temps.
 - **Propriétaire du dossier (BOLA).** L'`oid` du gestionnaire est posé dans l'état du graphe au premier `charger` ; un autre `oid` reçoit `404 CONTRAT_INTROUVABLE` aux deux routes, avant tout `409`, sans toucher au point de reprise. `tentative` croît de 1 à chaque évaluation (lue dans le point de reprise) : les tours et rapports d'une réévaluation ne sont pas ignorés par l'administration.
+- **Point de reprise (#118).** Le pool de connexions vérifie chaque connexion avant de la rendre (`AsyncConnectionPool.check_connection`, `infrastructure/langgraph/checkpoint.py`) : la base annexe change de révision à chaque déploiement et ferme les connexions côté serveur ; sans cette vérification, une évaluation répondait 500 après un redéploiement.
 - Les observations du dossier ne sont jamais dans l'état du graphe ni dans un point de reprise : elles passent par le contexte d'exécution (en mémoire).
 
 ## Réglage des agents (`agents.toml`)
@@ -46,7 +49,7 @@ Erreurs : `application/problem+json` avec un `code` stable. Le message de `REVUE
 - **Modifier par PR** : le fichier est copié dans l'image et lu au démarrage ; pas de variable, pas de réglage à chaud.
 - **Validé au démarrage** : un réglage invalide empêche le cluster de démarrer (message : agent et clé).
 - **Vérifié au déploiement** (`deploy.yml`, avant toute mise à jour) : le fichier du SHA déployé est lu et chaque `modele` doit exister comme déploiement de la ressource Foundry (`vars.FOUNDRY_ENDPOINT`, lecture seule) ; sinon le déploiement est refusé avec le nom manquant. Un rollback vérifie donc l'ancien réglage.
-- Réglage exposé par `GET /health` (`reglages`) et par `audit.agent` / `invoke_agent`.
+- Les modèles ne sont plus dans un `llm.env` : le cluster n'a ni `agentic-cluster/llm.env` ni `AZURE_OPENAI_DEPLOYMENT` (rag garde `rag/llm.env`, `Kimi-K2.5`). Réglage exposé par `GET /health` (`reglages`) et par `audit.agent` / `invoke_agent`.
 
 ## Configuration (variables d'environnement, aucune valeur dans le dépôt)
 

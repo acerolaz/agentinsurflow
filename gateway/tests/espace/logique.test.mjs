@@ -95,6 +95,16 @@ test("tokens : spans de l'agent de l'étape seulement (trace partagée), chaîne
   assert.equal(tokensEtape(null, "pieces"), null);
 });
 
+test("tokens : repli sans appel LLM (usage à 0, comme le pose audit.py) → null ; repli après un appel rejeté → compté", () => {
+  const span = (entree, sortie) => ({
+    name: "invoke_agent",
+    attributes: { "gen_ai.agent.name": "actuaire", "insurflow.mode": "repli",
+      "gen_ai.usage.input_tokens": entree, "gen_ai.usage.output_tokens": sortie },
+  });
+  assert.equal(tokensEtape([span(0, 0)], "actuaire"), null);
+  assert.deepEqual(tokensEtape([span(812, 95)], "actuaire"), { entree: 812, sortie: 95 });
+});
+
 test("route : un dossier valide s'ouvre", () => {
   assert.deepEqual(routeDepuisHash("#/dossiers/AIF-2026-000004"), { vue: "dossier", numero: "AIF-2026-000004" });
 });

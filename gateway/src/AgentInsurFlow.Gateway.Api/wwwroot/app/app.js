@@ -93,7 +93,7 @@ function entete(vueActive) {
 async function vueDossiers(zone) {
   remplir(zone, el("h1", {}, "Mes dossiers"), el("p", { "aria-busy": "true" }, "Chargement…"));
   const r = await appeler("GET", "/api/contrats", { portee: "underwriting" });
-  if (r.statut !== 200) return remplir(zone, el("h1", {}, "Mes dossiers"), erreur(r));
+  if (r.statut !== 200) return remplir(zone, el("h1", {}, picto(PICTOS.dossiers), "Mes dossiers"), erreur(r));
   const lignes = r.json.map((c) =>
     el("tr", {},
       el("th", { scope: "row" }, picto(PICTOS.dossier), el("a", { href: `#/dossiers/${encodeURIComponent(c.numero_contrat)}` }, c.numero_contrat)),

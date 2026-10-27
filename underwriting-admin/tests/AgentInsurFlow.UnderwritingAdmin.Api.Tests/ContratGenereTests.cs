@@ -1,0 +1,88 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using AgentInsurFlow.UnderwritingAdmin.Application;
+using AgentInsurFlow.UnderwritingAdmin.Domain;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace AgentInsurFlow.UnderwritingAdmin.Api.Tests;
+
+/// <summary>TI : <c>GET …/contrat</c> (#101), contrat généré après ACCEPTE, jetons réels, port en mémoire.</summary>
+public sealed class ContratGenereTests : IDisposable
+{
+    private const string GestionnaireA = "oid-gestionnaire-a";
+    private const string GestionnaireB = "oid-gestionnaire-b";
+
+    private static readonly ContratGenere Accepte = new("AIF-A1", "tiers_plus", "standard", new DateOnly(2026, 11, 1),
+        "612.40", "51.03", "bareme-2026.1", "formule-2026.1", ["Profil sans sinistre"], ["Code des assurances, art. A121-1"],
+        GestionnaireA, new DateTimeOffset(2026, 10, 27, 10, 0, 0, TimeSpan.Zero));
+
+    private sealed class DepotEnMemoire : IDepotContratGenere
+    {
+        public Task<(ContratGenere? Contrat, bool Existe)> LireContratGenere(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
+            Task.FromResult<(ContratGenere?, bool)>(gestionnaireId != GestionnaireA ? (null, false) : numeroContrat switch
+            {
+                "AIF-A1" => (Accepte, true),
+                "AIF-A2" => (null, true),
+                _ => (null, false),
+            });
+    }
+
+    private readonly WebApplicationFactory<Program> _usine;
+
+    public ContratGenereTests() => _usine = JetonsDeTest.Usine(b => b.ConfigureTestServices(s =>
+    {
+        s.RemoveAll<IDepotContratGenere>();
+        s.AddSingleton<IDepotContratGenere, DepotEnMemoire>();
+    }));
+
+    public void Dispose() => _usine.Dispose();
+
+    private async Task<(HttpStatusCode Statut, JsonElement Corps, string Brut)> Get(string numero, string oid)
+    {
+        using var client = _usine.CreateClient();
+        using var requete = new HttpRequestMessage(HttpMethod.Get, $"/api/contrats/{numero}/contrat");
+        requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JetonsDeTest.Jeton(JetonsDeTest.AudienceParDefaut, oid, "Gestionnaire"));
+        using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
+        var brut = await reponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        return (reponse.StatusCode, JsonDocument.Parse(brut).RootElement.Clone(), brut);
+    }
+
+    [Fact]
+    public async Task Contrat_accepte_200_sans_donnee_identifiante()
+    {
+        var (statut, corps, brut) = await Get("AIF-A1", GestionnaireA);
+
+        Assert.Equal(HttpStatusCode.OK, statut);
+        Assert.Equal("AIF-A1", corps.GetProperty("numero_contrat").GetString());
+        Assert.Equal("612.40", corps.GetProperty("prime_ttc_annuelle").GetString());
+        Assert.Equal("51.03", corps.GetProperty("prime_mensuelle").GetString());
+        Assert.Equal("formule-2026.1", corps.GetProperty("version_formule").GetString());
+        Assert.Equal("2026-11-01", corps.GetProperty("date_effet").GetString());
+        Assert.Equal(GestionnaireA, corps.GetProperty("valide_par").GetString());
+        Assert.Equal("Code des assurances, art. A121-1", corps.GetProperty("citations")[0].GetString());
+        foreach (var interdit in new[] { "nom", "rue", "PERMIS", "adresse" })
+            Assert.DoesNotContain(interdit, brut, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Contrat_en_analyse_409()
+    {
+        var (statut, corps, _) = await Get("AIF-A2", GestionnaireA);
+
+        Assert.Equal(HttpStatusCode.Conflict, statut);
+        Assert.Equal("CONTRAT_NON_ACCEPTE", corps.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Contrat_autre_gestionnaire_404()
+    {
+        var (statut, corps, _) = await Get("AIF-A1", GestionnaireB);
+
+        Assert.Equal(HttpStatusCode.NotFound, statut);
+        Assert.Equal("CONTRAT_INTROUVABLE", corps.GetProperty("code").GetString());
+    }
+}

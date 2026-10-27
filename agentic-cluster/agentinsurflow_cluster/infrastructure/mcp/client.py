@@ -24,6 +24,15 @@ class _Jetons(Protocol):
     def pour_mcp(self, agent: AgentOuSaga, jeton_gestionnaire: str) -> str: ...
 
 
+def _si_trop_de_requetes(e: BaseException) -> None:
+    """Un 429 de la gateway (#122), seul ou feuille d'un groupe, reste un 429 (``Retry-After``)."""
+    if isinstance(e, BaseExceptionGroup):
+        for f in e.exceptions:
+            _si_trop_de_requetes(f)
+    elif isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429:
+        raise ErreurOutil("TROP_DE_REQUETES", e.response.headers.get("Retry-After", "60")) from e
+
+
 def _http_par_defaut(entetes: dict[str, str]) -> httpx.AsyncClient:
     return httpx.AsyncClient(headers=entetes, timeout=30)
 
@@ -59,6 +68,7 @@ class ClientMcpGateway:
                         await session.initialize()
                         resultat = await session.call_tool(outil, arguments)
         except (httpx.HTTPError, McpError) as e:  # panne de transport
+            _si_trop_de_requetes(e)
             raise ErreurOutil("MCP_INDISPONIBLE", type(e).__name__) from e
         except BaseExceptionGroup as g:
             # une annulation seule remonte : sinon asyncio.timeout ne lève plus TimeoutError
@@ -68,6 +78,7 @@ class ClientMcpGateway:
             )
             if autres is None:
                 raise
+            _si_trop_de_requetes(g)
             raise ErreurOutil("MCP_INDISPONIBLE", type(g).__name__) from g
         if resultat.isError:
             code = (resultat.structuredContent or {}).get("code", "MCP_ERREUR")

@@ -105,6 +105,14 @@ public sealed class DossiersDbContext(DbContextOptions<DossiersDbContext> option
             e.HasKey(x => new { x.NumeroContrat, x.Tentative, x.Tour });
             e.HasOne<EtatDossier>().WithMany().HasForeignKey(x => x.NumeroContrat);
         });
+        // Relances de pièces manquantes (#130) : le rang fait la clé, trois au plus (règle du Domain).
+        modelBuilder.Entity<Relance>(e =>
+        {
+            e.HasKey(x => new { x.NumeroContrat, x.Rang });
+            e.Property(x => x.Pieces).HasColumnType("jsonb");
+            e.Property(x => x.EnvoyeeLe).HasDefaultValueSql("now()");
+            e.HasOne<Contrat>().WithMany().HasForeignKey(x => x.NumeroContrat).HasPrincipalKey(c => c.NumeroContrat);
+        });
 
         // Vue créée par SQL (migration VueEtDroits) : EF ne la crée pas, il la lit seulement.
         modelBuilder.Entity<LigneVue>(e =>

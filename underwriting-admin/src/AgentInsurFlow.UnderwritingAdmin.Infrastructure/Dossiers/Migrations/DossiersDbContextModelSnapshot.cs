@@ -539,6 +539,43 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                     b.ToTable("rapport_agent", (string)null);
                 });
 
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Relance", b =>
+                {
+                    b.Property<string>("NumeroContrat")
+                        .HasColumnType("text")
+                        .HasColumnName("numero_contrat");
+
+                    b.Property<int>("Rang")
+                        .HasColumnType("integer")
+                        .HasColumnName("rang");
+
+                    b.Property<DateTimeOffset>("EnvoyeeLe")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("envoyee_le")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("EnvoyeePar")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("envoyee_par");
+
+                    b.Property<string>("Pieces")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("pieces");
+
+                    b.Property<string>("Texte")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("texte");
+
+                    b.HasKey("NumeroContrat", "Rang")
+                        .HasName("pk_relance");
+
+                    b.ToTable("relance", (string)null);
+                });
+
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.ReleveInformation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -931,6 +968,17 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_rapport_agent_etat_dossier_numero_contrat");
+                });
+
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Relance", b =>
+                {
+                    b.HasOne("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Contrat", null)
+                        .WithMany()
+                        .HasForeignKey("NumeroContrat")
+                        .HasPrincipalKey("NumeroContrat")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_relance_contrat_numero_contrat");
                 });
 
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.ReleveInformation", b =>

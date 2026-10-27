@@ -4,24 +4,32 @@ using System.Text;
 namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
 
 /// <summary>
-/// Dossiers synthétiques (fictifs) de deux gestionnaires, pour exercer le contrôle BOLA. Les oid viennent de
-/// l'environnement (SEED_GESTIONNAIRE_A / _B), jamais du dépôt. Chaque INSERT est <c>ON CONFLICT DO NOTHING</c> :
-/// rejouer le seed ne change rien.
+/// Dossiers synthétiques (fictifs) des gestionnaires A et B (démo, contrôle BOLA) et C (identité de la CI). Les oid
+/// viennent de l'environnement (SEED_GESTIONNAIRE_A / _B / _C), jamais du dépôt. Chaque INSERT est
+/// <c>ON CONFLICT DO NOTHING</c> : rejouer le seed ne change rien.
 /// </summary>
 internal static class SeedDossiers
 {
-    private sealed record Dossier(int N, bool GestionnaireA, DateOnly Naissance, DateOnly Permis, string CodePostal,
+    private sealed record Dossier(int N, char Gestionnaire, DateOnly Naissance, DateOnly Permis, string CodePostal,
         string Crm, int Suspensions, int Resiliations, string Formule, int Sinistres);
 
     private static readonly Dossier[] Dossiers =
     [
-        new(1, true, new(1999, 3, 14), new(2018, 6, 1), "75011", "0.90", 0, 0, "tous_risques", 0),
-        new(2, true, new(1985, 9, 2), new(2005, 1, 20), "69003", "1.00", 0, 1, "tiers_etendu", 1),
-        new(3, true, new(1960, 12, 25), new(1980, 5, 5), "97411", "0.50", 0, 0, "tiers", 0),
-        new(4, false, new(2002, 7, 7), new(2020, 2, 2), "2A004", "1.25", 1, 0, "tous_risques", 2),
-        new(5, false, new(1972, 1, 30), new(1992, 8, 18), "33000", "0.76", 0, 0, "tiers_etendu", 0),
-        new(6, false, new(1990, 11, 11), new(2010, 4, 4), "59000", "1.00", 0, 2, "tiers", 1),
+        new(1, 'A', new(1999, 3, 14), new(2018, 6, 1), "75011", "0.90", 0, 0, "tous_risques", 0),
+        new(2, 'A', new(1985, 9, 2), new(2005, 1, 20), "69003", "1.00", 0, 1, "tiers_etendu", 1),
+        new(3, 'A', new(1960, 12, 25), new(1980, 5, 5), "97411", "0.50", 0, 0, "tiers", 0),
+        new(4, 'B', new(2002, 7, 7), new(2020, 2, 2), "2A004", "1.25", 1, 0, "tous_risques", 2),
+        new(5, 'B', new(1972, 1, 30), new(1992, 8, 18), "33000", "0.76", 0, 0, "tiers_etendu", 0),
+        new(6, 'B', new(1990, 11, 11), new(2010, 4, 4), "59000", "1.00", 0, 2, "tiers", 1),
+        // Migration SeedGestionnaireC : la CI (profils de 1, 5 et 6) et le dossier « refus » de A (profil de 4 : R01)
+        new(7, 'C', new(1999, 3, 14), new(2018, 6, 1), "75011", "0.90", 0, 0, "tous_risques", 0),
+        new(8, 'C', new(1972, 1, 30), new(1992, 8, 18), "33000", "0.76", 0, 0, "tiers_etendu", 0),
+        new(9, 'C', new(1990, 11, 11), new(2010, 4, 4), "59000", "1.00", 0, 2, "tiers", 1),
+        new(10, 'A', new(2002, 7, 7), new(2020, 2, 2), "2A004", "1.25", 1, 0, "tous_risques", 2),
     ];
+
+    // Dossiers de la migration Seed (n° 1 à 6) ; les suivants viennent de SeedGestionnaireC.
+    private static bool Initial(Dossier d) => d.N <= 6;
 
     /// <summary>Les variables d'un seed absentes laissent la base sans dossier (pas de valeur par défaut réelle).</summary>
     public static string Sql(string? gestionnaireA, string? gestionnaireB)
@@ -34,9 +42,41 @@ internal static class SeedDossiers
         var a = Oid(gestionnaireA, "SEED_GESTIONNAIRE_A");
         var b = Oid(gestionnaireB, "SEED_GESTIONNAIRE_B");
         var sql = new StringBuilder();
-        foreach (var d in Dossiers)
+        foreach (var d in Dossiers.Where(Initial))
         {
-            Ajouter(sql, d, d.GestionnaireA ? a : b);
+            Ajouter(sql, d, d.Gestionnaire == 'A' ? a : b);
+        }
+        return sql.ToString();
+    }
+
+    /// <summary>Dossiers 7 à 9 du gestionnaire C (identité de la CI, témoins BOLA de l'E2E).</summary>
+    public static string SqlC(string? gestionnaireC) =>
+        Semer(gestionnaireC, "SEED_GESTIONNAIRE_C", d => d.Gestionnaire == 'C', pieces: false);
+
+    /// <summary>Relevé et permis des dossiers 7 à 9 (contrats présents seulement).</summary>
+    public static string SqlPiecesC(string? gestionnaireC) =>
+        string.IsNullOrWhiteSpace(gestionnaireC) ? "SELECT 1" : Pieces(Dossiers.Where(d => d.Gestionnaire == 'C'));
+
+    /// <summary>Dossier 10 du gestionnaire A, que le barème refuse (démo K1), avec ses pièces.</summary>
+    public static string SqlRefusA(string? gestionnaireA) =>
+        Semer(gestionnaireA, "SEED_GESTIONNAIRE_A", d => !Initial(d) && d.Gestionnaire == 'A', pieces: true);
+
+    private static string Semer(string? gestionnaire, string variable, Func<Dossier, bool> retenu, bool pieces)
+    {
+        if (string.IsNullOrWhiteSpace(gestionnaire))
+        {
+            return "SELECT 1";
+        }
+        var oid = Oid(gestionnaire, variable);
+        var dossiers = Dossiers.Where(retenu).ToArray();
+        var sql = new StringBuilder();
+        foreach (var d in dossiers)
+        {
+            Ajouter(sql, d, oid);
+        }
+        if (pieces)
+        {
+            sql.Append(Pieces(dossiers));
         }
         return sql.ToString();
     }
@@ -51,9 +91,14 @@ internal static class SeedDossiers
         {
             return "SELECT 1";
         }
+        return Pieces(Dossiers.Where(Initial));
+    }
+
+    private static string Pieces(IEnumerable<Dossier> dossiers)
+    {
         var sql = new StringBuilder();
         var c = CultureInfo.InvariantCulture;
-        foreach (var d in Dossiers)
+        foreach (var d in dossiers)
         {
             if (d.N != DossierSansReleve)
             {

@@ -2,6 +2,7 @@ using System.Text.Json;
 using AgentInsurFlow.UnderwritingAdmin.Application;
 using AgentInsurFlow.UnderwritingAdmin.Domain;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
 
@@ -9,9 +10,59 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
 /// Adapter du port <see cref="IDepotEcritures"/> avec le compte <c>dossiers</c> : chaque écriture commence par retrouver
 /// le contrat par <c>numero_contrat</c> ET <c>gestionnaire_id</c> (BOLA) ; sans ligne, rien n'est écrit.
 /// </summary>
-internal sealed class DepotEcrituresEf(DossiersDbContext db, TimeProvider horloge) : IDepotEcritures
+internal sealed class DepotEcrituresEf(DossiersDbContext db, TimeProvider horloge) : IDepotEcritures, IDepotRelances
 {
     private const string Brouillon = "brouillon";
+
+    public async Task<SituationRelance?> Situation(string gestionnaireId, string numeroContrat, CancellationToken ct)
+    {
+        var statut = await db.Set<Contrat>().AsNoTracking()
+            .Where(c => c.NumeroContrat == numeroContrat && c.GestionnaireId == gestionnaireId)
+            .Select(c => c.Statut)
+            .FirstOrDefaultAsync(ct);
+        if (statut is null) return null;
+        var deja = await db.Set<Relance>().AsNoTracking().CountAsync(r => r.NumeroContrat == numeroContrat, ct);
+        // Section « pieces » de la tentative courante (celle de etat_dossier) : ce que l'agent Pièces a trouvé manquant.
+        var pieces = await db.Set<SectionEtat>().AsNoTracking()
+            .Where(s => s.NumeroContrat == numeroContrat && s.Section == "pieces"
+                && db.Set<EtatDossier>().Any(e => e.NumeroContrat == numeroContrat && e.Tentative == s.Tentative))
+            .Select(s => s.Contenu)
+            .FirstOrDefaultAsync(ct);
+        return new SituationRelance(deja, statut is "ACCEPTE" or "REFUSE", Manquantes(pieces));
+    }
+
+    private static List<string> Manquantes(string? section)
+    {
+        if (section is null) return [];
+        using var json = JsonDocument.Parse(section);
+        var racine = json.RootElement;
+        return racine.TryGetProperty("statut", out var s) && s.ValueKind == JsonValueKind.String && s.GetString() == "incomplet"
+            && racine.TryGetProperty("manquantes", out var m) && m.ValueKind == JsonValueKind.Array
+            ? [.. m.EnumerateArray().Where(p => p.ValueKind == JsonValueKind.String).Select(p => p.GetString()!)]
+            : [];
+    }
+
+    public async Task<int?> Ajouter(string gestionnaireId, string numeroContrat, string texte, IReadOnlyList<string> pieces, CancellationToken ct)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var rang = await db.Set<Relance>().CountAsync(r => r.NumeroContrat == numeroContrat, ct) + 1;
+        var json = JsonSerializer.Serialize(pieces);
+        try
+        {
+            await db.Database.ExecuteSqlAsync($"""
+                INSERT INTO relance (numero_contrat, rang, texte, pieces, envoyee_le, envoyee_par)
+                VALUES ({numeroContrat}, {rang}, {texte}, {json}::jsonb, {horloge.GetUtcNow()}, {gestionnaireId})
+                """, ct);
+        }
+        catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return null; // un envoi simultané a pris ce rang ; la transaction est annulée
+        }
+        // Compteur de la mémoire du dossier (D100), s'il existe déjà : jamais créé ici.
+        await db.Database.ExecuteSqlAsync($"UPDATE etat_dossier SET nb_relances = {rang} WHERE numero_contrat = {numeroContrat}", ct);
+        await transaction.CommitAsync(ct);
+        return rang;
+    }
 
     public async Task<bool> EnregistrerBrouillon(string gestionnaireId, string numeroContrat, FicheBrouillon fiche,
         PrimeBrouillon? prime, CancellationToken ct)

@@ -13,6 +13,9 @@ public static class DossiersServices
         ArgumentNullException.ThrowIfNull(connexions);
         services.AddDbContext<DossiersDbContext>(o => o.UseNpgsql(connexions.Dossiers).UseSnakeCaseNamingConvention());
         services.AddScoped<IDepotEcritures, DepotEcrituresEf>();
+        services.AddScoped<IDepotRelances, DepotEcrituresEf>();
+        services.AddScoped<IDepotEtat, DepotDossiersEf>();
+        services.AddScoped<IDepotContratGenere, DepotDossiersEf>();
         return services.AddScoped<IDepotDossiers, DepotDossiersEf>();
     }
 }

@@ -23,6 +23,7 @@ from agentinsurflow_cluster.application.evaluation import (
     DelaiDepasse,
     DossierDecide,
     EvaluationEnAttente,
+    EvaluationEnCours,
     Revue,
 )
 from agentinsurflow_cluster.application.serialisation import etat_depuis_dict, etat_vers_dict
@@ -60,7 +61,9 @@ class Resultat:
     etat: EtatDossier
 
 
-def construire_graphe(deps: Dependances, checkpointer: Any) -> Any:
+def construire_graphe(deps: Dependances, checkpointer: Any, pauses: set[tuple[str, str]]) -> Any:
+    """``pauses`` : demandes de pause (numéro, oid) lues entre deux agents (#129)."""
+
     async def charger(e: EtatGraphe, runtime: Runtime[Contexte]) -> EtatGraphe:
         debut = deps.horloge()
         etat = await evaluation.charger(
@@ -80,9 +83,30 @@ def construire_graphe(deps: Dependances, checkpointer: Any) -> Any:
         return {"etat": etat_vers_dict(replace(etat, observations=None))}
 
     def apres_pas(e: EtatGraphe) -> str:
-        return "proposer" if evaluation.termine(etat_depuis_dict(e["etat"])) else "pas"
+        if evaluation.termine(etat_depuis_dict(e["etat"])):
+            return "proposer"
+        cle = (e["numero"], e["oid"])
+        if cle in pauses:
+            pauses.discard(cle)
+            return "pause"
+        return "pas"
+
+    async def pause(e: EtatGraphe, runtime: Runtime[Contexte]) -> EtatGraphe:
+        await evaluation.enregistrer_etat(
+            etat_depuis_dict(e["etat"]), "EN_PAUSE", runtime.context.jeton, deps
+        )
+        return {"statut": "EN_PAUSE"}
+
+    async def reprendre(e: EtatGraphe, runtime: Runtime[Contexte]) -> EtatGraphe:
+        # nœud à part : LangGraph rejoue un nœud interrompu depuis son début (pas de 2e écriture)
+        interrupt({"numero_contrat": e["numero"], "pause": True})
+        runtime.context.memoire["observations"] = await evaluation.relire_observations(
+            e["numero"], runtime.context.jeton, deps
+        )
+        return {"debut": deps.horloge(), "statut": None}  # budget neuf : la pause ne compte pas
 
     async def proposer(e: EtatGraphe, runtime: Runtime[Contexte]) -> EtatGraphe:
+        pauses.discard((e["numero"], e["oid"]))  # une demande tardive est oubliée
         etat = await evaluation.proposer(etat_depuis_dict(e["etat"]), runtime.context.jeton, deps)
         return {"etat": etat_vers_dict(etat), "statut": evaluation.statut_de(etat)}
 
@@ -103,12 +127,16 @@ def construire_graphe(deps: Dependances, checkpointer: Any) -> Any:
     g: Any = StateGraph(EtatGraphe, context_schema=Contexte)  # typage des nœuds : trop strict
     g.add_node("charger", charger)
     g.add_node("pas", pas)
+    g.add_node("pause", pause)
+    g.add_node("reprendre", reprendre)
     g.add_node("proposer", proposer)
     g.add_node("valider", valider)
     g.add_node("enregistrer", enregistrer)
     g.set_entry_point("charger")
     g.add_edge("charger", "pas")
-    g.add_conditional_edges("pas", apres_pas, ["pas", "proposer"])
+    g.add_conditional_edges("pas", apres_pas, ["pas", "pause", "proposer"])
+    g.add_edge("pause", "reprendre")
+    g.add_edge("reprendre", "pas")
     g.add_conditional_edges("proposer", apres_proposer, ["valider", END])
     g.add_edge("valider", "enregistrer")
     g.add_edge("enregistrer", END)
@@ -125,9 +153,11 @@ class ServiceEvaluation:
     def __init__(self, deps: Dependances, checkpointer: Any) -> None:
         self.reglages = deps.reglages  # lus par /health, avec les empreintes du démarrage
         self.versions_prompt = deps.versions_prompt
-        self._graphe = construire_graphe(deps, checkpointer)
         self._budget_s = deps.budget_global_s + deps.reserve_s
         self._verrous: dict[str, asyncio.Lock] = {}
+        # ponytail: en mémoire, une réplique (comme les verrous) ; perdue au redémarrage
+        self._pauses: set[tuple[str, str]] = set()
+        self._graphe = construire_graphe(deps, checkpointer, self._pauses)
 
     @staticmethod
     def _config(numero: str) -> dict[str, Any]:
@@ -140,9 +170,15 @@ class ServiceEvaluation:
         return await self._graphe.aget_state(self._config(numero))
 
     @staticmethod
-    def _en_pause(instantane: Any) -> bool:
-        """Un ``interrupt()`` attend (un échec antérieur ne compte pas)."""
-        return any(t.interrupts for t in instantane.tasks)
+    def _attend(instantane: Any, noeud: str) -> bool:
+        """Un ``interrupt()`` attend sur ``noeud`` (un échec antérieur ne compte pas)."""
+        return any(t.interrupts for t in instantane.tasks if t.name == noeud)
+
+    def _attend_revue(self, instantane: Any) -> bool:
+        return self._attend(instantane, "valider")
+
+    def _en_pause(self, instantane: Any) -> bool:
+        return self._attend(instantane, "reprendre")
 
     @staticmethod
     def _a_rejouer(instantane: Any) -> bool:
@@ -163,15 +199,39 @@ class ServiceEvaluation:
             raise ErreurOutil("CONTRAT_INTROUVABLE")
         return instantane
 
+    async def demander_pause(self, numero: str, oid: str) -> bool:
+        """Pause au prochain passage entre deux agents ; sans le verrou, l'évaluation tourne.
+
+        Ignorée (``False``) si plus aucun agent ne reste à appeler (revue attendue, dossier décidé,
+        déjà en pause) : elle ne pèserait que sur une évaluation future.
+        """
+        instantane = await self._controler_proprietaire(numero, oid)
+        if (
+            self._attend_revue(instantane)
+            or self._a_rejouer(instantane)
+            or self._en_pause(instantane)
+            or instantane.values.get("statut") in ("ACCEPTE", "REFUSE")
+        ):
+            return False
+        self._pauses.add((numero, oid))
+        return True
+
     async def evaluer(self, numero: str, jeton: str, oid: str) -> Resultat:
+        await self._controler_proprietaire(numero, oid)  # 404 avant 409 (BOLA)
+        if self._verrou(numero).locked():  # double clic : ne pas attendre la première
+            raise EvaluationEnCours(numero)
         async with self._verrou(numero):
             instantane = await self._controler_proprietaire(numero, oid)
-            if self._en_pause(instantane) or self._a_rejouer(instantane):
+            if self._attend_revue(instantane) or self._a_rejouer(instantane):
                 raise EvaluationEnAttente(numero)
             if instantane.values.get("statut") in ("ACCEPTE", "REFUSE"):
                 raise DossierDecide(numero)
-            precedente = (instantane.values.get("etat") or {}).get("tentative", 0)
-            entree = {"numero": numero, "oid": oid, "tentative": precedente + 1}
+            entree: Any
+            if self._en_pause(instantane):  # reprise au point de reprise, même tentative
+                entree = Command(resume=True)
+            else:
+                precedente = (instantane.values.get("etat") or {}).get("tentative", 0)
+                entree = {"numero": numero, "oid": oid, "tentative": precedente + 1}
             try:
                 async with asyncio.timeout(self._budget_s):
                     await self._graphe.ainvoke(
@@ -179,6 +239,8 @@ class ServiceEvaluation:
                     )
             except TimeoutError:
                 await self._conclure_en_revue(numero, jeton)
+            finally:  # demande non consommée (échec, arrivée pendant proposer) : jamais reportée
+                self._pauses.discard((numero, oid))
             return await self._resultat(numero)
 
     async def _conclure_en_revue(self, numero: str, jeton: str) -> None:
@@ -203,7 +265,7 @@ class ServiceEvaluation:
     async def reviser(self, numero: str, revue: Revue, jeton: str, oid: str) -> Resultat:
         async with self._verrou(numero):
             instantane = await self._controler_proprietaire(numero, oid)
-            if self._en_pause(instantane):
+            if self._attend_revue(instantane):
                 entree: Any = Command(resume=asdict(revue))
             elif self._a_rejouer(instantane):  # la décision la plus récente l'emporte
                 await self._graphe.aupdate_state(

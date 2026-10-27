@@ -20,6 +20,15 @@ public sealed class ReglesEtatTests
     [Fact]
     public void Aucune_section_est_acceptee() => Assert.Null(ReglesEtat.Refus(Etat()));
 
+    [Fact]
+    public void SectionsLisibles_exclut_dossier_et_pilotage()
+    {
+        Assert.DoesNotContain("dossier", ReglesEtat.SectionsLisibles);
+        Assert.DoesNotContain("pilotage", ReglesEtat.SectionsLisibles);
+        Assert.Contains("pieces", ReglesEtat.SectionsLisibles);
+        Assert.Contains("fiche", ReglesEtat.SectionsLisibles);
+    }
+
     [Theory]
     [InlineData("identite")]
     [InlineData("")]

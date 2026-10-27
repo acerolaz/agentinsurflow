@@ -21,6 +21,7 @@ from agentinsurflow_cluster.application.evaluation import (
     enregistrer_revue,
     pas,
     proposer,
+    relire_observations,
     statut_de,
 )
 from agentinsurflow_cluster.application.serialisation import etat_depuis_dict, etat_vers_dict
@@ -264,3 +265,13 @@ async def test_fiche_acceptee_remplacee_par_la_provisoire_apres_garde_de_duree()
     brouillon = outils.corps("enregistrer_brouillon")[0]
     assert brouillon["fiche"]["decision"] == "REVUE_HUMAINE" and "prime" not in brouillon
     assert brouillon["fiche"]["motifs"] == ["Délai d'analyse dépassé : revue humaine requise."]
+
+
+async def test_relire_observations_lit_le_contrat_sans_audit() -> None:
+    outils, audit = FakeOutils(), FakeAudit()
+
+    observations = await relire_observations("C-1", JETON, _deps(outils=outils, audit=audit))
+
+    assert observations == CONTRAT["observations"]
+    assert [(a, o) for a, _, o in outils.appels] == [("saga", "get_contrat")]
+    assert audit.traces == []

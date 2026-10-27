@@ -22,6 +22,10 @@ public static class ReglesEtat
     private static readonly HashSet<string> SectionsConnues =
         new HashSet<string> { "dossier", "pieces", "risque", "sources", "fiche", "prime", "validation", "pilotage" };
 
+    /// <summary>Sections que l'espace gestionnaire peut lire : jamais <c>dossier</c> (faits du contrat) ni <c>pilotage</c> (interne à la Saga).</summary>
+    public static IReadOnlySet<string> SectionsLisibles { get; } =
+        new HashSet<string> { "pieces", "risque", "sources", "fiche", "prime", "validation" };
+
     /// <summary><c>null</c> si l'état est accepté, sinon le code de refus.</summary>
     public static string? Refus(EtatEntrant etat)
     {

@@ -5,7 +5,7 @@ Assistant des **gestionnaires d'assurance auto** : une **gateway** (seule entré
 **agent à réponses citées**, et le **cluster d'agents** (Saga déterministe et quatre sous-agents, revue humaine du gestionnaire). Les modèles sont des déploiements **Azure AI Foundry** (API v1 compatible OpenAI), un par usage : rag sur `Kimi-K2.5` (`rag/llm.env`), le cluster sur `gpt-4.1-mini` par agent (`agentic-cluster/agents.toml`). Le tout est
 livré par une **chaîne GitHub Actions CI/CD/Evals bloquante** jusqu'à la production (Azure Container Apps).
 
-Toutes les API sont **REST** et consultables dans **une seule page Swagger**, servie à la racine de la gateway.
+Toutes les API sont **REST** et consultables dans **une seule page Swagger**, servie à la racine de la gateway. Les gestionnaires travaillent dans l'**espace gestionnaire**, servi par la gateway sous `/app/` : [`docs/espace-gestionnaire.md`](docs/espace-gestionnaire.md).
 
 ```mermaid
 flowchart LR

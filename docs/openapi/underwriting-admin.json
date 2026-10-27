@@ -351,6 +351,207 @@
         }
       }
     },
+    "/api/contrats/{numero_contrat}/etat": {
+      "get": {
+        "tags": [
+          "Contrats"
+        ],
+        "summary": "Progression du dossier (tentative courante) : rapports des agents et sections lisibles, sans donnée identifiante",
+        "operationId": "LireEtat",
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatReponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Contrats"
+        ],
+        "summary": "Mémoire long terme du dossier (D100), idempotente : sections connues seulement, aucune donnée identifiante",
+        "operationId": "EnregistrerEtat",
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EtatCorps"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contrats/{numero_contrat}/contrat": {
+      "get": {
+        "tags": [
+          "Contrats"
+        ],
+        "summary": "Contrat généré après ACCEPTE : décision validée, prime, formule ; aucune donnée identifiante",
+        "operationId": "LireContratGenere",
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContratGenere"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/contrats/{numero_contrat}/brouillon": {
       "put": {
         "tags": [
@@ -594,13 +795,13 @@
         }
       }
     },
-    "/api/contrats/{numero_contrat}/etat": {
-      "put": {
+    "/api/contrats/{numero_contrat}/relances": {
+      "post": {
         "tags": [
           "Contrats"
         ],
-        "summary": "Mémoire long terme du dossier (D100), idempotente : sections connues seulement, aucune donnée identifiante",
-        "operationId": "EnregistrerEtat",
+        "summary": "Relance de pièces manquantes, enregistrée et tracée comme envoyée (aucun e-mail avant #123), 3 au plus",
+        "operationId": "EnregistrerRelance",
         "parameters": [
           {
             "name": "numero_contrat",
@@ -615,13 +816,23 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/EtatCorps"
+                "$ref": "#/components/schemas/RelanceCorps"
               }
             }
           },
           "required": true
         },
         "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelanceReponse"
+                }
+              }
+            }
+          },
           "400": {
             "description": "Bad Request",
             "content": {
@@ -661,6 +872,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -687,6 +908,69 @@
                 "$ref": "#/components/schemas/PrimeBrouillon"
               }
             ]
+          }
+        }
+      },
+      "ContratGenere": {
+        "required": [
+          "numero_contrat",
+          "formule",
+          "contrat_type",
+          "date_effet",
+          "prime_ttc_annuelle",
+          "prime_mensuelle",
+          "version_bareme",
+          "version_formule",
+          "motifs",
+          "citations",
+          "valide_par",
+          "valide_le"
+        ],
+        "type": "object",
+        "properties": {
+          "numero_contrat": {
+            "type": "string"
+          },
+          "formule": {
+            "type": "string"
+          },
+          "contrat_type": {
+            "type": "string"
+          },
+          "date_effet": {
+            "type": "string",
+            "format": "date"
+          },
+          "prime_ttc_annuelle": {
+            "type": "string"
+          },
+          "prime_mensuelle": {
+            "type": "string"
+          },
+          "version_bareme": {
+            "type": "string"
+          },
+          "version_formule": {
+            "type": "string"
+          },
+          "motifs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "valide_par": {
+            "type": "string"
+          },
+          "valide_le": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -740,6 +1024,49 @@
             "items": {
               "$ref": "#/components/schemas/TourCorps"
             }
+          }
+        }
+      },
+      "EtatReponse": {
+        "required": [
+          "statut_parcours",
+          "tentative",
+          "nb_relances",
+          "rapports",
+          "sections"
+        ],
+        "type": "object",
+        "properties": {
+          "statut_parcours": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "tentative": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "nb_relances": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "rapports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RapportLu"
+            }
+          },
+          "sections": {
+            "type": "object"
           }
         }
       },
@@ -936,6 +1263,86 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "RapportLu": {
+        "required": [
+          "agent",
+          "mode",
+          "cause",
+          "trace_id",
+          "cree_le"
+        ],
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "cause": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "trace_id": {
+            "type": "string"
+          },
+          "cree_le": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RelanceCorps": {
+        "required": [
+          "texte",
+          "pieces"
+        ],
+        "type": "object",
+        "properties": {
+          "texte": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "pieces": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RelanceReponse": {
+        "required": [
+          "rang",
+          "max"
+        ],
+        "type": "object",
+        "properties": {
+          "rang": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "max": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

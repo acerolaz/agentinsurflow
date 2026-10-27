@@ -77,6 +77,7 @@ async def _assembler(
 CHEMINS_PUBLICS = {
     "/evaluations/{numero_contrat}": "/v1/souscriptions/{numero_contrat}/evaluation",
     "/evaluations/{numero_contrat}/revue": "/v1/souscriptions/{numero_contrat}/revue",
+    "/evaluations/{numero_contrat}/pause": "/v1/souscriptions/{numero_contrat}/pause",
     "/health": "/health/cluster",
 }
 

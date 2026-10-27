@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration.Json;
+using Microsoft.Extensions.FileProviders;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -224,6 +225,20 @@ if (envoyDevant)
     app.UseForwardedHeaders();
 }
 
+// Espace gestionnaire (#103) : page statique publique sous /app/ (Swagger garde la racine) ; ses appels
+// portent le jeton du gestionnaire. CSP stricte : aucun script tiers, MSAL est servi par la gateway.
+const string CspEspace = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+    + "connect-src 'self' https://login.microsoftonline.com; frame-src https://login.microsoftonline.com; "
+    + "base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+var fichiersEspace = new PhysicalFileProvider(Path.Combine(app.Environment.WebRootPath, "app"));
+app.UseDefaultFiles(new DefaultFilesOptions { RequestPath = "/app", FileProvider = fichiersEspace });
+app.UseStaticFiles(new StaticFileOptions
+{
+    RequestPath = "/app",
+    FileProvider = fichiersEspace,
+    OnPrepareResponse = f => f.Context.Response.Headers.ContentSecurityPolicy = CspEspace,
+});
+
 // Page Swagger unique, à la racine : les 4 documents OpenAPI de la solution (S3-24).
 // Connexion Entra en PKCE avec un seul client public (l'application agentinsurflow-rag).
 // Placée avant l'authentification : la page est publique, les appels qu'elle fait portent le jeton.
@@ -251,6 +266,24 @@ app.MapGet("/health", (IConfiguration cfg) =>
     .AllowAnonymous()
     .DisableRateLimiting(); // sondes de Container Apps
 app.MapOpenApi().AllowAnonymous(); // /openapi/v1.json
+
+// Configuration publique de l'espace : client public (PKCE), portées des services et UPN de connexion (loginHint).
+// Aucun secret : tout ici est visible dans le navigateur de toute façon.
+app.MapGet("/app/config.json", (IConfiguration cfg) => Results.Json(new
+{
+    client_id = cfg["Espace:ClientId"] ?? cfg["SWAGGER_CLIENT_ID"] ?? "",
+    authority = cfg["Espace:Authority"] ?? "",
+    scopes = new Dictionary<string, string>
+    {
+        ["rag"] = cfg["Espace:Scopes:Rag"] ?? "",
+        ["underwriting"] = cfg["Espace:Scopes:Underwriting"] ?? "",
+        ["cluster"] = cfg["Espace:Scopes:Cluster"] ?? "",
+    },
+    comptes = new Dictionary<string, string> { ["A"] = cfg["Espace:Comptes:A"] ?? "", ["B"] = cfg["Espace:Comptes:B"] ?? "" },
+}))
+    .ExcludeFromDescription()
+    .AllowAnonymous()
+    .DisableRateLimiting();
 
 app.MapReverseProxy();
 

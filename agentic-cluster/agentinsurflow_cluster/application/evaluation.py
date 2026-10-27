@@ -48,6 +48,10 @@ class EvaluationEnAttente(Exception):
     """Une revue du gestionnaire attend déjà pour ce dossier."""
 
 
+class EvaluationEnCours(Exception):
+    """Une évaluation tourne déjà pour ce dossier (double clic, deux onglets)."""
+
+
 class DossierDecide(Exception):
     """Le dossier a déjà reçu sa décision (ACCEPTE ou REFUSE) : plus d'évaluation."""
 
@@ -93,6 +97,15 @@ async def charger(numero: str, jeton: str, deps: Dependances, tentative: int = 1
     )
 
 
+async def relire_observations(numero: str, jeton: str, deps: Dependances) -> str | None:
+    """Reprise après une pause (#129) : les observations ne sont dans aucun point de reprise.
+
+    Ni garde ni audit : la garde d'entrée a déjà statué (``entree_bloquee`` est dans l'état).
+    """
+    contrat = await deps.outils.appeler(SAGA, jeton, "get_contrat", {"numero_contrat": numero})
+    return contrat.get("observations") or None
+
+
 def _etat_a_enregistrer(etat: EtatDossier, statut_parcours: str) -> dict[str, Any]:
     sections = [
         {"section": s, "contenu": vers_json(getattr(etat, s))}
@@ -108,7 +121,7 @@ def _etat_a_enregistrer(etat: EtatDossier, statut_parcours: str) -> dict[str, An
     }
 
 
-async def _enregistrer_etat(
+async def enregistrer_etat(
     etat: EtatDossier, statut_parcours: str, jeton: str, deps: Dependances
 ) -> None:
     await deps.outils.appeler(
@@ -148,7 +161,7 @@ async def pas(
         tours=(*etat.tours, {**tour, "mode": rapport.mode}),
         rapports=(*etat.rapports, _rapport(rapport, deps.trace_id())),
     )
-    await _enregistrer_etat(neuf, "EN_COURS", jeton, deps)
+    await enregistrer_etat(neuf, "EN_COURS", jeton, deps)
     return neuf
 
 
@@ -219,7 +232,7 @@ async def proposer(etat: EtatDossier, jeton: str, deps: Dependances) -> EtatDoss
             "date_effet": (etat.dossier or {})["date_effet"],
         }
     await deps.outils.appeler(SAGA, jeton, "enregistrer_brouillon", brouillon)
-    await _enregistrer_etat(etat, statut, jeton, deps)
+    await enregistrer_etat(etat, statut, jeton, deps)
     await deps.outils.appeler(
         SAGA,
         jeton,
@@ -241,7 +254,7 @@ async def enregistrer_revue(
             "motif": revue.motif,
         },
     )
-    await _enregistrer_etat(etat, revue.decision, jeton, deps)
+    await enregistrer_etat(etat, revue.decision, jeton, deps)
     await deps.outils.appeler(
         SAGA,
         jeton,

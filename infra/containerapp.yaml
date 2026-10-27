@@ -44,6 +44,13 @@ properties:
           - { name: ReverseProxy__Clusters__cluster__Destinations__d1__Address, value: "https://${CLUSTER_APP_FQDN}" }
           # ponytail: la page Swagger se connecte avec l'inscription de rag (A3 : pas d'inscription gateway)
           - { name: SWAGGER_CLIENT_ID, value: "${RAG_API_CLIENT_ID}" }
+          # espace gestionnaire /app/ (#103) : même client public ; portées des services ; UPN de connexion (loginHint), sans secret
+          - { name: Espace__Authority, value: "https://login.microsoftonline.com/${AZURE_TENANT_ID}" }
+          - { name: Espace__Scopes__Rag, value: api://agentinsurflow-rag/access_as_user }
+          - { name: Espace__Scopes__Underwriting, value: api://agentinsurflow-underwriting/access_as_user }
+          - { name: Espace__Scopes__Cluster, value: api://agentinsurflow-cluster/access_as_user }
+          - { name: Espace__Comptes__A, value: "${ESPACE_COMPTE_A}" }
+          - { name: Espace__Comptes__B, value: "${ESPACE_COMPTE_B}" }
           # traces : récepteur OTLP d'underwriting-admin (adresse interne), jeton d'application de la gateway (rôle Telemetrie)
           - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: "https://${UNDERWRITING_APP_FQDN}/v1/traces" }
           - { name: Telemetrie__Audience, value: "api://${UNDERWRITING_API_CLIENT_ID}" }

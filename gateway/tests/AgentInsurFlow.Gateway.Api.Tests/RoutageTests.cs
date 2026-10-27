@@ -107,6 +107,19 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     }
 
     [Fact]
+    public async Task Contrat_genere_route_vers_underwriting_avec_le_jeton()
+    {
+        var jeton = JetonComplet("underwriting");
+        using var requete = Requete("GET", "/v1/souscriptions/AIF-2026-0001/contrat", jeton);
+
+        await Envoyer(requete);
+
+        var recue = Assert.Single(_backends.Underwriting.LogEntries).RequestMessage!;
+        Assert.Equal("/api/contrats/AIF-2026-0001/contrat", recue.Path);
+        Assert.Equal($"Bearer {jeton}", Assert.Single(recue.Headers!["Authorization"]));
+    }
+
+    [Fact]
     public async Task XForwardedPrefix_du_client_ne_passe_pas()
     {
         using var requete = Requete("GET", "/api/contrats", JetonComplet("underwriting"));

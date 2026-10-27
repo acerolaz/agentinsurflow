@@ -336,7 +336,9 @@ export async function afficherDossier(zone, numero) {
     const euros = (x) => Number(x).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
     const cg = v.conditions;
     const ligne = (titre, valeur) => [el("dt", {}, titre), el("dd", {}, valeur)];
-    return el("article", { class: "contrat-imprimable", "aria-labelledby": "titre-contrat" },
+    // Visionneuse : le contrat garde sa largeur de page et défile dans un cadre (au clavier aussi : tabindex).
+    const visionneuse = el("div", { class: "visionneuse", tabindex: "0", role: "region", "aria-label": "Contrat proposé" },
+      el("article", { class: "contrat-imprimable", "aria-labelledby": "titre-contrat" },
       el("h2", { id: "titre-contrat" }, "Contrat d'assurance automobile — conditions particulières"),
       el("p", { class: "discret" }, "AgentInsurFlow — document fictif généré pour le projet de certification."),
       el("dl", {},
@@ -402,8 +404,9 @@ export async function afficherDossier(zone, numero) {
         ...liste("Citations", c.citations)),
       el("p", {}, `Fait le ${new Date(c.valide_le).toLocaleDateString("fr-FR")}, contrat validé par le gestionnaire.`),
       el("p", {}, "Pour l'assureur (AgentInsurFlow) et le souscripteur."),
-      el("p", { class: "signature" }, "Signature du souscripteur :"),
-      el("button", { type: "button", class: "ne-pas-imprimer", onclick: () => window.print() }, picto(PICTOS.imprimer), "Imprimer"));
+      el("p", { class: "signature" }, "Signature du souscripteur :")));
+    return [visionneuse,
+      el("button", { type: "button", class: "ne-pas-imprimer", onclick: () => window.print() }, picto(PICTOS.imprimer), "Imprimer")];
   }
 
   function sousOnglets() {

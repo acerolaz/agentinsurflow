@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -49,6 +50,31 @@ internal static class EcrituresEndpoints
             .WithName("EnregistrerEtat")
             .WithSummary("Mémoire long terme du dossier (D100), idempotente : sections connues seulement, aucune donnée identifiante")
             .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
+
+        contrats.MapPost("/{numero_contrat}/relances", async (ClaimsPrincipal utilisateur, EnregistrerRelance cas, CancellationToken ct,
+                [FromRoute(Name = "numero_contrat")] string numeroContrat, RelanceCorps corps) =>
+            ContratsEndpoints.Oid(utilisateur) is not { } oid
+                ? Problemes.Creer(403, "Jeton sans identité de gestionnaire", "ACCES_REFUSE")
+                : Relance(await cas.Executer(oid, numeroContrat, corps.Texte ?? "", corps.Pieces ?? [], ct), corps.Pieces ?? []))
+            .WithName("EnregistrerRelance")
+            .WithSummary("Relance de pièces manquantes, enregistrée et tracée comme envoyée (aucun e-mail avant #123), 3 au plus")
+            .Produces<RelanceReponse>(201)
+            .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
+    }
+
+    // Le span porte le rang et les pièces, jamais le texte (il peut contenir des données personnelles).
+    private static IResult Relance(ResultatRelance r, IReadOnlyList<string> pieces)
+    {
+        if (r.Rang is not { } rang)
+            return r.CodeRefus switch
+            {
+                null => Problemes.Creer(404, "Contrat introuvable", "CONTRAT_INTROUVABLE"),
+                ReglesRelance.Epuisees => Problemes.Creer(409, "Relances épuisées", ReglesRelance.Epuisees),
+                var code => Problemes.Creer(400, "Relance refusée", code),
+            };
+        Activity.Current?.SetTag("relance.rang", rang).SetTag("relance.max", ReglesRelance.Max)
+            .SetTag("relance.pieces", string.Join(",", pieces));
+        return Results.Json(new RelanceReponse(rang, ReglesRelance.Max), statusCode: 201);
     }
 
     // Même 404 pour « inexistant » et « à un autre gestionnaire » (BOLA).
@@ -64,6 +90,11 @@ internal sealed record BrouillonCorps(FicheBrouillon Fiche, PrimeBrouillon? Prim
 
 /// <summary>Corps de <c>PUT …/statut</c> : le JSON dit <c>statut</c>, le domaine <c>StatutCible</c>.</summary>
 internal sealed record StatutCorps(string? Statut, string? Validation);
+
+/// <summary>Corps de <c>POST …/relances</c> : le texte modifié par le gestionnaire et les pièces réclamées.</summary>
+internal sealed record RelanceCorps(string? Texte, List<string>? Pieces);
+
+internal sealed record RelanceReponse(int Rang, int Max);
 
 /// <summary>Corps de <c>PUT …/observations</c>.</summary>
 internal sealed record ObservationsCorps(string? Observations);

@@ -245,3 +245,13 @@ internal sealed class TourPilotage
     public string Precondition { get; set; } = "";
     public string Mode { get; set; } = "";
 }
+
+internal sealed class Relance
+{
+    public string NumeroContrat { get; set; } = "";
+    public int Rang { get; set; }
+    public string Texte { get; set; } = "";
+    public string Pieces { get; set; } = "[]";
+    public DateTimeOffset EnvoyeeLe { get; set; }
+    public string EnvoyeePar { get; set; } = "";
+}

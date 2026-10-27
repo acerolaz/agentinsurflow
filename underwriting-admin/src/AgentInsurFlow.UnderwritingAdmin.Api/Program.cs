@@ -96,7 +96,7 @@ var connexions = new ConnexionsDossiers(
 builder.Services.AjouterDossiers(connexions);
 builder.Services.AddScoped<ListerPortefeuille>().AddScoped<ConsulterContrat>().AddScoped<ListerPieces>()
     .AddScoped<EnregistrerBrouillon>().AddScoped<ChangerStatut>().AddScoped<EnregistrerObservations>().AddScoped<EnregistrerEtat>()
-    .AddScoped<LireEtat>();
+    .AddScoped<LireEtat>().AddScoped<EnregistrerRelance>();
 
 // Base traces : écriture par traces_writer, relecture par traces_reader ; migrations par `migrateur`.
 var connexionsTraces = new ConnexionsTraces(

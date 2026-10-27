@@ -723,6 +723,97 @@
           }
         }
       }
+    },
+    "/api/contrats/{numero_contrat}/relances": {
+      "post": {
+        "tags": [
+          "Contrats"
+        ],
+        "summary": "Relance de pièces manquantes, enregistrée et tracée comme envoyée (aucun e-mail avant #123), 3 au plus",
+        "operationId": "EnregistrerRelance",
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelanceCorps"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelanceReponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1069,6 +1160,55 @@
           "cree_le": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "RelanceCorps": {
+        "required": [
+          "texte",
+          "pieces"
+        ],
+        "type": "object",
+        "properties": {
+          "texte": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "pieces": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RelanceReponse": {
+        "required": [
+          "rang",
+          "max"
+        ],
+        "type": "object",
+        "properties": {
+          "rang": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "max": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

@@ -164,6 +164,30 @@ public sealed class EcrituresPostgresTests
     }
 
     [Fact]
+    public async Task Relances_numerotees_comptees_dans_l_etat_et_bornees_au_gestionnaire()
+    {
+        var (db, depot, numero) = await Preparer();
+        await using var _ = db;
+        var ct = TestContext.Current.CancellationToken;
+        var migrateur = Connexions().Migrateur;
+        await Lire(migrateur, "DELETE FROM relance WHERE numero_contrat = @p0", numero);
+        foreach (var t in new[] { "tour_pilotage", "rapport_agent", "section_etat", "etat_dossier" })
+            await Lire(migrateur, $"DELETE FROM {t} WHERE numero_contrat = @p0", numero);
+        await depot.EnregistrerEtat(GestionnaireA, numero, new EtatEntrant("EN_COURS", 1, [], [], []), ct);
+
+        Assert.Equal(0, await depot.NbRelances(GestionnaireA, numero, ct));
+        Assert.Equal(1, await depot.Ajouter(GestionnaireA, numero, "<b>Bonjour</b>", ["releve_information"], ct));
+        Assert.Equal(2, await depot.Ajouter(GestionnaireA, numero, "Encore", ["releve_information", "permis"], ct));
+
+        Assert.Equal(2, await depot.NbRelances(GestionnaireA, numero, ct));
+        Assert.Null(await depot.NbRelances(GestionnaireB, numero, ct));
+        Assert.Null(await depot.NbRelances(GestionnaireA, "AIF-INEXISTANT", ct));
+        var lignes = await Lire(migrateur, "SELECT rang, texte, pieces::text, envoyee_par FROM relance WHERE numero_contrat = @p0 ORDER BY rang", numero);
+        Assert.Equal(["1", "<b>Bonjour</b>", "[\"releve_information\"]", GestionnaireA], lignes[0].Select(o => o.ToString()));
+        Assert.Equal(2L, (await Lire(migrateur, "SELECT nb_relances::bigint FROM etat_dossier WHERE numero_contrat = @p0", numero))[0][0]);
+    }
+
+    [Fact]
     public async Task Brouillon_contrat_d_un_autre_gestionnaire_rend_false_et_n_ecrit_rien()
     {
         var (db, depot, numero) = await Preparer();

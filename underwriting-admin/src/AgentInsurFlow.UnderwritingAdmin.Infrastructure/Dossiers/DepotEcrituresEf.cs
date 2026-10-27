@@ -9,9 +9,29 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
 /// Adapter du port <see cref="IDepotEcritures"/> avec le compte <c>dossiers</c> : chaque écriture commence par retrouver
 /// le contrat par <c>numero_contrat</c> ET <c>gestionnaire_id</c> (BOLA) ; sans ligne, rien n'est écrit.
 /// </summary>
-internal sealed class DepotEcrituresEf(DossiersDbContext db, TimeProvider horloge) : IDepotEcritures
+internal sealed class DepotEcrituresEf(DossiersDbContext db, TimeProvider horloge) : IDepotEcritures, IDepotRelances
 {
     private const string Brouillon = "brouillon";
+
+    public async Task<int?> NbRelances(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
+        await IdContrat(gestionnaireId, numeroContrat, ct) is null
+            ? null
+            : await db.Set<Relance>().AsNoTracking().CountAsync(r => r.NumeroContrat == numeroContrat, ct);
+
+    public async Task<int> Ajouter(string gestionnaireId, string numeroContrat, string texte, IReadOnlyList<string> pieces, CancellationToken ct)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var rang = await db.Set<Relance>().CountAsync(r => r.NumeroContrat == numeroContrat, ct) + 1;
+        var json = JsonSerializer.Serialize(pieces);
+        await db.Database.ExecuteSqlAsync($"""
+            INSERT INTO relance (numero_contrat, rang, texte, pieces, envoyee_le, envoyee_par)
+            VALUES ({numeroContrat}, {rang}, {texte}, {json}::jsonb, {horloge.GetUtcNow()}, {gestionnaireId})
+            """, ct);
+        // Compteur de la mémoire du dossier (D100), s'il existe déjà : jamais créé ici.
+        await db.Database.ExecuteSqlAsync($"UPDATE etat_dossier SET nb_relances = {rang} WHERE numero_contrat = {numeroContrat}", ct);
+        await transaction.CommitAsync(ct);
+        return rang;
+    }
 
     public async Task<bool> EnregistrerBrouillon(string gestionnaireId, string numeroContrat, FicheBrouillon fiche,
         PrimeBrouillon? prime, CancellationToken ct)

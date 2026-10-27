@@ -129,6 +129,41 @@ public sealed class EcrituresPostgresTests
     }
 
     [Fact]
+    public async Task Etat_lu_tentative_courante_rapports_dans_l_ordre_et_borne_au_gestionnaire()
+    {
+        var (db, depot, numero) = await Preparer();
+        await using var _ = db;
+        var ct = TestContext.Current.CancellationToken;
+        var migrateur = Connexions().Migrateur;
+        foreach (var t in new[] { "tour_pilotage", "rapport_agent", "section_etat", "etat_dossier" })
+            await Lire(migrateur, $"DELETE FROM {t} WHERE numero_contrat = @p0", numero);
+        var lecteur = new DepotDossiersEf(db);
+
+        var vide = await lecteur.LireEtat(GestionnaireA, numero, ct);
+        Assert.NotNull(vide);
+        Assert.Equal((null, 0, 0), (vide.StatutParcours, vide.Tentative, vide.NbRelances));
+        Assert.Empty(vide.Rapports);
+        Assert.Empty(vide.Sections);
+        await depot.EnregistrerEtat(GestionnaireA, numero, new EtatEntrant("EN_COURS", 1, [new("pieces", "{\"statut\":\"ancien\"}")],
+            [new("pieces", "{}", "llm", null, "v1", "t-ancien")], []), ct);
+        await depot.EnregistrerEtat(GestionnaireA, numero, new EtatEntrant("EN_COURS", 2, [new("pieces", "{\"statut\":\"complet\"}")],
+            [new("pieces", "{}", "llm", null, "v1", "t-2")], []), ct);
+        await depot.EnregistrerEtat(GestionnaireA, numero, new EtatEntrant("EN_COURS", 2, [new("risque", "{\"score\":1}")],
+            [new("pieces", "{}", "llm", null, "v1", "t-2"), new("analyste", "{}", "repli", "llm_ko", "v1", "t-2")], []), ct);
+
+        var etat = await lecteur.LireEtat(GestionnaireA, numero, ct);
+
+        Assert.NotNull(etat);
+        Assert.Equal(("EN_COURS", 2), (etat.StatutParcours, etat.Tentative));
+        Assert.Equal(["pieces", "analyste"], etat.Rapports.Select(r => r.Agent));
+        Assert.True(etat.Rapports[0].CreeLe <= etat.Rapports[1].CreeLe);
+        Assert.Equal(["pieces", "risque"], etat.Sections.Keys.Order());
+        Assert.Contains("complet", etat.Sections["pieces"], StringComparison.Ordinal);
+        Assert.Null(await lecteur.LireEtat(GestionnaireB, numero, ct));
+        Assert.Null(await lecteur.LireEtat(GestionnaireA, "AIF-INEXISTANT", ct));
+    }
+
+    [Fact]
     public async Task Brouillon_contrat_d_un_autre_gestionnaire_rend_false_et_n_ecrit_rien()
     {
         var (db, depot, numero) = await Preparer();

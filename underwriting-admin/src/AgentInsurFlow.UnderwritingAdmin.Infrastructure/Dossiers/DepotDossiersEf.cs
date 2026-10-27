@@ -8,8 +8,27 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
 /// Adapter du port <see cref="IDepotDossiers"/> : lit uniquement la vue minimisée, avec le compte <c>dossiers</c>.
 /// Le filtre <c>gestionnaire_id</c> (BOLA) fait partie de chaque requête ; EF paramètre toutes les valeurs.
 /// </summary>
-internal sealed class DepotDossiersEf(DossiersDbContext db) : IDepotDossiers
+internal sealed class DepotDossiersEf(DossiersDbContext db) : IDepotDossiers, IDepotEtat
 {
+    public async Task<EtatLu?> LireEtat(string gestionnaireId, string numeroContrat, CancellationToken ct)
+    {
+        // BOLA : le contrat est d'abord résolu pour ce gestionnaire.
+        var existe = await db.Set<Contrat>().AsNoTracking()
+            .AnyAsync(c => c.GestionnaireId == gestionnaireId && c.NumeroContrat == numeroContrat, ct);
+        if (!existe) return null;
+        var etat = await db.Set<EtatDossier>().AsNoTracking().FirstOrDefaultAsync(e => e.NumeroContrat == numeroContrat, ct);
+        if (etat is null) return new EtatLu(null, 0, 0, [], new Dictionary<string, string>());
+        var rapports = await db.Set<RapportAgent>().AsNoTracking()
+            .Where(r => r.NumeroContrat == numeroContrat && r.Tentative == etat.Tentative)
+            .OrderBy(r => r.CreeLe)
+            .Select(r => new RapportLu(r.Agent, r.Mode, r.Cause, r.TraceId, r.CreeLe))
+            .ToListAsync(ct);
+        var sections = await db.Set<SectionEtat>().AsNoTracking()
+            .Where(s => s.NumeroContrat == numeroContrat && s.Tentative == etat.Tentative)
+            .ToDictionaryAsync(s => s.Section, s => s.Contenu, ct);
+        return new EtatLu(etat.StatutParcours, etat.Tentative, etat.NbRelances, rapports, sections);
+    }
+
     public async Task<IReadOnlyList<VueContrat>> Lister(string gestionnaireId, int limit, int offset, CancellationToken ct) =>
         await db.Vue.AsNoTracking()
             .Where(l => l.GestionnaireId == gestionnaireId)

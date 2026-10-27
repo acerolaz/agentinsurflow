@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using AgentInsurFlow.UnderwritingAdmin.Application;
 using AgentInsurFlow.UnderwritingAdmin.Domain;
 using Microsoft.AspNetCore.Mvc;
@@ -47,8 +48,29 @@ internal static class ContratsEndpoints
             .WithSummary("Pièces déclarées du contrat (type et date d'émission seulement)")
             .Produces<IReadOnlyList<PieceDeclaree>>()
             .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
+
+        contrats.MapGet("/{numero_contrat}/etat", async (ClaimsPrincipal utilisateur, LireEtat cas, CancellationToken ct,
+                [FromRoute(Name = "numero_contrat")] string numeroContrat) =>
+            Oid(utilisateur) is not { } oid
+                ? Problemes.Creer(403, "Jeton sans identité de gestionnaire", "ACCES_REFUSE")
+                // Même 404 pour « inexistant » et « à un autre gestionnaire » (BOLA).
+                : await cas.Executer(oid, numeroContrat, ct) is { } etat
+                    ? Results.Ok(EtatReponse.Depuis(etat))
+                    : Problemes.Creer(404, "Contrat introuvable", "CONTRAT_INTROUVABLE"))
+            .WithName("LireEtat")
+            .WithSummary("Progression du dossier (tentative courante) : rapports des agents et sections lisibles, sans donnée identifiante")
+            .Produces<EtatReponse>()
+            .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
     }
 
     internal static string? Oid(ClaimsPrincipal u) =>
         u.FindFirst("oid")?.Value is { Length: > 0 } v ? v : null;
+}
+
+/// <summary>Réponse de <c>GET …/etat</c> : les sections restent des documents JSON (écrits par la Saga).</summary>
+internal sealed record EtatReponse(string? StatutParcours, int Tentative, int NbRelances,
+    IReadOnlyList<RapportLu> Rapports, IReadOnlyDictionary<string, JsonElement> Sections)
+{
+    public static EtatReponse Depuis(EtatLu e) => new(e.StatutParcours, e.Tentative, e.NbRelances, e.Rapports,
+        e.Sections.ToDictionary(s => s.Key, s => JsonDocument.Parse(s.Value).RootElement.Clone()));
 }

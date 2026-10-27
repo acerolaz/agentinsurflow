@@ -1,13 +1,13 @@
 // Espace gestionnaire : routeur sur le fragment d'URL, en-tête à onglets, thème, portefeuille et tchat.
 import { appeler } from "./api.js";
 import { compteCourant, connecter, deconnecter, initialiser } from "./auth.js";
-import { el, erreur, remplir } from "./dom.js";
-import { routeDepuisHash, themeInitial } from "./logique.js";
+import { el, erreur, picto, remplir } from "./dom.js";
+import { PICTOS, routeDepuisHash, themeInitial } from "./logique.js";
 
 const racine = document.getElementById("app");
 const ONGLETS = [
-  { vue: "dossiers", hash: "#/dossiers", titre: "Mes dossiers" },
-  { vue: "tchat", hash: "#/tchat", titre: "Tchat corpus" },
+  { vue: "dossiers", hash: "#/dossiers", titre: "Mes dossiers", picto: PICTOS.dossiers },
+  { vue: "tchat", hash: "#/tchat", titre: "Tchat corpus", picto: PICTOS.tchat },
 ];
 
 // --- thème ---------------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ function entete(vueActive) {
     el("a", {
       role: "tab", href: o.hash, id: `onglet-${o.vue}`, "aria-controls": "vue",
       "aria-selected": String(o.vue === vueActive), tabindex: o.vue === vueActive ? "0" : "-1",
-    }, o.titre));
+    }, picto(o.picto), o.titre));
   const liste = el("nav", {
     role: "tablist", "aria-label": "Sections",
     onkeydown: (e) => {
@@ -82,7 +82,7 @@ function entete(vueActive) {
   }, onglets);
   const compte = compteCourant();
   return el("header", { class: "entete" },
-    el("span", { class: "marque" }, "AgentInsurFlow"),
+    el("span", { class: "marque" }, picto(PICTOS.marque), "AgentInsurFlow"),
     liste,
     el("span", { class: "discret" }, compte?.nom ?? ""),
     boutonTheme(),
@@ -96,12 +96,12 @@ async function vueDossiers(zone) {
   if (r.statut !== 200) return remplir(zone, el("h1", {}, "Mes dossiers"), erreur(r));
   const lignes = r.json.map((c) =>
     el("tr", {},
-      el("th", { scope: "row" }, el("a", { href: `#/dossiers/${encodeURIComponent(c.numero_contrat)}` }, c.numero_contrat)),
+      el("th", { scope: "row" }, picto(PICTOS.dossier), el("a", { href: `#/dossiers/${encodeURIComponent(c.numero_contrat)}` }, c.numero_contrat)),
       el("td", {}, c.formule),
       el("td", {}, `${c.tranche_age} ans, dép. ${c.departement}`),
       el("td", {}, c.date_effet),
       el("td", {}, new Date(c.mis_a_jour).toLocaleString("fr-FR"))));
-  remplir(zone, el("h1", {}, "Mes dossiers"),
+  remplir(zone, el("h1", {}, picto(PICTOS.dossiers), "Mes dossiers"),
     lignes.length === 0
       ? el("p", {}, "Aucun dossier dans votre portefeuille.")
       : el("table", {},
@@ -148,7 +148,7 @@ function vueTchat(zone) {
   el("label", { for: "question" }, "Votre question sur le corpus"),
   champ,
   el("button", { type: "submit" }, "Envoyer"));
-  remplir(zone, el("h1", {}, "Tchat corpus"), fil, formulaire);
+  remplir(zone, el("h1", {}, picto(PICTOS.tchat), "Tchat corpus"), fil, formulaire);
   champ.focus();
 }
 

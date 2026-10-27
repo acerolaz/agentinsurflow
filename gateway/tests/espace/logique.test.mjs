@@ -10,6 +10,7 @@ import {
   frise,
   gabaritRelance,
   messageProbleme,
+  PICTOS,
   routeDepuisHash,
   spansAffichables,
   themeInitial,
@@ -151,6 +152,10 @@ test("conditions générales : chunks recollés sans le recouvrement, titres et 
 test("conditions générales : document absent → null", () => {
   assert.equal(conditionsGenerales(null), null);
   assert.equal(conditionsGenerales({ versions: [], chunks: [] }), null);
+});
+
+test("pictogrammes : chaque étape de la frise a le sien", () => {
+  for (const e of frise(null)) assert.ok(PICTOS[e.agent], `pictogramme manquant : ${e.agent}`);
 });
 
 test("échéance : un an moins un jour, 29 février compris", () => {

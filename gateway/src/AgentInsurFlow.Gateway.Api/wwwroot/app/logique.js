@@ -77,6 +77,14 @@ export function spansAffichables(spans) {
   });
 }
 
+/** Pictogrammes décoratifs (emoji, aucune dépendance) : agents de la frise, vues et actions. */
+export const PICTOS = {
+  marque: "🛡️", dossiers: "📁", tchat: "💬", dossier: "🗂️",
+  pieces: "📎", analyste: "🔎", redacteur: "✍️", actuaire: "🧮", validation: "🧑‍💼",
+  detail: "🔍", manquantes: "📭", contrat: "📄", souscripteur: "👤",
+  lancer: "▶️", pause: "⏸️", imprimer: "🖨️", relance: "✉️", sans_suite: "🗃️", outils: "🛠️",
+};
+
 export const LIBELLES_PIECES = {
   releve_information: "relevé d'information",
   permis: "permis de conduire",

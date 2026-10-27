@@ -20,9 +20,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from ...domain.corpus import normaliser_numero
 
 TEXT_ID = "LEGITEXT000006073984"  # Code des assurances
-# L121-*, A121-1 (🔴 et son annexe, Task G0), L211-*, R211-*, A211-*
+# Nœud distinct de la table des matières (sonde du 27/10, #124), rattaché à A121-1 à l'extraction
+ANNEXE_A121_1 = normaliser_numero("Annexe à l'article A121-1")
+# L121-*, A121-1 et son annexe, L211-*, R211-*, A211-*
 PERIMETRE = re.compile(
-    r"^(?:L121-\d+(?:-\d+)*|A121-1|L211-\d+(?:-\d+)*|R211-\d+(?:-\d+)*|A211-\d+(?:-\d+)*)$"
+    r"^(?:L121-\d+(?:-\d+)*|A121-1|L211-\d+(?:-\d+)*|R211-\d+(?:-\d+)*|A211-\d+(?:-\d+)*|"
+    + re.escape(ANNEXE_A121_1)
+    + ")$"
 )
 DELAIS_S = (1, 2, 4)  # 3 nouvelles tentatives à délai croissant sur 429 et 5xx
 
@@ -125,6 +129,15 @@ def vers_article_entrant(brut: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def rattacher_annexe(article: dict[str, Any], annexe: dict[str, Any]) -> dict[str, Any]:
+    """L'annexe suit le texte de l'article, sous sa référence ; la version composée change avec
+    l'une ou l'autre (même version et autre texte : ``conflit_version`` à l'ingestion)."""
+    return article | {
+        "texte_html": f"{article['texte_html'] or ''}{annexe['texte_html'] or ''}",
+        "version": f"{article['version']}+{annexe['version']}",
+    }
+
+
 def extraire(
     client: httpx.Client,
     cfg: ConfigLegifrance,
@@ -133,7 +146,8 @@ def extraire(
     *,
     pause: Callable[[float], object] = time.sleep,
 ) -> list[dict[str, Any]]:
-    """Plan du code → filtre du périmètre → ``getArticle`` séquentiel (respect des quotas)."""
+    """Plan du code → filtre du périmètre → ``getArticle`` séquentiel (respect des quotas) →
+    annexe d'A121-1 rattachée à son article."""
     plan = appeler(
         client,
         "/consult/code/tableMatieres",
@@ -153,4 +167,13 @@ def extraire(
             client, "/consult/getArticle", {"id": identifiant}, jeton, cfg=cfg, pause=pause
         )
         articles.append(vers_article_entrant(brut.get("article") or {}))
+    annexes = [a for a in articles if normaliser_numero(str(a["article"])) == ANNEXE_A121_1]
+    articles = [a for a in articles if a not in annexes]  # orpheline (sans A121-1) : jetée
+    if annexes:
+        articles = [
+            rattacher_annexe(a, annexes[0])
+            if normaliser_numero(str(a["article"])) == "A121-1"
+            else a
+            for a in articles
+        ]
     return articles

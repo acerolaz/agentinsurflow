@@ -188,6 +188,33 @@ public sealed class EcrituresPostgresTests
     }
 
     [Fact]
+    public async Task Contrat_genere_lu_apres_ACCEPTE_avec_le_compte_dossiers_et_borne_au_gestionnaire()
+    {
+        var (db, depot, numero) = await Preparer();
+        await using var _ = db;
+        var ct = TestContext.Current.CancellationToken;
+        var migrateur = Connexions().Migrateur;
+        foreach (var t in new[] { "tour_pilotage", "rapport_agent", "section_etat" })
+            await Lire(migrateur, $"DELETE FROM {t} WHERE numero_contrat = @p0", numero);
+        await Lire(migrateur, "UPDATE contrat SET statut = 'EN_ANALYSE' WHERE numero_contrat = @p0", numero);
+        var lecteur = new DepotDossiersEf(db);
+
+        Assert.Equal((null, true), await lecteur.LireContratGenere(GestionnaireA, numero, ct));
+
+        await depot.EnregistrerBrouillon(GestionnaireA, numero, Fiche, Prime, ct);
+        await depot.EnregistrerEtat(GestionnaireA, numero, new EtatEntrant("TERMINE", 1,
+            [new("prime", """{"prime_ttc_annuelle":"512.40","prime_mensuelle":"42.70","version_formule":"f-1","explication":"x"}""")], [], []), ct);
+        await depot.ChangerStatut(GestionnaireA, numero, new("ACCEPTE", "VALIDEE"), ct);
+        var (contrat, existe) = await lecteur.LireContratGenere(GestionnaireA, numero, ct);
+
+        Assert.True(existe);
+        Assert.NotNull(contrat);
+        Assert.Equal(("512.40", "42.70", "f-1", "v1", GestionnaireA), (contrat.PrimeTtcAnnuelle, contrat.PrimeMensuelle, contrat.VersionFormule, contrat.VersionBareme, contrat.ValidePar));
+        Assert.Equal(["cit"], contrat.Citations);
+        Assert.Equal((null, false), await lecteur.LireContratGenere(GestionnaireB, numero, ct));
+    }
+
+    [Fact]
     public async Task Brouillon_contrat_d_un_autre_gestionnaire_rend_false_et_n_ecrit_rien()
     {
         var (db, depot, numero) = await Preparer();

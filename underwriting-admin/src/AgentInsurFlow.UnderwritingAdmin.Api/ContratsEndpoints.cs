@@ -61,6 +61,21 @@ internal static class ContratsEndpoints
             .WithSummary("Progression du dossier (tentative courante) : rapports des agents et sections lisibles, sans donnée identifiante")
             .Produces<EtatReponse>()
             .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
+
+        contrats.MapGet("/{numero_contrat}/contrat", async (ClaimsPrincipal utilisateur, LireContratGenere cas, CancellationToken ct,
+                [FromRoute(Name = "numero_contrat")] string numeroContrat) =>
+            Oid(utilisateur) is not { } oid
+                ? Problemes.Creer(403, "Jeton sans identité de gestionnaire", "ACCES_REFUSE")
+                : await cas.Executer(oid, numeroContrat, ct) switch
+                {
+                    ({ } contrat, _) => Results.Ok(contrat),
+                    (null, true) => Problemes.Creer(409, "Contrat non accepté", "CONTRAT_NON_ACCEPTE"),
+                    _ => Problemes.Creer(404, "Contrat introuvable", "CONTRAT_INTROUVABLE"),
+                })
+            .WithName("LireContratGenere")
+            .WithSummary("Contrat généré après ACCEPTE : décision validée, prime, formule ; aucune donnée identifiante")
+            .Produces<ContratGenere>()
+            .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
     }
 
     internal static string? Oid(ClaimsPrincipal u) =>

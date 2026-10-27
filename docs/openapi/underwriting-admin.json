@@ -481,6 +481,77 @@
         }
       }
     },
+    "/api/contrats/{numero_contrat}/contrat": {
+      "get": {
+        "tags": [
+          "Contrats"
+        ],
+        "summary": "Contrat généré après ACCEPTE : décision validée, prime, formule ; aucune donnée identifiante",
+        "operationId": "LireContratGenere",
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContratGenere"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/contrats/{numero_contrat}/brouillon": {
       "put": {
         "tags": [
@@ -837,6 +908,69 @@
                 "$ref": "#/components/schemas/PrimeBrouillon"
               }
             ]
+          }
+        }
+      },
+      "ContratGenere": {
+        "required": [
+          "numero_contrat",
+          "formule",
+          "contrat_type",
+          "date_effet",
+          "prime_ttc_annuelle",
+          "prime_mensuelle",
+          "version_bareme",
+          "version_formule",
+          "motifs",
+          "citations",
+          "valide_par",
+          "valide_le"
+        ],
+        "type": "object",
+        "properties": {
+          "numero_contrat": {
+            "type": "string"
+          },
+          "formule": {
+            "type": "string"
+          },
+          "contrat_type": {
+            "type": "string"
+          },
+          "date_effet": {
+            "type": "string",
+            "format": "date"
+          },
+          "prime_ttc_annuelle": {
+            "type": "string"
+          },
+          "prime_mensuelle": {
+            "type": "string"
+          },
+          "version_bareme": {
+            "type": "string"
+          },
+          "version_formule": {
+            "type": "string"
+          },
+          "motifs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "valide_par": {
+            "type": "string"
+          },
+          "valide_le": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

@@ -15,6 +15,7 @@ public static class DossiersServices
         services.AddScoped<IDepotEcritures, DepotEcrituresEf>();
         services.AddScoped<IDepotRelances, DepotEcrituresEf>();
         services.AddScoped<IDepotEtat, DepotDossiersEf>();
+        services.AddScoped<IDepotContratGenere, DepotDossiersEf>();
         return services.AddScoped<IDepotDossiers, DepotDossiersEf>();
     }
 }

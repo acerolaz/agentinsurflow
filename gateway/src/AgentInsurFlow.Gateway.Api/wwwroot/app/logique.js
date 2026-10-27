@@ -18,6 +18,59 @@ export function themeInitial(stocke, prefereSombre) {
   return prefereSombre ? "sombre" : "clair";
 }
 
+const ETAPES = [
+  ["pieces", "Pièces"],
+  ["analyste", "Analyste"],
+  ["redacteur", "Rédacteur"],
+  ["actuaire", "Actuaire"],
+];
+
+/**
+ * Frise des cinq étapes d'une évaluation depuis l'état lu (GET …/etat).
+ * Durée d'un agent = écart de cree_le avec le rapport précédent ; le premier part du clic (lanceA, ms) s'il est connu.
+ */
+export function frise(etat, lanceA) {
+  const rapports = etat?.rapports ?? [];
+  const durees = {};
+  rapports.forEach((r, i) => {
+    const avant = i > 0 ? Date.parse(rapports[i - 1].cree_le) : lanceA;
+    durees[r.agent] = avant === undefined ? null : Math.round(Date.parse(r.cree_le) - avant) / 1000;
+  });
+  const etapes = ETAPES.map(([agent, libelle]) => ({
+    agent, libelle,
+    statut: agent in durees ? "fait" : "a_venir",
+    duree_s: durees[agent] ?? null,
+    rapport: rapports.findLast((r) => r.agent === agent) ?? null,
+  }));
+  const s = etat?.statut_parcours;
+  const validation = s === "ACCEPTE" || s === "REFUSE" ? "fait" : s === "EN_ANALYSE" ? "en_cours" : "a_venir";
+  return [...etapes, { agent: "validation", libelle: "Validation (vous)", statut: validation, duree_s: null, rapport: null }];
+}
+
+/** L'état se relit chaque seconde tant que POST …/evaluation est en vol. */
+export function doitInterroger(statutReponse, enVol) {
+  return enVol;
+}
+
+const IDENTIFIANT = /^[A-Za-z0-9_.:-]{1,60}$/;
+const sur = (v) => (typeof v === "string" && IDENTIFIANT.test(v) ? v : "?");
+
+/**
+ * Spans d'une trace réduits à ce qui s'affiche : outils MCP et agents, par une liste blanche d'attributs
+ * (identifiants courts) ; jamais d'attribut libre ni de span de modèle (prompt, sortie).
+ */
+export function spansAffichables(spans) {
+  return (spans ?? []).flatMap((s) => {
+    const a = s.attributes ?? {};
+    let parts;
+    if (s.name === "mcp.outil") parts = [`Outil ${sur(a["mcp.outil"])}`, a["autorisation.decision"], a["resultat.code"]];
+    else if (s.name === "invoke_agent") parts = [`Agent ${sur(a["gen_ai.agent.name"])}`, a["insurflow.mode"], a["insurflow.cause"]];
+    else return [];
+    const nom = parts.filter((p, i) => i === 0 || (p && IDENTIFIANT.test(p))).join(" · ");
+    return [{ nom, duree_ms: Number(s.duree_ms) }];
+  });
+}
+
 const MESSAGES = {
   EVALUATION_EN_COURS: "Une évaluation est déjà en cours pour ce dossier",
   EVALUATION_EN_ATTENTE: "Une revue est déjà en attente pour ce dossier",

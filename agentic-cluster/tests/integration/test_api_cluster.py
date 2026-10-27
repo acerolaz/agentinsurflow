@@ -53,7 +53,8 @@ class Banc:
     @asynccontextmanager
     async def composition(self, _cfg: Any) -> AsyncIterator[ServiceEvaluation]:
         self.saver = MemorySaver()
-        yield ServiceEvaluation(self.deps, self.saver)
+        self.service = ServiceEvaluation(self.deps, self.saver)
+        yield self.service
 
 
 @asynccontextmanager
@@ -396,6 +397,87 @@ async def test_panne_d_outil_502() -> None:
     assert r.status_code == 502 and r.json()["code"] == "OUTIL_INDISPONIBLE"
 
 
+def _etats(banc: Banc) -> list[dict[str, Any]]:
+    return [a["etat"] for a in banc.outils.corps("enregistrer_etat")]
+
+
+async def test_pause_avant_evaluation_arrete_apres_le_premier_agent() -> None:
+    banc = Banc()
+    async with client(banc) as c:
+        p = await c.post("/evaluations/C-1/pause")
+        r = await c.post("/evaluations/C-1")
+    assert p.status_code == 202 and p.json() == {"pause": "demandee"}
+    assert r.status_code == 200, r.text
+    assert r.json()["statut"] == "EN_PAUSE" and len(r.json()["synthese"]) == 1
+    assert _etats(banc)[-1]["statut_parcours"] == "EN_PAUSE"
+
+
+async def test_reprise_va_au_bout_sans_nouvelle_tentative_et_revoit_les_observations() -> None:
+    banc = Banc()
+    async with client(banc) as c:
+        await c.post("/evaluations/C-1/pause")
+        await c.post("/evaluations/C-1")
+        r = await c.post("/evaluations/C-1")
+    assert r.status_code == 200 and r.json()["statut"] == "EN_ANALYSE", r.text
+    assert {e["tentative"] for e in _etats(banc)} == {1}
+    redacteur = [vue for agent, vue, _ in banc.redaction.appels if agent == "redacteur"]
+    assert CONTRAT["observations"] in redacteur[0]["observations"]
+
+
+async def test_reprise_apres_longue_pause_ne_depasse_pas_le_budget() -> None:
+    maintenant = [0.0]
+    banc = Banc()
+    banc.deps = replace(banc.deps, horloge=lambda: maintenant[0])
+    async with client(banc) as c:
+        await c.post("/evaluations/C-1/pause")
+        await c.post("/evaluations/C-1")
+        maintenant[0] += 3600
+        r = await c.post("/evaluations/C-1")
+    assert r.json()["statut"] == "EN_ANALYSE", r.text
+
+
+async def test_revue_pendant_la_pause_409() -> None:
+    async with client(Banc()) as c:
+        await c.post("/evaluations/C-1/pause")
+        await c.post("/evaluations/C-1")
+        r = await c.post("/evaluations/C-1/revue", json=REVUE)
+    assert r.status_code == 409 and r.json()["code"] == "AUCUNE_REVUE_EN_ATTENTE"
+
+
+async def test_pause_apres_proposition_oubliee() -> None:
+    banc = Banc()
+    async with client(banc) as c:
+        assert (await c.post("/evaluations/C-1")).json()["statut"] == "EN_ANALYSE"
+        await c.post("/evaluations/C-1/pause")
+        await c.post("/evaluations/C-1/revue", json={**REVUE, "decision": "REFUSE"})
+        r = await c.post("/evaluations/C-1")
+    assert r.status_code == 409 and r.json()["code"] == "DOSSIER_DECIDE"
+    assert banc.service._pauses == set()
+
+
+async def test_pause_autre_gestionnaire_404() -> None:
+    banc = Banc()
+    async with client(banc) as c:
+        await c.post("/evaluations/C-1")
+        r = await c.post("/evaluations/C-1/pause", headers=_jeton_de("oid-gestionnaire-b"))
+    assert r.status_code == 404 and r.json()["code"] == "CONTRAT_INTROUVABLE"
+    assert banc.service._pauses == set()
+
+
+async def test_deux_evaluations_simultanees_la_seconde_409_en_cours() -> None:
+    async def lente(agent: str, vue: dict[str, Any], budget_s: float, jeton: str = "") -> Any:
+        await asyncio.sleep(0.2)
+        return redaction_fidele(agent, vue)  # type: ignore[arg-type]
+
+    banc = Banc()
+    banc.redaction.rediger = lente  # type: ignore[method-assign]
+    async with client(banc) as c:
+        a, b = await asyncio.gather(c.post("/evaluations/C-1"), c.post("/evaluations/C-1"))
+    assert sorted([a.status_code, b.status_code]) == [200, 409]
+    refus = a if a.status_code == 409 else b
+    assert refus.json()["code"] == "EVALUATION_EN_COURS"
+
+
 async def test_outil_en_429_rend_429_avec_retry_after() -> None:
     banc = Banc(outils=FakeOutils(get_contrat=ErreurOutil("TROP_DE_REQUETES", "17")))
     async with client(banc) as c:
@@ -542,6 +624,7 @@ async def test_openapi_documente_les_chemins_publics_de_la_gateway() -> None:
     assert set(chemins) == {
         "/v1/souscriptions/{numero_contrat}/evaluation",
         "/v1/souscriptions/{numero_contrat}/revue",
+        "/v1/souscriptions/{numero_contrat}/pause",
         "/health/cluster",
     }
 

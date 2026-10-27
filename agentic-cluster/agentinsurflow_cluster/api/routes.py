@@ -14,6 +14,7 @@ from ..application.evaluation import (
     DelaiDepasse,
     DossierDecide,
     EvaluationEnAttente,
+    EvaluationEnCours,
     Revue,
 )
 from ..domain.ports import ErreurOutil
@@ -24,6 +25,7 @@ from .schemas import (
     EtapeDto,
     EvaluationReponse,
     FicheDto,
+    PauseReponse,
     PrimeDto,
     ReglageDto,
     RevueCorps,
@@ -114,12 +116,31 @@ async def evaluer(numero_contrat: str, request: Request, courant: Courant) -> Ev
         raise Probleme(
             409, "EVALUATION_EN_ATTENTE", "Une revue est déjà en attente pour ce dossier"
         ) from e
+    except EvaluationEnCours as e:
+        raise Probleme(
+            409, "EVALUATION_EN_COURS", "Une évaluation est déjà en cours pour ce dossier"
+        ) from e
     except DossierDecide as e:
         raise Probleme(409, "DOSSIER_DECIDE", "Ce dossier a déjà reçu sa décision") from e
     except DelaiDepasse as e:
         raise Probleme(503, "DELAI_DEPASSE", "Le délai d'évaluation est dépassé, réessayez") from e
     except ErreurOutil as e:
         raise _outil_en_echec(e) from e
+
+
+@routeur.post(
+    "/evaluations/{numero_contrat}/pause",
+    response_model=PauseReponse,
+    status_code=202,
+    responses={401: {}, 403: {}, 404: {}, 503: {}},
+)
+async def demander_pause(numero_contrat: str, request: Request, courant: Courant) -> PauseReponse:
+    """Pause au prochain passage entre deux agents ; ``POST /evaluations/{n}`` reprend."""
+    try:
+        await _service(request).demander_pause(numero_contrat, courant.oid)
+    except ErreurOutil as e:
+        raise _outil_en_echec(e) from e
+    return PauseReponse(pause="demandee")
 
 
 @routeur.post(

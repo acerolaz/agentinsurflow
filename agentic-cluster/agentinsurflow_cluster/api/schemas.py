@@ -32,12 +32,16 @@ class EtapeDto(BaseModel):
 
 
 class EvaluationReponse(BaseModel):
-    statut: Literal["EN_ANALYSE", "REVUE_HUMAINE"]
+    statut: Literal["EN_ANALYSE", "REVUE_HUMAINE", "EN_PAUSE"]
     fiche: FicheDto | None
     prime: PrimeDto | None
     score: float | None
     message: str | None  # jamais la cause d'une revue humaine
     synthese: list[EtapeDto]
+
+
+class PauseReponse(BaseModel):
+    pause: Literal["demandee"]
 
 
 class RevueCorps(BaseModel):

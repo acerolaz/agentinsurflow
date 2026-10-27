@@ -41,6 +41,7 @@ public sealed class ClusterTests(Backends backends) : IClassFixture<Backends>
     [Theory]
     [InlineData("/v1/souscriptions/AIF-2026-0001/evaluation", "/evaluations/AIF-2026-0001", null)]
     [InlineData("/v1/souscriptions/AIF-2026-0001/revue", "/evaluations/AIF-2026-0001/revue", Revue)]
+    [InlineData("/v1/souscriptions/AIF-2026-0001/pause", "/evaluations/AIF-2026-0001/pause", null)]
     public async Task Gestionnaire_relaye_vers_le_cluster_avec_son_jeton(string chemin, string cheminRecu, string? corps)
     {
         using var usine = backends.Gateway();

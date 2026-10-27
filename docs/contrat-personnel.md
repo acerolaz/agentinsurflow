@@ -145,4 +145,4 @@ Recette des K en staging le 27/10 : K1 (acceptable et refus), K3, K4, K5, K7, K8
 - K1 : le dossier limite (le barème n'a pas de classe « limite » : un dossier hors barème).
 - K6 : revérifier « Tchat corpus » au clavier après le déploiement de #147.
 - Rejouer K2 par requête sur les traces (cluster déployé : `GET /api/traces/{trace_id}`), puis en KQL avec #54.
-- Fusionner #145, #146 et #147 après la recette, puis appliquer l'instance toujours prête de la Function de calcul (`infra/calcul.sh` ①b) avant la démo.
+- Fusionner #145, #146 et #147 après la recette (#149 fusionnée, instance toujours prête du calcul appliquée le 28/10).

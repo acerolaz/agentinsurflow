@@ -136,7 +136,7 @@ La reprise se fait au point de pause, depuis les points de reprise PostgreSQL, s
 | Constat | Cause | Correctif |
 |---|---|---|
 | 000010, tentative 1 : 27 s sans rapport d'agent | Appel MCP du cluster sans limite (jeton OBO via `to_thread`, httpx à 30 s) | #146 : `DELAI_APPEL_S = 22 s` → repli `erreur` tracé |
-| 000010, tentative 2 : Analyste en repli `erreur` | Démarrage à froid de la Function de calcul, plus long que les 10 s du client MCP | #146 : délai à 20 s, et une instance toujours prête (`infra/calcul.sh` ①b, **non appliquée au 28/10**) |
+| 000010, tentative 2 : Analyste en repli `erreur` | Démarrage à froid de la Function de calcul, plus long que les 10 s du client MCP | #146 : délai à 20 s, et une instance toujours prête (`infra/calcul.sh` ①b, **appliquée le 28/10** : 1 instance `http`, staging et production) |
 | Actuaire toujours en repli `llm_ko` | `delai_s = 1.5` | #146 : 4 s |
 | « Tchat corpus » inatteignable au clavier | Motif d'onglets ARIA pour des liens de page | #147 |
-| `llm-off` / `llm-on` rendent la main trop tôt | `az containerapp update` n'attend pas l'activation de la révision | Attendre la révision avant d'évaluer (à automatiser dans `infra/recette.sh`) |
+| `llm-off` / `llm-on` rendent la main trop tôt | `az containerapp update` n'attend pas l'activation de la révision | #149 (fusionnée le 28/10) : `recette.sh` attend la révision prête et à 100 % du trafic |

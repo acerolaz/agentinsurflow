@@ -283,6 +283,124 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                     b.ToTable("garantie", (string)null);
                 });
 
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.LigneFicheSouscripteur", b =>
+                {
+                    b.Property<string>("Adresse")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("adresse");
+
+                    b.Property<string>("Civilite")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("civilite");
+
+                    b.Property<string>("CodePostal")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("code_postal");
+
+                    b.Property<string>("CodePostalStationnement")
+                        .HasColumnType("text")
+                        .HasColumnName("code_postal_stationnement");
+
+                    b.Property<DateOnly?>("Date1reMiseCirculation")
+                        .HasColumnType("date")
+                        .HasColumnName("date1re_mise_circulation");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<string>("GestionnaireId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("gestionnaire_id");
+
+                    b.Property<string>("Immatriculation")
+                        .HasColumnType("text")
+                        .HasColumnName("immatriculation");
+
+                    b.Property<string>("Marque")
+                        .HasColumnType("text")
+                        .HasColumnName("marque");
+
+                    b.Property<string>("ModeStationnement")
+                        .HasColumnType("text")
+                        .HasColumnName("mode_stationnement");
+
+                    b.Property<string>("Modele")
+                        .HasColumnType("text")
+                        .HasColumnName("modele");
+
+                    b.Property<string>("Nom")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nom");
+
+                    b.Property<string>("NumeroContrat")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("numero_contrat");
+
+                    b.Property<string>("Prenom")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("prenom");
+
+                    b.Property<int?>("PuissanceFiscaleCv")
+                        .HasColumnType("integer")
+                        .HasColumnName("puissance_fiscale_cv");
+
+                    b.Property<string>("Telephone")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("telephone");
+
+                    b.Property<string>("TypeUsage")
+                        .HasColumnType("text")
+                        .HasColumnName("type_usage");
+
+                    b.Property<string>("Version")
+                        .HasColumnType("text")
+                        .HasColumnName("version");
+
+                    b.Property<string>("Vin")
+                        .HasColumnType("text")
+                        .HasColumnName("vin");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vue_fiche_souscripteur", (string)null);
+                });
+
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.LigneGarantieContrat", b =>
+                {
+                    b.Property<decimal?>("Franchise")
+                        .HasColumnType("numeric")
+                        .HasColumnName("franchise");
+
+                    b.Property<string>("GestionnaireId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("gestionnaire_id");
+
+                    b.Property<string>("NumeroContrat")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("numero_contrat");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vue_garanties_contrat_accepte", (string)null);
+                });
+
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.LigneVue", b =>
                 {
                     b.Property<int>("AnciennetePermisAns")
@@ -369,6 +487,111 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                     b.ToTable((string)null);
 
                     b.ToView("vue_contrat_minimisee", (string)null);
+                });
+
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.PartiesContratAccepte", b =>
+                {
+                    b.Property<string>("Adresse")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("adresse");
+
+                    b.Property<string>("CodePostal")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("code_postal");
+
+                    b.Property<string>("CodePostalStationnement")
+                        .HasColumnType("text")
+                        .HasColumnName("code_postal_stationnement");
+
+                    b.Property<DateOnly?>("Date1reMiseCirculation")
+                        .HasColumnType("date")
+                        .HasColumnName("date1re_mise_circulation");
+
+                    b.Property<DateOnly>("DateNaissance")
+                        .HasColumnType("date")
+                        .HasColumnName("date_naissance");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<string>("GestionnaireId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("gestionnaire_id");
+
+                    b.Property<string>("Immatriculation")
+                        .HasColumnType("text")
+                        .HasColumnName("immatriculation");
+
+                    b.Property<string>("Marque")
+                        .HasColumnType("text")
+                        .HasColumnName("marque");
+
+                    b.Property<string>("ModeStationnement")
+                        .HasColumnType("text")
+                        .HasColumnName("mode_stationnement");
+
+                    b.Property<string>("Modele")
+                        .HasColumnType("text")
+                        .HasColumnName("modele");
+
+                    b.Property<string>("Nom")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nom");
+
+                    b.Property<string>("NumeroContrat")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("numero_contrat");
+
+                    b.Property<DateOnly>("PermisDateObtention")
+                        .HasColumnType("date")
+                        .HasColumnName("permis_date_obtention");
+
+                    b.Property<string>("PermisNumero")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("permis_numero");
+
+                    b.Property<string>("PermisPays")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("permis_pays");
+
+                    b.Property<string>("Prenom")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("prenom");
+
+                    b.Property<int?>("PuissanceFiscaleCv")
+                        .HasColumnType("integer")
+                        .HasColumnName("puissance_fiscale_cv");
+
+                    b.Property<string>("Telephone")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("telephone");
+
+                    b.Property<string>("TypeUsage")
+                        .HasColumnType("text")
+                        .HasColumnName("type_usage");
+
+                    b.Property<string>("Version")
+                        .HasColumnType("text")
+                        .HasColumnName("version");
+
+                    b.Property<string>("Vin")
+                        .HasColumnType("text")
+                        .HasColumnName("vin");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vue_contrat_accepte", (string)null);
                 });
 
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.PieceJustificative", b =>
@@ -708,6 +931,11 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("adresse");
+
+                    b.Property<string>("Civilite")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("civilite");
 
                     b.Property<string>("CodePostal")
                         .IsRequired()

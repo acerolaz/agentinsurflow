@@ -73,9 +73,21 @@ internal static class ContratsEndpoints
                     _ => Problemes.Creer(404, "Contrat introuvable", "CONTRAT_INTROUVABLE"),
                 })
             .WithName("LireContratGenere")
-            .WithSummary("Contrat généré après ACCEPTE : décision validée, prime, formule ; aucune donnée identifiante")
+            .WithSummary("Contrat généré après ACCEPTE (conditions particulières) : décision validée, prime, formule, souscripteur (coordonnées comprises), véhicule et garanties ; jamais vers le cluster ni un LLM")
             .Produces<ContratGenere>()
             .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
+
+        contrats.MapGet("/{numero_contrat}/souscripteur", async (ClaimsPrincipal utilisateur, LireFicheSouscripteur cas, CancellationToken ct,
+                [FromRoute(Name = "numero_contrat")] string numeroContrat) =>
+            Oid(utilisateur) is not { } oid
+                ? Problemes.Creer(403, "Jeton sans identité de gestionnaire", "ACCES_REFUSE")
+                : await cas.Executer(oid, numeroContrat, ct) is { } fiche
+                    ? Results.Ok(fiche)
+                    : Problemes.Creer(404, "Contrat introuvable", "CONTRAT_INTROUVABLE"))
+            .WithName("LireFicheSouscripteur")
+            .WithSummary("Fiche du lead pour le détail du dossier : civilité, nom, prénom, adresse, mobile, e-mail et véhicule (jamais vers le cluster ni un LLM)")
+            .Produces<FicheSouscripteur>()
+            .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
     }
 
     internal static string? Oid(ClaimsPrincipal u) =>

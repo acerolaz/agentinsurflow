@@ -83,6 +83,21 @@ export const LIBELLES_PIECES = {
   carte_grise: "certificat d'immatriculation",
 };
 
+export const LIBELLES_GARANTIES = {
+  responsabilite_civile: "Responsabilité civile (défense et recours)",
+  protection_juridique: "Protection juridique suite à accident",
+  vol_incendie_tempete: "Vol, incendie et tempête",
+  dommages_tous_accidents: "Dommages tous accidents",
+  bris_de_glace: "Bris de glace",
+  assistance_0_km: "Assistance 0 km et véhicule de remplacement",
+};
+
+/** Échéance d'un contrat annuel : date d'effet + 1 an − 1 jour (AAAA-MM-JJ, en UTC : aucun décalage de fuseau). */
+export function dateEcheance(dateEffet) {
+  const [a, m, j] = dateEffet.split("-").map(Number);
+  return new Date(Date.UTC(a + 1, m - 1, j - 1)).toISOString().slice(0, 10);
+}
+
 /** Mail de relance prérempli (modifiable par le gestionnaire) ; un type inconnu reste tel quel. */
 export function gabaritRelance(manquantes) {
   const pieces = manquantes.map((p) => LIBELLES_PIECES[p] ?? p).join(", ");
@@ -117,4 +132,34 @@ export function messageProbleme(statut, code) {
   if (statut === 401) return "Session expirée, reconnectez-vous";
   if (statut === 403) return "Accès refusé";
   return MESSAGES[code] ?? "Une erreur est survenue";
+}
+
+/** Recolle deux chunks : le suivant recommence par la fin du précédent puis « \n » (découpage du rag). */
+function recoller(precedent, suivant) {
+  for (let k = Math.min(precedent.length, suivant.length - 1); k > 0; k--)
+    if (suivant[k] === "\n" && precedent.endsWith(suivant.slice(0, k))) return precedent + suivant.slice(k);
+  return `${precedent}\n${suivant}`;
+}
+
+/**
+ * Conditions générales du contrat imprimé : la notice du contrat type (GET /api/documents/{doc_id}), version en vigueur,
+ * chunks recollés dans l'ordre, découpée en sections (« ## ») et lignes (« - » = puce). null si rien à afficher.
+ */
+export function conditionsGenerales(document) {
+  const enVigueur = document?.versions?.filter((v) => !v.obsolete).at(-1)?.version;
+  const chunks = (document?.chunks ?? []).filter((c) => c.version === enVigueur).sort((a, b) => a.ordre - b.ordre);
+  if (!chunks.length) return null;
+  const texte = chunks.map((c) => c.texte).reduce(recoller);
+  let titre = "";
+  const sections = [];
+  for (const ligne of texte.split("\n").map((l) => l.trim()).filter(Boolean)) {
+    if (ligne.startsWith("## ")) sections.push({ titre: ligne.slice(3), lignes: [] });
+    else if (ligne.startsWith("# ")) titre = ligne.slice(2);
+    else {
+      if (!sections.length) sections.push({ titre: "", lignes: [] });
+      const puce = ligne.startsWith("- ");
+      sections.at(-1).lignes.push({ puce, texte: puce ? ligne.slice(2) : ligne });
+    }
+  }
+  return { titre, sections };
 }

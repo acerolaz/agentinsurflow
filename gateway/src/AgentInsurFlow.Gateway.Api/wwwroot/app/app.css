@@ -266,6 +266,15 @@ dt { color: var(--discret); }
 dd { margin: 0; }
 dd ul { margin: 0; padding-left: 18px; }
 
+.fiche {
+  padding: 8px 16px;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: 10px;
+}
+
+.fiche h2 { margin-top: 8px; }
+
 .revue { display: grid; gap: 8px; margin-top: 16px; }
 
 .texte-envoye {
@@ -279,7 +288,10 @@ dd ul { margin: 0; padding-left: 18px; }
   .entete, .actions, .frise, .sous-onglets, .ne-pas-imprimer, main > h1, main > p { display: none; }
   body { background: #fff; color: #000; }
   .contrat-imprimable { display: block; }
+  .contrat-imprimable h3 { break-after: avoid; }
 }
+
+.contrat-imprimable .signature { margin-top: 3em; }
 
 @media (max-width: 600px) {
   .frise { grid-template-columns: 1fr; }

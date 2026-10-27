@@ -24,5 +24,5 @@ prompt = "redacteur.md"
 modele = "gpt-4.1-mini"
 temperature = 0.0
 max_tokens = 400
-delai_s = 1.5
+delai_s = 4.0                # 1,5 s : repli llm_ko systématique en staging (réponses ~3-5 s, 27/10)
 prompt = "actuaire.md"

@@ -37,7 +37,7 @@ Un merge sur `main` relance `lint`, `test` et `gateway` avant `build`. Les evals
 p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané du corpus ou la version du LLM changent
 (voir *Évaluer l'agent*). Le job `evals-pr` (avant merge) est **désactivé jusqu'à U5** : voir le tableau des jobs.
 
-## État au 27/10 (release v0.6.16)
+## État au 27/10 (release v0.6.17)
 
 | Projet | Langage | Rôle | État |
 |---|---|---|---|
@@ -52,13 +52,13 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 > **Pyramide au 20/10** : ≈ 52 % TU / 46 % TI / 2 % E2E, hors seuils ; le job `pyramide` est **informatif** en CI
 > (décision d'Acerola) jusqu'à une tâche dédiée aux tests unitaires.
 
-> **Production et staging** : release **`v0.6.16`** au SHA `9219cff` (#140), déployée le 27/10 ; la version de la
+> **Production et staging** : release **`v0.6.17`** au SHA `c619d0f` (#142), déployée le 27/10 ; la version de la
 > solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. Depuis le 26/10 : l'espace
 > gestionnaire `/app/` (#134), les relances et `SANS_SUITE` (#136), `make recette` (#137), `make entra` qui garde les
 > agents pré-autorisés sur le MCP (#138), le contrat imprimé sur le modèle d'Acerola et la fiche du lead (#139), les
-> tokens par étape (#140) ; les pictogrammes (#142) sont en cours de déploiement. **Bases éphémères** : chaque
+> tokens par étape (#140) et les pictogrammes (#142). **Bases éphémères** : chaque
 > déploiement remet les dossiers de staging et de production au seed ([`docs/rollback.md`](docs/rollback.md)).
-> Historique du 22/10 au 26/10 (v0.6.0) : Depuis le 22/10 : le cluster d'agents (#92, production depuis le 24/10 par #116),
+> Historique (v0.6.0, du 22/10 au 26/10) : le cluster d'agents (#92, production depuis le 24/10 par #116),
 > le job `test` limité aux TU (#93), le cache Docker inline depuis l'ACR (#95), l'audience `api://agentinsurflow-cluster` (#96),
 > l'isolement du cluster (le frontal Container Apps répond 404 à une application interne, #97), `E2E_CONTRAT_AUTRE` (#102),
 > le cluster sur `gpt-4.1-mini` (#105), la Saga sans rôle LLM (#106) et son nom (#107), les limites de débit par `oid` et `azp` (#116),

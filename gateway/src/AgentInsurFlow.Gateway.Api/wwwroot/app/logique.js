@@ -77,6 +77,14 @@ export function spansAffichables(spans) {
   });
 }
 
+/** Pictogrammes décoratifs (emoji, aucune dépendance) : agents de la frise, vues et actions. */
+export const PICTOS = {
+  marque: "🛡️", dossiers: "📁", tchat: "💬", dossier: "🗂️",
+  pieces: "📎", analyste: "🔎", redacteur: "✍️", actuaire: "🧮", validation: "🧑‍💼",
+  detail: "🔍", manquantes: "📭", contrat: "📄", souscripteur: "👤",
+  lancer: "▶️", pause: "⏸️", imprimer: "🖨️", relance: "✉️", sans_suite: "🗃️", outils: "🛠️",
+};
+
 /**
  * Tokens LLM d'une étape : somme des spans de son agent (la trace couvre toute l'évaluation), attributs
  * gen_ai.usage.* ; null si aucun appel LLM tracé (repli déterministe).

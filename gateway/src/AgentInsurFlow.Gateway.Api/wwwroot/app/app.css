@@ -75,6 +75,7 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 button[aria-pressed="true"] { border-color: var(--accent); }
 
 .discret { color: var(--discret); font-size: 0.9rem; }
+.picto { margin-right: 0.4em; font-style: normal; }
 .erreur { color: var(--erreur); font-weight: 600; }
 
 /* --- en-tête ---------------------------------------------------------------------------------- */

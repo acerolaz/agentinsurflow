@@ -22,3 +22,8 @@ export function erreur(r) {
 export function remplir(noeud, ...enfants) {
   noeud.replaceChildren(...enfants.flat().filter((e) => e !== null && e !== undefined && e !== false));
 }
+
+/** Pictogramme décoratif, masqué aux lecteurs d'écran (le libellé voisin porte le sens). */
+export function picto(emoji) {
+  return el("span", { class: "picto", "aria-hidden": "true" }, emoji);
+}

@@ -2,17 +2,17 @@
 // valider la proposition, relancer puis classer sans suite, et afficher le contrat généré. L'état se relit chaque
 // seconde pendant l'évaluation.
 import { appeler } from "./api.js";
-import { el, erreur, remplir } from "./dom.js";
+import { el, erreur, picto, remplir } from "./dom.js";
 import {
-  LIBELLES_GARANTIES, LIBELLES_PIECES, STATUTS_FIGES, classableSansSuite, conditionsGenerales, dateEcheance, etatAffiche,
+  LIBELLES_GARANTIES, LIBELLES_PIECES, PICTOS, STATUTS_FIGES, classableSansSuite, conditionsGenerales, dateEcheance, etatAffiche,
   frise, gabaritRelance,
   spansAffichables, tokensEtape,
 } from "./logique.js";
 
 const SOUS_ONGLETS = [
-  ["detail", "Détail de l'étape"],
-  ["pieces", "Pièces manquantes"],
-  ["contrat", "Contrat proposé"],
+  ["detail", "Détail de l'étape", "detail"],
+  ["pieces", "Pièces manquantes", "manquantes"],
+  ["contrat", "Contrat proposé", "contrat"],
 ];
 
 export async function afficherDossier(zone, numero) {
@@ -151,8 +151,8 @@ export async function afficherDossier(zone, numero) {
     const derniere = v.etat?.rapports?.at(-1);
     return el("div", { class: "actions" },
       el("button", { type: "button", id: "lancer", "aria-disabled": String(bloque), onclick: () => !bloque && lancer() },
-        v.enVol ? "Évaluation en cours…" : reprendre ? "Reprendre" : "Lancer l'évaluation"),
-      el("button", { type: "button", id: "pause", class: "secondaire", "aria-disabled": String(!v.enVol), onclick: () => v.enVol && pause() }, "Pause"),
+        picto(PICTOS.lancer), v.enVol ? "Évaluation en cours…" : reprendre ? "Reprendre" : "Lancer l'évaluation"),
+      el("button", { type: "button", id: "pause", class: "secondaire", "aria-disabled": String(!v.enVol), onclick: () => v.enVol && pause() }, picto(PICTOS.pause), "Pause"),
       el("span", { class: "discret", "aria-live": "off" }, v.ecoule === null ? "" : `Temps écoulé : ${v.ecoule} s`),
       derniere ? el("span", { class: "discret" }, "trace_id : ", el("code", {}, derniere.trace_id)) : null);
   }
@@ -174,7 +174,7 @@ export async function afficherDossier(zone, numero) {
             lireTokens(e);
           },
         },
-        el("span", { class: "libelle" }, e.libelle),
+        el("span", { class: "libelle" }, picto(PICTOS[e.agent]), e.libelle),
         el("span", { class: "discret" }, { fait: "fait", en_cours: "en cours", a_venir: "à venir" }[e.statut]
           + (e.duree_s === null ? "" : ` · ${e.duree_s.toFixed(1)} s`))))));
   }
@@ -191,7 +191,7 @@ export async function afficherDossier(zone, numero) {
         el("dt", {}, "Durée"), el("dd", {}, e.duree_s === null ? "—" : `${e.duree_s.toFixed(1)} s`),
         el("dt", {}, "Tokens"), el("dd", {}, texteTokens(e)),
         el("dt", {}, "trace_id"), el("dd", {}, el("code", {}, e.rapport.trace_id))),
-      el("button", { type: "button", class: "secondaire", onclick: () => afficherTraces(e, cible) }, "Outils appelés"),
+      el("button", { type: "button", class: "secondaire", onclick: () => afficherTraces(e, cible) }, picto(PICTOS.outils), "Outils appelés"),
       cible);
   }
 
@@ -256,10 +256,10 @@ export async function afficherDossier(zone, numero) {
       champ,
       el("div", { class: "actions" },
         el("button", { type: "submit", id: "envoyer-relance", "aria-disabled": String(epuisees || !!v.relanceEnVol) },
-          epuisees ? "3 relances déjà envoyées" : "Envoyer la relance"),
+          picto(PICTOS.relance), epuisees ? "3 relances déjà envoyées" : "Envoyer la relance"),
         classableSansSuite(v.etat)
           ? el("button", { type: "button", id: "sans-suite", class: "secondaire", "aria-disabled": String(!!v.relanceEnVol),
-            onclick: () => !v.relanceEnVol && classerSansSuite() }, "Classer sans suite")
+            onclick: () => !v.relanceEnVol && classerSansSuite() }, picto(PICTOS.sans_suite), "Classer sans suite")
           : null)),
       v.relance?.message ?? null,
       v.relance?.texte ? el("blockquote", { class: "texte-envoye" }, v.relance.texte) : null);
@@ -317,7 +317,7 @@ export async function afficherDossier(zone, numero) {
     const f = v.fiche;
     if (!f) return null;
     return el("section", { class: "fiche ne-pas-imprimer", "aria-labelledby": "titre-fiche" },
-      el("h2", { id: "titre-fiche" }, "Souscripteur"),
+      el("h2", { id: "titre-fiche" }, picto(PICTOS.souscripteur), "Souscripteur"),
       el("dl", {},
         el("dt", {}, "Identité"), el("dd", {}, `${f.civilite} ${f.prenom} ${f.nom}`.trim()),
         el("dt", {}, "Adresse postale"), el("dd", {}, `${f.adresse}, ${f.code_postal}`),
@@ -403,13 +403,13 @@ export async function afficherDossier(zone, numero) {
       el("p", {}, `Fait le ${new Date(c.valide_le).toLocaleDateString("fr-FR")}, contrat validé par le gestionnaire.`),
       el("p", {}, "Pour l'assureur (AgentInsurFlow) et le souscripteur."),
       el("p", { class: "signature" }, "Signature du souscripteur :"),
-      el("button", { type: "button", class: "ne-pas-imprimer", onclick: () => window.print() }, "Imprimer"));
+      el("button", { type: "button", class: "ne-pas-imprimer", onclick: () => window.print() }, picto(PICTOS.imprimer), "Imprimer"));
   }
 
   function sousOnglets() {
     const nb = manquantes().length;
     const panneaux = { detail: panneauDetail, pieces: panneauPieces, contrat: panneauContrat };
-    const onglets = SOUS_ONGLETS.map(([cle, titre]) =>
+    const onglets = SOUS_ONGLETS.map(([cle, titre, icone]) =>
       el("button", {
         type: "button", role: "tab", id: `sous-${cle}`, "aria-controls": "sous-panneau",
         "aria-selected": String(v.sousOnglet === cle), tabindex: v.sousOnglet === cle ? "0" : "-1",
@@ -418,7 +418,7 @@ export async function afficherDossier(zone, numero) {
           rendre();
           document.getElementById(`sous-${cle}`)?.focus();
         },
-      }, titre, cle === "pieces" && nb ? el("span", { class: "pastille", "aria-label": `${nb} manquante(s)` }, String(nb)) : null));
+      }, picto(PICTOS[icone]), titre, cle === "pieces" && nb ? el("span", { class: "pastille", "aria-label": `${nb} manquante(s)` }, String(nb)) : null));
     return [
       el("div", {
         role: "tablist", "aria-label": "Détail du dossier", class: "sous-onglets",
@@ -444,7 +444,7 @@ export async function afficherDossier(zone, numero) {
     const curseur = actif?.tagName === "TEXTAREA" ? [actif.selectionStart, actif.selectionEnd] : null;
     remplir(zone,
       el("p", { class: "ne-pas-imprimer" }, el("a", { href: "#/dossiers" }, "← Mes dossiers")),
-      el("h1", {}, `Dossier ${numero}`),
+      el("h1", {}, picto(PICTOS.dossier), `Dossier ${numero}`),
       el("p", { class: "discret" }, s ? `Statut : ${s} · tentative ${v.etat.tentative}` : "Jamais évalué"),
       ficheSouscripteur(),
       barreActions(),

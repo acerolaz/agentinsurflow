@@ -19,8 +19,10 @@ public sealed class ContratGenereTests : IDisposable
     private static readonly ContratGenere Accepte = new("AIF-A1", "tiers_plus", "standard", new DateOnly(2026, 11, 1),
         "612.40", "51.03", "bareme-2026.1", "formule-2026.1", ["Profil sans sinistre"], ["Code des assurances, art. A121-1"],
         GestionnaireA, new DateTimeOffset(2026, 10, 27, 10, 0, 0, TimeSpan.Zero),
-        new SouscripteurContrat("Durand", "Alice", new DateOnly(1990, 1, 2), "3 rue des Lilas", "69003", "PERMIS42", new DateOnly(2010, 5, 6)),
-        new VehiculeContrat("Peugeot", "208", "AB-123-CD", 5, "prive"), 0.85);
+        new SouscripteurContrat("Durand", "Alice", new DateOnly(1990, 1, 2), "3 rue des Lilas", "69003", "PERMIS42", new DateOnly(2010, 5, 6),
+            "0612345678", "alice@exemple.invalid", "FR"),
+        new VehiculeContrat("Peugeot", "208", "AB-123-CD", 5, "prive", "1.2 PureTech", "VF3TEST", new DateOnly(2019, 3, 15), "garage", "69003"),
+        0.85, [new GarantieContrat("responsabilite_civile", 0m), new GarantieContrat("assistance_0_km", null)]);
 
     private sealed class DepotEnMemoire : IDepotContratGenere
     {
@@ -54,9 +56,9 @@ public sealed class ContratGenereTests : IDisposable
     }
 
     [Fact]
-    public async Task Contrat_accepte_200_avec_les_parties_au_contrat_sans_contact()
+    public async Task Contrat_accepte_200_avec_les_parties_au_contrat_et_les_garanties()
     {
-        var (statut, corps, brut) = await Get("AIF-A1", GestionnaireA);
+        var (statut, corps, _) = await Get("AIF-A1", GestionnaireA);
 
         Assert.Equal(HttpStatusCode.OK, statut);
         Assert.Equal("AIF-A1", corps.GetProperty("numero_contrat").GetString());
@@ -66,16 +68,23 @@ public sealed class ContratGenereTests : IDisposable
         Assert.Equal("2026-11-01", corps.GetProperty("date_effet").GetString());
         Assert.Equal(GestionnaireA, corps.GetProperty("valide_par").GetString());
         Assert.Equal("Code des assurances, art. A121-1", corps.GetProperty("citations")[0].GetString());
-        // Exception assumée (contrat imprimé, ACCEPTE seulement) : identité et véhicule ; jamais de quoi contacter l'assuré.
+        // Exception assumée (contrat imprimé, ACCEPTE seulement) : identité, coordonnées, véhicule et garanties (modèle d'Acerola, 27/10).
         var souscripteur = corps.GetProperty("souscripteur");
         Assert.Equal(("Durand", "Alice", "3 rue des Lilas", "69003", "PERMIS42", "1990-01-02"),
             (souscripteur.GetProperty("nom").GetString(), souscripteur.GetProperty("prenom").GetString(),
              souscripteur.GetProperty("adresse").GetString(), souscripteur.GetProperty("code_postal").GetString(),
              souscripteur.GetProperty("permis_numero").GetString(), souscripteur.GetProperty("date_naissance").GetString()));
-        Assert.Equal("AB-123-CD", corps.GetProperty("vehicule").GetProperty("immatriculation").GetString());
+        Assert.Equal(("0612345678", "alice@exemple.invalid", "FR"),
+            (souscripteur.GetProperty("telephone").GetString(), souscripteur.GetProperty("email").GetString(),
+             souscripteur.GetProperty("permis_pays").GetString()));
+        var vehicule = corps.GetProperty("vehicule");
+        Assert.Equal(("AB-123-CD", "VF3TEST", "2019-03-15", "garage"),
+            (vehicule.GetProperty("immatriculation").GetString(), vehicule.GetProperty("vin").GetString(),
+             vehicule.GetProperty("date_mise_circulation").GetString(), vehicule.GetProperty("mode_stationnement").GetString()));
         Assert.Equal(0.85, corps.GetProperty("crm_bonus_malus").GetDouble());
-        foreach (var interdit in new[] { "email", "telephone", "@" })
-            Assert.DoesNotContain(interdit, brut, StringComparison.OrdinalIgnoreCase);
+        var garanties = corps.GetProperty("garanties");
+        Assert.Equal(("responsabilite_civile", 0m), (garanties[0].GetProperty("type").GetString(), garanties[0].GetProperty("franchise").GetDecimal()));
+        Assert.Equal(JsonValueKind.Null, garanties[1].GetProperty("franchise").ValueKind);
     }
 
     [Fact]

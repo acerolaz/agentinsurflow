@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import {
   classableSansSuite,
   conditionsGenerales,
+  dateEcheance,
   etatAffiche,
   frise,
   gabaritRelance,
@@ -163,4 +164,10 @@ test("conditions générales : chunks recollés sans le recouvrement, titres et 
 test("conditions générales : document absent → null", () => {
   assert.equal(conditionsGenerales(null), null);
   assert.equal(conditionsGenerales({ versions: [], chunks: [] }), null);
+});
+
+test("échéance : un an moins un jour, 29 février compris", () => {
+  assert.equal(dateEcheance("2026-11-01"), "2027-10-31");
+  assert.equal(dateEcheance("2026-01-01"), "2026-12-31");
+  assert.equal(dateEcheance("2028-02-29"), "2029-02-28");
 });

@@ -247,6 +247,9 @@ public sealed class EcrituresPostgresTests
         }
     }
 
+    private static readonly VehiculeContrat VehiculeSeed1 = new("Marque", "Modele", "AA-001-AA", 5, "prive",
+        "V1", "VIN00000000000001", new DateOnly(2019, 5, 1), "garage", "75011");
+
     [Fact]
     public async Task Contrat_genere_lu_apres_ACCEPTE_avec_le_compte_dossiers_et_borne_au_gestionnaire()
     {
@@ -273,9 +276,13 @@ public sealed class EcrituresPostgresTests
         Assert.Equal(["cit"], contrat.Citations);
         // Parties au contrat (seed du n° 1) : lues par vue_contrat_accepte, seulement après ACCEPTE
         Assert.Equal(new SouscripteurContrat("Nom1", "Prenom1", new DateOnly(1999, 3, 14), "1 rue Fictive", "75011",
-            "PERMIS000001", new DateOnly(2018, 6, 1)), contrat.Souscripteur);
-        Assert.Equal(new VehiculeContrat("Marque", "Modele", "AA-001-AA", 5, "prive"), contrat.Vehicule);
+            "PERMIS000001", new DateOnly(2018, 6, 1), "0600000001", "souscripteur1@exemple.invalid", "FR"), contrat.Souscripteur);
+        Assert.Equal(VehiculeSeed1, contrat.Vehicule);
         Assert.Equal(0.9, contrat.CrmBonusMalus);
+        // Formule tous_risques du n° 1 : garanties posées par la migration ContratComplet, franchise null = sans franchise
+        Assert.Equal([new("assistance_0_km", null), new("bris_de_glace", 0m), new("dommages_tous_accidents", 450m),
+            new("protection_juridique", 0m), new("responsabilite_civile", 300m), new GarantieContrat("vol_incendie_tempete", 300m)],
+            contrat.Garanties);
         Assert.Equal((null, false), await lecteur.LireContratGenere(GestionnaireB, numero, ct));
     }
 
@@ -289,7 +296,7 @@ public sealed class EcrituresPostgresTests
 
         // Seed du n° 1 (civilité posée par la migration FicheSouscripteur), quel que soit le statut du contrat
         Assert.Equal(new FicheSouscripteur("M.", "Nom1", "Prenom1", "1 rue Fictive", "75011", "0600000001",
-            "souscripteur1@exemple.invalid", new VehiculeContrat("Marque", "Modele", "AA-001-AA", 5, "prive")),
+            "souscripteur1@exemple.invalid", VehiculeSeed1),
             await lecteur.LireFiche(GestionnaireA, numero, ct));
         Assert.Null(await lecteur.LireFiche(GestionnaireB, numero, ct));
     }

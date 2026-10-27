@@ -84,8 +84,10 @@ inscrire() {
 }
 
 echo "② Inscriptions agentinsurflow-mcp, agentinsurflow-rag et agentinsurflow-underwriting (A3)"
-# Les clients OBO d'abord : une API ne pré-autorise qu'un appId déjà inscrit
-mcp=$(inscrire agentinsurflow-mcp "$MCP_SCOPE" "$CLI" "Gestionnaire=$MCP_GESTIONNAIRE")
+# Les clients OBO d'abord : une API ne pré-autorise qu'un appId déjà inscrit. Les agents déjà inscrits (relance)
+# restent pré-autorisés sur le MCP : sans eux, un passage interrompu avant ⑧ coupe le cluster (AADSTS65001).
+agents_inscrits=$(for a in "${AGENTS[@]}"; do az ad app list --display-name "agentinsurflow-agent-$a" --query "[0].appId" -o tsv; done)
+mcp=$(inscrire agentinsurflow-mcp "$MCP_SCOPE" "$CLI $agents_inscrits" "Gestionnaire=$MCP_GESTIONNAIRE")
 rag=$(inscrire agentinsurflow-rag "$RAG_SCOPE" "$CLI $mcp" "Gestionnaire=$RAG_GESTIONNAIRE" "Ingestion=$RAG_INGESTION")
 uw=$(inscrire agentinsurflow-underwriting "$UW_SCOPE" "$CLI $rag $mcp" \
   "Gestionnaire=$UW_GESTIONNAIRE" "Telemetrie=$UW_TELEMETRIE")

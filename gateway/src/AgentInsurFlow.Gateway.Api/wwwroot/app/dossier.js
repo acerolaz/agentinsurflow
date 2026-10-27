@@ -4,7 +4,8 @@
 import { appeler } from "./api.js";
 import { el, erreur, remplir } from "./dom.js";
 import {
-  LIBELLES_PIECES, STATUTS_FIGES, classableSansSuite, conditionsGenerales, etatAffiche, frise, gabaritRelance,
+  LIBELLES_GARANTIES, LIBELLES_PIECES, STATUTS_FIGES, classableSansSuite, conditionsGenerales, dateEcheance, etatAffiche,
+  frise, gabaritRelance,
   spansAffichables, tokensEtape,
 } from "./logique.js";
 
@@ -325,29 +326,68 @@ export async function afficherDossier(zone, numero) {
         f.vehicule && [el("dt", {}, "Véhicule"), el("dd", {}, vehicule(f.vehicule))]));
   }
 
+  // Contrat imprimé sur le modèle d'Acerola (27/10) : conditions particulières numérotées, notice RGPD, puis
+  // conditions générales (notice du contrat type) et références de la décision.
   function contratGenere() {
     const c = v.contrat;
     const s = c.souscripteur;
     const auto = c.vehicule;
     const jour = (d) => d.split("-").reverse().join("/"); // AAAA-MM-JJ → JJ/MM/AAAA, sans décalage de fuseau
+    const euros = (x) => Number(x).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
     const cg = v.conditions;
+    const ligne = (titre, valeur) => [el("dt", {}, titre), el("dd", {}, valeur)];
     return el("article", { class: "contrat-imprimable", "aria-labelledby": "titre-contrat" },
-      el("h2", { id: "titre-contrat" }, `Contrat d'assurance automobile n° ${c.numero_contrat}`),
-      el("p", {}, "AgentInsurFlow — document fictif généré pour le projet de certification."),
-      el("h3", {}, "Conditions particulières"),
+      el("h2", { id: "titre-contrat" }, "Contrat d'assurance automobile — conditions particulières"),
+      el("p", { class: "discret" }, "AgentInsurFlow — document fictif généré pour le projet de certification."),
       el("dl", {},
-        el("dt", {}, "Souscripteur"), el("dd", {}, `${s.prenom} ${s.nom}, né(e) le ${jour(s.date_naissance)}`),
-        el("dt", {}, "Adresse"), el("dd", {}, `${s.adresse}, ${s.code_postal}`),
-        el("dt", {}, "Permis"), el("dd", {}, `n° ${s.permis_numero}, obtenu le ${jour(s.permis_date_obtention)}`),
-        auto && [el("dt", {}, "Véhicule"), el("dd", {}, vehicule(auto))],
-        el("dt", {}, "Formule"), el("dd", {}, c.formule),
-        el("dt", {}, "Contrat type"), el("dd", {}, c.contrat_type),
-        el("dt", {}, "Date d'effet"), el("dd", {}, jour(c.date_effet)),
-        el("dt", {}, "Bonus-malus (CRM)"), el("dd", {}, String(c.crm_bonus_malus)),
-        el("dt", {}, "Prime"), el("dd", {}, `${c.prime_ttc_annuelle} € TTC par an, soit ${c.prime_mensuelle} € par mois`),
-        el("dt", {}, "Barème / formule"), el("dd", {}, `${c.version_bareme} / ${c.version_formule}`),
-        ...liste("Motifs", c.motifs),
-        ...liste("Citations", c.citations)),
+        ligne("N° de contrat", c.numero_contrat),
+        ligne("Date d'effet", jour(c.date_effet)),
+        ligne("Date d'échéance", `${jour(dateEcheance(c.date_effet))} (reconduction tacite)`)),
+      el("h3", {}, "1. Souscripteur et conducteur principal"),
+      el("dl", {},
+        ligne("Nom et prénom", `${s.nom.toUpperCase()} ${s.prenom}`),
+        ligne("Date de naissance", jour(s.date_naissance)),
+        ligne("Adresse postale", `${s.adresse}, ${s.code_postal}`),
+        ligne("Téléphone", s.telephone),
+        ligne("Adresse e-mail", s.email),
+        ligne("N° de permis de conduire", `${s.permis_numero} (délivré le ${jour(s.permis_date_obtention)}, ${s.permis_pays})`),
+        ligne("Coefficient bonus-malus (CRM)", c.crm_bonus_malus.toLocaleString("fr-FR", { minimumFractionDigits: 2 }))),
+      el("h3", {}, "2. Véhicule assuré"),
+      auto
+        ? el("dl", {},
+          ligne("Marque / modèle", `${auto.marque} ${auto.modele} ${auto.version}, ${auto.puissance_fiscale_cv} CV`),
+          ligne("Immatriculation", auto.immatriculation),
+          ligne("N° de série (VIN)", auto.vin),
+          ligne("1re mise en circulation", jour(auto.date_mise_circulation)),
+          ligne("Usage déclaré", USAGES[auto.type_usage] ?? auto.type_usage),
+          ligne("Stationnement habituel", `${STATIONNEMENTS[auto.mode_stationnement] ?? auto.mode_stationnement} (${auto.code_postal_stationnement})`))
+        : el("p", {}, "Véhicule non renseigné."),
+      el("h3", {}, "3. Garanties et franchises"),
+      el("p", {}, `Formule souscrite : ${FORMULES[c.formule] ?? c.formule} (contrat type ${c.contrat_type})`),
+      el("table", {},
+        el("thead", {}, el("tr", {}, el("th", { scope: "col" }, "Garantie"), el("th", { scope: "col" }, "Statut"),
+          el("th", { scope: "col" }, "Franchise"))),
+        el("tbody", {}, (c.garanties ?? []).map((g) => el("tr", {},
+          el("td", {}, LIBELLES_GARANTIES[g.type] ?? g.type), el("td", {}, "Incluse"),
+          el("td", {}, g.franchise === null ? "sans objet" : euros(g.franchise)))))),
+      el("h3", {}, "4. Cotisation et modalités de paiement"),
+      el("dl", {},
+        ligne("Prime totale TTC", `${euros(c.prime_ttc_annuelle)} par an`),
+        ligne("Mode de règlement", `Prélèvement automatique mensuel (${euros(c.prime_mensuelle)} par mois)`)),
+      el("h3", {}, "5. Information RGPD et protection des données personnelles"),
+      el("p", { class: "discret" }, "Notice synthétique (articles 13 et 14 du RGPD)."),
+      el("ol", {},
+        el("li", {}, "Responsable de traitement : AgentInsurFlow (assureur fictif du projet de certification)."),
+        el("li", {}, "Finalités : souscription et gestion du contrat, tarification du risque, prévention de la fraude."),
+        el("li", {}, "Base légale : exécution du contrat et mesures précontractuelles (article 6.1.b du RGPD)."),
+        el("li", {}, "Décision : l'analyse automatisée porte sur un dossier minimisé (sans nom, adresse ni coordonnées) ; "
+          + "la décision est toujours validée par un gestionnaire (article 22 du RGPD)."),
+        el("li", {}, "Destinataires : le gestionnaire du contrat et les services internes de l'assureur ; l'hébergeur cloud "
+          + "en tant que sous-traitant."),
+        el("li", {}, "Durée de conservation : la durée de la relation contractuelle, puis l'archivage pendant les délais de "
+          + "prescription applicables."),
+        el("li", {}, "Vos droits : accès, rectification, effacement, limitation et opposition, auprès du délégué à la "
+          + "protection des données (dpo@agentinsurflow.invalid) ; réclamation possible auprès de la CNIL.")),
       el("h3", {}, "Conditions générales"),
       cg
         ? [el("p", {}, cg.titre), ...cg.sections.flatMap((sec) => [
@@ -355,8 +395,14 @@ export async function afficherDossier(zone, numero) {
           ...sec.lignes.filter((l) => !l.puce).map((l) => el("p", {}, l.texte)),
           sec.lignes.some((l) => l.puce) && el("ul", {}, sec.lignes.filter((l) => l.puce).map((l) => el("li", {}, l.texte)))])]
         : el("p", {}, `Notice du contrat type « ${c.contrat_type} », consultable au corpus.`),
-      el("p", {}, `Contrat validé par le gestionnaire le ${new Date(c.valide_le).toLocaleString("fr-FR")}.`),
-      el("p", { class: "signature" }, "Fait pour valoir ce que de droit. Signature de l'assuré :"),
+      el("h3", {}, "Références de la décision"),
+      el("dl", { class: "discret" },
+        ligne("Barème / formule", `${c.version_bareme} / ${c.version_formule}`),
+        ...liste("Motifs", c.motifs),
+        ...liste("Citations", c.citations)),
+      el("p", {}, `Fait le ${new Date(c.valide_le).toLocaleDateString("fr-FR")}, contrat validé par le gestionnaire.`),
+      el("p", {}, "Pour l'assureur (AgentInsurFlow) et le souscripteur."),
+      el("p", { class: "signature" }, "Signature du souscripteur :"),
       el("button", { type: "button", class: "ne-pas-imprimer", onclick: () => window.print() }, "Imprimer"));
   }
 
@@ -418,6 +464,10 @@ export async function afficherDossier(zone, numero) {
   rendre();
   if (statut() === "EN_COURS") suivre(); // page rechargée pendant une évaluation
 }
+
+const FORMULES = { tiers: "Tiers", tiers_etendu: "Tiers étendu", tous_risques: "Tous risques" };
+const USAGES = { prive: "Déplacements privés et trajets domicile-travail", professionnel: "Usage professionnel" };
+const STATIONNEMENTS = { garage: "Garage fermé ou box", parking: "Parking", rue: "Voie publique" };
 
 function vehicule(auto) {
   return `${auto.marque} ${auto.modele}, ${auto.immatriculation}, ${auto.puissance_fiscale_cv} CV, usage ${auto.type_usage}`;

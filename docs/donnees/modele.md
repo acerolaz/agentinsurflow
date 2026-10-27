@@ -57,7 +57,7 @@ Noms en snake_case (convention EF `UseSnakeCaseNamingConvention`), clés `uuid`,
 
 | Table | Colonnes principales | Clés et index |
 |---|---|---|
-| `souscripteur` | `id`, `nom`, `prenom`, `date_naissance`, `adresse`, `email`, `telephone`, `situation_familiale`, `permis_numero`, `permis_date_obtention`, `permis_pays`, **`code_postal`** | PK `id` |
+| `souscripteur` | `id`, **`civilite`**, `nom`, `prenom`, `date_naissance`, `adresse`, `email`, `telephone`, `situation_familiale`, `permis_numero`, `permis_date_obtention`, `permis_pays`, **`code_postal`** | PK `id` |
 | `contrat` | `id`, **`numero_contrat`**, `souscripteur_id`, **`gestionnaire_id`**, `date_effet`, `statut`, `formule`, `mis_a_jour` | PK `id` · UNIQUE `numero_contrat` · index `gestionnaire_id` · FK UNIQUE `souscripteur_id` |
 | `conducteur_secondaire` | `id`, `souscripteur_id`, `identite`, `lien_parente`, `historique_permis` | FK `souscripteur_id` |
 | `vehicule` | `id`, `contrat_id`, `immatriculation`, `vin`, `marque`, `modele`, `version`, `puissance_fiscale_cv`, `puissance_din`, `carburant`, `date1re_mise_circulation`, `type_usage`, `km_annuel_estime`, `mode_stationnement`, `code_postal_stationnement` | FK UNIQUE `contrat_id` |
@@ -78,12 +78,28 @@ Seul objet lisible par le compte `dossiers` (`GRANT SELECT` sur la vue, aucun dr
 `nb_sinistres` (agrégat), `suspensions`, `resiliations`, `formule`, `mis_a_jour`.
 **Aucun nom, aucune adresse, aucun numéro de permis.** SQL : `Dossiers/VueMinimisee.cs`.
 
+### Vues des exceptions à la minimisation (migrations `ContratAccepte`, `FicheSouscripteur`, `ContratComplet`)
+
+Décision d'Acerola du 27/10 ; accordées au compte `dossiers`, la table `souscripteur` lui restant fermée. Jamais lues
+par le cluster ni envoyées à un LLM (voir [`rgpd.md`](rgpd.md)).
+
+| Vue | Contenu | Filtre |
+|---|---|---|
+| `vue_contrat_accepte` | parties au contrat imprimé : identité, naissance, adresse, téléphone, e-mail, permis (n°, date, pays), véhicule (marque, modèle, version, immatriculation, VIN, 1re mise en circulation, usage, stationnement) | contrats `ACCEPTE` |
+| `vue_garanties_contrat_accepte` | garanties du contrat et franchise (`garantie` ⟕ `franchise`) | contrats `ACCEPTE` |
+| `vue_fiche_souscripteur` | fiche du lead dans le détail du dossier : civilité, identité, adresse, mobile, e-mail, véhicule | tout statut |
+
+Toutes portent `numero_contrat` et `gestionnaire_id` : la route filtre sur l'`oid` du jeton (BOLA).
+
 ### Seed (migration `Seed`)
 
-Dossiers synthétiques pour deux gestionnaires, dont les `oid` Entra viennent de `SEED_GESTIONNAIRE_A` et
-`SEED_GESTIONNAIRE_B` (variables d'environnement, jamais commitées). `ON CONFLICT DO NOTHING` : rejouable.
-Répartition : `AIF-2026-000001` à `000003` → gestionnaire A, `000004` à `000006` → gestionnaire B ; une valeur qui
-n'est pas un GUID fait échouer la migration. La migration n'est jouée qu'une fois par base ; sans ces variables au premier démarrage, le seed est vide
+Dossiers synthétiques, dont les `oid` Entra viennent de `SEED_GESTIONNAIRE_A`, `_B` et `_C` (variables
+d'environnement, jamais commitées). `ON CONFLICT DO NOTHING` : rejouable. Répartition : `AIF-2026-000001` à `000003` et
+`000010` (refusé par le barème, R01) → gestionnaire A, `000004` à `000006` → gestionnaire B, `000007` à `000009` →
+gestionnaire C (identité de la CI, migration `SeedGestionnaireC`) ; une valeur qui n'est pas un GUID fait échouer la
+migration. Civilité (M. pour les numéros impairs, Mme pour les pairs) et garanties par formule (protection juridique ;
+vol, incendie et tempête et bris de glace dès `tiers_etendu` ; dommages tous accidents et assistance en
+`tous_risques`) sont posées par les migrations `FicheSouscripteur` et `ContratComplet`. La migration n'est jouée qu'une fois par base ; sans ces variables au premier démarrage, le seed est vide
 (redémarrer sur une base neuve pour le rejouer).
 
 ### Écarts au MCD officiel (documentés)
@@ -92,6 +108,7 @@ n'est pas un GUID fait échouer la migration. La migration n'est jouée qu'une f
 |---|---|---|
 | `CONTRAT.numero` → `numero_contrat` UNIQUE | Clé pivot entre l'agent, la vue et le BOLA | S3-7 |
 | `SOUSCRIPTEUR.code_postal` | Le département remplace l'adresse dans la vue minimisée | S3-8 |
+| `SOUSCRIPTEUR.civilite` | Fiche du lead et contrat imprimé (27/10) | Acerola, 27/10 |
 | `CONTRAT.gestionnaire_id` | `oid` Entra du gestionnaire : contrôle BOLA (OWASP API1) | S3-17 |
 | `PRIME` 1–1 avec `CONTRAT` + `periodicite`, `date_effet`, `etat_validation` | Une prime par contrat (MCD officiel) ; brouillon validé par un humain (S4) | P18, tranché par Acerola le 20/10 |
 | `DECISION` ajoutée | Trace de la décision de souscription (dossier de conception, L6.7) | S3-17 |

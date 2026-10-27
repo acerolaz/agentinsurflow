@@ -8,13 +8,16 @@ Page HTML + JavaScript sans étape de build, servie par la gateway sous **`/app/
 |---|---|---|---|
 | Connexion | Cartes « Gestionnaire A » / « Gestionnaire B » : le choix préremplit l'UPN (`loginHint`), Entra authentifie | Entra (redirection vers `/app/`) | — |
 | Mes dossiers | Portefeuille du gestionnaire connecté (BOLA) | `GET /api/contrats` | underwriting |
-| Dossier | Lancer / Reprendre, Pause, frise, détail d'une étape, pièces manquantes et relance, proposition et revue, contrat | `POST /v1/souscriptions/{n}/evaluation`, `…/pause`, `…/revue` ; `GET /api/contrats/{n}/etat`, `POST /api/contrats/{n}/relances`, `GET /v1/souscriptions/{n}/contrat`, `GET /api/traces/{trace_id}` | cluster ; underwriting |
+| Dossier | Fiche du lead, Lancer / Reprendre, Pause, frise, détail d'une étape (tokens compris), pièces manquantes, relance et classement sans suite, proposition et revue, contrat | `POST /v1/souscriptions/{n}/evaluation`, `…/pause`, `…/revue` ; `GET /api/contrats/{n}/etat`, `GET /api/contrats/{n}/souscripteur`, `POST /api/contrats/{n}/relances`, `POST /api/contrats/{n}/sans-suite`, `GET /v1/souscriptions/{n}/contrat`, `GET /api/traces/{trace_id}` | cluster ; underwriting |
 | Tchat corpus | Question libre, réponse et sources (lien Légifrance quand l'extrait en porte un) | `POST /api/reponses` | rag |
+
+Pictogrammes décoratifs (emoji, `aria-hidden`) sur l'en-tête, les agents de la frise, les sous-onglets et les actions ; le contrat imprimé n'en porte aucun.
 
 ## Procédure de démo (30/10)
 
+0. **Aucun déploiement après la préparation** : les bases de staging et de production sont éphémères, chaque déploiement remet les dossiers au seed.
 1. `https://<gateway>/app/` → choisir **A** → « Se connecter avec Microsoft ».
-2. **Mes dossiers** → ouvrir le dossier 1 (acceptable) → **Lancer l'évaluation** : la frise avance chaque seconde.
+2. **Mes dossiers** → ouvrir le dossier 1 (acceptable) : la fiche du lead s'affiche en tête → **Lancer l'évaluation** : la frise avance chaque seconde ; cliquer une étape terminée montre son mode, sa durée et ses tokens.
 3. Pendant l'évaluation, **Pause** : elle s'arrête après l'agent en cours (`EN_PAUSE`) → **Reprendre**.
 4. **Contrat proposé** : lire fiche et prime → motif → **Valider** → contrat généré → **Imprimer**.
 5. Dossier 3 (sans relevé) → **Lancer** → **Pièces manquantes** : modifier le mail → **Envoyer la relance** (« Relance 1/3 enregistrée… »).
@@ -91,8 +94,10 @@ Prévu dans le code :
 
 ## Vue du dossier
 
+- **Fiche du lead** (en tête, hors impression) : `GET /api/contrats/{n}/souscripteur` (civilité, nom, prénom, adresse, mobile en lien `tel:`, e-mail en lien `mailto:`, véhicule). Exception à la minimisation décidée par Acerola le 27/10 : jamais envoyée au cluster ni à un LLM.
 - **Lancer / Reprendre** : `POST /v1/souscriptions/{n}/evaluation` ; pendant l'appel, `GET /api/contrats/{n}/etat` chaque seconde (frise, temps écoulé, `trace_id`). Un second clic est ignoré tant que l'appel est en vol. Page rechargée pendant une évaluation (`EN_COURS`) : l'état se relit chaque seconde, deux minutes au plus. Une ré-évaluation n'affiche pas les étapes de la tentative précédente comme faites ; après « Reprendre », la pause ne compte pas dans les durées.
 - **Pause** : `POST /v1/souscriptions/{n}/pause`, actif pendant l'évaluation ; elle s'arrête après l'agent en cours (statut `EN_PAUSE`). Réponse `{"pause": "ignoree"}` quand plus aucun agent ne reste à appeler : la page l'annonce (« Pause sans effet »).
-- **Détail d'une étape** : mode, cause, durée, puis les spans de sa trace réduits à une liste blanche (outil MCP, décision, code ; agent, mode, cause) — jamais de prompt ni de sortie du modèle.
+- **Détail d'une étape** : mode, cause, durée, **tokens** (lus une fois dans la trace : attributs `gen_ai.usage.*` du span `invoke_agent` de l'agent ; « — (aucun appel LLM) » quand le total est nul), puis les spans de sa trace réduits à une liste blanche (outil MCP, décision, code ; agent, mode, cause) — jamais de prompt ni de sortie du modèle.
 - **Pièces manquantes** (pastille quand la section `pieces` est `incomplet`) : mail prérempli et modifiable ; « Envoyer la relance » fait `POST /api/contrats/{n}/relances`, qui l'**enregistre et le trace comme envoyé, sans e-mail** avant ACS (#123, 15/11). Trois au plus (`409 RELANCES_EPUISEES`), jamais sur un dossier décidé (`409 DOSSIER_DECIDE`), seulement pour des pièces que l'agent Pièces a trouvées manquantes (`400 PIECES_INVALIDES`) ; deux envois simultanés : le second reçoit `409 RELANCE_CONCURRENTE` ; le span ne porte que le rang et les types de pièces, jamais le texte.
-- **Contrat proposé** : fiche et prime des sections de l'état ; revue avec motif obligatoire (Valider, Corriger et accepter, Refuser). Après `ACCEPTE`, `GET /v1/souscriptions/{n}/contrat` puis « Imprimer » (`@media print`).
+- **Contrat proposé** : fiche et prime des sections de l'état ; revue avec motif obligatoire (Valider, Corriger et accepter, Refuser). Après `ACCEPTE`, `GET /v1/souscriptions/{n}/contrat` puis « Imprimer » (`@media print`). Le contrat suit le modèle fictif d'Acerola : en-tête (n°, effet, échéance à un an moins un jour, reconduction tacite), 1. souscripteur, 2. véhicule, 3. garanties et franchises, 4. cotisation (TTC annuelle, prélèvement mensuel), 5. notice RGPD (articles 13, 14 et 22), puis conditions générales (notice du contrat type, lue au corpus) et références de la décision.
+- **Après `REVUE_HUMAINE`, trois relances envoyées** : « Classer sans suite » (`POST /api/contrats/{n}/sans-suite`, statut `SANS_SUITE`, K8).

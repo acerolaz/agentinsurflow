@@ -28,7 +28,7 @@ Jeton **Entra ID** (Bearer) validé à l'entrée : signature (clés publiées pa
 |---|---|---|---|
 | `POST /api/reponses`, `GET /api/extraits`, `GET /api/documents/{doc_id}`, `GET /api/documents/{doc_id}/attribution` | `rag-gestionnaire` | `Gestionnaire` | `agentinsurflow-rag` |
 | `POST`/`GET /api/ingestions[/{id}]` | `rag-ingestion` | `Ingestion` | `agentinsurflow-rag` |
-| `GET /api/contrats[/{numero_contrat}]`, `GET /api/traces/{trace_id}` | `underwriting-gestionnaire` | `Gestionnaire` | `agentinsurflow-underwriting` |
+| `/api/contrats/{**reste}` (portefeuille, dossier, pièces, état, fiche du lead, contrat, relances, sans suite), `GET /api/traces/{trace_id}` | `underwriting-gestionnaire` | `Gestionnaire` | `agentinsurflow-underwriting` |
 | `POST /v1/traces` | `underwriting-telemetrie` | `Telemetrie` | `agentinsurflow-underwriting` |
 | `/`, `/openapi/v1.json`, `GET /rag/openapi.json`, `GET /underwriting/openapi/v1.json`, `/health*` | `anonymous` | — | — |
 
@@ -67,6 +67,10 @@ En Azure, la gateway est derrière l'**envoy** de Container Apps, qui ajoute l'I
 | `GET /api/documents/{doc_id}` | `rag` | 200 · 404 | Document source, ses versions et ses chunks (traçabilité) |
 | `GET /api/documents/{doc_id}/attribution?version=` | `rag` | 200 · 404 | Mentions Etalab 2.0 d'un article cité |
 | `GET /api/contrats?limit&offset`, `GET /api/contrats/{numero_contrat}` | `underwriting-admin` | 200 · 404 | Portefeuille du gestionnaire, vue minimisée (BOLA : 404 hors portefeuille) |
+| `GET /api/contrats/{numero_contrat}/pieces`, `/etat` | `underwriting-admin` | 200 · 404 | Pièces déclarées ; progression du dossier (rapports des agents, sections lisibles) |
+| `GET /api/contrats/{numero_contrat}/souscripteur` | `underwriting-admin` | 200 · 404 | Fiche du lead pour l'espace gestionnaire (exception à la minimisation, jamais vers le cluster ni un LLM) |
+| `GET /v1/souscriptions/{numero_contrat}/contrat` | `underwriting-admin` (réécrit en `/api/contrats/{numero_contrat}/contrat`) | 200 · 404 · 409 | Contrat imprimé après `ACCEPTE` |
+| `POST /api/contrats/{numero_contrat}/relances`, `/sans-suite` | `underwriting-admin` | 201 · 204 · 400 · 404 · 409 | Relance de pièces (3 au plus) ; classement `SANS_SUITE` après la 3e relance |
 | `GET /api/traces/{trace_id}` | `underwriting-admin` | 200 · 404 | Trace OpenTelemetry, tous services confondus |
 | `POST /v1/traces` | `underwriting-admin` | 200 | **Exception** : chemin imposé par la norme OTLP (récepteur de spans), pas une API métier |
 | `GET /health`, `/health/rag`, `/health/underwriting` | gateway, services | 200 | Santé et versions |

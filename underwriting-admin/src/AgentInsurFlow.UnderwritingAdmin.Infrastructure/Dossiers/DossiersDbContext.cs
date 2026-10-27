@@ -125,5 +125,10 @@ public sealed class DossiersDbContext(DbContextOptions<DossiersDbContext> option
             e.HasNoKey();
             e.ToView("vue_contrat_accepte");
         });
+        modelBuilder.Entity<LigneFicheSouscripteur>(e =>
+        {
+            e.HasNoKey();
+            e.ToView("vue_fiche_souscripteur");
+        });
     }
 }

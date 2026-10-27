@@ -9,8 +9,17 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
 /// Adapter du port <see cref="IDepotDossiers"/> : lit uniquement la vue minimisée, avec le compte <c>dossiers</c>.
 /// Le filtre <c>gestionnaire_id</c> (BOLA) fait partie de chaque requête ; EF paramètre toutes les valeurs.
 /// </summary>
-internal sealed class DepotDossiersEf(DossiersDbContext db) : IDepotDossiers, IDepotEtat, IDepotContratGenere
+internal sealed class DepotDossiersEf(DossiersDbContext db) : IDepotDossiers, IDepotEtat, IDepotContratGenere, IDepotFicheSouscripteur
 {
+    public async Task<FicheSouscripteur?> LireFiche(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
+        await db.Set<LigneFicheSouscripteur>().AsNoTracking()
+            .Where(f => f.GestionnaireId == gestionnaireId && f.NumeroContrat == numeroContrat)
+            .FirstOrDefaultAsync(ct) is { } f
+            ? new FicheSouscripteur(f.Civilite, f.Nom, f.Prenom, f.Adresse, f.CodePostal, f.Telephone, f.Email,
+                f.Immatriculation is null ? null : new VehiculeContrat(f.Marque ?? "", f.Modele ?? "", f.Immatriculation,
+                    f.PuissanceFiscaleCv ?? 0, f.TypeUsage ?? ""))
+            : null;
+
     public async Task<(ContratGenere? Contrat, bool Existe)> LireContratGenere(string gestionnaireId, string numeroContrat, CancellationToken ct)
     {
         var contrat = await db.Set<Contrat>().AsNoTracking()

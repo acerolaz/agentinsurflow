@@ -280,6 +280,21 @@ public sealed class EcrituresPostgresTests
     }
 
     [Fact]
+    public async Task Fiche_souscripteur_lue_avec_le_compte_dossiers_et_bornee_au_gestionnaire()
+    {
+        var (db, _, numero) = await Preparer();
+        await using var __ = db;
+        var ct = TestContext.Current.CancellationToken;
+        var lecteur = new DepotDossiersEf(db);
+
+        // Seed du n° 1 (civilité posée par la migration FicheSouscripteur), quel que soit le statut du contrat
+        Assert.Equal(new FicheSouscripteur("M.", "Nom1", "Prenom1", "1 rue Fictive", "75011", "0600000001",
+            "souscripteur1@exemple.invalid", new VehiculeContrat("Marque", "Modele", "AA-001-AA", 5, "prive")),
+            await lecteur.LireFiche(GestionnaireA, numero, ct));
+        Assert.Null(await lecteur.LireFiche(GestionnaireB, numero, ct));
+    }
+
+    [Fact]
     public async Task Compte_dossiers_ne_lit_ni_souscripteur_ni_un_contrat_non_accepte_dans_la_vue_du_contrat()
     {
         var (db, _, numero) = await Preparer();

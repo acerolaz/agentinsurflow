@@ -16,7 +16,7 @@ const SOUS_ONGLETS = [
 
 export async function afficherDossier(zone, numero) {
   const v = {
-    numero, etat: null, contrat: null, conditions: null, enVol: false, lanceA: undefined, ecoule: null,
+    numero, etat: null, fiche: null, contrat: null, conditions: null, enVol: false, lanceA: undefined, ecoule: null,
     message: null, etape: null, sousOnglet: "detail", minuteur: null, tentativeAvant: null, motif: "",
   };
   const SUIVI_MAX_S = 120; // rechargement pendant une évaluation : l'état se relit au plus ce temps
@@ -49,6 +49,12 @@ export async function afficherDossier(zone, numero) {
       if (!v.enVol && (statut() !== "EN_COURS" || Date.now() - debut > SUIVI_MAX_S * 1000)) clearInterval(v.minuteur);
       rendre();
     }, 1000);
+  }
+
+  // Fiche du lead (exception du 27/10) : lue une fois, affichée seulement ici, jamais envoyée au cluster.
+  async function lireFiche() {
+    const r = await appeler("GET", `/api/contrats/${chemin}/souscripteur`, { portee: "underwriting" });
+    v.fiche = r.statut === 200 ? r.json : null;
   }
 
   async function lireContrat() {
@@ -285,6 +291,19 @@ export async function afficherDossier(zone, numero) {
       bouton("Refuser", "REFUSE", "VALIDEE", "secondaire")));
   }
 
+  function ficheSouscripteur() {
+    const f = v.fiche;
+    if (!f) return null;
+    return el("section", { class: "fiche ne-pas-imprimer", "aria-labelledby": "titre-fiche" },
+      el("h2", { id: "titre-fiche" }, "Souscripteur"),
+      el("dl", {},
+        el("dt", {}, "Identité"), el("dd", {}, `${f.civilite} ${f.prenom} ${f.nom}`.trim()),
+        el("dt", {}, "Adresse postale"), el("dd", {}, `${f.adresse}, ${f.code_postal}`),
+        el("dt", {}, "Mobile"), el("dd", {}, el("a", { href: `tel:${f.mobile}` }, f.mobile)),
+        el("dt", {}, "E-mail"), el("dd", {}, el("a", { href: `mailto:${f.email}` }, f.email)),
+        f.vehicule && [el("dt", {}, "Véhicule"), el("dd", {}, vehicule(f.vehicule))]));
+  }
+
   function contratGenere() {
     const c = v.contrat;
     const s = c.souscripteur;
@@ -299,8 +318,7 @@ export async function afficherDossier(zone, numero) {
         el("dt", {}, "Souscripteur"), el("dd", {}, `${s.prenom} ${s.nom}, né(e) le ${jour(s.date_naissance)}`),
         el("dt", {}, "Adresse"), el("dd", {}, `${s.adresse}, ${s.code_postal}`),
         el("dt", {}, "Permis"), el("dd", {}, `n° ${s.permis_numero}, obtenu le ${jour(s.permis_date_obtention)}`),
-        auto && [el("dt", {}, "Véhicule"),
-          el("dd", {}, `${auto.marque} ${auto.modele}, ${auto.immatriculation}, ${auto.puissance_fiscale_cv} CV, usage ${auto.type_usage}`)],
+        auto && [el("dt", {}, "Véhicule"), el("dd", {}, vehicule(auto))],
         el("dt", {}, "Formule"), el("dd", {}, c.formule),
         el("dt", {}, "Contrat type"), el("dd", {}, c.contrat_type),
         el("dt", {}, "Date d'effet"), el("dd", {}, jour(c.date_effet)),
@@ -361,6 +379,7 @@ export async function afficherDossier(zone, numero) {
       el("p", { class: "ne-pas-imprimer" }, el("a", { href: "#/dossiers" }, "← Mes dossiers")),
       el("h1", {}, `Dossier ${numero}`),
       el("p", { class: "discret" }, s ? `Statut : ${s} · tentative ${v.etat.tentative}` : "Jamais évalué"),
+      ficheSouscripteur(),
       barreActions(),
       v.message,
       rendreFrise(),
@@ -372,8 +391,13 @@ export async function afficherDossier(zone, numero) {
 
   remplir(zone, el("h1", {}, `Dossier ${numero}`), el("p", { "aria-busy": "true" }, "Chargement…"));
   if ((await lireEtat()) !== 200) return remplir(zone, el("p", {}, el("a", { href: "#/dossiers" }, "← Mes dossiers")), v.message);
+  await lireFiche();
   if (statut() === "ACCEPTE") await lireContrat();
   if (statut() === "ACCEPTE" || statut() === "EN_ANALYSE") v.sousOnglet = "contrat";
   rendre();
   if (statut() === "EN_COURS") suivre(); // page rechargée pendant une évaluation
+}
+
+function vehicule(auto) {
+  return `${auto.marque} ${auto.modele}, ${auto.immatriculation}, ${auto.puissance_fiscale_cv} CV, usage ${auto.type_usage}`;
 }

@@ -266,6 +266,15 @@ dt { color: var(--discret); }
 dd { margin: 0; }
 dd ul { margin: 0; padding-left: 18px; }
 
+.fiche {
+  padding: 8px 16px;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: 10px;
+}
+
+.fiche h2 { margin-top: 8px; }
+
 .revue { display: grid; gap: 8px; margin-top: 16px; }
 
 .texte-envoye {

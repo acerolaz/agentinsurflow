@@ -562,6 +562,67 @@
         }
       }
     },
+    "/api/contrats/{numero_contrat}/souscripteur": {
+      "get": {
+        "tags": [
+          "Contrats"
+        ],
+        "summary": "Fiche du lead pour le détail du dossier : civilité, nom, prénom, adresse, mobile, e-mail et véhicule (jamais vers le cluster ni un LLM)",
+        "operationId": "LireFicheSouscripteur",
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FicheSouscripteur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/contrats/{numero_contrat}/brouillon": {
       "put": {
         "tags": [
@@ -1214,6 +1275,52 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "FicheSouscripteur": {
+        "required": [
+          "civilite",
+          "nom",
+          "prenom",
+          "adresse",
+          "code_postal",
+          "mobile",
+          "email",
+          "vehicule"
+        ],
+        "type": "object",
+        "properties": {
+          "civilite": {
+            "type": "string"
+          },
+          "nom": {
+            "type": "string"
+          },
+          "prenom": {
+            "type": "string"
+          },
+          "adresse": {
+            "type": "string"
+          },
+          "code_postal": {
+            "type": "string"
+          },
+          "mobile": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "vehicule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VehiculeContrat"
+              }
+            ]
           }
         }
       },

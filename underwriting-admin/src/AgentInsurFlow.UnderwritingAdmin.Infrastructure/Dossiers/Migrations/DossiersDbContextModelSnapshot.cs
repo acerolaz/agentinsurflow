@@ -283,6 +283,78 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                     b.ToTable("garantie", (string)null);
                 });
 
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.LigneFicheSouscripteur", b =>
+                {
+                    b.Property<string>("Adresse")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("adresse");
+
+                    b.Property<string>("Civilite")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("civilite");
+
+                    b.Property<string>("CodePostal")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("code_postal");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<string>("GestionnaireId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("gestionnaire_id");
+
+                    b.Property<string>("Immatriculation")
+                        .HasColumnType("text")
+                        .HasColumnName("immatriculation");
+
+                    b.Property<string>("Marque")
+                        .HasColumnType("text")
+                        .HasColumnName("marque");
+
+                    b.Property<string>("Modele")
+                        .HasColumnType("text")
+                        .HasColumnName("modele");
+
+                    b.Property<string>("Nom")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nom");
+
+                    b.Property<string>("NumeroContrat")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("numero_contrat");
+
+                    b.Property<string>("Prenom")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("prenom");
+
+                    b.Property<int?>("PuissanceFiscaleCv")
+                        .HasColumnType("integer")
+                        .HasColumnName("puissance_fiscale_cv");
+
+                    b.Property<string>("Telephone")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("telephone");
+
+                    b.Property<string>("TypeUsage")
+                        .HasColumnType("text")
+                        .HasColumnName("type_usage");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vue_fiche_souscripteur", (string)null);
+                });
+
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.LigneVue", b =>
                 {
                     b.Property<int>("AnciennetePermisAns")
@@ -778,6 +850,11 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("adresse");
+
+                    b.Property<string>("Civilite")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("civilite");
 
                     b.Property<string>("CodePostal")
                         .IsRequired()

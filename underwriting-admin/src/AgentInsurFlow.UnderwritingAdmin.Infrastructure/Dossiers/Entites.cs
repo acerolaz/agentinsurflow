@@ -6,6 +6,7 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
 internal sealed class Souscripteur
 {
     public Guid Id { get; set; }
+    public string Civilite { get; set; } = "";
     public string Nom { get; set; } = "";
     public string Prenom { get; set; } = "";
     public DateOnly DateNaissance { get; set; }
@@ -212,6 +213,25 @@ internal sealed class PartiesContratAccepte
     public string CodePostal { get; set; } = "";
     public string PermisNumero { get; set; } = "";
     public DateOnly PermisDateObtention { get; set; }
+    public string? Marque { get; set; }
+    public string? Modele { get; set; }
+    public string? Immatriculation { get; set; }
+    public int? PuissanceFiscaleCv { get; set; }
+    public string? TypeUsage { get; set; }
+}
+
+/// <summary>Ligne de <c>vue_fiche_souscripteur</c> : fiche du lead pour le détail du dossier (exception du 27/10).</summary>
+internal sealed class LigneFicheSouscripteur
+{
+    public string NumeroContrat { get; set; } = "";
+    public string GestionnaireId { get; set; } = "";
+    public string Civilite { get; set; } = "";
+    public string Nom { get; set; } = "";
+    public string Prenom { get; set; } = "";
+    public string Adresse { get; set; } = "";
+    public string CodePostal { get; set; } = "";
+    public string Telephone { get; set; } = "";
+    public string Email { get; set; } = "";
     public string? Marque { get; set; }
     public string? Modele { get; set; }
     public string? Immatriculation { get; set; }

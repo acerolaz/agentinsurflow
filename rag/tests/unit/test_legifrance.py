@@ -24,6 +24,7 @@ from agentinsurflow_rag.infrastructure.legifrance.client import (
     dans_le_perimetre,
     extraire,
     jeton_piste,
+    rattacher_annexe,
     vers_article_entrant,
 )
 
@@ -107,6 +108,9 @@ def test_401_sur_l_api_message_clair() -> None:
         ("L112-1", False),
         ("A121-10", False),
         ("R121-1", False),
+        ("Annexe à l'article A121-1", True),
+        ("Annexe à l'article A121-10", False),
+        ("Annexe à l'article L211-1", False),
     ],
 )
 def test_perimetre(numero: str, garde: bool) -> None:
@@ -139,6 +143,49 @@ def test_extraire_ne_garde_que_le_perimetre() -> None:
     articles = extraire(_client(repondre), CFG, "j", "2026-10-19", pause=print)
     assert demandes == ["A1", "A3"]
     assert [a["version"] for a in articles] == ["A1", "A3"]
+
+
+NUM_ANNEXE = "Annexe à l'article A121-1"  # sonde de la table des matières du 27/10 (#124)
+
+
+def _extraire_plan(numeros: dict[str, str]) -> list[dict[str, Any]]:
+    """``extraire`` sur un plan à plat ``{id: num}`` ; ``getArticle`` : numéro et texte par id."""
+    plan = {"articles": [{"id": i, "num": n} for i, n in numeros.items()]}
+
+    def repondre(requete: httpx.Request) -> httpx.Response:
+        if requete.url.path.endswith("/consult/code/tableMatieres"):
+            return httpx.Response(200, json=plan)
+        i = json.loads(requete.content)["id"]
+        corps = ARTICLE_LF | {"id": i, "cid": f"C{i}", "num": numeros[i], "texteHtml": f"<p>{i}"}
+        return httpx.Response(200, json={"article": corps})
+
+    return extraire(_client(repondre), CFG, "j", "2026-10-27", pause=print)
+
+
+def test_rattacher_annexe() -> None:
+    article = vers_article_entrant(
+        ARTICLE_LF | {"num": "A121-1", "id": "V1", "cid": "C1", "texteHtml": "<p>art</p>"}
+    )
+    annexe = vers_article_entrant(
+        ARTICLE_LF | {"num": NUM_ANNEXE, "id": "V2", "cid": "C2", "texteHtml": "<p>clause</p>"}
+    )
+    fusion = rattacher_annexe(article, annexe)
+    assert fusion["article"] == "A121-1" and fusion["doc_id"] == "C1"
+    assert fusion["version"] == "V1+V2"  # version d'A121-1 seule : conflit_version à l'ingestion
+    assert fusion["texte_html"] == "<p>art</p><p>clause</p>"
+    assert fusion["url_source"] == "https://www.legifrance.gouv.fr/codes/article_lc/V1"
+
+
+def test_extraire_rattache_l_annexe_a_a121_1() -> None:
+    articles = _extraire_plan({"A1": "L211-1", "A3": "A121-1", "A5": NUM_ANNEXE})
+    assert [a["article"] for a in articles] == ["L211-1", "A121-1"]
+    assert articles[1]["version"] == "A3+A5"
+    assert articles[1]["texte_html"] == "<p>A3<p>A5"
+
+
+def test_annexe_orpheline_ignoree() -> None:
+    articles = _extraire_plan({"A1": "L211-1", "A5": NUM_ANNEXE})
+    assert [a["article"] for a in articles] == ["L211-1"]
 
 
 def test_vers_article_entrant() -> None:

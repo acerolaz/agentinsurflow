@@ -1,0 +1,1082 @@
+{
+ "manifeste": {
+  "date": "2026-10-27",
+  "environnement": "",
+  "perimetre": "^(?:L121-\\d+(?:-\\d+)*|A121-1|L211-\\d+(?:-\\d+)*|R211-\\d+(?:-\\d+)*|A211-\\d+(?:-\\d+)*|ANNEXEÀL'ARTICLEA121\\-1)$",
+  "articles": 119,
+  "sha256": "49b0be96b9c12a50535edfc1537384f6fac99973e7dda7375dbe28a55d5a3b31"
+ },
+ "articles": [
+  {
+   "doc_id": "LEGIARTI000006792236",
+   "version": "LEGIARTI000006792236",
+   "article": "L121-1",
+   "date_debut": "1976-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>L'assurance relative aux biens est un contrat d'indemnité ; l'indemnité due par l'assureur à l'assuré ne peut pas dépasser le montant de la valeur de la chose assurée au moment du sinistre.</p><p>Il peut être stipulé que l'assuré reste obligatoirement son propre assureur pour une somme, ou une quotité déterminée, ou qu'il supporte une déduction fixée d'avance sur l'indemnité du sinistre.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006792236"
+  },
+  {
+   "doc_id": "LEGIARTI000006792251",
+   "version": "LEGIARTI000051786018",
+   "article": "L121-2",
+   "date_debut": "2025-06-25",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>L'assureur est garant des pertes et dommages causés par des personnes dont l'assuré est civilement responsable en vertu de l'<a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006070721&idArticle=LEGIARTI000006437058&dateTexte=&categorieLien=cid\">article 1242 du code civil</a>, quelles que soient la nature et la gravité des fautes de ces personnes.</p><p>Toutefois, lorsque l'assureur a indemnisé un dommage sur le fondement du quatrième alinéa du même article 1242 et que l'un des parents du mineur ayant causé ce dommage a été définitivement condamné sur le fondement de l'<a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006070719&idArticle=LEGIARTI000006418052&dateTexte=&categorieLien=cid\">article 227-17 du code pénal</a> pour des faits en lien avec la commission du dommage, l'assureur peut exiger de ce parent le versement d'une participation à l'indemnisation du dommage ne pouvant excéder 7 500 euros.</p><p>Toute clause des contrats d'assurance excluant systématiquement l'application du deuxième alinéa du présent article est réputée non écrite.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051786018"
+  },
+  {
+   "doc_id": "LEGIARTI000006792266",
+   "version": "LEGIARTI000006792266",
+   "article": "L121-3",
+   "date_debut": "1976-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Lorsqu'un contrat d'assurance a été consenti pour une somme supérieure à la valeur de la chose assurée, s'il y a eu dol ou fraude de l'une des parties, l'autre partie peut en demander la nullité et réclamer, en outre, des dommages et intérêts.</p><p>S'il n'y a eu ni dol ni fraude, le contrat est valable, mais seulement jusqu'à concurrence de la valeur réelle des objets assurés et l'assureur n'a pas droit aux primes pour l'excédent. Seules les primes échues lui restent définitivement acquises, ainsi que la prime de l'année courante quand elle est à terme échu.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006792266"
+  },
+  {
+   "doc_id": "LEGIARTI000006795271",
+   "version": "LEGIARTI000006795272",
+   "article": "L121-4",
+   "date_debut": "1982-07-14",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Celui qui est assuré auprès de plusieurs assureurs par plusieurs polices, pour un même intérêt, contre un même risque, doit donner immédiatement à chaque assureur connaissance des autres assureurs.</p><p>L'assuré doit, lors de cette communication, faire connaître le nom de l'assureur avec lequel une autre assurance a été contractée et indiquer la somme assurée.</p><p>Quand plusieurs assurances contre un même risque sont contractées de manière dolosive ou frauduleuse, les sanctions prévues à l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006792266&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L121-3 (V)\">L. 121-3</a>, premier alinéa, sont applicables.</p><p>Quand elles sont contractées sans fraude, chacune d'elles produit ses effets dans les limites des garanties du contrat et dans le respect des dispositions de l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006792236&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L121-1 (V)\">L. 121-1</a>, quelle que soit la date à laquelle l'assurance aura été souscrite. Dans ces limites, le bénéficiaire du contrat peut obtenir l'indemnisation de ses dommages en s'adressant à l'assureur de son choix.</p><p>Dans les rapports entre assureurs, la contribution de chacun d'eux est déterminée en appliquant au montant du dommage le rapport existant entre l'indemnité qu'il aurait versée s'il avait été seul et le montant cumulé des indemnités qui auraient été à la charge de chaque assureur s'il avait été seul.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795272"
+  },
+  {
+   "doc_id": "LEGIARTI000006792281",
+   "version": "LEGIARTI000006792281",
+   "article": "L121-5",
+   "date_debut": "1976-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   S'il résulte des estimations que la valeur de la chose assurée excède au jour du sinistre la somme garantie, l'assuré est considéré comme restant son propre assureur pour l'excédent, et supporte, en conséquence, une part proportionnelle du dommage, sauf convention contraire.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006792281"
+  },
+  {
+   "doc_id": "LEGIARTI000006792296",
+   "version": "LEGIARTI000006792296",
+   "article": "L121-6",
+   "date_debut": "1976-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   Toute personne ayant intérêt à la conservation d'une chose peut la faire assurer.<p></p><p></p>   Tout intérêt direct ou indirect à la non-réalisation d'un risque peut faire l'objet d'une assurance.<p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006792296"
+  },
+  {
+   "doc_id": "LEGIARTI000006792311",
+   "version": "LEGIARTI000006792311",
+   "article": "L121-7",
+   "date_debut": "1976-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   Les déchets, diminutions et pertes subies par la chose assurée et qui proviennent de son vice propre ne sont pas à la charge de l'assureur, sauf convention contraire.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006792311"
+  },
+  {
+   "doc_id": "LEGIARTI000006792318",
+   "version": "LEGIARTI000006792318",
+   "article": "L121-8",
+   "date_debut": "1976-07-21",
+   "etat": "ABROGE_DIFF",
+   "texte_html": "<p>L'assureur ne répond pas, sauf convention contraire, des pertes et dommages occasionnés soit par la guerre étrangère, soit par la guerre civile, soit par des émeutes ou par des mouvements populaires.</p><p>Lorsque ces risques ne sont pas couverts par le contrat, l'assuré doit prouver que le sinistre résulte d'un fait autre que le fait de guerre étrangère ; il appartient à l'assureur de prouver que le sinistre résulte de la guerre civile, d'émeutes ou de mouvements populaires.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006792318"
+  },
+  {
+   "doc_id": "LEGIARTI000006792329",
+   "version": "LEGIARTI000006792329",
+   "article": "L121-9",
+   "date_debut": "1976-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   En cas de perte totale de la chose assurée résultant d'un événement non prévu par la police, l'assurance prend fin de plein droit et l'assureur doit restituer à l'assuré la portion de la prime payée d'avance et afférente au temps pour lequel le risque n'est plus couru.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006792329"
+  },
+  {
+   "doc_id": "LEGIARTI000006792340",
+   "version": "LEGIARTI000038775136",
+   "article": "L121-10",
+   "date_debut": "2020-12-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>En cas de décès de l'assuré ou d'aliénation de la chose assurée, l'assurance continue de plein droit au profit de l'héritier ou de l'acquéreur, à charge par celui-ci d'exécuter toutes les obligations dont l'assuré était tenu vis-à-vis de l'assureur en vertu du contrat. </p><p>Il est loisible, toutefois, soit à l'assureur, soit à l'héritier ou à l'acquéreur de résilier le contrat. L'assureur peut résilier le contrat dans un délai de trois mois à partir du jour où l'attributaire définitif des objets assurés a demandé le transfert de la police à son nom. </p><p>En cas d'aliénation de la chose assurée, celui qui aliène reste tenu vis-à-vis de l'assureur au paiement des primes échues, mais il est libéré, même comme garant des primes à échoir, à partir du moment où il a informé l'assureur de l'aliénation par lettre, tout autre support durable ou moyen prévu à l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006792117&dateTexte=&categorieLien=cid\">L. 113-14</a>. </p><p>Lorsqu'il y a plusieurs héritiers ou plusieurs acquéreurs, si l'assurance continue, ils sont tenus solidairement du paiement des primes. </p><p>Il ne peut être prévu le paiement d'une indemnité à l'assureur dans les cas de résiliation susmentionnés. </p><p>Les dispositions du présent article ne sont pas applicables au cas d'aliénation d'un véhicule terrestre à moteur.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000038775136"
+  },
+  {
+   "doc_id": "LEGIARTI000006792354",
+   "version": "LEGIARTI000038775132",
+   "article": "L121-11",
+   "date_debut": "2020-12-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>En cas d'aliénation d'un véhicule terrestre à moteur ou de ses remorques ou semi-remorques, et seulement en ce qui concerne le véhicule aliéné, le contrat d'assurance est suspendu de plein droit à partir du lendemain, à zéro heure, du jour de l'aliénation ; il peut être résilié, moyennant préavis de dix jours, par chacune des parties. </p><p>A défaut de remise en vigueur du contrat par accord des parties ou de résiliation par l'une d'elles, la résiliation intervient de plein droit à l'expiration d'un délai de six mois à compter de l'aliénation. </p><p>L'assuré doit informer l'assureur, par lettre, message sur support durable ou moyen prévu à l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006792117&dateTexte=&categorieLien=cid\">L. 113-14</a>, de la date d'aliénation. </p><p>Il ne peut être prévu le paiement d'une indemnité à l'assureur, dans les cas de résiliation susmentionnés. </p><p>L'ensemble des dispositions du présent article est applicable en cas d'aliénation de navires ou de bateaux de plaisance quel que soit le mode de déplacement ou de propulsion utilisé.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000038775132"
+  },
+  {
+   "doc_id": "LEGIARTI000006792366",
+   "version": "LEGIARTI000051786012",
+   "article": "L121-12",
+   "date_debut": "2025-06-25",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Sans préjudice du deuxième alinéa de l'<a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000051786018&dateTexte=&categorieLien=id\" title=\"Code des assurances - art. L121-2 (V)\">article L. 121-2</a>, l'assureur qui a payé l'indemnité d'assurance est subrogé, jusqu'à concurrence de cette indemnité, dans les droits et actions de l'assuré contre les tiers qui, par leur fait, ont causé le dommage ayant donné lieu à la responsabilité de l'assureur. </p><p>L'assureur peut être déchargé, en tout ou en partie, de sa responsabilité envers l'assuré, quand la subrogation ne peut plus, par le fait de l'assuré, s'opérer en faveur de l'assureur. </p><p>Par dérogation aux dispositions précédentes, l'assureur n'a aucun recours contre les enfants, descendants, ascendants, alliés en ligne directe, préposés, employés, ouvriers ou domestiques, et généralement toute personne vivant habituellement au foyer de l'assuré, sauf le cas de malveillance commise par une de ces personnes.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051786012"
+  },
+  {
+   "doc_id": "LEGIARTI000006792384",
+   "version": "LEGIARTI000032042688",
+   "article": "L121-13",
+   "date_debut": "2016-10-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Les indemnités dues par suite d'assurance contre l'incendie, contre la grêle, contre la mortalité du bétail, ou les autres risques, sont attribuées sans qu'il y ait besoin de délégation expresse, aux créanciers privilégiés ou hypothécaires, suivant leur rang. </p><p>Néanmoins, les paiements faits de bonne foi avant opposition sont valables. </p><p>Il en est de même des indemnités dues en cas de sinistre par le locataire ou par le voisin, par application des articles <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006070721&idArticle=LEGIARTI000006442901&dateTexte=&categorieLien=cid\" title=\"Code civil - art. 1733 (V)\">1733 </a>et <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006070721&idArticle=LEGIARTI000006437044&dateTexte=&categorieLien=cid\" title=\"Code civil - art. 1240 (VT)\">1240</a> du code civil. </p><p>En cas d'assurance du risque locatif ou du recours du voisin, l'assureur ne peut payer à un autre que le propriétaire de l'objet loué, le voisin ou le tiers subrogé à leurs droits, tout ou partie de la somme due, tant que lesdits propriétaire, voisin ou tiers subrogé n'ont pas été désintéressés des conséquences du sinistre, jusqu'à concurrence de ladite somme.</p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000032042688"
+  },
+  {
+   "doc_id": "LEGIARTI000006792403",
+   "version": "LEGIARTI000006792403",
+   "article": "L121-14",
+   "date_debut": "1976-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   L'assuré ne peut faire aucun délaissement des objets assurés, sauf convention contraire.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006792403"
+  },
+  {
+   "doc_id": "LEGIARTI000006792411",
+   "version": "LEGIARTI000006792411",
+   "article": "L121-15",
+   "date_debut": "1976-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>L'assurance est nulle si, au moment du contrat, la chose assurée a déjà péri ou ne peut plus être exposée aux risques.</p><p>Les primes payées doivent être restituées à l'assuré, sous déduction des frais exposés par l'assureur, autres que ceux de commissions, lorsque ces derniers ont été récupérés contre l'agent ou le courtier.</p><p>Dans le cas mentionné au premier alinéa du présent article, la partie dont la mauvaise foi est prouvée doit à l'autre une somme double de la prime d'une année.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006792411"
+  },
+  {
+   "doc_id": "LEGIARTI000006792423",
+   "version": "LEGIARTI000006792423",
+   "article": "L121-16",
+   "date_debut": "1995-02-03",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Toute clause des contrats d'assurance tendant à subordonner le versement d'une indemnité en réparation d'un dommage causé par une catastrophe naturelle au sens de l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006792610&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L125-1 (V)\">L. 125-1</a> à un immeuble bâti à sa reconstruction sur place est réputée non écrite dès lors que l'espace est soumis à un plan de prévention des risques naturels prévisibles.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006792423"
+  },
+  {
+   "doc_id": "LEGIARTI000006792431",
+   "version": "LEGIARTI000006792431",
+   "article": "L121-17",
+   "date_debut": "1995-02-03",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Sauf dans le cas visé à l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006792423&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L121-16 (V)\">L. 121-16</a>, les indemnités versées en réparation d'un dommage causé à un immeuble bâti doivent être utilisées pour la remise en état effective de cet immeuble ou pour la remise en état de son terrain d'assiette, d'une manière compatible avec l'environnement dudit immeuble.</p><p>Toute clause contraire dans les contrats d'assurance est nulle d'ordre public.</p><p>Un arrêté du maire prescrit les mesures de remise en état susmentionnées, dans un délai de deux mois suivant la notification du sinistre au maire par l'assureur ou l'assuré.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006792431"
+  },
+  {
+   "doc_id": "LEGIARTI000054136860",
+   "version": "LEGIARTI000054136978",
+   "article": "L121-18",
+   "date_debut": "2026-05-28",
+   "etat": "VIGUEUR",
+   "texte_html": "<p align=\"left\">I. - Lorsque l'assureur désigne un expert pour déterminer les causes d'un sinistre et en évaluer les dommages, il adresse à l'assuré une proposition d'indemnisation ou de réparation en nature ou un refus motivé, dans un délai de six mois à compter de la déclaration du sinistre, sauf situations particulières prévues par décret en Conseil d'Etat. Si les causes du sinistre ou l'évaluation des dommages n'ont pu être établies à l'expiration de ce délai, l'assureur adresse à l'assuré une proposition d'acompte motivée ou notifie à l'assuré sa décision motivée de ne pas accorder d'acompte à ce stade.</p><p align=\"left\">Lorsque l'assureur ne désigne pas d'expert, il adresse une proposition d'indemnisation ou de réparation en nature ou un refus motivé, dans un délai de deux mois à compter de la déclaration du sinistre, sauf situations particulières prévues par décret en Conseil d'Etat.</p><p align=\"left\">A compter de la réception de l'accord de l'assuré sur la proposition d'indemnisation ou d'acompte, l'assureur dispose d'un délai d'un mois pour missionner l'entreprise chargée de procéder à la réparation du bien ou de vingt et un jours pour verser l'indemnisation ou l'acompte dû. A défaut, et sauf cas fortuit ou de force majeure, l'indemnité ou l'acompte dû par l'assureur produit, à compter de l'expiration de ce dernier délai, intérêts au taux de l'intérêt légal.</p><p align=\"left\">II. - L'expert désigné en application du premier alinéa du I transmet son rapport définitif à l'assureur ainsi qu'à l'assuré.</p><p align=\"left\">III. - L'Autorité de contrôle prudentiel et de résolution s'assure que les pratiques des entreprises d'assurance et de réassurance sont conformes aux obligations prévues au I, notamment lorsqu'elle procède à un contrôle sur place mentionné à l'<a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006072026&idArticle=LEGIARTI000021722302&dateTexte=&categorieLien=cid\">article L. 612-27 du code monétaire et financier</a>.</p><p align=\"left\">Lorsque l'Autorité établit que les pratiques commerciales d'une entreprise d'assurance ou de réassurance ne sont pas conformes à ces obligations, elle peut la mettre en demeure de prendre, dans un délai déterminé, toutes mesures destinées à mettre ses pratiques en conformité avec les obligations prévues au I du présent article, dans les conditions prévues à l'<a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006072026&idArticle=LEGIARTI000054141694&dateTexte=&categorieLien=id\" title=\"Code monétaire et financier - art. L612-31 (V)\">article L. 612-31 du code monétaire et financier</a>.</p><p align=\"left\">IV. - Un décret en Conseil d'Etat établit la liste des contrats et des garanties exclus du bénéfice du présent article.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054136978"
+  },
+  {
+   "doc_id": "LEGIARTI000054135455",
+   "version": "LEGIARTI000054135455",
+   "article": "L121-19",
+   "date_debut": "2026-05-28",
+   "etat": "VIGUEUR",
+   "texte_html": "<p align=\"left\">Une collectivité territoriale ou un établissement public de coopération intercommunale à fiscalité propre peut avoir recours au dispositif de médiation mentionné à l'<a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006069565&idArticle=LEGIARTI000032223349&dateTexte=&categorieLien=cid\">article L. 612-1 du code de la consommation</a> en vue de la résolution amiable d'un litige qui l'oppose à son assureur.</p><p align=\"left\">Après deux procédures infructueuses, une collectivité territoriale ou un établissement public de coopération intercommunale à fiscalité propre peut bénéficier d'un accompagnement dans sa recherche d'assurance, dans des conditions précisées par décret.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054135455"
+  },
+  {
+   "doc_id": "LEGIARTI000006795331",
+   "version": "LEGIARTI000048523650",
+   "article": "L211-1",
+   "date_debut": "2023-12-08",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Toute personne physique ou toute personne morale autre que l'Etat, dont la responsabilité civile peut être engagée en raison de dommages subis par des tiers résultant d'atteintes aux personnes ou aux biens dans la réalisation desquels un véhicule est impliqué, doit, pour faire circuler celui-ci, être couverte par une assurance garantissant cette responsabilité, dans les conditions fixées par décret en Conseil d'Etat. Pour l'application du présent article, on entend par \"véhicule\" tout véhicule terrestre à moteur, c'est-à-dire tout véhicule automoteur destiné à circuler sur le sol et qui peut être actionné par une force mécanique sans être lié à une voie ferrée, ainsi que toute remorque, même non attelée.</p><p>Le fauteuil roulant automoteur, dispositif médical exclusivement utilisé pour le déplacement d'une personne en situation de handicap, n'est pas considéré comme un véhicule au sens du précédent alinéa.</p><p>Les contrats d'assurance couvrant la responsabilité mentionnée au premier alinéa du présent article doivent également couvrir la responsabilité civile de toute personne ayant la garde ou la conduite, même non autorisée, du véhicule, à l'exception des professionnels de la réparation, de la vente et du contrôle de l'automobile, ainsi que la responsabilité civile des passagers du véhicule objet de l'assurance. Toutefois, en cas de vol d'un véhicule, ces contrats ne couvrent pas la réparation des dommages subis par les auteurs, coauteurs ou complices du vol.</p><p>L'assureur est subrogé dans les droits que possède le créancier de l'indemnité contre la personne responsable de l'accident lorsque la garde ou la conduite du véhicule a été obtenue contre le gré du propriétaire.</p><p>Ces contrats doivent être souscrits auprès d'une entreprise d'assurance agréée pour pratiquer les opérations d'assurance contre les accidents résultant de l'emploi de véhicules automobiles.</p><p>Les membres de la famille du conducteur ou de l'assuré, ainsi que les élèves d'un établissement d'enseignement de la conduite des véhicules terrestres à moteur agréé, en cours de formation ou d'examen, sont considérés comme des tiers au sens du premier alinéa du présent article.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048523650"
+  },
+  {
+   "doc_id": "LEGIARTI000041572245",
+   "version": "LEGIARTI000041572245",
+   "article": "L211-1-1",
+   "date_debut": "2020-02-12",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Le contrat d'assurance prévu à l'article L. 211-1 prévoit que lorsque l'assuré d'un véhicule techniquement ou économiquement irréparable n'accepte pas la proposition d'indemnisation prévue à l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006074228&idArticle=LEGIARTI000006841186&dateTexte=&categorieLien=cid\" title=\"Code de la route. - art. L327-1 (V)\">L. 327-1</a> du code de la route, la résiliation du contrat d'assurance est conditionnée à la fourniture d'un justificatif de destruction du véhicule, de sa réparation ou de souscription d'un contrat auprès d'un nouvel assureur. Un décret précise la nature du justificatif et les modalités de mise en œuvre du présent article. <br/><br/>L'assureur est tenu de rembourser à l'assuré la partie de prime ou de cotisation qui correspond à la période pendant laquelle le risque n'a pas couru, période calculée à compter de la date de cession du véhicule en vue de sa destruction. <br/><br/>Les dispositions du présent article sont d'ordre public et s'appliquent aux contrats en cours à compter du 1er juillet 2021.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000041572245"
+  },
+  {
+   "doc_id": "LEGIARTI000006795351",
+   "version": "LEGIARTI000006795351",
+   "article": "L211-2",
+   "date_debut": "1976-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Les dispositions de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-1 (V)\">l'article L. 211-1</a> ne sont pas applicables aux dommages causés par les chemins de fer et les tramways.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795351"
+  },
+  {
+   "doc_id": "LEGIARTI000006795361",
+   "version": "LEGIARTI000006795361",
+   "article": "L211-3",
+   "date_debut": "1976-07-21",
+   "etat": "ABROGE",
+   "texte_html": "<p></p>   Des dérogations totales ou partielles à l'obligation d'assurance édictée à l'article L. 221-1 peuvent être accordées, par l'autorité administrative, aux collectivités publiques et aux entreprises ou organismes qui justifieront de garanties financières suffisantes.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795361"
+  },
+  {
+   "doc_id": "LEGIARTI000006795376",
+   "version": "LEGIARTI000048523656",
+   "article": "L211-4",
+   "date_debut": "2023-12-08",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>I. - L'assurance prévue à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\">l'article L. 211-1</a> doit comporter une garantie de la responsabilité civile s'étendant à l'ensemble des territoires des Etats membres de l'Union européenne ainsi qu'aux territoires de tout Etat tiers pour lequel les bureaux nationaux de tous les Etats membres de l'Union européenne se portent individuellement garants du règlement des sinistres survenus sur leur territoire et provoqués par la circulation des véhicules ayant leur stationnement habituel dans cet Etat tiers. Cette garantie, lorsqu'elle est appelée à jouer hors du territoire français, est accordée par l'assureur dans les limites et conditions prévues par la législation nationale de l'Etat sur le territoire duquel s'est produit le sinistre ou par celle de l'Etat où le véhicule a son stationnement habituel lorsque la couverture d'assurance y est plus favorable.</p><p>Cette assurance ne peut être résiliée et sa prime ne peut être modifiée au motif d'un séjour du véhicule dans un Etat membre de l'Union européenne autre que la France pendant la durée du contrat.</p><p>Cette assurance doit également comporter une garantie de la responsabilité civile en cas de sinistre survenant au cours du trajet reliant directement deux territoires où le traité sur le fonctionnement de l'Union européenne est applicable, lorsqu'il n'existe pas, pour le territoire parcouru, de bureau national d'assurance.</p><p>Dans ce cas, l'assureur n'est tenu de couvrir que les dommages dont peuvent être victimes les ressortissants des Etats mentionnés au premier alinéa du présent article, dans les conditions prévues par la législation nationale sur l'obligation d'assurance en vigueur dans l'Etat où le véhicule qui a causé l'accident a son stationnement habituel.</p><p>II. - Pour l'application du présent article, on entend par véhicule :<br/>\n 1° Tout véhicule terrestre automoteur actionné exclusivement par une force mécanique sur le sol, sans être lié à une voie ferrée, avec :<br/>\n a) Une vitesse maximale par construction supérieure à 25 km/ h ; ou<br/>\n b) Un poids net maximal supérieur à 25 kg et une vitesse maximale par construction supérieure à 14 km/ h ;<br/>\n 2° Toute remorque destinée à être utilisée avec un véhicule mentionné au 1°, qu'elle soit attelée ou non.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048523656"
+  },
+  {
+   "doc_id": "LEGIARTI000017726402",
+   "version": "LEGIARTI000048523653",
+   "article": "L211-4-1",
+   "date_debut": "2023-12-08",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Le véhicule est réputé avoir son lieu de stationnement habituel en France :</p><p>1° Lorsqu'il porte une plaque d'immatriculation qui lui correspond et qui a été délivrée par les autorités françaises ;</p><p>2° Lorsque, bien que soumis à l'obligation d'immatriculation en France, il est dépourvu de plaque d'immatriculation ou porte une plaque qui ne lui correspond pas ou ne lui correspond plus et que l'accident survient sur le territoire français ;</p><p>3° Lorsqu'il n'est pas soumis à l'obligation d'immatriculation et que la personne qui en a la garde est domiciliée en France.</p><p>Par dérogation aux alinéas précédents, lorsqu'un véhicule est expédié d'un Etat membre vers la France ce véhicule est réputé avoir son lieu de stationnement habituel en France dès acceptation de la livraison par l'acheteur, pour une période de trente jours, même si le véhicule n'a pas été officiellement immatriculé en France. Toutefois, au titre de cette période de trente jours, le souscripteur peut choisir de désigner l'Etat membre d'immatriculation comme lieu de stationnement habituel.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048523653"
+  },
+  {
+   "doc_id": "LEGIARTI000006795387",
+   "version": "LEGIARTI000006795387",
+   "article": "L211-5",
+   "date_debut": "1976-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Le décret en Conseil d'Etat mentionné à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-1 (V)\">l'article L. 211-1</a> fixe les conditions d'application du présent titre, et notamment l'étendue de la garantie que doit comporter le contrat d'assurance, les modalités d'établissement et de validité des documents justificatifs prévus pour l'exercice du contrôle, ainsi que les obligations imparties aux utilisateurs de véhicules en circulation internationale munis d'une lettre de nationalité autre que la lettre française.</p><p>Tout contrat d'assurance souscrit par une personne assujettie à l'obligation instituée à l'article L. 211-1 est, nonobstant toutes clauses contraires, réputé comporter des garanties au moins équivalentes à celles fixées dans le décret en Conseil d'Etat prévu à l'alinéa précédent.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795387"
+  },
+  {
+   "doc_id": "LEGIARTI000028742606",
+   "version": "LEGIARTI000028742662",
+   "article": "L211-5-1",
+   "date_debut": "2014-03-19",
+   "etat": "VIGUEUR",
+   "texte_html": "Tout contrat d'assurance souscrit au titre de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-1 (V)\">l'article L. 211-1</a> mentionne la faculté pour l'assuré, en cas de dommage garanti par le contrat, de choisir le réparateur professionnel auquel il souhaite recourir. Cette information est également délivrée, dans des conditions définies par arrêté, lors de la déclaration du sinistre.",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000028742662"
+  },
+  {
+   "doc_id": "LEGIARTI000042610406",
+   "version": "LEGIARTI000042610414",
+   "article": "L211-5-2",
+   "date_debut": "2020-12-05",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Sont nulles les clauses par lesquelles l'assureur interdit à l'assuré, en cas de dommage garanti par un contrat d'assurance souscrit au titre de l'<a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\">article L. 211-1</a>, la cession à des tiers des créances d'indemnité d'assurance qu'il détient sur lui.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000042610414"
+  },
+  {
+   "doc_id": "LEGIARTI000006795397",
+   "version": "LEGIARTI000006795398",
+   "article": "L211-6",
+   "date_debut": "2003-02-04",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   Est réputée non écrite toute clause stipulant la déchéance de la garantie de l'assuré en cas de condamnation pour conduite en état d'ivresse ou sous l'empire d'un état alcoolique ou pour conduite après usage de substances ou plantes classées comme stupéfiants.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795398"
+  },
+  {
+   "doc_id": "LEGIARTI000006795409",
+   "version": "LEGIARTI000006795409",
+   "article": "L211-7",
+   "date_debut": "1976-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   Les dispositions du présent titre ne portent pas atteinte aux prescriptions réglementaires en vigueur, dans la mesure où ces prescriptions concernent des risques différents ou imposent des obligations plus étendues.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795409"
+  },
+  {
+   "doc_id": "LEGIARTI000038538268",
+   "version": "LEGIARTI000038538268",
+   "article": "L211-7-1",
+   "date_debut": "2019-05-24",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>La nullité d'un contrat d'assurance souscrit au titre de l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-1 (V)\">L. 211-1</a> n'est pas opposable aux victimes ou aux ayants droit des victimes des dommages nés d'un accident de la circulation dans lequel est impliqué un véhicule terrestre à moteur ainsi que ses remorques ou semi-remorques. <br/><br/>Dans une telle hypothèse, l'assureur qui garantit la responsabilité civile du fait de ce véhicule, de cette remorque ou de cette semi-remorque, est tenu d'indemniser les victimes de l'accident ou leurs ayants droit. L'assureur est subrogé dans les droits que possède le créancier de l'indemnité contre la personne responsable de l'accident, à concurrence du montant des sommes qu'il a versées. <br/><br/>Un décret en Conseil d'Etat fixe les autres exceptions de garantie qui ne sont pas opposables aux victimes ou à leurs ayants droit.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000038538268"
+  },
+  {
+   "doc_id": "LEGIARTI000006795426",
+   "version": "LEGIARTI000006795427",
+   "article": "L211-8",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   Les dispositions de la présente section s'appliquent, même lorsqu'elles sont transportées en vertu d'un contrat, aux victimes d'un accident de la circulation dans lequel est impliqué un véhicule terrestre à moteur ainsi que ses remorques ou semi-remorques, à l'exception des chemins de fer et des tramways circulant sur des voies qui leur sont propres.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795427"
+  },
+  {
+   "doc_id": "LEGIARTI000006795446",
+   "version": "LEGIARTI000006795447",
+   "article": "L211-9",
+   "date_debut": "2003-08-02",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Quelle que soit la nature du dommage, dans le cas où la responsabilité n'est pas contestée et où le dommage a été entièrement quantifié, l'assureur qui garantit la responsabilité civile du fait d'un véhicule terrestre à moteur est tenu de présenter à la victime une offre d'indemnité motivée dans le délai de trois mois à compter de la demande d'indemnisation qui lui est présentée. Lorsque la responsabilité est rejetée ou n'est pas clairement établie, ou lorsque le dommage n'a pas été entièrement quantifié, l'assureur doit, dans le même délai, donner une réponse motivée aux éléments invoqués dans la demande.</p><p>Une offre d'indemnité doit être faite à la victime qui a subi une atteinte à sa personne dans le délai maximum de huit mois à compter de l'accident. En cas de décès de la victime, l'offre est faite à ses héritiers et, s'il y a lieu, à son conjoint. L'offre comprend alors tous les éléments indemnisables du préjudice, y compris les éléments relatifs aux dommages aux biens lorsqu'ils n'ont pas fait l'objet d'un règlement préalable.</p><p>Cette offre peut avoir un caractère provisionnel lorsque l'assureur n'a pas, dans les trois mois de l'accident, été informé de la consolidation de l'état de la victime. L'offre définitive d'indemnisation doit alors être faite dans un délai de cinq mois suivant la date à laquelle l'assureur a été informé de cette consolidation.</p><p>En tout état de cause, le délai le plus favorable à la victime s'applique.</p><p>En cas de pluralité de véhicules, et s'il y a plusieurs assureurs, l'offre est faite par l'assureur mandaté par les autres.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795447"
+  },
+  {
+   "doc_id": "LEGIARTI000006795456",
+   "version": "LEGIARTI000006795457",
+   "article": "L211-10",
+   "date_debut": "2003-08-02",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>A l'occasion de sa première correspondance avec la victime, l'assureur est tenu, à peine de nullité relative de la transaction qui pourrait intervenir, d'informer la victime qu'elle peut obtenir de sa part, sur simple demande, la copie du procès-verbal d'enquête de police ou de gendarmerie et de lui rappeler qu'elle peut à son libre choix se faire assister d'un avocat et, en cas d'examen médical, d'un médecin. <p></p><p></p>Sous la même sanction, cette correspondance porte à la connaissance de la victime les dispositions du troisième alinéa de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-9 (V)\">l'article L. 211-9 </a>et celles de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795481&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-12 (V)\">l'article L. 211-12</a>.<p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795457"
+  },
+  {
+   "doc_id": "LEGIARTI000041570210",
+   "version": "LEGIARTI000041570215",
+   "article": "L211-10-1",
+   "date_debut": "2020-02-12",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>A l'occasion de sa première correspondance avec la victime, l'assureur est tenu d'informer cette dernière de ses obligations prévues par le code de l'environnement en matière de cession d'un véhicule hors d'usage.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000041570215"
+  },
+  {
+   "doc_id": "LEGIARTI000006795469",
+   "version": "LEGIARTI000006795470",
+   "article": "L211-11",
+   "date_debut": "2003-12-19",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Dès lors que l'assureur n'a pu, sans qu'il y ait faute de sa part, savoir que l'accident avait imposé des débours aux tiers payeurs visés à <a href=\"/affichTexteArticle.do?cidTexte=JORFTEXT000000693454&idArticle=LEGIARTI000006839622&dateTexte=&categorieLien=cid\" title=\"Loi n°85-677 du 5 juillet 1985 - art. 29 (V)\">l'article 29 </a>de la loi n° 85-677 du 5 juillet 1985 et à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795625&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-25 (V)\">l'article L. 211-25</a>, ceux-ci perdent tout droit à remboursement contre lui et contre l'auteur du dommage. Toutefois, l'assureur ne peut invoquer une telle ignorance à l'égard des organismes versant des prestations de sécurité sociale.</p><p>Dans tous les cas, le défaut de production des créances des tiers payeurs, dans un délai de quatre mois à compter de la demande émanant de l'assureur, entraîne déchéance de leurs droits à l'encontre de l'assureur et de l'auteur du dommage.</p><p>Dans le cas où la demande émanant de l'assureur ne mentionne pas la consolidation de l'état de la victime, les créances produites par les tiers payeurs peuvent avoir un caractère provisionnel. Il en est de même lorsque les prestations de sécurité sociale sont versées après avis de la commission départementale d'éducation spéciale ou de la commission technique d'orientation et de reclassement professionnel.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795470"
+  },
+  {
+   "doc_id": "LEGIARTI000006795481",
+   "version": "LEGIARTI000006795481",
+   "article": "L211-12",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Lorsque, du fait de la victime, les tiers payeurs n'ont pu faire valoir leurs droits contre l'assureur, ils ont un recours contre la victime à concurrence de l'indemnité qu'elle a perçue de l'assureur au titre du même chef de préjudice et dans les limites prévues à <a href=\"/affichTexteArticle.do?cidTexte=JORFTEXT000000693454&idArticle=LEGIARTI000006839641&dateTexte=&categorieLien=cid\" title=\"Loi n°85-677 du 5 juillet 1985 - art. 31 (V)\">l'article 31</a> de la loi n° 85-677 du 5 juillet 1985. Ils doivent agir dans un délai de deux ans à compter de la demande de versement des prestations.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795481"
+  },
+  {
+   "doc_id": "LEGIARTI000006795491",
+   "version": "LEGIARTI000006795491",
+   "article": "L211-13",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Lorsque l'offre n'a pas été faite dans les délais impartis à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-9 (V)\">l'article L. 211-9</a>, le montant de l'indemnité offerte par l'assureur ou allouée par le juge à la victime produit intérêt de plein droit au double du taux de l'intérêt légal à compter de l'expiration du délai et jusqu'au jour de l'offre ou du jugement devenu définitif. Cette pénalité peut être réduite par le juge en raison de circonstances non imputables à l'assureur.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795491"
+  },
+  {
+   "doc_id": "LEGIARTI000006795506",
+   "version": "LEGIARTI000006795506",
+   "article": "L211-14",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Si le juge qui fixe l'indemnité estime que l'offre proposée par l'assureur était manifestement insuffisante, il condamne d'office l'assureur à verser au fonds de garantie prévu par <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006801527&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L421-1 (V)\">l'article L. 421-1</a> une somme au plus égale à 15 % de l'indemnité allouée, sans préjudice des dommages et intérêts dus de ce fait à la victime.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795506"
+  },
+  {
+   "doc_id": "LEGIARTI000006795514",
+   "version": "LEGIARTI000006795514",
+   "article": "L211-15",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>L'assureur doit soumettre au juge des tutelles ou au conseil de famille, compétents suivant les cas pour l'autoriser, tout projet de transaction concernant un mineur ou un majeur en tutelle. Il doit également donner avis sans formalité au juge des tutelles, quinze jours au moins à l'avance, du paiement du premier arrérage d'une rente ou de toute somme devant être versée à titre d'indemnité au représentant légal de la personne protégée.</p><p>Le paiement qui n'a pas été précédé de l'avis requis ou la transaction qui n'a pas été autorisée peut être annulé à la demande de tout intéressé ou du ministère public à l'exception de l'assureur.</p><p>Toute clause par laquelle le représentant légal se porte fort de la ratification par le mineur ou le majeur en tutelle de l'un des actes mentionnés à l'alinéa premier du présent article est nulle.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795514"
+  },
+  {
+   "doc_id": "LEGIARTI000006795526",
+   "version": "LEGIARTI000035731353",
+   "article": "L211-16",
+   "date_debut": "2018-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>La victime peut, par lettre recommandée, ou par envoi recommandé électronique avec demande d'avis de réception, dénoncer la transaction dans les quinze jours de sa conclusion.</p><p>Toute clause de la transaction par laquelle la victime abandonne son droit de dénonciation est nulle.</p><p>Les dispositions ci-dessus doivent être reproduites en caractères très apparents dans l'offre de transaction et dans la transaction à peine de nullité relative de cette dernière.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000035731353"
+  },
+  {
+   "doc_id": "LEGIARTI000006795539",
+   "version": "LEGIARTI000006795539",
+   "article": "L211-17",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Le paiement des sommes convenues doit intervenir dans un délai d'un mois après l'expiration du délai de dénonciation fixé à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795526&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-16 (V)\">l'article L. 211-16</a>. Dans le cas contraire, les sommes non versées produisent de plein droit intérêt au taux légal majoré de moitié durant deux mois, puis, à l'expiration de ces deux mois, au double du taux légal.</p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795539"
+  },
+  {
+   "doc_id": "LEGIARTI000006795547",
+   "version": "LEGIARTI000006795547",
+   "article": "L211-18",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   En cas de condamnation résultant d'une décision de justice exécutoire, même par provision, le taux de l'intérêt légal est majoré de 50 % à l'expiration d'un délai de deux mois et il est doublé à l'expiration d'un délai de quatre mois à compter du jour de la décision de justice, lorsque celle-ci est contradictoire et, dans les autres cas, du jour de la notification de la décision.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795547"
+  },
+  {
+   "doc_id": "LEGIARTI000006795557",
+   "version": "LEGIARTI000019017608",
+   "article": "L211-19",
+   "date_debut": "2008-06-19",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>La victime peut, dans le délai prévu par l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006070721&idArticle=LEGIARTI000006447341&dateTexte=&categorieLien=cid\">2226</a> du code civil, demander la réparation de l'aggravation du dommage qu'elle a subi à l'assureur qui a versé l'indemnité.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000019017608"
+  },
+  {
+   "doc_id": "LEGIARTI000006795569",
+   "version": "LEGIARTI000006795569",
+   "article": "L211-20",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Lorsque l'assureur invoque une exception de garantie légale ou contractuelle, il est tenu de satisfaire aux prescriptions des <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-9 (V)\">articles L. 211-9 à L. 211-17</a> pour le compte de qui il appartiendra ; la transaction intervenue pourra être contestée devant le juge par celui pour le compte de qui elle aura été faite, sans que soit remis en cause le montant des sommes allouées à la victime ou à ses ayants droit.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795569"
+  },
+  {
+   "doc_id": "LEGIARTI000006795582",
+   "version": "LEGIARTI000006795583",
+   "article": "L211-21",
+   "date_debut": "1997-01-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Pour l'application des <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-9 (V)\">articles L. 211-9 à L. 211-17</a>, l'Etat ainsi que les collectivités publiques, les entreprises ou organismes bénéficiant d'une exonération en vertu de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795351&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-2 (V)\">l'article L. 211-2</a> sont assimilés à un assureur.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795583"
+  },
+  {
+   "doc_id": "LEGIARTI000006795592",
+   "version": "LEGIARTI000006795593",
+   "article": "L211-22",
+   "date_debut": "2003-08-02",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Les dispositions des <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-9 (V)\">articles L. 211-9, L. 211-10 </a>et <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795491&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-13 (V)\">L. 211-13 à L. 211-19 </a>sont applicables au fonds de garantie des assurances obligatoires de dommages institué par <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006801527&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L421-1 (V)\">l'article L. 421-1</a>, dans ses rapports avec les victimes ou leurs ayants droit ; toutefois, les délais prévus à l'article L. 211-9 courent contre le fonds à compter du jour où celui-ci a reçu les éléments justifiant son intervention.</p><p>L'application des articles L. 211-13 et <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795506&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-14 (V)\">L. 211-14</a> ne fait pas obstacle aux dispositions particulières qui régissent les actions en justice contre le fonds. Lorsque le fonds de garantie est tenu aux intérêts prévus à l'article L. 211-14, ils sont versés au Trésor public.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795593"
+  },
+  {
+   "doc_id": "LEGIARTI000006795607",
+   "version": "LEGIARTI000006795607",
+   "article": "L211-23",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   Sous le contrôle de l'autorité publique, une publication périodique rend compte des indemnités fixées par les jugements et les transactions.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795607"
+  },
+  {
+   "doc_id": "LEGIARTI000006795616",
+   "version": "LEGIARTI000006795616",
+   "article": "L211-24",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Un décret en Conseil d'Etat fixe les mesures nécessaires à l'application de la présente section. Il détermine notamment les causes de suspension ou de prorogation des délais mentionnés à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-9 (V)\">l'article L. 211-9,</a> ainsi que les informations réciproques que se doivent l'assureur, la victime et les tiers payeurs.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795616"
+  },
+  {
+   "doc_id": "LEGIARTI000006795625",
+   "version": "LEGIARTI000006795625",
+   "article": "L211-25",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Les deux premiers alinéas de <a href=\"/affichTexteArticle.do?cidTexte=JORFTEXT000000693454&idArticle=LEGIARTI000006839658&dateTexte=&categorieLien=cid\" title=\"Loi n°85-677 du 5 juillet 1985 - art. 33 (V)\">l'article 33 </a>de la loi n° 85-677 du 5 juillet 1985 sont applicables aux assureurs.</p><p>Lorsqu'il est prévu par contrat, le recours subrogatoire de l'assureur qui a versé à la victime une avance sur indemnité du fait de l'accident peut être exercé contre l'assureur de la personne tenue à réparation dans la limite du solde subsistant après paiements aux tiers visés à <a href=\"/affichTexteArticle.do?cidTexte=JORFTEXT000000693454&idArticle=LEGIARTI000006839622&dateTexte=&categorieLien=cid\" title=\"Loi n°85-677 du 5 juillet 1985 - art. 29 (V)\">l'article 29</a> de la même loi du 5 juillet 1985. Il doit être exercé, s'il y a lieu, dans les délais impartis par la loi aux tiers payeurs pour produire leurs créances.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795625"
+  },
+  {
+   "doc_id": "LEGIARTI000006795642",
+   "version": "LEGIARTI000006795644",
+   "article": "L211-26",
+   "date_debut": "2004-03-10",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Les dispositions du code de la route réprimant la conduite d'un véhicule terrestre à moteur sans être couvert par une assurance garantissant sa responsabilité civile conformément aux dispositions de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-1 (V)\">l'article L. 211-1 </a>du présent code sont reproduites ci-après :</p><p>\"Art. L. 324-2. - I. - Le fait, y compris par négligence, de mettre ou de maintenir en circulation un véhicule terrestre à moteur ainsi que ses remorques ou semi-remorques sans être couvert par une assurance garantissant sa responsabilité civile conformément aux dispositions de l'article L. 211-1 du code des assurances est puni de 3 750 euros d'amende.</p><p>II.-Toute personne coupable de l'infraction prévue au présent article encourt également les peines complémentaires suivantes :</p><p>1° La peine de travail d'intérêt général, selon les modalités prévues à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006070719&idArticle=LEGIARTI000006417241&dateTexte=&categorieLien=cid\" title=\"Code pénal - art. 131-8 (V)\">l'article 131-8 </a>du code pénal et selon les conditions prévues aux <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006070719&idArticle=LEGIARTI000006417280&dateTexte=&categorieLien=cid\" title=\"Code pénal - art. 131-22 (V)\">articles 131-22 à 131-24 </a>du même code ;</p><p>2° La peine de jours-amende dans les conditions fixées aux <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006070719&idArticle=LEGIARTI000006417231&dateTexte=&categorieLien=cid\" title=\"Code pénal - art. 131-5 (V)\">articles 131-5 </a>et <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006070719&idArticle=LEGIARTI000006417288&dateTexte=&categorieLien=cid\" title=\"Code pénal - art. 131-25 (V)\">131-25 </a>du code pénal ;</p><p>3° La suspension, pour une durée de trois ans au plus, du permis de conduire, cette suspension ne pouvant pas être limitée à la conduite en dehors de l'activité professionnelle ;</p><p>4° L'annulation du permis de conduire avec interdiction de solliciter la délivrance d'un nouveau permis pendant trois ans au plus ;</p><p>5° L'interdiction de conduire certains véhicules terrestres à moteur, y compris ceux pour la conduite desquels le permis de conduire n'est pas exigé, pour une durée de cinq ans au plus ;</p><p>6° L'obligation d'accomplir, à ses frais, un stage de sensibilisation à la sécurité routière ;</p><p>7° La confiscation du véhicule dont le condamné s'est servi pour commettre l'infraction, s'il en est le propriétaire.</p><p>III.-L'immobilisation peut être prescrite dans les conditions prévues aux <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006798362&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L325-1 (V)\">articles L. 325-1 à L. 325-3.</a>\"</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006795644"
+  },
+  {
+   "doc_id": "LEGIARTI000006795653",
+   "version": "LEGIARTI000048523661",
+   "article": "L211-27",
+   "date_debut": "2023-12-08",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Les amendes forfaitaires, les amendes de composition pénale et les amendes prononcées pour violation de l'obligation d'assurance prévue par <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\">l'article L. 211-1</a>, y compris les amendes qu'une mesure de grâce aurait substituées à l'emprisonnement, sont affectées d'une majoration de 50 % perçue, lors de leur recouvrement, au profit du Fonds de garantie institué par l'article L. 421-1.</p><p>Si la juridiction civile est saisie d'une contestation sérieuse, portant sur l'existence ou la validité de l'assurance, la juridiction pénale appelée à se prononcer sur les poursuites exercées pour violation de l'obligation d'assurance sursoit à statuer jusqu'à ce qu'il ait été jugé définitivement sur la contestation.</p><p>Les dispositions du présent article ne sont pas applicables lorsque l'assurance de la responsabilité civile concerne les véhicules, au sens du II de l'article L. 211-4, ayant leur stationnement habituel sur le territoire d'un Etat mentionné à ce même article à l'exception de la France.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048523661"
+  },
+  {
+   "doc_id": "LEGIARTI000048520402",
+   "version": "LEGIARTI000048520425",
+   "article": "L211-28",
+   "date_debut": "2023-12-08",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Une plateforme en ligne définie au i de l'article 3 du règlement (UE) n° 2022/2065 du Parlement européen et du Conseil du 19 octobre 2022 relatif à un marché unique des services numériques ainsi qu'une interface en ligne définie au m du même article, proposant gratuitement aux utilisateurs finaux un outil de comparaison et d'évaluation des offres d'assurance relatives à la circulation de véhicules terrestres à moteur portant sur le prix, le tarif des services fournis et une qualité minimale de service proposée, peuvent solliciter la certification de cet outil selon des modalités définies par décret.<br/><br/>\n Pour être certifié sous l'appellation de “ comparateur de prix indépendant ”, l'outil de comparaison doit :<br/><br/>\n 1° Etre indépendant sur le plan opérationnel des prestataires d'assurance relative à la circulation des véhicules terrestres à moteur, et garantir que les fournisseurs de services bénéficient d'une égalité de traitement dans les résultats de recherche ;<br/><br/>\n 2° Indiquer avec précision l'identité de ses propriétaires et opérateurs ;<br/><br/>\n 3° Enoncer les critères clairs et objectifs sur lesquels se fonde la comparaison ;<br/><br/>\n 4° Employer un langage clair et univoque ;<br/><br/>\n 5° Fournir des informations exactes et à jour et donner la date de la dernière mise à jour ;<br/><br/>\n 6° Etre mis à la disposition de tout fournisseur d'assurance relative à la circulation des véhicules terrestres à moteur, donner accès aux informations pertinentes, comprendre une large gamme d'offres couvrant une part importante du marché de l'assurance automobile et, lorsque les informations fournies ne donnent pas une vue complète du marché, indiquer clairement à l'utilisateur cette circonstance avant l'affichage des résultats ;<br/><br/>\n 7° Prévoir une procédure efficace de signalement des informations incorrectes ;<br/><br/>\n 8° Comprendre une déclaration qui précise que les prix indiqués sont fondés sur les informations fournies et ne sont pas contraignants pour les assureurs. </p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048520425"
+  },
+  {
+   "doc_id": "LEGIARTI000006812106",
+   "version": "LEGIARTI000006812108",
+   "article": "R211-2",
+   "date_debut": "2007-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Les contrats prévus à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-1 (V)\">l'article L. 211-1</a> doivent couvrir, en plus de la responsabilité civile des personnes mentionnées à cet article, celle du propriétaire du véhicule.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812108"
+  },
+  {
+   "doc_id": "LEGIARTI000006812109",
+   "version": "LEGIARTI000006812111",
+   "article": "R211-3",
+   "date_debut": "2007-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Les professionnels de la réparation, de la vente ou du contrôle de l'automobile sont tenus de s'assurer, pour leur propre responsabilité, celle des personnes travaillant dans leur exploitation, celle des personnes ayant la garde ou la conduite du véhicule, même sans y avoir été autorisées, ainsi que celle des passagers.</p><p>Cette obligation s'applique à la responsabilité civile que les personnes mentionnées au précédent alinéa peuvent encourir du fait des dommages causés aux tiers par les véhicules qui sont confiés au souscripteur du contrat en raison de ses fonctions et ceux qui sont utilisés dans le cadre de l'activité professionnelle du souscripteur du contrat.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812111"
+  },
+  {
+   "doc_id": "LEGIARTI000006812112",
+   "version": "LEGIARTI000006812114",
+   "article": "R211-4",
+   "date_debut": "1993-03-28",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Les contrats prévus à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-1 (V)\">l'article L. 211-1 </a>doivent spécifier les caractéristiques des remorques dont l'adjonction à un véhicule terrestre à moteur ne constitue pas, au sens des <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006792029&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L113-4 (V)\">articles L. 113-4 </a>et <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006792066&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L113-9 (V)\">L. 113-9,</a> une aggravation du risque couvert par le contrat garantissant ce véhicule.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812114"
+  },
+  {
+   "doc_id": "LEGIARTI000006812115",
+   "version": "LEGIARTI000006812115",
+   "article": "R211-4-1",
+   "date_debut": "2007-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Lorsqu'un train routier, tel que défini à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006074228&idArticle=LEGIARTI000006841575&dateTexte=&categorieLien=cid\" title=\"Code de la route. - art. R311-1 (V)\">l'article R. 311-1</a> du code de la route, est impliqué dans un accident de la circulation, la personne lésée peut exercer l'action directe au choix contre l'assureur du véhicule tracteur ou contre l'assureur de la remorque. L'assureur saisi de l'action doit garantir la responsabilité de l'ensemble du véhicule articulé à l'égard de la personne lésée, pour le compte de qui il appartiendra et dans les limites du contrat.</p><p>L'assureur qui aura pris en charge l'indemnisation des personnes lésées, que ce soit l'assureur du véhicule à moteur ou celui de la remorque ou de la semi-remorque, disposera, le cas échéant, d'un droit de recours contre l'assureur de l'autre partie de l'ensemble articulé, ou contre toute autre partie qui porterait finalement la responsabilité des dommages.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812115"
+  },
+  {
+   "doc_id": "LEGIARTI000006812116",
+   "version": "LEGIARTI000006812117",
+   "article": "R211-5",
+   "date_debut": "1986-01-08",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>L'obligation d'assurance s'applique à la réparation des dommages corporels ou matériels résultant :</p><p>1° Des accidents, incendies ou explosions causés par le véhicule, les accessoires et produits servant à son utilisation, les objets et substances qu'il transporte ;</p><p>2° De la chute de ces accessoires, objets, substances ou produits.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812117"
+  },
+  {
+   "doc_id": "LEGIARTI000006812118",
+   "version": "LEGIARTI000006812118",
+   "article": "R211-6",
+   "date_debut": "1976-07-21",
+   "etat": "ABROGE",
+   "texte_html": "<p></p>   Sous réserve des dérogations prévues à l'article R. 211-8, l'obligation d'assurance s'applique à la réparation des dommages causés à toutes les personnes autres que celles énumérées respectivement au premier alinéa de l'article R. 211-2 et au premier alinéa de l'article R. 211-3, et notamment à la réparation des dommages causés aux personnes transportées à titre gratuit ou onéreux.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812118"
+  },
+  {
+   "doc_id": "LEGIARTI000006812119",
+   "version": "LEGIARTI000006812124",
+   "article": "R211-7",
+   "date_debut": "2007-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   L'assurance doit être souscrite sans limitation de somme en ce qui concerne les dommages corporels et pour une somme au moins égale à celle fixée par arrêté du ministre chargé de l'économie, laquelle ne pourra être inférieure à 1 million d'euros, par sinistre et quel que soit le nombre de victimes, en ce qui concerne les dommages aux biens.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812124"
+  },
+  {
+   "doc_id": "LEGIARTI000006812125",
+   "version": "LEGIARTI000006812127",
+   "article": "R211-8",
+   "date_debut": "1993-09-14",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Par dérogation aux dispositions qui précèdent, l'obligation d'assurance ne s'applique pas à la réparation :</p><p>1° Des dommages subis :</p><p>a) Par la personne conduisant le véhicule ;</p><p>b) (abrogé) ;</p><p>c) (abrogé) ;</p><p>d) Par une personne salariée ou travaillant pour un employeur, à l'occasion d'un accident de travail. Toutefois, n'est pas comprise dans cette exclusion la couverture de la réparation complémentaire, prévue à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073189&idArticle=LEGIARTI000006743122&dateTexte=&categorieLien=cid\" title=\"Code de la sécurité sociale. - art. L455-1-1 (V)\">l'article L. 455-1-1 </a>du code de la sécurité sociale, pour les dommages consécutifs à un accident défini à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073189&idArticle=LEGIARTI000006742977&dateTexte=&categorieLien=cid\" title=\"Code de la sécurité sociale. - art. L411-1 (V)\">l'article L. 411-1</a> du même code, subis par une personne salariée ou travaillant pour un employeur et qui est victime d'un accident dans lequel est impliqué un véhicule terrestre à moteur conduit par cet employeur, un de ses préposés ou une personne appartenant à la même entreprise que la victime, et survenu sur une voie ouverte à la circulation publique ;</p><p>2° (abrogé) ;</p><p>3° Des dommages ou de l'aggravation des dommages causés par des armes ou engins destinés à exploser par modification de structure du noyau de l'atome ou par tout combustible nucléaire, produit ou déchet radioactif ou par tout autre source de rayonnements ionisants et qui engagent la responsabilité exclusive d'un exploitant d'installation nucléaire ;</p><p>4° Des dommages atteignant les immeubles, choses ou animaux loués ou confiés au conducteur à n'importe quel titre ;</p><p>5° Des dommages causés aux marchandises et objets transportés, sauf en ce qui concerne la détérioration des vêtements des personnes transportées, lorsque celle-ci est l'accessoire d'un accident corporel.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812127"
+  },
+  {
+   "doc_id": "LEGIARTI000006812128",
+   "version": "LEGIARTI000006812128",
+   "article": "R211-9",
+   "date_debut": "1976-07-21",
+   "etat": "ABROGE",
+   "texte_html": "<p></p>   Nonobstant les dispositions de l'article R. 211-7, et compte tenu de celles de l'article R. 211-13, il peut être stipulé au contrat d'assurance que l'assuré conserve à sa charge une partie de l'indemnité due aux tiers lésés.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812128"
+  },
+  {
+   "doc_id": "LEGIARTI000006812129",
+   "version": "LEGIARTI000006812132",
+   "article": "R211-10",
+   "date_debut": "1993-03-28",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Le contrat d'assurance peut, sans qu'il soit contrevenu aux dispositions de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-1 (V)\">l'article L. 211-1</a> comporter des clauses prévoyant une exclusion de garantie dans les cas suivants :</p><p>1° Lorsque au moment du sinistre, le conducteur n'a pas l'âge requis ou ne possède pas les certificats, en état de validité, exigés par la réglementation en vigueur pour la conduite du véhicule, sauf en cas de vol, de violence ou d'utilisation du véhicule à l'insu de l'assuré ;</p><p>2° En ce qui concerne les dommages subis par les personnes transportées, lorsque le transport n'est pas effectué dans les conditions suffisantes de sécurité fixées par un arrêté conjoint du ministre de l'économie et des finances, du garde des sceaux, ministre de la justice, du ministre de l'intérieur, du ministre de la défense et du ministre chargé des transports.</p><p>L'exclusion prévue au 1° de l'alinéa précédent ne peut être opposée au conducteur détenteur d'un certificat déclaré à l'assureur lors de la souscription ou du renouvellement du contrat, lorsque ce certificat est sans validité pour des raisons tenant au lieu ou à la durée de résidence de son titulaire ou lorsque les conditions restrictives d'utilisation, autres que celles relatives aux catégories de véhicules, portées sur celui-ci n'ont pas été respectées.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812132"
+  },
+  {
+   "doc_id": "LEGIARTI000006812133",
+   "version": "LEGIARTI000006812135",
+   "article": "R211-11",
+   "date_debut": "1993-03-28",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Sont valables, sans que la personne assujettie à l'obligation d'assurance soit dispensée de cette obligation dans les cas prévus ci-dessous, les clauses des contrats ayant pour objet d'exclure de la garantie la responsabilité encourue par l'assuré :</p><p>1° Du fait des dommages causés par le véhicule lorsqu'il transporte des sources de rayonnements ionisants destinés à être utilisées hors d'une installation nucléaire, dès lors que lesdites sources auraient provoqué ou aggravé le sinistre ;</p><p>2° paragraphe abrogé.</p><p>3° Du fait des dommages causés par le véhicule, lorsqu'il transporte des matières inflammables, explosives, corrosives ou comburantes et à l'occasion desquels lesdites matières auraient provoqué ou aggravé le sinistre ; toutefois la non-assurance ne saurait être invoquée du chef de transports d'huiles, d'essences minérales ou de produits similaires, ne dépassant pas 500 kilogrammes ou 600 litres, y compris l'approvisionnement de carburant liquide ou gazeux nécessaire au moteur ;</p><p>4° Du fait des dommages survenus au cours d'épreuves, courses, compétitions ou leurs essais, soumis par la réglementation en vigueur à l'autorisation préalable des pouvoirs publics.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812135"
+  },
+  {
+   "doc_id": "LEGIARTI000006812136",
+   "version": "LEGIARTI000006812139",
+   "article": "R211-12",
+   "date_debut": "2007-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Le contrat d'assurance, lorsqu'il comporte l'une des exclusions de garantie prévues à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812133&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-11 (V)\">l'article R. 211-11</a>, doit rappeler que si les limitations d'emploi qui justifient cette exclusion ne sont pas respectées, les peines prévues par l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795642&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-26 (V)\">L. 211-26 </a>et la majoration prévue par <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795653&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-27 (V)\">l'article L. 211-27</a>, 1er alinéa, seront encourues.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812139"
+  },
+  {
+   "doc_id": "LEGIARTI000006812140",
+   "version": "LEGIARTI000048656110",
+   "article": "R211-13",
+   "date_debut": "2023-12-23",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Ne sont pas opposables aux victimes ou à leurs ayants droit :</p><p>1° La franchise prévue à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006792236&dateTexte=&categorieLien=cid\">l'article L. 121-1 </a>;</p><p>2° Les déchéances ;</p><p>3° La réduction de l'indemnité applicable conformément à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006792066&dateTexte=&categorieLien=cid\">l'article L. 113-9 </a>;</p><p>4° Les exclusions de garanties prévues aux <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812129&dateTexte=&categorieLien=cid\">articles R. 211-10 et R. 211-11</a>.</p><p>Dans les cas susmentionnés, l'assureur procède au paiement de l'indemnité pour le compte du responsable.</p><p>Il peut exercer contre ce dernier une action en remboursement pour toutes les sommes qu'il a ainsi payées ou mises en réserve à sa place.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048656110"
+  },
+  {
+   "doc_id": "LEGIARTI000006812143",
+   "version": "LEGIARTI000006812143",
+   "article": "R211-13-1",
+   "date_debut": "1986-01-08",
+   "etat": "ABROGE",
+   "texte_html": "<p></p>   Le contrat peut comporter une clause prévoyant une action en remboursement contre le conducteur responsable du sinistre, lorsque la garde ou la conduite a été obtenue contre le gré du propriétaire ou du locataire.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812143"
+  },
+  {
+   "doc_id": "LEGIARTI000048545372",
+   "version": "LEGIARTI000048546108",
+   "article": "R211-14-0",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>I.-Tout conducteur d'un véhicule à moteur soumis à l'obligation d'assurance prévue à l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\">L. 211-1</a>, et immatriculé conformément à l'<a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006074228&idArticle=LEGIARTI000006841773&dateTexte=&categorieLien=cid\">article R. 322-1 du code de la route</a>, est présumé avoir satisfait à cette obligation lorsqu'il résulte de la consultation du fichier mentionné au I de l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000033426098&dateTexte=&categorieLien=cid\">L. 451-1-1 </a>du présent code par les fonctionnaires ou agents chargés de constater les infractions à la police de la circulation routière ou chargés du contrôle des transports terrestres que son véhicule est couvert par une police d'assurance. </p><p></p><p>Si cette présomption n'a pas pu être établie lors des contrôles mentionnés ci-dessus, ou par la production du document mentionné à l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000048545374&dateTexte=&categorieLien=cid\">R. 211-14-0-1</a> dans les conditions et délais prévus à ce même article, le conducteur prouve par tous moyens auprès des autorités judiciaires que son véhicule est assuré. </p><p></p><p>II.-Les informations du fichier mentionné au I de l'article L. 451-1-1 n'impliquent pas une obligation de garantie à la charge de l'entreprise d'assurance. </p><p></p><p>III.-Les dispositions du I et du II ne sont pas applicables aux conducteurs de véhicules ayant leur stationnement habituel au sens de l'article L. 211-4 sur le territoire d'un Etat autre que la France mentionné à ce même article. Toutefois, tout conducteur dont le véhicule est immatriculé dans un Etat membre de l'Union européenne autre que la France ou immatriculé dans un pays tiers mais en provenance d'un Etat membre doit être en mesure de produire, à l'occasion de contrôles de police ne visant pas exclusivement à vérifier le respect de l'obligation d'assurance, un des documents justificatifs prévus, respectivement, aux articles R. 211-22 ou R. 211-23, ou de prouver par tout autre moyen que son véhicule est assuré.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048546108"
+  },
+  {
+   "doc_id": "LEGIARTI000048545374",
+   "version": "LEGIARTI000048546110",
+   "article": "R211-14-0-1",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>I. - L'entreprise d'assurance délivre sans frais à l'assuré à chaque souscription d'une police d'assurance couvrant un véhicule un document comportant les indications suivantes :</p><p></p><p> 1° La dénomination et l'adresse de l'entreprise d'assurance ;</p><p></p><p> 2° Les nom, prénoms et adresse du souscripteur du contrat ;</p><p></p><p> 3° Le numéro de la police d'assurance ;</p><p></p><p> 4° La date de délivrance du document ;</p><p></p><p> 5° La date d'effectivité de la garantie ;</p><p></p><p> 6° Le numéro d'immatriculation du véhicule ;</p><p></p><p> 7° La marque et le modèle du véhicule ;</p><p></p><p> 8° Si la garantie du contrat s'applique à la fois à un véhicule à moteur et à ses remorques ou semi-remorques, une mention du type des remorques ou semi-remorques qui peuvent être utilisées avec le véhicule ;</p><p></p><p> 9° le cas échéant, la mention que le véhicule est utilisé dans le cadre d'une activité de transport public particulier de personne à titre onéreux.</p><p></p><p> II. - Le document mentionné au I rappelle que le véhicule est soumis à l'obligation d'assurance. Il comporte la mention suivante : “Ce document constitue une présomption d'assurance pendant les quinze jours suivant la date de prise d'effet de la police”. Pour les polices dont la couverture est inférieure à quinze jours, ce document précise que cette présomption vaut jusqu'au terme de la période couverte.</p><p></p><p> Ce document n'implique pas une obligation de garantie à la charge de l'entreprise d'assurance.</p><p></p><p> III. - Pour les véhicules utilisés dans le cadre d'une activité de transport public particulier de personnes, l'entreprise d'assurance délivre sans frais à l'assuré un document justificatif comportant les informations mentionnées au I avec l'indication expresse que la police couvre cette activité.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048546110"
+  },
+  {
+   "doc_id": "LEGIARTI000006812144",
+   "version": "LEGIARTI000048547657",
+   "article": "R211-14",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>I. - Tout conducteur d'un véhicule mentionné à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\">l'article L. 211-1 </a>du présent code non soumis à l'obligation d'immatriculation prévue à l'article R. 322-1 du code de la route doit, dans les conditions prévues aux articles de la présente sous-section, être en mesure de présenter un document faisant présumer que l'obligation d'assurance a été satisfaite.</p><p>Cette présomption résulte de la production, aux fonctionnaires ou agents chargés de constater les infractions à la police de la circulation, d'un des documents dont les conditions d'établissement et de validité sont fixées par la présente sous-section.</p><p>A défaut d'un de ces documents, la justification est fournie aux autorités judiciaires par tous moyens.</p><p>II. - Sera puni de la peine d'amende prévue pour les contraventions de deuxième classe tout conducteur d'un véhicule mentionné au I qui ne sera pas en mesure de présenter un des documents justificatifs prévus aux articles <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812157&dateTexte=&categorieLien=cid\">R. 211-15</a> et <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812153&dateTexte=&categorieLien=cid\">R. 211-17</a>. Toutefois, ces dispositions ne sont pas applicables lorsque ce conducteur est passible de la sanction prévue à l'alinéa suivant.</p><p>Sera punie de la peine d'amende prévue pour les contraventions de la 4e classe toute personne qui, invitée à justifier dans un délai de cinq jours de la possession d'un des documents mentionnés à l'alinéa précédent, n'aura pas présenté ce document avant l'expiration de ce délai.</p><p>III. - Les documents justificatifs prévus au présent article n'impliquent pas une obligation de garantie à la charge de l'assureur.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048547657"
+  },
+  {
+   "doc_id": "LEGIARTI000006812156",
+   "version": "LEGIARTI000048547650",
+   "article": "R211-14-1",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Les dispositions de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812144&dateTexte=&categorieLien=cid\">l'article R. 211-14 </a>ne sont pas applicables aux conducteurs de véhicules mentionnés au I du même article ayant leur stationnement habituel au sens de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795376&dateTexte=&categorieLien=cid\">l'article L. 211-4 </a>sur le territoire d'un Etat, autre que la France, visé au même article. Toutefois, ces conducteurs doivent être en mesure de produire, à l'occasion de contrôles de police effectués dans une finalité ne visant pas exclusivement à vérifier le respect de l'obligation d'assurance, un des documents justificatifs prévus aux articles R. 211-22 ou R. 211-23, ou de prouver par tout autre moyen que leur véhicule est assuré.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048547650"
+  },
+  {
+   "doc_id": "LEGIARTI000006812157",
+   "version": "LEGIARTI000048547643",
+   "article": "R211-15",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Pour l'application de l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812144&dateTexte=&categorieLien=cid\">R. 211-14</a>, l'entreprise d'assurance doit délivrer, sans frais, un document justificatif pour chacun des véhicules couverts par la police.</p><p>Le document justificatif doit mentionner :</p><p>a) la dénomination et l'adresse de l'entreprise d'assurance ;</p><p>b) les nom, prénoms et adresse du souscripteur du contrat ;</p><p>c) le numéro de la police d'assurance ;</p><p>d) la période d'assurance correspondant à la prime ou portion de prime payée ;</p><p>e) les caractéristiques du véhicule, notamment son numéro de châssis ou de série.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048547643"
+  },
+  {
+   "doc_id": "LEGIARTI000006812151",
+   "version": "LEGIARTI000048547639",
+   "article": "R211-16",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   La présomption qu'il a été satisfait à l'obligation d'assurance est établie par le document justificatif pour la période mentionnée sur ce document. Toutefois, cette présomption subsiste un mois à compter de l'expiration de cette période.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048547639"
+  },
+  {
+   "doc_id": "LEGIARTI000006812153",
+   "version": "LEGIARTI000048547633",
+   "article": "R211-17",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Le document justificatif mentionné à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812157&dateTexte=&categorieLien=cid\">l'article R. 211-15 </a>est délivré dans un délai maximal de quinze jours à compter de la souscription du contrat et renouvelé lors du paiement des primes ou portions de prime subséquentes. </p><p>Faute d'établissement immédiat de ce document, l'entreprise d'assurance délivre sans frais, à la souscription du contrat ou en cours de contrat, une attestation provisoire qui établit la présomption d'assurance pendant la période qu'elle détermine, dont la durée ne peut excéder un mois. </p><p>Sera puni de la peine d'amende prévue pour les contraventions de deuxième classe tout assureur qui aura refusé de délivrer un des documents justificatifs mentionnés au présent article. </p><p>Cette attestation, qui est éventuellement établie en autant d'exemplaires que le document justificatif correspondant, doit mentionner :</p><p>-la dénomination et l'adresse de l'entreprise d'assurance ;</p><p>-les nom, prénoms et adresse du souscripteur du contrat ;</p><p>-la nature et le type du véhicule ou, en ce qui concerne les contrats d'assurance mentionnés à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812109&dateTexte=&categorieLien=cid\">l'article R. 211-3</a>, la profession du souscripteur ;</p><p>-la période pendant laquelle elle est valable. </p><p>La carte internationale d'assurance, dite \" carte verte \", délivrée par le bureau central français des sociétés d'assurances contre les accidents d'automobile, vaut comme document justificatif pendant sa période de validité. La présomption qu'il a été satisfait à l'obligation d'assurance, établie par la carte internationale d'assurance, subsiste un mois à compter de l'expiration de cette période. </p><p>La prolongation d'un mois de la présomption mentionnée à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812151&dateTexte=&categorieLien=cid\">l'article R. 211-16 </a>ne s'applique pas à l'attestation provisoire mentionnée au deuxième alinéa.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048547633"
+  },
+  {
+   "doc_id": "LEGIARTI000006812159",
+   "version": "LEGIARTI000048547628",
+   "article": "R211-18",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   Pour l'utilisation des véhicules appartenant à l'Etat ou mis à sa disposition, non couverts par un contrat d'assurance et n'ayant pas fait l'objet d'une immatriculation spéciale, il est établi une attestation de propriété par l'autorité administrative compétente.<p></p><p></p>   Aucune attestation ne peut être délivrée par une autorité qui n'aurait pas reçu délégation à cet effet.<p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048547628"
+  },
+  {
+   "doc_id": "LEGIARTI000006812167",
+   "version": "LEGIARTI000048547614",
+   "article": "R211-21-1",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Tout souscripteur d'un contrat d'assurance prévu par <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\">l'article L. 211-1 </a> dont le véhicule n'est pas soumis à l'obligation d'immatriculation prévue à l'article R. 322-1 du code de la route, doit apposer sur le véhicule automoteur assuré, dans les conditions fixées par un arrêté du ministre chargé de l'économie, le certificat d'assurance décrit aux articles <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812170&dateTexte=&categorieLien=cid\">R. 211-21-2 et R. 211-21-3</a>, alinéa 2.</p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048547614"
+  },
+  {
+   "doc_id": "LEGIARTI000006812170",
+   "version": "LEGIARTI000048547607",
+   "article": "R211-21-2",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Pour l'application de l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812167&dateTexte=&categorieLien=cid\">R. 211-21-1</a>, toute entreprise d'assurance pratiquant sur le territoire de la République française doit délivrer sans frais un certificat pour chacun des véhicules couverts par le contrat.</p><p>Le certificat doit mentionner :</p><p>a) La dénomination de l'entreprise d'assurance ;</p><p>b) Un numéro permettant l'identification du souscripteur ;</p><p> c) Le numéro de châssis ou de série ;</p><p></p><p> d) Les dates de début et de fin de validité.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048547607"
+  },
+  {
+   "doc_id": "LEGIARTI000006812173",
+   "version": "LEGIARTI000048547603",
+   "article": "R211-21-3",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Le certificat mentionné à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812170&dateTexte=&categorieLien=cid\">l'article R. 211-21-2</a> est délivré par l'entreprise d'assurance dans un délai maximal de quinze jours à compter de la souscription du contrat et renouvelé lors du paiement des primes ou portions de primes subséquentes. </p><p></p><p>Faute d'établissement immédiat de ce document, l'entreprise d'assurance délivre, sans frais, à la souscription du contrat ou en cours de contrat, un certificat provisoire. </p><p></p><p>Les dates de validité portées sur le certificat et le certificat provisoire sont les mêmes que celles portées sur l'attestation et l'attestation provisoire. </p><p></p><p>En cas de perte ou de vol du certificat, l'assureur en délivre un double sur la demande justifiée du souscripteur du contrat. </p><p></p><p>Sera puni de la peine d'amende prévue pour les contraventions de deuxième classe tout assureur qui aura refusé de délivrer un certificat ou qui aura délivré un certificat non conforme aux dispositions fixées par le ministre de l'économie, des finances et du budget.</p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048547603"
+  },
+  {
+   "doc_id": "LEGIARTI000006812175",
+   "version": "LEGIARTI000048547599",
+   "article": "R211-21-4",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>La prolongation d'un mois de la présomption mentionnée à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000048547639&dateTexte=&categorieLien=id\" title=\"Code des assurances - art. R211-16 (VD)\">l'article R. 211-16</a> s'applique au certificat. <p></p><p></p>La prolongation d'un mois de la présomption mentionnée à l'article R. 211-16 ne s'applique pas au certificat provisoire.<p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048547599"
+  },
+  {
+   "doc_id": "LEGIARTI000006812176",
+   "version": "LEGIARTI000048547594",
+   "article": "R211-21-5",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Sera puni de la peine d'amende prévue pour les contraventions de deuxième classe tout souscripteur d'un contrat d'assurance relatif à un véhicule mentionné à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812167&dateTexte=&categorieLien=cid\">l'article R. 211-21-1</a> qui aura omis d'apposer sur le véhicule concerné le certificat prévu aux <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000048547607&dateTexte=&categorieLien=id\" title=\"Code des assurances - art. R211-21-2 (VD)\">articles R. 211-21-2 et R. 211-21-3 </a>ou aura apposé un certificat non valide.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048547594"
+  },
+  {
+   "doc_id": "LEGIARTI000006812177",
+   "version": "LEGIARTI000048547587",
+   "article": "R211-21-6",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Les dispositions des <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000048547614&dateTexte=&categorieLien=id\" title=\"Code des assurances - art. R211-21-1 (VD)\">articles R. 211-21-1 à R. 211-21-5 </a>ne sont pas applicables dans les cas mentionnés à l'article R. 211-14-1 et aux personnes mentionnées aux <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812180&dateTexte=&categorieLien=cid\">articles R. 211-22 et R. 211-23</a>.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048547587"
+  },
+  {
+   "doc_id": "LEGIARTI000006812165",
+   "version": "LEGIARTI000006812166",
+   "article": "R211-21",
+   "date_debut": "1994-03-03",
+   "etat": "ABROGE",
+   "texte_html": "<p>Les véhicules immatriculés dans un département ou un territoire français d'outre-mer ou à Mayotte, ainsi que les véhicules non soumis à immatriculation dont le lieu de stationnement habituel est situé dans un de ces départements ou territoires ou à Mayotte, sont soumis aux dispositions de la présente section lorsqu'ils circulent en France métropolitaine.</p><p>Toutefois, en ce qui concerne ces véhicules, sont également admis, à titre de document justificatif, les documents prévus aux <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812180&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R*211-22 (V)\">articles R. 211-22 et R. 211-23</a>.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812166"
+  },
+  {
+   "doc_id": "LEGIARTI000006812178",
+   "version": "LEGIARTI000006812179",
+   "article": "R211-21-7",
+   "date_debut": "1997-06-01",
+   "etat": "ABROGE",
+   "texte_html": "<p></p>Les véhicules visés au deuxième alinéa de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812167&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-21-1 (V)\">l'article R. 211-21-1</a> utilisés par l'Etat doivent être équipés, lorsqu'ils ne font pas l'objet d'une immatriculation spéciale, d'un certificat d'assurance spécifique dont les caractéristiques sont fixées par le ministre chargé de l'économie.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812179"
+  },
+  {
+   "doc_id": "LEGIARTI000006812184",
+   "version": "LEGIARTI000038265600",
+   "article": "R211-24",
+   "date_debut": "2019-03-23",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>L'assurance frontière est souscrite soit auprès d'une entreprise d'assurance agréée pour les opérations d'assurance de responsabilité civile des véhicules terrestres automoteurs, soit auprès du groupement de coassurance \"Assurance frontière\" géré par le bureau central français.</p><p>La souscription de cette assurance est constatée, moyennant le paiement de la prime correspondante, par une attestation dont le modèle est fixé par le bureau central français.</p><p>Lorsqu'elle est souscrite auprès du groupement de coassurance \"Assurance frontière\", l'attestation peut être délivrée par l'administration des douanes qui peut effectuer l'encaissement des primes correspondantes.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000038265600"
+  },
+  {
+   "doc_id": "LEGIARTI000006812190",
+   "version": "LEGIARTI000006812191",
+   "article": "R211-27",
+   "date_debut": "1994-10-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Les dispositions des <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812182&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R*211-23 (V)\">articles R. 211-23 à R. 211-26 </a>ne sont pas applicables aux personnes qui font pénétrer en France des véhicules ayant leur stationnement habituel sur le territoire d'un Etat, autre que la France, visé à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795376&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-4 (V)\">l'article L. 211-4.</a></p><p>Elles ne sont pas non plus applicables aux personnes qui font pénétrer en France des véhicules en provenance de la Communauté européenne, du Saint-Siège, de Saint-Marin ou de Monaco et ayant leur stationnement habituel sur le territoire d'un pays tiers.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812191"
+  },
+  {
+   "doc_id": "LEGIARTI000006812192",
+   "version": "LEGIARTI000006812192",
+   "article": "R211-28",
+   "date_debut": "1976-07-21",
+   "etat": "ABROGE",
+   "texte_html": "<p></p>   Les dispositions des articles R. 211-22 à R. 211-26 ne sont pas applicables aux personnes qui font pénétrer en France métropolitaine des véhicules ayant leur stationnement habituel sur le territoire de l'un des Etats suivants : Autriche, Finlande, Norvège, Suède, Suisse et Liechtenstein.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812192"
+  },
+  {
+   "doc_id": "LEGIARTI000006812193",
+   "version": "LEGIARTI000006812194",
+   "article": "R211-29",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Lorsque l'assureur qui garantit la responsabilité civile du fait d'un véhicule terrestre à moteur n'a pas été avisé de l'accident de la circulation dans le mois de l'accident, le délai prévu au premier alinéa de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-9 (V)\">l'article L. 211-9</a> pour présenter une offre d'indemnité est suspendu à l'expiration du délai d'un mois jusqu'à la réception par l'assureur de cet avis.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812194"
+  },
+  {
+   "doc_id": "LEGIARTI000006812195",
+   "version": "LEGIARTI000006812195",
+   "article": "R211-30",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Lorsque la victime d'un accident de la circulation décède plus d'un mois après le jour de l'accident, le délai prévu à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-9 (V)\">l'article L. 211-9</a> pour présenter une offre d'indemnité aux héritiers et, s'il y a lieu, au conjoint de la victime est prorogé du temps écoulé entre la date de l'accident et le jour du décès diminué d'un mois.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812195"
+  },
+  {
+   "doc_id": "LEGIARTI000006812196",
+   "version": "LEGIARTI000036768854",
+   "article": "R211-31",
+   "date_debut": "2018-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Si, dans un délai de six semaines à compter de la présentation de la correspondance qui est prévue au premier alinéa de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795456&dateTexte=&categorieLien=cid\">l'article L. 211-10 </a>et par laquelle l'assureur demande les renseignements qui doivent lui être adressés conformément aux <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812202&dateTexte=&categorieLien=cid\">articles R. 211-37 ou R. 211-38</a>, l'assureur n'a reçu aucune réponse ou qu'une réponse incomplète, le délai prévu au premier alinéa de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\">l'article L. 211-9</a> est suspendu à compter de l'expiration du délai de six semaines et jusqu'à la réception des renseignements demandés.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000036768854"
+  },
+  {
+   "doc_id": "LEGIARTI000006812197",
+   "version": "LEGIARTI000006812197",
+   "article": "R211-32",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Si l'assureur n'a reçu aucune réponse ou qu'une réponse incomplète dans les six semaines de la présentation de la correspondance par laquelle, informé de la consolidation de l'état de la victime, il a demandé à cette dernière ceux des renseignements mentionnés à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812202&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-37 (V)\">l'article R. 211-37 </a>qui lui sont nécessaires pour présenter l'offre d'indemnité, le délai prévu au quatrième alinéa de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-9 (V)\">l'article L. 211-9</a> est suspendu à compter de l'expiration du délai de six semaines jusqu'à la réception de la réponse contenant les renseignements demandés.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812197"
+  },
+  {
+   "doc_id": "LEGIARTI000006812198",
+   "version": "LEGIARTI000006812198",
+   "article": "R211-33",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Lorsque la victime, les héritiers ou le conjoint ne fournit qu'une partie des renseignements demandés par l'assureur dans sa correspondance et que la réponse ne permet pas, en raison de l'absence de renseignements suffisants, d'établir l'offre d'indemnité, l'assureur dispose d'un délai de quinze jours à compter de la réception de la réponse complète pour présenter à l'intéressé une nouvelle demande par laquelle il lui précise les renseignements qui font défaut.</p><p>Dans le cas où l'assureur n'a pas respecté ce délai, la suspension des délais prévus aux <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812196&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-31 (V)\">articles R. 211-31 et R. 211-32 </a>cesse à l'expiration d'un délai de quinze jours à compter de la réception de la réponse incomplète, lorsque celle-ci est parvenue au-delà du délai de six semaines mentionné aux mêmes articles ; lorsque la réponse incomplète est parvenue dans le délai de six semaines mentionné aux articles R. 211-31 et R. 211-32 et que l'assureur n'a pas demandé dans un délai de quinze jours à compter de sa réception les renseignements nécessaires, il n'y a pas lieu à suspension des délais prévus à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-9 (V)\">l'article L. 211-9</a>.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812198"
+  },
+  {
+   "doc_id": "LEGIARTI000006812199",
+   "version": "LEGIARTI000006812199",
+   "article": "R211-34",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Lorsque la victime ne se soumet pas à l'examen médical mentionné à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812209&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-43 (V)\">l'article R. 211-43</a> ou lorsqu'elle élève une contestation sur le choix du médecin sans qu'un accord puisse intervenir avec l'assureur, la désignation, à la demande de l'assureur, d'un médecin à titre d'expert par le juge des référés proroge d'un mois le délai imparti à l'assureur pour présenter l'offre d'indemnité.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812199"
+  },
+  {
+   "doc_id": "LEGIARTI000006812200",
+   "version": "LEGIARTI000006812200",
+   "article": "R211-35",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Lorsque la victime demeure outre-mer ou à l'étranger, les délais qui lui sont impartis en vertu des <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812196&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-31 (V)\">articles R. 211-31 </a>et <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812197&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-32 (V)\">R. 211-32 </a>sont augmentés d'un mois. Le délai imparti à l'assureur pour présenter l'offre d'indemnité est prorogé de la même durée.</p><p>Lorsqu'un tiers payeur demeure outre-mer ou à l'étranger, les délais prévus à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-9 (V)\">l'article L. 211-9</a> sont augmentés d'un mois.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812200"
+  },
+  {
+   "doc_id": "LEGIARTI000006812201",
+   "version": "LEGIARTI000018846257",
+   "article": "R211-36",
+   "date_debut": "2008-05-25",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>La computation des délais mentionnés à la présente section est faite conformément aux articles <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006070716&idArticle=LEGIARTI000006411002&dateTexte=&categorieLien=cid\" title=\"Code de procédure civile - art. 641 (V)\">641</a> et <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006070716&idArticle=LEGIARTI000006411003&dateTexte=&categorieLien=cid\" title=\"Code de procédure civile - art. 642 (V)\">642</a> du    code de procédure civile.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018846257"
+  },
+  {
+   "doc_id": "LEGIARTI000006812202",
+   "version": "LEGIARTI000006812202",
+   "article": "R211-37",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>La victime est tenue, à la demande de l'assureur, de lui donner les renseignements ci-après :</p><p>1° Ses nom et prénoms ;</p><p>2° Ses date et lieu de naissance ;</p><p>3° Son activité professionnelle et l'adresse de son ou de ses employeurs ;</p><p>4° Le montant de ses revenus professionnels avec les justifications utiles ;</p><p>5° La description des atteintes à sa personne accompagnée d'une copie du certificat médical initial et autres pièces justificatives en cas de consolidation ;</p><p>6° La description des dommages causés à ses biens ;</p><p>7° Les noms, prénoms et adresses des personnes à charge au moment de l'accident ;</p><p>8° Son numéro d'immatriculation à la sécurité sociale et l'adresse de la caisse d'assurance maladie dont elle relève ;</p><p>9° La liste des tiers payeurs appelés à lui verser des prestations ;</p><p>10° Le lieu où les correspondances doivent être adressées.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812202"
+  },
+  {
+   "doc_id": "LEGIARTI000006812203",
+   "version": "LEGIARTI000006812203",
+   "article": "R211-38",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Lorsque l'offre d'indemnité doit être présentée aux héritiers de la victime, à son conjoint ou aux personnes mentionnées au deuxième alinéa de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-9 (V)\">l'article L. 211-9</a>, chacune de ces personnes est tenue, à la demande de l'assureur, de lui donner les renseignements ci-après :</p><p>1° Ses nom et prénoms ;</p><p>2° Ses date et lieu de naissance ;</p><p>3° Les nom et prénoms, date et lieu de naissance de la victime ;</p><p>4° Ses liens avec la victime ;</p><p>5° Son activité professionnelle et l'adresse de son ou de ses employeurs ;</p><p>6° Le montant de ses revenus avec les justifications utiles ;</p><p>7° La description de son préjudice, notamment les frais de toute nature qu'elle a exposés du fait de l'accident ;</p><p>8° Son numéro d'immatriculation à la sécurité sociale et l'adresse de la caisse d'assurance maladie dont elle relève ;</p><p>9° La liste des tiers payeurs appelés à lui verser des prestations ainsi que leurs adresses ;</p><p>10° Le lieu où les correspondances doivent être adressées.</p><p>A la demande de l'assureur, les mêmes personnes sont tenues de donner également ceux des renseignements mentionnés à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812202&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-37 (V)\">l'article R. 211-37</a> qui sont nécessaires à l'établissement de l'offre.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812203"
+  },
+  {
+   "doc_id": "LEGIARTI000006812204",
+   "version": "LEGIARTI000006812204",
+   "article": "R211-39",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>La correspondance adressée par l'assureur en application des <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812202&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-37 (V)\">articles R. 211-37 et R. 211-38 </a>mentionne, outre les informations prévues à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795456&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-10 (V)\">l'article L. 211-10,</a> le nom de la personne chargée de suivre le dossier de l'accident. Elle rappelle à l'intéressé les conséquences d'un défaut de réponse ou d'une réponse incomplète. Elle indique que la copie du procès-verbal d'enquête de police ou de gendarmerie qu'il peut demander en vertu de l'article L. 211-10 lui sera délivrée sans frais.</p><p>Cette correspondance est accompagnée d'une notice relative à l'indemnisation des victimes d'accidents de la circulation dont le modèle est fixé par arrêté conjoint du garde des sceaux, ministre de la justice, du ministre chargé des assurances et du ministre chargé de la sécurité sociale.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812204"
+  },
+  {
+   "doc_id": "LEGIARTI000006812205",
+   "version": "LEGIARTI000006812205",
+   "article": "R211-40",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>L'offre d'indemnité doit indiquer, outre les mentions exigées par <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795526&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-16 (V)\">l'article L. 211-16</a>, l'évaluation de chaque chef de préjudice, les créances de chaque tiers payeur et les sommes qui reviennent au bénéficiaire. Elle est accompagnée de la copie des décomptes produits par les tiers payeurs.</p><p>L'offre précise, le cas échéant, les limitations ou exclusions d'indemnisation retenues par l'assureur, ainsi que leurs motifs. En cas d'exclusion d'indemnisation, l'assureur n'est pas tenu, dans sa notification, de fournir les indications et documents prévus au premier alinéa.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812205"
+  },
+  {
+   "doc_id": "LEGIARTI000006812207",
+   "version": "LEGIARTI000006812207",
+   "article": "R211-41",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>La demande adressée par l'assureur à un tiers payeur en vue de la production de ses créances indique les nom, prénoms, adresse de la victime, son activité professionnelle et l'adresse de son ou de ses employeurs. Elle rappelle de manière très apparente les dispositions des <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795469&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-11 (V)\">articles L. 211-11 et L. 211-12</a>. A défaut de ces indications, le délai de déchéance prévu au deuxième alinéa de l'article L. 211-11 ne court pas.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812207"
+  },
+  {
+   "doc_id": "LEGIARTI000006812208",
+   "version": "LEGIARTI000006812208",
+   "article": "R211-42",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Le tiers payeur indique à l'assureur pour chaque somme dont il demande le remboursement la disposition législative, réglementaire ou conventionnelle en vertu de laquelle cette somme est due à la victime.</p><p>Dans le cas prévu au troisième alinéa de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795469&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-11 (V)\">l'article L. 211-11,</a> les créances réclamées n'ont un caractère provisionnel que si le tiers payeur le précise expressément.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812208"
+  },
+  {
+   "doc_id": "LEGIARTI000006812209",
+   "version": "LEGIARTI000006812209",
+   "article": "R211-43",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>En cas d'examen médical pratiqué en vue de l'offre d'indemnité mentionnée à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795446&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-9 (V)\">l'article L. 211-9</a>, l'assureur ou son mandataire avise la victime, quinze jours au moins avant l'examen, de l'identité et des titres du médecin chargé d'y procéder, de l'objet, de la date et du lieu de l'examen, ainsi que du nom de l'assureur pour le compte duquel il est fait. Il informe en même temps la victime qu'elle peut se faire assister d'un médecin de son choix.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812209"
+  },
+  {
+   "doc_id": "LEGIARTI000006812210",
+   "version": "LEGIARTI000006812210",
+   "article": "R211-44",
+   "date_debut": "1988-03-20",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   Dans un délai de vingt jours à compter de l'examen médical, le médecin adresse un exemplaire de son rapport à l'assureur, à la victime et, le cas échéant, au médecin qui a assisté celle-ci.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812210"
+  },
+  {
+   "doc_id": "LEGIARTI000006812211",
+   "version": "LEGIARTI000006812211",
+   "article": "R211-45",
+   "date_debut": "1988-03-20",
+   "etat": "ABROGE",
+   "texte_html": "<p></p>   Sera punie des peines d'emprisonnement et d'amende prévues pour les contraventions de la 5ème classe toute personne qui, contrevenant aux dispositions de l'article L. 211-1 du présent code, aura mis ou maintenu en circulation un véhicule terrestre à moteur ainsi que ses remorques ou semi-remorques sans être couverte par une assurance garantissant sa responsabilité civile.<p></p><p></p>   En cas de récidive, les peines d'emprisonnement et d'amende prévues pour la récidive des contraventions de la 5ème classe seront applicables.<p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812211"
+  },
+  {
+   "doc_id": "LEGIARTI000006785941",
+   "version": "LEGIARTI000006785942+LEGIARTI000051155686",
+   "article": "A121-1",
+   "date_debut": "2007-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Les contrats d'assurance relevant des branches mentionnées au 3 et au 10 de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812450&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R321-1 (V)\">l'article R. 321-1 </a>du code des assurances et concernant des véhicules terrestres à moteur doivent comporter la clause de réduction ou de majoration des primes ou cotisations annexée au présent article. </p><p>Sauf convention contraire, la clause visée au premier alinéa n'est pas applicable aux contrats garantissant les véhicules, appareils ou matériels désignés par les termes ci-après, tels que définis à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006074228&idArticle=LEGIARTI000006841575&dateTexte=&categorieLien=cid\" title=\"Code de la route. - art. R311-1 (V)\">l'article R. 311-1</a> du code de la route : cyclomoteur, engin de service hivernal, engin spécial, motocyclette légère, quadricycle léger à moteur, quadricycle lourd à moteur, véhicule de collection, véhicule d'intérêt général, véhicule d'intérêt général prioritaire, véhicule d'intérêt général bénéficiant de facilités de passage, véhicule et matériel agricoles, matériel forestier, matériel de travaux publics.</p><p>Art. 1 <sup>er</sup>.-Lors de chaque échéance annuelle du contrat, la prime due par l'assuré est déterminée en multipliant le montant de la prime de référence, telle qu'elle est définie à l'article 2, par un coefficient dit coefficient de réduction-majoration , fixé conformément aux articles 4 et 5 suivants.</p><p>Le coefficient d'origine est de 1.</p><p>Art. 2.-La prime de référence est la prime établie par l'assureur pour le risque présentant les mêmes caractéristiques techniques que celles présentées par l'assuré et figurant au tarif communiqué par l'assureur au ministre chargé de l'Économie et des Finances dans les conditions prévues à l'article R. 310-6.</p><p>Les caractéristiques techniques concernent le véhicule, la zone géographique de circulation ou de garage, l'usage socioprofessionnel ou le kilométrage parcouru, éventuellement la conduite exclusive du véhicule, ainsi que les réductions éventuelles figurant au tarif des entreprises d'assurance.</p><p>Cette prime de référence ne comprend pas les majorations éventuellement prévues pour les circonstances aggravantes énumérées à l'article A. 121-1-2 du Code des assurances. En revanche, pour l'application des dispositions de la clause, cette prime de référence comprend la surprime éventuellement prévue pour les conducteurs novices à l'article A. 121-1-1 du Code des assurances ainsi que les réductions éventuelles mentionnées à l'article A. 335-9-3.</p><p>Art. 3.-La prime sur laquelle s'applique le coefficient de réduction-majoration est la prime de référence définie à l'article précédent, pour la garantie des risques de responsabilité civile, de dommages au véhicule, de vol, d'incendie, de bris de glaces et de catastrophes naturelles.</p><p>Art. 4.-Après chaque période annuelle d'assurance sans sinistre, le coefficient applicable est celui utilisé à la précédente échéance réduit de 5 %, arrêté à la deuxième décimale et arrondi par défaut ; toutefois, lorsque le contrat garantit un véhicule utilisé pour un usage Tournées ou Tous Déplacements , la réduction est égale à 7 %.</p><p>Le coefficient de réduction-majoration ne peut être inférieur à 0, 50. Aucune majoration n'est appliquée pour le premier sinistre survenu après une première période d'au moins trois ans au cours de laquelle le coefficient de réduction-majoration a été égal à 0, 50.</p><p>Art. 5.-Un sinistre survenu au cours de la période annuelle d'assurance majore le coefficient de 25 % ; un second sinistre majore le coefficient obtenu de 25 %, et il en est de même pour chaque sinistre supplémentaire.</p><p>Le coefficient obtenu est arrêté à la deuxième décimale et arrondi par défaut.</p><p>Si le véhicule assuré est utilisé pour un usage Tournées ou Tous Déplacements , la majoration est égale à 20 % par sinistre.</p><p>La majoration est, toutefois, réduite de moitié lorsque la responsabilité du conducteur n'est que partiellement engagée notamment lors d'un accident mettant en cause un piéton ou un cycliste.</p><p>En aucun cas le coefficient de réduction-majoration ne peut être supérieur à 3, 50.</p><p>Après deux années consécutives sans sinistre, le coefficient applicable ne peut être supérieur à 1.</p><p>Art. 6.-Ne sont pas à prendre en considération pour l'application d'une majoration les sinistres devant donner lieu ou non à une indemnisation, lorsque :</p><p>1°<sup></sup>l'auteur de l'accident conduit le véhicule à l'insu du propriétaire ou de l'un des conducteurs désignés, sauf s'il vit habituellement au foyer de l'un de ceux-ci ;</p><p>2°<sup></sup>la cause de l'accident est un événement, non imputable à l'assuré, ayant les caractéristiques de la force majeure ;</p><p>3°<sup></sup>la cause de l'accident est entièrement imputable à la victime ou à un tiers.</p><p>Art. 7.-Le sinistre survenu à un véhicule en stationnement par le fait d'un tiers non identifié alors que la responsabilité de l'assuré n'est engagée à aucun titre, ou lorsque le sinistre mettant en jeu uniquement l'une des garanties suivantes : vol, incendie, bris de glace, n'entraîne pas l'application de la majoration prévue à l'article 5 et ne fait pas obstacle à la réduction visée à l'article 4.</p><p>Art. 8.-Lorsqu'il est constaté qu'un sinistre ne correspond pas à la qualification qui lui avait été donnée initialement, la rectification de la prime peut être opérée soit par le moyen d'une quittance complémentaire, soit à l'occasion de l'échéance annuelle suivant cette constatation.</p><p>Aucune rectification de prime ne sera, toutefois, effectuée si la constatation est faite au-delà d'un délai de deux ans suivant l'échéance annuelle postérieure à ce sinistre.</p><p>Art. 9.-La période annuelle prise en compte pour l'application des dispositions de la présente clause est la période de douze mois consécutifs précédant de deux mois l'échéance annuelle du contrat.</p><p>Si le contrat est interrompu ou suspendu pour quelque cause que ce soit, le taux de réduction ou de majoration appliqué à l'échéance précédente reste acquis à l'assuré mais aucune réduction nouvelle n'est appliquée, sauf si l'interruption ou la suspension est au plus égale à trois mois.</p><p>Par exception aux dispositions précédentes, la première période d'assurance prise en compte peut être comprise entre neuf et douze mois.</p><p>Art. 10.-Le coefficient de réduction-majoration acquis au titre du véhicule désigné au contrat est automatiquement transféré en cas de remplacement de ce véhicule ou en cas d'acquisition d'un ou plusieurs véhicules supplémentaires.</p><p>Toutefois, le transfert de la réduction n'est applicable que si le ou les conducteurs habituels du ou des véhicules désignés aux conditions particulières du contrat demeurent les mêmes, sauf en cas de réduction du nombre des conducteurs.</p><p>Art. 11.-Si le contrat concerne un véhicule précédemment garanti par un autre assureur, le coefficient de réduction-majoration applicable à la première prime est calculé en tenant compte des indications qui figurent sur le relevé d'informations mentionné à l'article 12 ci-dessous, et des déclarations complémentaires de l'assuré.</p><p>Art. 12.-L'assureur fournit au souscripteur un relevé d'informations conforme au modèle défini par le règlement d'exécution (UE) 2024/1855 de la Commission du 3 juillet 2024 portant modalités d'application de la directive 2009/103/ CE du Parlement européen et du Conseil, lors de la résiliation du contrat par l'une des parties et dans les quinze jours à compter de la demande expresse du souscripteur.</p><p>Outre les informations requises par le modèle mentionné à l'alinéa précédent, le relevé comporte notamment les indications suivantes :</p><p>- le coefficient de réduction-majoration, la période d'échéance à laquelle ce coefficient est applicable, le nombre d'années au coefficient 0,50 et l'usage du véhicule ;</p><p>- la date, la nature de sinistre, la part de responsabilité retenue ainsi que le conducteur responsable pour les sinistres survenus au cours des cinq périodes annuelles précédant l'établissement du relevé d'informations ;</p><p>- les noms, prénoms, date de naissance, numéro et date de délivrance d'obtention du permis des conducteurs désignés au contrat.</p><p>Art. 13.-Le conducteur qui désire être assuré auprès d'un nouvel assureur s'engage à fournir à celui-ci le relevé d'informations délivré par l'assureur du contrat qui le garantissait précédemment, au souscripteur de ce contrat.</p><p>Art. 14.-L'assureur doit indiquer sur l'avis d'échéance ou la quittance de prime remis à l'assuré :</p><p>- le montant de la prime de référence ;</p><p>- le coefficient de réduction-majoration prévu à l'article A. 121-1 du Code des assurances ;</p><p>- la prime nette après application de ce coefficient ;</p><p>- la ou les majorations éventuellement appliquées conformément à l'article A335-9-2 du Code des assurances ;</p><p>- la ou les réductions éventuellement appliquées conformément à l'article A. 335-9-3 du Code des assurances.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006785942"
+  },
+  {
+   "doc_id": "LEGIARTI000006786667",
+   "version": "LEGIARTI000006786667",
+   "article": "A211-1",
+   "date_debut": "1993-03-28",
+   "etat": "ABROGE",
+   "texte_html": "<p></p>   Les collectivités publiques, entreprises ou organismes qui bénéficient, dans les conditions prévues à l'article L. 211-3, d'une dérogation à l'obligation d'assurance sont, en cas de dommages causés par un véhicule faisant l'objet de cette dérogation, substitués, vis-à-vis des tiers, à toute personne ayant la garde ou la conduite dudit véhicule, même non autorisée. Leurs obligations sont celles qui incomberaient à un assureur aux termes des articles R. 211-2 à R. 211-13 et des dispositions de la loi n° 85-677 du 5 juillet 1985 et des textes pris pour son application.<p></p><p></p>   L'octroi de la dérogation implique, pour les collectivités publiques, entreprises ou organismes qui l'ont sollicitée, la renonciation à tout droit de recours à l'encontre des personnes mentionnées au premier alinéa du présent article, pour le remboursement des sommes qu'ils ont payées pour leur compte.<p></p><p></p>   Toutefois, la collectivité publique ou l'organisme bénéficiaire d'une dérogation peut exercer une action en remboursement contre le conducteur du véhicule lorsque la garde ou la conduite du véhicule a été obtenue contre le gré de la collectivité publique ou l'organisme dérogataire.<p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006786667"
+  },
+  {
+   "doc_id": "LEGIARTI000006786682",
+   "version": "LEGIARTI000006786682",
+   "article": "A211-1-1",
+   "date_debut": "1983-06-14",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Les contrats d'assurance afférents aux opérations mentionnées au 10 (responsabilité civile véhicules terrestres automoteurs) de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812450&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R321-1 (V)\">l'article R. 321-1</a> du code des assurances doivent comporter la clause-type relative à la résiliation du contrat par l'assureur figurant à l'article suivant.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006786682"
+  },
+  {
+   "doc_id": "LEGIARTI000006786691",
+   "version": "LEGIARTI000006786692",
+   "article": "A211-1-2",
+   "date_debut": "2007-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   Le contrat peut être résilié, après sinistre, par l'assureur, avant sa date d'expiration normale, si le sinistre a été causé par un conducteur en état d'imprégnation alcoolique ou sous l'emprise de stupéfiants ou si le sinistre a été causé par infraction au code de la route entraînant une décision judiciaire ou administrative de suspension du permis de conduire d'au moins un mois, ou une décision d'annulation de ce permis.<p></p><p></p>   Le souscripteur peut alors résilier, dans le délai d'un mois à compter de la notification de cette résiliation, les autres contrats souscrits par lui auprès de l'assureur.<p></p><p></p>   En cas de résiliation à l'échéance ou de dénonciation de la tacite reconduction par l'assureur, le délai de préavis est fixé, pour l'assureur, à deux mois.<p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006786692"
+  },
+  {
+   "doc_id": "LEGIARTI000006786720",
+   "version": "LEGIARTI000045386437",
+   "article": "A211-1-3",
+   "date_debut": "2022-03-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>En ce qui concerne les dommages aux biens, l'assurance doit être souscrite pour une somme, par sinistre et quel que soit le nombre de victimes, au moins égale à 1 300 000 euros.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045386437"
+  },
+  {
+   "doc_id": "LEGIARTI000006786720",
+   "version": "LEGIARTI000006786720",
+   "article": "A211-1-3",
+   "date_debut": "1986-11-22",
+   "etat": "ABROGE",
+   "texte_html": "<p></p>   Les petites remorques ou semi-remorques mentionnées à l'article R. 211-4, troisième alinéa, sont celles dont le poids total autorisé en charge n'excède pas 750 kilogrammes.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006786720"
+  },
+  {
+   "doc_id": "LEGIARTI000006786748",
+   "version": "LEGIARTI000006786748",
+   "article": "A211-2",
+   "date_debut": "1976-07-21",
+   "etat": "ABROGE",
+   "texte_html": "<p></p>   Lorsque le contrat d'assurance comporte une franchise, dans les conditions prévues à l'article R. 211-9, la limitation de garantie résultant de cette franchise n'est pas opposable aux victimes d'accidents ou à leurs ayants droit, sauf si, le sinistre n'ayant causé que des dégâts matériels, le montant de ceux-ci est égal ou inférieur à 200 F.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006786748"
+  },
+  {
+   "doc_id": "LEGIARTI000006786749",
+   "version": "LEGIARTI000006786749",
+   "article": "A211-3",
+   "date_debut": "1976-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Pour l'application du 2° de <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812129&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-10 (V)\">l'article R. 211-10</a>, le transport est considéré comme effectué dans des conditions suffisantes de sécurité : <p></p><p></p>a) En ce qui concerne les voitures de tourisme, les voitures de place et les véhicules affectés au transport en commun de personnes, lorsque les passagers sont transportés à l'intérieur des véhicules ; <p></p><p></p>b) En ce qui concerne les véhicules utilitaires, lorsque les personnes transportées ont pris place, soit à l'intérieur de la cabine, soit sur un plateau muni de ridelles, soit à l'intérieur d'une carrosserie fermée et lorsque leur nombre n'excède pas huit en sus du conducteur ; en outre, le nombre des personnes transportées hors de la cabine ne doit pas excéder cinq. <p></p><p></p>Pour l'application des précédentes dispositions, les enfants de moins de dix ans ne comptent que pour moitié ; <p></p><p></p>c) En ce qui concerne les tracteurs n'entrant pas dans la catégorie b, lorsque le nombre des personnes transportées ne dépasse pas celui des places prévues par le constructeur ; <p></p><p></p>d) En ce qui concerne les véhicules à deux roues et les triporteurs, lorsque le véhicule ne transporte qu'un seul passager en sus du conducteur ; un second passager peut toutefois être transporté lorsque le véhicule est un tandem. <p></p><p></p>En outre, lorsque le véhicule est muni d'un side-car, le nombre des personnes transportées dans celui-ci ne doit pas dépasser celui des places prévues par le constructeur ; la présence d'un enfant de moins de cinq ans, accompagné d'un adulte, n'implique pas le dépassement de cette limite ; <p></p><p></p>e) En ce qui concerne les remorques et semi-remorques, lorsque celles-ci sont construites en vue d'effectuer des transports de personnes et lorsque les passagers sont transportés à l'intérieur de la remorque ou de la semi-remorque.<p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006786749"
+  },
+  {
+   "doc_id": "LEGIARTI000006786772",
+   "version": "LEGIARTI000006786773",
+   "article": "A211-4",
+   "date_debut": "2007-07-21",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>Les documents justificatifs prévus aux <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812157&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-15 (VT)\">articles R. 211-15</a>, <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812153&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-17 (V)\">R. 211-17 </a>(2e alinéa) et <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812159&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-18 (V)\">R. 211-18 </a>doivent comporter respectivement un des intitulés suivants :<p></p><p></p>-attestation d'assurance (art. R. 211-15 du code des assurances) ;<p></p><p></p>-attestation provisoire d'assurance (art. R. 211-17 du code des assurances) ;<p></p><p></p>-attestation de propriété d'un véhicule appartenant à l'Etat (véhicule dispensé de l'obligation d'assurance) (<a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006795331&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. L211-1 (V)\">art. L. 211-1</a> du code des assurances) ; <p></p><p></p>Cet intitulé doit figurer en haut et à droite de chacun des documents susmentionnés. <p></p><p></p>Les documents justificatifs mentionnés au premier alinéa du présent article doivent comporter la signature ou le cachet de l'autorité ou de l'organisme d'assurance qui les a délivrés.<p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006786773"
+  },
+  {
+   "doc_id": "LEGIARTI000006786781",
+   "version": "LEGIARTI000006786781",
+   "article": "A211-5",
+   "date_debut": "1986-09-24",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>   La période de validité de l'attestation d'assurance et de l'attestation provisoire d'assurance doit être mentionnée de manière très apparente, selon l'une des formules suivantes :<p></p><p></p>   a) Valable du ... au ... .<p></p><p></p>   b) Valable pour ... (jours ou mois), à compter du ... .<p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006786781"
+  },
+  {
+   "doc_id": "LEGIARTI000006786789",
+   "version": "LEGIARTI000049300331",
+   "article": "A211-6",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>En ce qui concerne le document justificatif prévu à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812157&dateTexte=&categorieLien=cid\">l'article R. 211-15</a>, doivent être indiqués au titre des caractéristiques du véhicule :</p><p>1° Dans tous les cas, le genre et la marque du véhicule ;</p><p>2° Le numéro de châssis ou de série.</p><p>L'une au moins des caractéristiques ci-dessus énumérées doit être portée sur le document justificatif par l'entreprise d'assurance qui le délivre.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000049300331"
+  },
+  {
+   "doc_id": "LEGIARTI000006786806",
+   "version": "LEGIARTI000006786806",
+   "article": "A211-7",
+   "date_debut": "1986-09-24",
+   "etat": "VIGUEUR",
+   "texte_html": "<p></p>L'attestation d'assurance et l'attestation provisoire d'assurance doivent rappeler que, selon les dispositions de l'article <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812144&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-14 (V)\">R. 211-14</a>, la présentation du document justificatif n'implique qu'une présomption de garantie à la charge de l'assureur. Elles ne doivent comporter aucune autre mention que celles prévues dans la présente section sauf, éventuellement, un acquit de paiement de la prime.<p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006786806"
+  },
+  {
+   "doc_id": "LEGIARTI000006786810",
+   "version": "LEGIARTI000049300328",
+   "article": "A211-8",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Les dimensions de l'attestation d'assurance et de l'attestation provisoire d'assurance ne doivent pas être inférieures à 7 × 8 cm ni supérieures à 21 × 29,7 cm.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000049300328"
+  },
+  {
+   "doc_id": "LEGIARTI000006786827",
+   "version": "LEGIARTI000049300324",
+   "article": "A211-9",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Le certificat d'assurance et le certificat provisoire ne doivent comporter aucune autre mention que celles prévues à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812170&dateTexte=&categorieLien=cid\">l'article R. 211-21-2.</a></p><p>Ces documents doivent être de couleur blanche et leurs dimensions doivent être de 5 × 5 cm.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000049300324"
+  },
+  {
+   "doc_id": "LEGIARTI000006786835",
+   "version": "LEGIARTI000049300321",
+   "article": "A211-10",
+   "date_debut": "2024-04-01",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>Le certificat ou le certificat provisoire doit être apposé sur une surface extérieure du véhicule, recto visible.</p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000049300321"
+  },
+  {
+   "doc_id": "LEGIARTI000006786881",
+   "version": "LEGIARTI000006786881",
+   "article": "A211-11",
+   "date_debut": "1988-07-02",
+   "etat": "VIGUEUR",
+   "texte_html": "<p>La notice relative à l'information des victimes prévue à <a href=\"/affichCodeArticle.do?cidTexte=LEGITEXT000006073984&idArticle=LEGIARTI000006812204&dateTexte=&categorieLien=cid\" title=\"Code des assurances - art. R211-39 (V)\">l'article R. 211-39</a> doit comporter les indications figurant dans le modèle type annexé au présent article. </p><p></p><p>Cette notice est présentée de manière claire et lisible. Elle est rédigée en caractères dont la hauteur ne peut être inférieure à celle du corps huit.</p><p></p><p></p><p></p><p></p>",
+   "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006786881"
+  }
+ ]
+}

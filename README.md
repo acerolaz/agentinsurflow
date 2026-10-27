@@ -37,30 +37,34 @@ Un merge sur `main` relance `lint`, `test` et `gateway` avant `build`. Les evals
 p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané du corpus ou la version du LLM changent
 (voir *Évaluer l'agent*). Le job `evals-pr` (avant merge) est **désactivé jusqu'à U5** : voir le tableau des jobs.
 
-## État au 26/10 (v0.6.0)
+## État au 27/10 (release v0.6.16)
 
 | Projet | Langage | Rôle | État |
 |---|---|---|---|
 | [`gateway/`](gateway/README.md) | C# · YARP · .NET 10 | **Seule entrée publique** : routage, jeton Entra + rôle par route, limitation de débit, Swagger unique ; échange de jeton vers la Function de calcul (`/api/calcul`) et Foundry (`/api/llm`, tokens mesurés) | ✅ déployée (staging, production), seule dans la Container App principale ; domaine personnalisé en production |
 | [`rag/`](rag/README.md) | Python · hexagonal | Corpus Légifrance (ingestion, dédup, versions), recherche hybride, agent à 3 verrous, attribution Etalab 2.0 | ✅ déployé ; Code des assurances (instantané du 20/10, 119 articles lus, 107 insérés, [preuves](eval/preuves/)) réingéré à chaque déploiement |
-| [`underwriting-admin/`](underwriting-admin/README.md) | C# · Clean Architecture · .NET 10 | Dossiers (vue minimisée, BOLA) et référentiel SQL des traces OpenTelemetry (`/v1/traces`, `/api/traces/{trace_id}`) | ✅ déployé dans sa Container App (entrée interne) ; écritures brouillon/statut pour le serveur MCP (#66) ; OBO pré-autorisé (#47, vérification en production à faire) |
+| [`underwriting-admin/`](underwriting-admin/README.md) | C# · Clean Architecture · .NET 10 | Dossiers (vue minimisée, BOLA) et référentiel SQL des traces OpenTelemetry (`/v1/traces`, `/api/traces/{trace_id}`) ; relances et classement sans suite (#136) ; contrat imprimé et fiche du lead (exceptions à la minimisation, #139) | ✅ déployé dans sa Container App (entrée interne) ; écritures brouillon/statut pour le serveur MCP (#66) ; OBO pré-autorisé (#47) |
 | [`serveur-mcp/`](serveur-mcp/README.md) | Python · hexagonal | Outils MCP du cluster d'agents (`search_rag`, `get_contrat`, `evaluer_risque`, `calculer_prime`, `enregistrer_brouillon`, `update_statut_dossier`), matrice `azp` × outil | ✅ déployé dans sa Container App (entrée interne, identité propre), v0.6.0 (#15, #66) |
-| [`agentic-cluster/`](agentic-cluster/README.md) | Python · hexagonal · LangGraph | Cluster d'agents (la Saga, automate déterministe sans LLM, puis Pièces, Analyste, Rédacteur, Actuaire) : évalue un dossier, écrit un brouillon, attend la revue du gestionnaire ; garde-fous LLM Guard ; joint MCP et LLM par la gateway | ✅ déployé (staging, production) dans sa Container App (entrée interne, `infra/containerapp-cluster.yaml`) depuis le 24/10 (#116) ; réglage par agent dans `agents.toml` (#117) ; ACCEPTE de bout en bout bloqué par #98 ; état du contrat : [`docs/contrat-personnel.md`](docs/contrat-personnel.md) |
+| [`agentic-cluster/`](agentic-cluster/README.md) | Python · hexagonal · LangGraph | Cluster d'agents (la Saga, automate déterministe sans LLM, puis Pièces, Analyste, Rédacteur, Actuaire) : évalue un dossier, écrit un brouillon, attend la revue du gestionnaire ; garde-fous LLM Guard ; joint MCP et LLM par la gateway | ✅ déployé (staging, production) dans sa Container App (entrée interne, `infra/containerapp-cluster.yaml`) depuis le 24/10 (#116) ; réglage par agent dans `agents.toml` (#117) ; ACCEPTE de bout en bout joué en staging depuis l'espace gestionnaire (27/10) ; état du contrat : [`docs/contrat-personnel.md`](docs/contrat-personnel.md) |
 | [`fonction-calcul/`](fonction-calcul/README.md) | Python · Azure Functions | Risque (`bareme-2026.10-v1`) et prime (`formule-2026.10-v1`) déterministes ; n'accepte que la gateway | ✅ déployée (Flex Consumption, staging et production), v0.6.0 (#64, #74) |
 | [`e2e/`](e2e/README.md) | Python · pytest | Parcours bout en bout par la gateway (compose ou staging) | ✅ ; job `e2e-staging` bloquant avant la release |
 
 > **Pyramide au 20/10** : ≈ 52 % TU / 46 % TI / 2 % E2E, hors seuils ; le job `pyramide` est **informatif** en CI
 > (décision d'Acerola) jusqu'à une tâche dédiée aux tests unitaires.
 
-> **Production et staging** : **`v0.6.0`** au SHA `48dd220` (run CI 40298812671), déployé le 26/10 ; la version de la
-> solution reste fixée par Acerola. Depuis le 22/10 : le cluster d'agents (#92, production depuis le 24/10 par #116),
+> **Production et staging** : release **`v0.6.16`** au SHA `9219cff` (#140), déployée le 27/10 ; la version de la
+> solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. Depuis le 26/10 : l'espace
+> gestionnaire `/app/` (#134), les relances et `SANS_SUITE` (#136), `make recette` (#137), `make entra` qui garde les
+> agents pré-autorisés sur le MCP (#138), le contrat imprimé sur le modèle d'Acerola et la fiche du lead (#139), les
+> tokens par étape (#140) ; les pictogrammes (#142) sont en cours de déploiement. **Bases éphémères** : chaque
+> déploiement remet les dossiers de staging et de production au seed ([`docs/rollback.md`](docs/rollback.md)).
+> Historique du 22/10 au 26/10 (v0.6.0) : Depuis le 22/10 : le cluster d'agents (#92, production depuis le 24/10 par #116),
 > le job `test` limité aux TU (#93), le cache Docker inline depuis l'ACR (#95), l'audience `api://agentinsurflow-cluster` (#96),
 > l'isolement du cluster (le frontal Container Apps répond 404 à une application interne, #97), `E2E_CONTRAT_AUTRE` (#102),
 > le cluster sur `gpt-4.1-mini` (#105), la Saga sans rôle LLM (#106) et son nom (#107), les limites de débit par `oid` et `azp` (#116),
 > `agents.toml` (#117) et la vérification du pool du point de reprise (#118). `/health` et `/health/{rag,underwriting,mcp,cluster}` servent
-> la même release, `/health/calcul` le barème et la formule. Reste : **#98** (collection `notices_produits` absente de rag :
-> le dossier complet finit en `REVUE_HUMAINE` au lieu d'`EN_ANALYSE`, seul échec des 16 tests E2E du poste sur staging) ;
-> vérifications en production : OBO (#47), mesure des tokens (#71).
+> la même release, `/health/calcul` le barème et la formule. #98 (notices du contrat type) et #47 (OBO) sont fermées ;
+> reste à vérifier en production la mesure des tokens par la gateway (#71).
 > Evals de staging à **100 %** (11/11, porte 80 %), latence p95 **14,9 s** (max 30 s), manifeste
 > `manifeste-0.6.0-build.130` (27/10, #50) : annexe bonus-malus rattachée à A121-1, réponses résumées
 > ([`eval/preuves/evals-2026-10-27.json`](eval/preuves/evals-2026-10-27.json)).

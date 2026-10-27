@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Text.Json;
 using static AgentInsurFlow.Gateway.Api.Tests.JetonsDeTest;
 
@@ -42,6 +43,18 @@ public sealed class EspaceTests(Backends backends) : IClassFixture<Backends>
 
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
         Assert.True(reponse.Headers.Contains("Content-Security-Policy"));
+    }
+
+    [Fact]
+    public async Task Empreinte_sri_de_la_page_egale_celle_de_msal_servi()
+    {
+        using var usine = backends.Gateway(Reglages);
+        using var client = usine.CreateClient();
+
+        var page = await client.GetStringAsync(new Uri("/app/", UriKind.Relative), Ct);
+        var msal = await client.GetByteArrayAsync(new Uri("/app/vendor/msal-browser.min.js", UriKind.Relative), Ct);
+
+        Assert.Contains($"integrity=\"sha384-{Convert.ToBase64String(SHA384.HashData(msal))}\"", page, StringComparison.Ordinal);
     }
 
     [Fact]

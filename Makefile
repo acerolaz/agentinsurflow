@@ -9,7 +9,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et underwriting-admin/
 # (C#, leurs propres Makefile, appelés par gateway-<cible> et underwriting-<cible>).
-.PHONY: garde-fous install fmt lint test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
+.PHONY: garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked
@@ -24,8 +24,11 @@ lint:               ## porte 1 : style + typage
 	uv run mypy rag/agentinsurflow_rag serveur-mcp/agentinsurflow_mcp fonction-calcul/agentinsurflow_calcul fonction-calcul/function_app.py agentic-cluster/agentinsurflow_cluster tools
 	uv export --package agentinsurflow-calcul --no-emit-workspace --no-dev --no-hashes | diff - fonction-calcul/requirements.txt
 
-test:               ## TU, sans Docker (rag + serveur-mcp, tests/unit + outillage de la racine)
+test: espace-test   ## TU, sans Docker (rag + serveur-mcp, tests/unit + outillage de la racine)
 	uv run pytest tests rag/tests/unit serveur-mcp/tests/unit fonction-calcul/tests/unit agentic-cluster/tests/unit --no-cov
+
+espace-test:        ## logique pure de la page de l'espace gestionnaire (node --test, Node >= 22)
+	node --test "gateway/tests/espace/*.test.mjs"
 
 test-integration:   ## porte 2 : TU + TI (PostgreSQL du compose), couverture >= 80 %
 	docker compose up -d --build --wait postgres

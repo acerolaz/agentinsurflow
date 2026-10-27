@@ -1,0 +1,195 @@
+/* Espace gestionnaire : deux thèmes par variables ; aucun style en ligne (CSP style-src 'self'). */
+:root {
+  --fond: #f7f8fa;
+  --surface: #ffffff;
+  --texte: #1b1f24;
+  --discret: #57606a;
+  --bordure: #d0d7de;
+  --accent: #0b5cad;
+  --accent-texte: #ffffff;
+  --succes: #1a7f37;
+  --alerte: #9a6700;
+  --erreur: #b42318;
+  --focus: #0b5cad;
+  color-scheme: light;
+}
+
+[data-theme="sombre"] {
+  --fond: #0f1419;
+  --surface: #171d24;
+  --texte: #e6edf3;
+  --discret: #9da7b1;
+  --bordure: #30363d;
+  --accent: #58a6ff;
+  --accent-texte: #0f1419;
+  --succes: #3fb950;
+  --alerte: #d29922;
+  --erreur: #ff7b72;
+  --focus: #79c0ff;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--texte);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+a { color: var(--accent); }
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1 { font-size: 1.5rem; margin: 0 0 16px; }
+h2 { font-size: 1.15rem; margin: 24px 0 8px; }
+
+button {
+  font: inherit;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-texte);
+  cursor: pointer;
+}
+
+button.secondaire {
+  background: transparent;
+  color: var(--texte);
+  border-color: var(--bordure);
+}
+
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+button[aria-pressed="true"] { border-color: var(--accent); }
+
+.discret { color: var(--discret); font-size: 0.9rem; }
+.erreur { color: var(--erreur); font-weight: 600; }
+
+/* --- en-tête ---------------------------------------------------------------------------------- */
+.entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--bordure);
+}
+
+.marque { font-weight: 700; margin-right: 12px; }
+
+[role="tablist"] { display: flex; gap: 4px; flex: 1; }
+
+[role="tab"] {
+  padding: 8px 14px;
+  border-radius: 6px 6px 0 0;
+  text-decoration: none;
+  color: var(--discret);
+  border-bottom: 3px solid transparent;
+}
+
+[role="tab"][aria-selected="true"] {
+  color: var(--texte);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* --- connexion -------------------------------------------------------------------------------- */
+.connexion fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  border: 0;
+  padding: 0;
+  margin: 0 0 16px;
+}
+
+.connexion legend { font-weight: 600; margin-bottom: 8px; }
+
+.carte-compte {
+  flex: 1 1 220px;
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  background: var(--surface);
+  border: 2px solid var(--bordure);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.carte-compte:has(input:checked) { border-color: var(--accent); }
+.titre-carte { font-weight: 600; }
+
+/* --- tableaux --------------------------------------------------------------------------------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+}
+
+caption { text-align: left; padding: 4px 0 8px; }
+
+th, td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--bordure);
+}
+
+thead th { font-size: 0.85rem; color: var(--discret); }
+
+/* --- tchat ------------------------------------------------------------------------------------ */
+.fil {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.fil .question, .fil .reponse {
+  padding: 12px 14px;
+  border-radius: 10px;
+  max-width: 85%;
+}
+
+.fil .question {
+  justify-self: end;
+  background: var(--accent);
+  color: var(--accent-texte);
+}
+
+.fil .reponse {
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+}
+
+.fil .reponse p { margin: 0 0 8px; white-space: pre-wrap; }
+.sources { margin: 0; padding-left: 18px; font-size: 0.9rem; }
+
+.tchat { display: grid; gap: 8px; }
+
+textarea, input[type="text"] {
+  font: inherit;
+  width: 100%;
+  padding: 8px;
+  color: var(--texte);
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: 6px;
+}
+
+@media (max-width: 600px) {
+  .fil .question, .fil .reponse { max-width: 100%; }
+  th, td { padding: 8px 6px; }
+}

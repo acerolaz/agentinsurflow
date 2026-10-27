@@ -396,6 +396,27 @@ async def test_panne_d_outil_502() -> None:
     assert r.status_code == 502 and r.json()["code"] == "OUTIL_INDISPONIBLE"
 
 
+async def test_outil_en_429_rend_429_avec_retry_after() -> None:
+    banc = Banc(outils=FakeOutils(get_contrat=ErreurOutil("TROP_DE_REQUETES", "17")))
+    async with client(banc) as c:
+        r = await c.post("/evaluations/C-1")
+    assert r.status_code == 429 and r.json()["code"] == "TROP_DE_REQUETES"
+    assert r.headers["retry-after"] == "17"
+
+
+async def test_une_evaluation_complete_tient_deux_fois_dans_les_limites() -> None:
+    # Limites de la gateway : Mcp 60/min par oid|azp, Llm 30/min par azp ;
+    # deux évaluations par minute doivent passer.
+    banc = Banc()
+    async with client(banc) as c:
+        assert (await c.post("/evaluations/C-1")).status_code == 200
+        assert (await c.post("/evaluations/C-1/revue", json=REVUE)).status_code == 200
+    saga = sum(1 for agent, _, _ in banc.outils.appels if agent == "saga")
+    agents = len(banc.outils.appels) - saga
+    assert saga <= 30 and agents <= 30, (saga, agents)
+    assert len(banc.redaction.appels) <= 15
+
+
 @pytest.mark.parametrize("motif", ["", "x" * 501])
 async def test_motif_obligatoire_1_a_500_caracteres(motif: str) -> None:
     async with client(Banc()) as c:

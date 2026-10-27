@@ -270,17 +270,17 @@ app.MapOpenApi().AllowAnonymous(); // /openapi/v1.json
 // Configuration publique de l'espace : client public (PKCE), portées des services et UPN de connexion (loginHint).
 // Aucun secret : tout ici est visible dans le navigateur de toute façon.
 app.MapGet("/app/config.json", (IConfiguration cfg) => Results.Json(new
+{
+    client_id = cfg["Espace:ClientId"] ?? cfg["SWAGGER_CLIENT_ID"] ?? "",
+    authority = cfg["Espace:Authority"] ?? "",
+    scopes = new Dictionary<string, string>
     {
-        client_id = cfg["Espace:ClientId"] ?? cfg["SWAGGER_CLIENT_ID"] ?? "",
-        authority = cfg["Espace:Authority"] ?? "",
-        scopes = new Dictionary<string, string>
-        {
-            ["rag"] = cfg["Espace:Scopes:Rag"] ?? "",
-            ["underwriting"] = cfg["Espace:Scopes:Underwriting"] ?? "",
-            ["cluster"] = cfg["Espace:Scopes:Cluster"] ?? "",
-        },
-        comptes = new Dictionary<string, string> { ["A"] = cfg["Espace:Comptes:A"] ?? "", ["B"] = cfg["Espace:Comptes:B"] ?? "" },
-    }))
+        ["rag"] = cfg["Espace:Scopes:Rag"] ?? "",
+        ["underwriting"] = cfg["Espace:Scopes:Underwriting"] ?? "",
+        ["cluster"] = cfg["Espace:Scopes:Cluster"] ?? "",
+    },
+    comptes = new Dictionary<string, string> { ["A"] = cfg["Espace:Comptes:A"] ?? "", ["B"] = cfg["Espace:Comptes:B"] ?? "" },
+}))
     .ExcludeFromDescription()
     .AllowAnonymous()
     .DisableRateLimiting();

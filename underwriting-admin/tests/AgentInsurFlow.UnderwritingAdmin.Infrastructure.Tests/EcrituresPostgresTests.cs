@@ -135,7 +135,8 @@ public sealed class EcrituresPostgresTests
         await using var _ = db;
         var ct = TestContext.Current.CancellationToken;
         var migrateur = Connexions().Migrateur;
-        foreach (var t in new[] { "tour_pilotage", "rapport_agent", "section_etat", "etat_dossier" })
+        // relance aussi : le compteur lu en vient (un autre test peut en avoir laissé, selon l'ordre)
+        foreach (var t in new[] { "relance", "tour_pilotage", "rapport_agent", "section_etat", "etat_dossier" })
             await Lire(migrateur, $"DELETE FROM {t} WHERE numero_contrat = @p0", numero);
         var lecteur = new DepotDossiersEf(db);
 

@@ -33,9 +33,10 @@ def _si_trop_de_requetes(e: BaseException) -> None:
         raise ErreurOutil("TROP_DE_REQUETES", e.response.headers.get("Retry-After", "60")) from e
 
 
-# Borne d'un appel d'outil, jeton OBO compris (aller-retour normal ~0,3 s). Sans elle, un OBO
-# ou un transport bloqué épuisait la garde globale (25 s) avant le premier agent (000010, 27/10).
-DELAI_APPEL_S = 5.0
+# Borne d'un appel d'outil, jeton OBO compris : au-dessus du délai du calcul côté MCP (20 s, départ
+# à froid de la Function). Sans elle, un OBO ou un transport bloqué épuisait la garde globale sans
+# rapport d'agent (000010, 27/10) ; avec elle, l'agent rend un repli « erreur » tracé.
+DELAI_APPEL_S = 22.0
 
 
 def _http_par_defaut(entetes: dict[str, str]) -> httpx.AsyncClient:

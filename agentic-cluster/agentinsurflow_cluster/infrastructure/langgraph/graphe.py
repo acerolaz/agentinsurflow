@@ -61,11 +61,8 @@ class Resultat:
     etat: EtatDossier
 
 
-def construire_graphe(
-    deps: Dependances, checkpointer: Any, pauses: set[tuple[str, str]] | None = None
-) -> Any:
+def construire_graphe(deps: Dependances, checkpointer: Any, pauses: set[tuple[str, str]]) -> Any:
     """``pauses`` : demandes de pause (numéro, oid) lues entre deux agents (#129)."""
-    pauses = set() if pauses is None else pauses
 
     async def charger(e: EtatGraphe, runtime: Runtime[Contexte]) -> EtatGraphe:
         debut = deps.horloge()
@@ -202,11 +199,11 @@ class ServiceEvaluation:
             raise ErreurOutil("CONTRAT_INTROUVABLE")
         return instantane
 
-    async def demander_pause(self, numero: str, oid: str) -> None:
+    async def demander_pause(self, numero: str, oid: str) -> bool:
         """Pause au prochain passage entre deux agents ; sans le verrou, l'évaluation tourne.
 
-        Ignorée si plus aucun agent ne reste à appeler (revue attendue, dossier décidé, déjà en
-        pause) : elle ne pèserait que sur une évaluation future.
+        Ignorée (``False``) si plus aucun agent ne reste à appeler (revue attendue, dossier décidé,
+        déjà en pause) : elle ne pèserait que sur une évaluation future.
         """
         instantane = await self._controler_proprietaire(numero, oid)
         if (
@@ -215,8 +212,9 @@ class ServiceEvaluation:
             or self._en_pause(instantane)
             or instantane.values.get("statut") in ("ACCEPTE", "REFUSE")
         ):
-            return
+            return False
         self._pauses.add((numero, oid))
+        return True
 
     async def evaluer(self, numero: str, jeton: str, oid: str) -> Resultat:
         await self._controler_proprietaire(numero, oid)  # 404 avant 409 (BOLA)

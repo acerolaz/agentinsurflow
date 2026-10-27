@@ -41,7 +41,7 @@ class EvaluationReponse(BaseModel):
 
 
 class PauseReponse(BaseModel):
-    pause: Literal["demandee"]
+    pause: Literal["demandee", "ignoree"]
 
 
 class RevueCorps(BaseModel):

@@ -58,6 +58,7 @@ Configuration publique, sans secret : `GET /app/config.json`, lue dans la sectio
 - CSP servie avec chaque fichier : `script-src 'self'`, `style-src 'self'`, `connect-src 'self' https://login.microsoftonline.com`, `frame-ancestors 'none'`. Aucun CDN ; `integrity` SRI sur MSAL (un TI vérifie qu'il correspond au fichier servi).
 - Les jetons restent en `sessionStorage` (MSAL) ; chaque service revalide le jeton, la page n'est qu'un client.
 - Tout texte venu d'un service est inséré par `textContent` ; un numéro de dossier hors `^AIF-\d{4}-\d{6}$` ne s'ouvre pas.
+- Le filtrage des spans (« Outils appelés ») est un **affichage**, pas une protection : `GET /api/traces/{id}` rend tous les attributs de la trace au gestionnaire qui en connaît l'identifiant (128 bits, lu dans ses propres rapports). La vraie garde est en amont : aucune donnée personnelle n'entre dans un span (la relance n'y met que son rang et ses types de pièces).
 
 ## Accessibilité (RGAA 11.1 / WCAG 2.1.1)
 
@@ -83,11 +84,13 @@ Prévu dans le code :
 | Valider avec un motif, contrat affiché puis « Imprimer » | à vérifier |
 | Étape choisie : mode, cause, outils appelés | à vérifier |
 | Dossier sans relevé : trois relances, la quatrième refusée ; `<b>x</b>` affiché littéralement | à vérifier |
+| Motif de revue saisi, changement de sous-onglet puis retour : motif gardé ; curseur stable pendant l'évaluation | à vérifier |
+| Page rechargée pendant une évaluation : la frise reprend sa progression | à vérifier |
 
 ## Vue du dossier
 
-- **Lancer / Reprendre** : `POST /v1/souscriptions/{n}/evaluation` ; pendant l'appel, `GET /api/contrats/{n}/etat` chaque seconde (frise, temps écoulé, `trace_id`). Un second clic est ignoré tant que l'appel est en vol.
-- **Pause** : `POST /v1/souscriptions/{n}/pause`, actif pendant l'évaluation ; elle s'arrête après l'agent en cours (statut `EN_PAUSE`).
+- **Lancer / Reprendre** : `POST /v1/souscriptions/{n}/evaluation` ; pendant l'appel, `GET /api/contrats/{n}/etat` chaque seconde (frise, temps écoulé, `trace_id`). Un second clic est ignoré tant que l'appel est en vol. Page rechargée pendant une évaluation (`EN_COURS`) : l'état se relit chaque seconde, deux minutes au plus. Une ré-évaluation n'affiche pas les étapes de la tentative précédente comme faites ; après « Reprendre », la pause ne compte pas dans les durées.
+- **Pause** : `POST /v1/souscriptions/{n}/pause`, actif pendant l'évaluation ; elle s'arrête après l'agent en cours (statut `EN_PAUSE`). Réponse `{"pause": "ignoree"}` quand plus aucun agent ne reste à appeler : la page l'annonce (« Pause sans effet »).
 - **Détail d'une étape** : mode, cause, durée, puis les spans de sa trace réduits à une liste blanche (outil MCP, décision, code ; agent, mode, cause) — jamais de prompt ni de sortie du modèle.
-- **Pièces manquantes** (pastille quand la section `pieces` est `incomplet`) : mail prérempli et modifiable ; « Envoyer la relance » fait `POST /api/contrats/{n}/relances`, qui l'**enregistre et le trace comme envoyé, sans e-mail** avant ACS (#123, 15/11). Trois au plus (`409 RELANCES_EPUISEES`) ; le span ne porte que le rang et les types de pièces, jamais le texte.
+- **Pièces manquantes** (pastille quand la section `pieces` est `incomplet`) : mail prérempli et modifiable ; « Envoyer la relance » fait `POST /api/contrats/{n}/relances`, qui l'**enregistre et le trace comme envoyé, sans e-mail** avant ACS (#123, 15/11). Trois au plus (`409 RELANCES_EPUISEES`), jamais sur un dossier décidé (`409 DOSSIER_DECIDE`), seulement pour des pièces que l'agent Pièces a trouvées manquantes (`400 PIECES_INVALIDES`) ; deux envois simultanés : le second reçoit `409 RELANCE_CONCURRENTE` ; le span ne porte que le rang et les types de pièces, jamais le texte.
 - **Contrat proposé** : fiche et prime des sections de l'état ; revue avec motif obligatoire (Valider, Corriger et accepter, Refuser). Après `ACCEPTE`, `GET /v1/souscriptions/{n}/contrat` puis « Imprimer » (`@media print`).

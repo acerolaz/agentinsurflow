@@ -173,18 +173,45 @@ public sealed class EcrituresPostgresTests
         await Lire(migrateur, "DELETE FROM relance WHERE numero_contrat = @p0", numero);
         foreach (var t in new[] { "tour_pilotage", "rapport_agent", "section_etat", "etat_dossier" })
             await Lire(migrateur, $"DELETE FROM {t} WHERE numero_contrat = @p0", numero);
-        await depot.EnregistrerEtat(GestionnaireA, numero, new EtatEntrant("EN_COURS", 1, [], [], []), ct);
+        await depot.EnregistrerEtat(GestionnaireA, numero, new EtatEntrant("REVUE_HUMAINE", 1,
+            [new("pieces", "{\"statut\":\"incomplet\",\"manquantes\":[\"releve_information\"]}")], [], []), ct);
 
-        Assert.Equal(0, await depot.NbRelances(GestionnaireA, numero, ct));
+        var avant = await depot.Situation(GestionnaireA, numero, ct);
+        Assert.NotNull(avant);
+        Assert.Equal(0, avant.Deja);
+        Assert.Equal(["releve_information"], avant.Manquantes);
         Assert.Equal(1, await depot.Ajouter(GestionnaireA, numero, "<b>Bonjour</b>", ["releve_information"], ct));
         Assert.Equal(2, await depot.Ajouter(GestionnaireA, numero, "Encore", ["releve_information", "permis"], ct));
 
-        Assert.Equal(2, await depot.NbRelances(GestionnaireA, numero, ct));
-        Assert.Null(await depot.NbRelances(GestionnaireB, numero, ct));
-        Assert.Null(await depot.NbRelances(GestionnaireA, "AIF-INEXISTANT", ct));
+        Assert.Equal(2, (await depot.Situation(GestionnaireA, numero, ct))?.Deja);
+        Assert.Null(await depot.Situation(GestionnaireB, numero, ct));
+        Assert.Null(await depot.Situation(GestionnaireA, "AIF-INEXISTANT", ct));
         var lignes = await Lire(migrateur, "SELECT rang, texte, pieces::text, envoyee_par FROM relance WHERE numero_contrat = @p0 ORDER BY rang", numero);
         Assert.Equal(["1", "<b>Bonjour</b>", "[\"releve_information\"]", GestionnaireA], lignes[0].Select(o => o.ToString()));
         Assert.Equal(2L, (await Lire(migrateur, "SELECT nb_relances::bigint FROM etat_dossier WHERE numero_contrat = @p0", numero))[0][0]);
+    }
+
+    [Fact]
+    public async Task Relances_comptees_sans_etat_dossier_et_rang_pris_rend_null()
+    {
+        var (db, depot, numero) = await Preparer();
+        await using var _ = db;
+        var ct = TestContext.Current.CancellationToken;
+        var migrateur = Connexions().Migrateur;
+        await Lire(migrateur, "DELETE FROM relance WHERE numero_contrat = @p0", numero);
+        foreach (var t in new[] { "tour_pilotage", "rapport_agent", "section_etat", "etat_dossier" })
+            await Lire(migrateur, $"DELETE FROM {t} WHERE numero_contrat = @p0", numero);
+
+        Assert.Equal(1, await depot.Ajouter(GestionnaireA, numero, "Avant l'état", ["permis"], ct));
+        Assert.Equal(1, (await new DepotDossiersEf(db).LireEtat(GestionnaireA, numero, ct))?.NbRelances); // et non 0
+        var statut = (string)(await Lire(migrateur, "SELECT statut FROM contrat WHERE numero_contrat = @p0", numero))[0][0];
+        var situation = await depot.Situation(GestionnaireA, numero, ct);
+        Assert.Equal((1, statut is "ACCEPTE" or "REFUSE", 0), (situation!.Deja, situation.Decide, situation.Manquantes.Count)); // aucun rapport Pièces
+
+        // envoi simultané : le rang 2 est déjà pris quand le compte en voit 1
+        await Lire(migrateur, "DELETE FROM relance WHERE numero_contrat = @p0", numero);
+        await Lire(migrateur, "INSERT INTO relance (numero_contrat, rang, texte, pieces, envoyee_le, envoyee_par) VALUES (@p0, 2, 'x', '[]'::jsonb, now(), @p1)", numero, GestionnaireA);
+        Assert.Null(await depot.Ajouter(GestionnaireA, numero, "Course", ["permis"], ct));
     }
 
     [Fact]

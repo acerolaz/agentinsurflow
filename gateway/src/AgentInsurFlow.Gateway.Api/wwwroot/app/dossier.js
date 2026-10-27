@@ -2,7 +2,7 @@
 // valider la proposition, puis afficher le contrat généré. L'état se relit chaque seconde pendant l'évaluation.
 import { appeler } from "./api.js";
 import { el, erreur, remplir } from "./dom.js";
-import { LIBELLES_PIECES, doitInterroger, frise, gabaritRelance, spansAffichables } from "./logique.js";
+import { LIBELLES_PIECES, etatAffiche, frise, gabaritRelance, spansAffichables } from "./logique.js";
 
 const SOUS_ONGLETS = [
   ["detail", "Détail de l'étape"],
@@ -13,15 +13,38 @@ const SOUS_ONGLETS = [
 export async function afficherDossier(zone, numero) {
   const v = {
     numero, etat: null, contrat: null, enVol: false, lanceA: undefined, ecoule: null,
-    message: null, etape: null, sousOnglet: "detail", minuteur: null,
+    message: null, etape: null, sousOnglet: "detail", minuteur: null, tentativeAvant: null, motif: "",
   };
+  const SUIVI_MAX_S = 120; // rechargement pendant une évaluation : l'état se relit au plus ce temps
   const chemin = encodeURIComponent(numero);
 
+  // Une erreur de lecture de l'état s'efface à la lecture réussie suivante (un 429 ponctuel ne reste pas affiché).
   async function lireEtat() {
     const r = await appeler("GET", `/api/contrats/${chemin}/etat`, { portee: "underwriting" });
-    if (r.statut === 200) v.etat = r.json;
-    else v.message = erreur(r);
+    if (r.statut === 200) {
+      v.etat = r.json;
+      if (v.erreurEtat) v.message = null;
+      v.erreurEtat = false;
+    } else {
+      v.message = erreur(r);
+      v.erreurEtat = true;
+    }
     return r.statut;
+  }
+
+  const ecoule = () => Math.round((Date.now() - v.lanceA) / 1000);
+
+  /** Relit l'état chaque seconde : pendant POST …/evaluation, ou après un rechargement tant que le statut est EN_COURS. */
+  function suivre() {
+    clearInterval(v.minuteur);
+    const debut = Date.now();
+    v.minuteur = setInterval(async () => {
+      if (!zone.isConnected) return clearInterval(v.minuteur); // vue quittée
+      if (v.enVol) v.ecoule = ecoule();
+      await lireEtat();
+      if (!v.enVol && (statut() !== "EN_COURS" || Date.now() - debut > SUIVI_MAX_S * 1000)) clearInterval(v.minuteur);
+      rendre();
+    }, 1000);
   }
 
   async function lireContrat() {
@@ -35,17 +58,15 @@ export async function afficherDossier(zone, numero) {
     v.enVol = true;
     v.message = null;
     v.lanceA = Date.now();
+    // nouvelle tentative (pas une reprise) : la précédente ne s'affiche pas en attendant la première écriture
+    v.tentativeAvant = statut() === "EN_PAUSE" ? null : v.etat?.tentative ?? null;
     rendre();
-    v.minuteur = setInterval(async () => {
-      if (!zone.isConnected) return clearInterval(v.minuteur); // vue quittée
-      v.ecoule = Math.round((Date.now() - v.lanceA) / 1000);
-      if (doitInterroger(null, v.enVol)) await lireEtat();
-      if (v.enVol) rendre();
-    }, 1000);
+    suivre();
     const r = await appeler("POST", `/v1/souscriptions/${chemin}/evaluation`, { portee: "cluster" });
     clearInterval(v.minuteur);
     v.enVol = false;
-    v.ecoule = Math.round((Date.now() - v.lanceA) / 1000);
+    v.tentativeAvant = null;
+    v.ecoule = ecoule();
     if (r.statut !== 200) v.message = erreur(r);
     else if (r.json.statut === "REVUE_HUMAINE") v.message = el("p", { role: "status" }, r.json.message ?? "Ce dossier nécessite une revue humaine.");
     else if (r.json.statut === "EN_PAUSE") v.message = el("p", { role: "status" }, "Évaluation en pause : « Reprendre » repart de l'étape suivante.");
@@ -56,9 +77,9 @@ export async function afficherDossier(zone, numero) {
 
   async function pause() {
     const r = await appeler("POST", `/v1/souscriptions/${chemin}/pause`, { portee: "cluster" });
-    v.message = r.statut === 202
-      ? el("p", { role: "status" }, "Pause demandée : l'évaluation s'arrêtera après l'étape en cours.")
-      : erreur(r);
+    if (r.statut !== 202) v.message = erreur(r);
+    else if (r.json?.pause === "ignoree") v.message = el("p", { role: "status" }, "Pause sans effet : plus aucun agent à appeler, l'évaluation se termine.");
+    else v.message = el("p", { role: "status" }, "Pause demandée : l'évaluation s'arrêtera après l'étape en cours.");
     rendre();
   }
 
@@ -102,8 +123,10 @@ export async function afficherDossier(zone, numero) {
       derniere ? el("span", { class: "discret" }, "trace_id : ", el("code", {}, derniere.trace_id)) : null);
   }
 
+  const etatFrise = () => etatAffiche(v.etat, v.tentativeAvant);
+
   function rendreFrise() {
-    const etapes = frise(v.etat, v.lanceA);
+    const etapes = frise(etatFrise(), v.lanceA);
     return el("ol", { class: "frise", "aria-label": "Étapes de l'évaluation" }, etapes.map((e) =>
       el("li", { class: `etape ${e.statut}` },
         el("button", {
@@ -122,7 +145,7 @@ export async function afficherDossier(zone, numero) {
   }
 
   function panneauDetail() {
-    const e = frise(v.etat, v.lanceA).find((x) => x.agent === v.etape);
+    const e = frise(etatFrise(), v.lanceA).find((x) => x.agent === v.etape);
     if (!e?.rapport) return el("p", { class: "discret" }, "Choisissez une étape terminée dans la frise.");
     const cible = el("div", {});
     return el("div", {},
@@ -150,7 +173,7 @@ export async function afficherDossier(zone, numero) {
       v.relance = { message: el("p", { role: "status" }, `Relance ${r.json.rang}/${r.json.max} enregistrée (envoi par e-mail à partir du 15/11)`), texte };
       await lireEtat();
     } else {
-      v.relance = { message: r.statut === 409 ? el("p", { class: "erreur", role: "alert" }, "3 relances déjà envoyées") : erreur(r), texte: null };
+      v.relance = { message: erreur(r), texte: null }; // 409 : épuisées, dossier décidé ou envoi simultané
     }
     rendre();
   }
@@ -210,7 +233,11 @@ export async function afficherDossier(zone, numero) {
   }
 
   function formulaireRevue() {
-    const motif = el("textarea", { id: "motif", name: "motif", rows: "3", minlength: "1", maxlength: "500", required: true });
+    const motif = el("textarea", {
+      id: "motif", name: "motif", rows: "3", minlength: "1", maxlength: "500", required: true,
+      oninput: (e) => { v.motif = e.currentTarget.value; },
+    });
+    motif.value = v.motif; // gardé entre deux rendus et au changement de sous-onglet
     const bouton = (texte, decision, validation, classe) =>
       el("button", { type: "submit", class: classe, "data-decision": decision, "data-validation": validation }, texte);
     return el("form", {
@@ -280,7 +307,10 @@ export async function afficherDossier(zone, numero) {
   function rendre() {
     if (!zone.isConnected) return;
     const s = statut();
-    const focus = document.activeElement?.id; // le rendu toutes les secondes ne doit pas voler le focus clavier
+    // le rendu toutes les secondes ne doit voler ni le focus clavier ni la position du curseur dans un champ
+    const actif = document.activeElement;
+    const focus = actif?.id;
+    const curseur = actif?.tagName === "TEXTAREA" ? [actif.selectionStart, actif.selectionEnd] : null;
     remplir(zone,
       el("p", { class: "ne-pas-imprimer" }, el("a", { href: "#/dossiers" }, "← Mes dossiers")),
       el("h1", {}, `Dossier ${numero}`),
@@ -289,7 +319,9 @@ export async function afficherDossier(zone, numero) {
       v.message,
       rendreFrise(),
       sousOnglets());
-    if (focus) document.getElementById(focus)?.focus();
+    const cible = focus ? document.getElementById(focus) : null;
+    cible?.focus();
+    if (curseur && cible?.tagName === "TEXTAREA") cible.setSelectionRange(...curseur);
   }
 
   remplir(zone, el("h1", {}, `Dossier ${numero}`), el("p", { "aria-busy": "true" }, "Chargement…"));
@@ -297,4 +329,5 @@ export async function afficherDossier(zone, numero) {
   if (statut() === "ACCEPTE") await lireContrat();
   if (statut() === "ACCEPTE" || statut() === "EN_ANALYSE") v.sousOnglet = "contrat";
   rendre();
+  if (statut() === "EN_COURS") suivre(); // page rechargée pendant une évaluation
 }

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  doitInterroger,
+  etatAffiche,
   frise,
   gabaritRelance,
   messageProbleme,
@@ -46,9 +46,12 @@ test("frise : rien encore", () => {
   assert.deepEqual(frise({ statut_parcours: null, rapports: [] }).map((e) => e.statut), Array(5).fill("a_venir"));
 });
 
-test("interrogation : tant que l'évaluation est en vol", () => {
-  assert.equal(doitInterroger(null, true), true);
-  assert.equal(doitInterroger("EN_PAUSE", false), false);
+test("ré-évaluation : les rapports de la tentative précédente ne s'affichent pas", () => {
+  const ancien = { statut_parcours: "REVUE_HUMAINE", tentative: 1, rapports: [rapport("pieces", T0)] };
+  assert.deepEqual(etatAffiche(ancien, 1).rapports, []);
+  assert.equal(etatAffiche(ancien, 1).statut_parcours, "REVUE_HUMAINE");
+  assert.equal(etatAffiche({ ...ancien, tentative: 2 }, 1).rapports.length, 1); // la nouvelle tentative a écrit
+  assert.equal(etatAffiche(ancien, null), ancien); // reprise ou simple lecture
 });
 
 test("relance : gabarit avec les libellés des pièces", () => {
@@ -103,6 +106,8 @@ test("messages : un texte lisible par statut et code", () => {
   assert.equal(messageProbleme(404), "Contrat introuvable");
   assert.equal(messageProbleme(409, "EVALUATION_EN_COURS"), "Une évaluation est déjà en cours pour ce dossier");
   assert.equal(messageProbleme(429, "TROP_DE_REQUETES"), "Trop de requêtes, réessayez dans quelques secondes");
+  assert.equal(messageProbleme(409, "RELANCE_CONCURRENTE"), "Une autre relance vient d'être enregistrée : rechargez le dossier");
+  assert.equal(messageProbleme(409, "RELANCES_EPUISEES"), "Les trois relances ont déjà été envoyées");
   assert.equal(messageProbleme(502), "Service temporairement indisponible");
   assert.equal(messageProbleme(503), "Service temporairement indisponible");
   assert.equal(messageProbleme(500), "Une erreur est survenue");

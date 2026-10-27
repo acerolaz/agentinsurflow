@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using AgentInsurFlow.UnderwritingAdmin.Application;
+using AgentInsurFlow.UnderwritingAdmin.Domain;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,15 +22,19 @@ public sealed class RelancesTests : IDisposable
     private sealed class DepotEnMemoire : IDepotRelances
     {
         public List<(string Numero, string Texte, IReadOnlyList<string> Pieces)> Relances { get; } = [];
+        public bool Decide { get; set; }
+        public bool RangPris { get; set; } // un envoi simultané a pris le rang
 
-        public Task<int?> NbRelances(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
+        public Task<SituationRelance?> Situation(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
             Task.FromResult(gestionnaireId == GestionnaireA && numeroContrat == "AIF-A1"
-                ? Relances.Count(r => r.Numero == numeroContrat) : (int?)null);
+                ? new SituationRelance(Relances.Count(r => r.Numero == numeroContrat), Decide, ["releve_information", "permis"])
+                : null);
 
-        public Task<int> Ajouter(string gestionnaireId, string numeroContrat, string texte, IReadOnlyList<string> pieces, CancellationToken ct)
+        public Task<int?> Ajouter(string gestionnaireId, string numeroContrat, string texte, IReadOnlyList<string> pieces, CancellationToken ct)
         {
+            if (RangPris) return Task.FromResult<int?>(null);
             Relances.Add((numeroContrat, texte, pieces));
-            return Task.FromResult(Relances.Count(r => r.Numero == numeroContrat));
+            return Task.FromResult<int?>(Relances.Count(r => r.Numero == numeroContrat));
         }
     }
 
@@ -96,6 +101,27 @@ public sealed class RelancesTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, statut);
         Assert.Equal("TEXTE_INVALIDE", corps.GetProperty("code").GetString());
         Assert.Empty(_depot.Relances);
+    }
+
+    [Fact]
+    public async Task Dossier_decide_409()
+    {
+        _depot.Decide = true;
+        var (statut, corps) = await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
+
+        Assert.Equal(HttpStatusCode.Conflict, statut);
+        Assert.Equal("DOSSIER_DECIDE", corps.GetProperty("code").GetString());
+        Assert.Empty(_depot.Relances);
+    }
+
+    [Fact]
+    public async Task Envoi_simultane_409_et_non_500()
+    {
+        _depot.RangPris = true;
+        var (statut, corps) = await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
+
+        Assert.Equal(HttpStatusCode.Conflict, statut);
+        Assert.Equal("RELANCE_CONCURRENTE", corps.GetProperty("code").GetString());
     }
 
     [Fact]

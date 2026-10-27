@@ -52,7 +52,9 @@ internal sealed class DepotDossiersEf(DossiersDbContext db) : IDepotDossiers, ID
             .AnyAsync(c => c.GestionnaireId == gestionnaireId && c.NumeroContrat == numeroContrat, ct);
         if (!existe) return null;
         var etat = await db.Set<EtatDossier>().AsNoTracking().FirstOrDefaultAsync(e => e.NumeroContrat == numeroContrat, ct);
-        if (etat is null) return new EtatLu(null, 0, 0, [], new Dictionary<string, string>());
+        // Compteur lu dans la table relance : une relance enregistrée avant le premier état compte aussi.
+        var nbRelances = await db.Set<Relance>().AsNoTracking().CountAsync(r => r.NumeroContrat == numeroContrat, ct);
+        if (etat is null) return new EtatLu(null, 0, nbRelances, [], new Dictionary<string, string>());
         var rapports = await db.Set<RapportAgent>().AsNoTracking()
             .Where(r => r.NumeroContrat == numeroContrat && r.Tentative == etat.Tentative)
             .OrderBy(r => r.CreeLe)
@@ -61,7 +63,7 @@ internal sealed class DepotDossiersEf(DossiersDbContext db) : IDepotDossiers, ID
         var sections = await db.Set<SectionEtat>().AsNoTracking()
             .Where(s => s.NumeroContrat == numeroContrat && s.Tentative == etat.Tentative)
             .ToDictionaryAsync(s => s.Section, s => s.Contenu, ct);
-        return new EtatLu(etat.StatutParcours, etat.Tentative, etat.NbRelances, rapports, sections);
+        return new EtatLu(etat.StatutParcours, etat.Tentative, nbRelances, rapports, sections);
     }
 
     public async Task<IReadOnlyList<VueContrat>> Lister(string gestionnaireId, int limit, int offset, CancellationToken ct) =>

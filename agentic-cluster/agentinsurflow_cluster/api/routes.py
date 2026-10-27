@@ -135,12 +135,15 @@ async def evaluer(numero_contrat: str, request: Request, courant: Courant) -> Ev
     responses={401: {}, 403: {}, 404: {}, 503: {}},
 )
 async def demander_pause(numero_contrat: str, request: Request, courant: Courant) -> PauseReponse:
-    """Pause au prochain passage entre deux agents ; ``POST /evaluations/{n}`` reprend."""
+    """Pause au prochain passage entre deux agents ; ``POST /evaluations/{n}`` reprend.
+
+    ``ignoree`` : plus aucun agent à appeler (revue attendue, dossier décidé, déjà en pause).
+    """
     try:
-        await _service(request).demander_pause(numero_contrat, courant.oid)
+        retenue = await _service(request).demander_pause(numero_contrat, courant.oid)
     except ErreurOutil as e:
         raise _outil_en_echec(e) from e
-    return PauseReponse(pause="demandee")
+    return PauseReponse(pause="demandee" if retenue else "ignoree")
 
 
 @routeur.post(

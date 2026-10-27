@@ -50,9 +50,12 @@ export function frise(etat, lanceA) {
   return [...etapes, { agent: "validation", libelle: "Validation (vous)", statut: validation, duree_s: null, rapport: null }];
 }
 
-/** L'état se relit chaque seconde tant que POST …/evaluation est en vol. */
-export function doitInterroger(statutReponse, enVol) {
-  return enVol;
+/**
+ * État à afficher pendant une nouvelle évaluation : tant que la nouvelle tentative n'a rien écrit, …/etat rend encore la
+ * précédente, dont les rapports ne doivent pas passer pour « faits ». tentativeAvant à null : reprise ou simple lecture.
+ */
+export function etatAffiche(etat, tentativeAvant) {
+  return tentativeAvant !== null && etat?.tentative === tentativeAvant ? { ...etat, rapports: [] } : etat;
 }
 
 const IDENTIFIANT = /^[A-Za-z0-9_.:-]{1,60}$/;
@@ -92,6 +95,7 @@ const MESSAGES = {
   DOSSIER_DECIDE: "Ce dossier a déjà reçu sa décision",
   AUCUNE_REVUE_EN_ATTENTE: "Aucune proposition n'attend votre validation",
   RELANCES_EPUISEES: "Les trois relances ont déjà été envoyées",
+  RELANCE_CONCURRENTE: "Une autre relance vient d'être enregistrée : rechargez le dossier",
   CONTRAT_NON_ACCEPTE: "Le contrat n'est disponible qu'après acceptation",
   TEXTE_INVALIDE: "Le texte du message est vide ou trop long",
 };

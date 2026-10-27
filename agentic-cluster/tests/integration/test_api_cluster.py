@@ -448,7 +448,8 @@ async def test_pause_apres_proposition_oubliee() -> None:
     banc = Banc()
     async with client(banc) as c:
         assert (await c.post("/evaluations/C-1")).json()["statut"] == "EN_ANALYSE"
-        await c.post("/evaluations/C-1/pause")
+        p = await c.post("/evaluations/C-1/pause")
+        assert p.status_code == 202 and p.json() == {"pause": "ignoree"}  # l'interface le dit
         await c.post("/evaluations/C-1/revue", json={**REVUE, "decision": "REFUSE"})
         r = await c.post("/evaluations/C-1")
     assert r.status_code == 409 and r.json()["code"] == "DOSSIER_DECIDE"

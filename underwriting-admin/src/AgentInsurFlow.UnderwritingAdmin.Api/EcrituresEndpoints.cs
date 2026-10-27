@@ -70,6 +70,8 @@ internal static class EcrituresEndpoints
             {
                 null => Problemes.Creer(404, "Contrat introuvable", "CONTRAT_INTROUVABLE"),
                 ReglesRelance.Epuisees => Problemes.Creer(409, "Relances épuisées", ReglesRelance.Epuisees),
+                ReglesRelance.Decide => Problemes.Creer(409, "Ce dossier a déjà reçu sa décision", ReglesRelance.Decide),
+                ReglesRelance.Concurrente => Problemes.Creer(409, "Une autre relance vient d'être enregistrée", ReglesRelance.Concurrente),
                 var code => Problemes.Creer(400, "Relance refusée", code),
             };
         Activity.Current?.SetTag("relance.rang", rang).SetTag("relance.max", ReglesRelance.Max)

@@ -73,7 +73,7 @@ internal static class ContratsEndpoints
                     _ => Problemes.Creer(404, "Contrat introuvable", "CONTRAT_INTROUVABLE"),
                 })
             .WithName("LireContratGenere")
-            .WithSummary("Contrat généré après ACCEPTE (conditions particulières) : décision validée, prime, formule, souscripteur et véhicule ; ni e-mail ni téléphone")
+            .WithSummary("Contrat généré après ACCEPTE (conditions particulières) : décision validée, prime, formule, souscripteur (coordonnées comprises), véhicule et garanties ; jamais vers le cluster ni un LLM")
             .Produces<ContratGenere>()
             .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
 

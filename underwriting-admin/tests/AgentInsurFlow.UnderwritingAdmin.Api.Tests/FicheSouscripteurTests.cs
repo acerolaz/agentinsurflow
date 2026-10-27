@@ -17,7 +17,8 @@ public sealed class FicheSouscripteurTests : IDisposable
     private const string GestionnaireB = "oid-gestionnaire-b";
 
     private static readonly FicheSouscripteur Fiche = new("Mme", "Durand", "Alice", "3 rue des Lilas", "69003",
-        "0612345678", "alice@exemple.invalid", new VehiculeContrat("Peugeot", "208", "AB-123-CD", 5, "prive"));
+        "0612345678", "alice@exemple.invalid", new VehiculeContrat("Peugeot", "208", "AB-123-CD", 5, "prive",
+        "1.2 PureTech", "VF3TEST", new DateOnly(2019, 3, 15), "garage", "69003"));
 
     private sealed class DepotEnMemoire : IDepotFicheSouscripteur
     {

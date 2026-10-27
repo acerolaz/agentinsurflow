@@ -83,6 +83,21 @@ export const LIBELLES_PIECES = {
   carte_grise: "certificat d'immatriculation",
 };
 
+export const LIBELLES_GARANTIES = {
+  responsabilite_civile: "Responsabilité civile (défense et recours)",
+  protection_juridique: "Protection juridique suite à accident",
+  vol_incendie_tempete: "Vol, incendie et tempête",
+  dommages_tous_accidents: "Dommages tous accidents",
+  bris_de_glace: "Bris de glace",
+  assistance_0_km: "Assistance 0 km et véhicule de remplacement",
+};
+
+/** Échéance d'un contrat annuel : date d'effet + 1 an − 1 jour (AAAA-MM-JJ, en UTC : aucun décalage de fuseau). */
+export function dateEcheance(dateEffet) {
+  const [a, m, j] = dateEffet.split("-").map(Number);
+  return new Date(Date.UTC(a + 1, m - 1, j - 1)).toISOString().slice(0, 10);
+}
+
 /** Mail de relance prérempli (modifiable par le gestionnaire) ; un type inconnu reste tel quel. */
 export function gabaritRelance(manquantes) {
   const pieces = manquantes.map((p) => LIBELLES_PIECES[p] ?? p).join(", ");

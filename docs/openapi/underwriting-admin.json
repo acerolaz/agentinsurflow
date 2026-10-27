@@ -496,7 +496,7 @@
         "tags": [
           "Contrats"
         ],
-        "summary": "Contrat généré après ACCEPTE (conditions particulières) : décision validée, prime, formule, souscripteur et véhicule ; ni e-mail ni téléphone",
+        "summary": "Contrat généré après ACCEPTE (conditions particulières) : décision validée, prime, formule, souscripteur (coordonnées comprises), véhicule et garanties ; jamais vers le cluster ni un LLM",
         "operationId": "LireContratGenere",
         "parameters": [
           {
@@ -1062,7 +1062,8 @@
           "valide_le",
           "souscripteur",
           "vehicule",
-          "crm_bonus_malus"
+          "crm_bonus_malus",
+          "garanties"
         ],
         "type": "object",
         "properties": {
@@ -1130,6 +1131,12 @@
               "string"
             ],
             "format": "double"
+          },
+          "garanties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GarantieContrat"
+            }
           }
         }
       },
@@ -1321,6 +1328,27 @@
                 "$ref": "#/components/schemas/VehiculeContrat"
               }
             ]
+          }
+        }
+      },
+      "GarantieContrat": {
+        "required": [
+          "type",
+          "franchise"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "franchise": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },
@@ -1603,7 +1631,10 @@
           "adresse",
           "code_postal",
           "permis_numero",
-          "permis_date_obtention"
+          "permis_date_obtention",
+          "telephone",
+          "email",
+          "permis_pays"
         ],
         "type": "object",
         "properties": {
@@ -1629,6 +1660,15 @@
           "permis_date_obtention": {
             "type": "string",
             "format": "date"
+          },
+          "telephone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "permis_pays": {
+            "type": "string"
           }
         }
       },
@@ -1808,7 +1848,12 @@
           "modele",
           "immatriculation",
           "puissance_fiscale_cv",
-          "type_usage"
+          "type_usage",
+          "version",
+          "vin",
+          "date_mise_circulation",
+          "mode_stationnement",
+          "code_postal_stationnement"
         ],
         "type": "object",
         "properties": {
@@ -1830,6 +1875,22 @@
             "format": "int32"
           },
           "type_usage": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "vin": {
+            "type": "string"
+          },
+          "date_mise_circulation": {
+            "type": "string",
+            "format": "date"
+          },
+          "mode_stationnement": {
+            "type": "string"
+          },
+          "code_postal_stationnement": {
             "type": "string"
           }
         }

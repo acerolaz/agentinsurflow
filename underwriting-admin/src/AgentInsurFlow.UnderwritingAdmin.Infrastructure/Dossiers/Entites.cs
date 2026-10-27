@@ -213,11 +213,19 @@ internal sealed class PartiesContratAccepte
     public string CodePostal { get; set; } = "";
     public string PermisNumero { get; set; } = "";
     public DateOnly PermisDateObtention { get; set; }
+    public string PermisPays { get; set; } = "";
+    public string Telephone { get; set; } = "";
+    public string Email { get; set; } = "";
     public string? Marque { get; set; }
     public string? Modele { get; set; }
     public string? Immatriculation { get; set; }
     public int? PuissanceFiscaleCv { get; set; }
     public string? TypeUsage { get; set; }
+    public string? Version { get; set; }
+    public string? Vin { get; set; }
+    public DateOnly? Date1reMiseCirculation { get; set; }
+    public string? ModeStationnement { get; set; }
+    public string? CodePostalStationnement { get; set; }
 }
 
 /// <summary>Ligne de <c>vue_fiche_souscripteur</c> : fiche du lead pour le détail du dossier (exception du 27/10).</summary>
@@ -237,6 +245,20 @@ internal sealed class LigneFicheSouscripteur
     public string? Immatriculation { get; set; }
     public int? PuissanceFiscaleCv { get; set; }
     public string? TypeUsage { get; set; }
+    public string? Version { get; set; }
+    public string? Vin { get; set; }
+    public DateOnly? Date1reMiseCirculation { get; set; }
+    public string? ModeStationnement { get; set; }
+    public string? CodePostalStationnement { get; set; }
+}
+
+/// <summary>Ligne de <c>vue_garanties_contrat_accepte</c> : garanties d'un contrat ACCEPTE et leur franchise.</summary>
+internal sealed class LigneGarantieContrat
+{
+    public string NumeroContrat { get; set; } = "";
+    public string GestionnaireId { get; set; } = "";
+    public string Type { get; set; } = "";
+    public decimal? Franchise { get; set; }
 }
 
 // Mémoire long terme du dossier (D100) : aucune colonne identifiante (nom, adresse…), la liste blanche des sections y veille.

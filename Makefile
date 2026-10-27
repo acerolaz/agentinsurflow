@@ -9,7 +9,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et underwriting-admin/
 # (C#, leurs propres Makefile, appelés par gateway-<cible> et underwriting-<cible>).
-.PHONY: garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
+.PHONY: recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked
@@ -98,6 +98,9 @@ calcul:             ## Function de calcul : stockage, Function Apps, Entra, Easy
 
 llm:                ## canal LLM (#70) : Entra llm + gateway-local, Foundry sans clé, rôle réservé à la gateway
 	bash infra/llm.sh
+
+recette:            ## recette K5/K11 sur le cluster de staging : ACTION=redemarrer|llm-off|llm-on (à la main)
+	bash infra/recette.sh $(ACTION)
 
 annexe:             ## G5 : image PostgreSQL annexe + secrets des Container Apps
 	bash infra/postgres-annexe.sh

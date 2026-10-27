@@ -144,4 +144,17 @@ public sealed class RelancesTests : IDisposable
         Assert.Equal("releve_information,permis", span.GetTagItem("relance.pieces"));
         Assert.DoesNotContain(span.TagObjects, t => t.Value?.ToString()?.Contains("confidentiel", StringComparison.Ordinal) == true);
     }
+
+    [Fact]
+    public async Task Refus_trace_avec_son_code_jamais_le_texte()
+    {
+        _depot.Decide = true;
+        await Poster("AIF-A1", GestionnaireA, "Texte confidentiel de la relance", "permis");
+        _usine.Services.GetRequiredService<TracerProvider>().ForceFlush();
+
+        var span = Assert.Single(_activites.ToArray(), a => a.GetTagItem("relance.refus") is not null);
+        Assert.Equal("DOSSIER_DECIDE", span.GetTagItem("relance.refus"));
+        Assert.Null(span.GetTagItem("relance.rang"));
+        Assert.DoesNotContain(span.TagObjects, t => t.Value?.ToString()?.Contains("confidentiel", StringComparison.Ordinal) == true);
+    }
 }

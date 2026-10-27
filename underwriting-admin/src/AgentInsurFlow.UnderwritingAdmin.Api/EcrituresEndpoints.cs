@@ -62,9 +62,10 @@ internal static class EcrituresEndpoints
             .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
     }
 
-    // Le span porte le rang et les pièces, jamais le texte (il peut contenir des données personnelles).
+    // Le span porte le rang et les pièces, ou le code du refus, jamais le texte (il peut contenir des données personnelles).
     private static IResult Relance(ResultatRelance r, IReadOnlyList<string> pieces)
     {
+        if (r.CodeRefus is { } refus) Activity.Current?.SetTag("relance.refus", refus);
         if (r.Rang is not { } rang)
             return r.CodeRefus switch
             {

@@ -87,5 +87,9 @@ internal sealed record EtatReponse(string? StatutParcours, int Tentative, int Nb
     IReadOnlyList<RapportLu> Rapports, IReadOnlyDictionary<string, JsonElement> Sections)
 {
     public static EtatReponse Depuis(EtatLu e) => new(e.StatutParcours, e.Tentative, e.NbRelances, e.Rapports,
-        e.Sections.ToDictionary(s => s.Key, s => JsonDocument.Parse(s.Value).RootElement.Clone()));
+        e.Sections.ToDictionary(s => s.Key, s =>
+        {
+            using var doc = JsonDocument.Parse(s.Value);
+            return doc.RootElement.Clone();
+        }));
 }

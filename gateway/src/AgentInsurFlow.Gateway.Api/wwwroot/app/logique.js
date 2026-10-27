@@ -85,6 +85,18 @@ export const PICTOS = {
   lancer: "▶️", pause: "⏸️", imprimer: "🖨️", relance: "✉️", sans_suite: "🗃️", outils: "🛠️",
 };
 
+/**
+ * Tokens LLM d'une étape : somme des spans de son agent (la trace couvre toute l'évaluation), attributs
+ * gen_ai.usage.* ; null si aucun appel LLM tracé (repli déterministe).
+ */
+export function tokensEtape(spans, agent) {
+  const agents = (spans ?? []).filter((s) => s.name === "invoke_agent" && s.attributes?.["gen_ai.agent.name"] === agent);
+  const somme = (cle) => agents.reduce((t, s) => t + (Number(s.attributes[cle]) || 0), 0);
+  const t = { entree: somme("gen_ai.usage.input_tokens"), sortie: somme("gen_ai.usage.output_tokens") };
+  // un repli sans appel LLM porte quand même gen_ai.usage.* à 0 (audit.py) : total nul = aucun appel
+  return t.entree + t.sortie > 0 ? t : null;
+}
+
 export const LIBELLES_PIECES = {
   releve_information: "relevé d'information",
   permis: "permis de conduire",

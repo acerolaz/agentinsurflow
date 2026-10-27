@@ -61,8 +61,9 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 > la même release, `/health/calcul` le barème et la formule. Reste : **#98** (collection `notices_produits` absente de rag :
 > le dossier complet finit en `REVUE_HUMAINE` au lieu d'`EN_ANALYSE`, seul échec des 16 tests E2E du poste sur staging) ;
 > vérifications en production : OBO (#47), mesure des tokens (#71).
-> Evals de staging passées à **81,8 %** (9/11, porte 80 %) : marge d'un cas, deux échecs connus (réponse trop
-> longue sur `reference-exacte-l211-1`, annexe bonus-malus d'A121-1 absente de l'instantané).
+> Evals de staging à **100 %** (11/11, porte 80 %), latence p95 **14,9 s** (max 30 s), manifeste
+> `manifeste-0.6.0-build.130` (27/10, #50) : annexe bonus-malus rattachée à A121-1, réponses résumées
+> ([`eval/preuves/evals-2026-10-27.json`](eval/preuves/evals-2026-10-27.json)).
 
 Le contrat REST (ressources, méthodes, codes) et la correspondance avec les noms d'endpoints du brief sont dans
 [`gateway/README.md`](gateway/README.md#contrat-rest-s3-24) ; le détail des routes de `rag` (rôles, erreurs, contrat
@@ -331,9 +332,9 @@ Le rollback redéploie **gateway, rag, underwriting-admin, serveur MCP et cluste
 |---|---|
 | Secrets hors dépôt, report dans GitHub | [docs/secrets.md](docs/secrets.md) |
 | Rollback | [docs/rollback.md](docs/rollback.md) |
-| Ingestion du Code des assurances en staging (20/10) | `eval/preuves/ingestion-2026-10-20-staging*.json` |
+| Ingestion du Code des assurances en staging (20/10, puis 27/10 avec l'annexe d'A121-1) | `eval/preuves/ingestion-2026-10-2{0,7}-staging*.json` |
 | Journaux versionnés | `eval/preuves/` (`make preuve RUN=<id> NOM=<nom>`) |
-| Rapport d'évaluation (manifeste + résultats) | artefact `evals-staging-<sha>` du run, à copier dans `eval/preuves/` |
+| Rapport d'évaluation (manifeste + résultats) | artefact `evals-staging-<sha>` du run, à copier dans `eval/preuves/` ; dernier : `eval/preuves/evals-2026-10-27.json` (100 %, `manifeste-0.6.0-build.130`) |
 | Sprint 2 : commit volontairement cassé et bloqué | [docs/preuve-blocage.md](docs/preuve-blocage.md) |
 | Sprint 2 : script de la démo (20 min) | [docs/demo-atelier.md](docs/demo-atelier.md) |
 | Grille de l'atelier | [eval/ateliers/sprint-2-grille.md](eval/ateliers/sprint-2-grille.md) |

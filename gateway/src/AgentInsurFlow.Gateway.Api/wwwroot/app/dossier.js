@@ -1,8 +1,11 @@
 // Vue d'un dossier (#104, #129, #101) : lancer ou reprendre l'évaluation, suivre la frise, mettre en pause,
-// valider la proposition, puis afficher le contrat généré. L'état se relit chaque seconde pendant l'évaluation.
+// valider la proposition, relancer puis classer sans suite, et afficher le contrat généré. L'état se relit chaque
+// seconde pendant l'évaluation.
 import { appeler } from "./api.js";
 import { el, erreur, remplir } from "./dom.js";
-import { LIBELLES_PIECES, etatAffiche, frise, gabaritRelance, spansAffichables } from "./logique.js";
+import {
+  LIBELLES_PIECES, STATUTS_FIGES, classableSansSuite, etatAffiche, frise, gabaritRelance, spansAffichables,
+} from "./logique.js";
 
 const SOUS_ONGLETS = [
   ["detail", "Détail de l'étape"],
@@ -113,7 +116,7 @@ export async function afficherDossier(zone, numero) {
   function barreActions() {
     const s = statut();
     const reprendre = s === "EN_PAUSE";
-    const bloque = v.enVol || ["EN_ANALYSE", "ACCEPTE", "REFUSE"].includes(s);
+    const bloque = v.enVol || ["EN_ANALYSE", ...STATUTS_FIGES].includes(s);
     const derniere = v.etat?.rapports?.at(-1);
     return el("div", { class: "actions" },
       el("button", { type: "button", id: "lancer", "aria-disabled": String(bloque), onclick: () => !bloque && lancer() },
@@ -178,7 +181,21 @@ export async function afficherDossier(zone, numero) {
     rendre();
   }
 
+  async function classerSansSuite() {
+    if (!window.confirm("Classer ce dossier sans suite ? La décision est définitive.")) return;
+    v.relanceEnVol = true;
+    rendre();
+    const r = await appeler("POST", `/api/contrats/${chemin}/sans-suite`, { portee: "underwriting" });
+    v.relanceEnVol = false;
+    v.relance = { message: r.statut === 204 ? el("p", { role: "status" }, "Dossier classé sans suite.") : erreur(r), texte: null };
+    if (r.statut === 204) await lireEtat();
+    rendre();
+  }
+
   function panneauPieces() {
+    if (statut() === "SANS_SUITE")
+      return el("div", {}, el("p", {}, `Dossier classé sans suite après ${v.etat.nb_relances ?? 0} relances restées sans réponse.`),
+        v.relance?.message ?? null);
     const pieces = v.etat?.sections?.pieces;
     if (!pieces) return el("p", { class: "discret" }, "L'agent Pièces n'a pas encore rendu son rapport.");
     const liste = manquantes();
@@ -206,7 +223,11 @@ export async function afficherDossier(zone, numero) {
       champ,
       el("div", { class: "actions" },
         el("button", { type: "submit", id: "envoyer-relance", "aria-disabled": String(epuisees || !!v.relanceEnVol) },
-          epuisees ? "3 relances déjà envoyées" : "Envoyer la relance"))),
+          epuisees ? "3 relances déjà envoyées" : "Envoyer la relance"),
+        classableSansSuite(v.etat)
+          ? el("button", { type: "button", id: "sans-suite", class: "secondaire", "aria-disabled": String(!!v.relanceEnVol),
+            onclick: () => !v.relanceEnVol && classerSansSuite() }, "Classer sans suite")
+          : null)),
       v.relance?.message ?? null,
       v.relance?.texte ? el("blockquote", { class: "texte-envoye" }, v.relance.texte) : null);
   }

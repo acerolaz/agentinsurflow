@@ -28,7 +28,7 @@ internal sealed class DepotEcrituresEf(DossiersDbContext db, TimeProvider horlog
                 && db.Set<EtatDossier>().Any(e => e.NumeroContrat == numeroContrat && e.Tentative == s.Tentative))
             .Select(s => s.Contenu)
             .FirstOrDefaultAsync(ct);
-        return new SituationRelance(deja, statut is "ACCEPTE" or "REFUSE", Manquantes(pieces));
+        return new SituationRelance(deja, ReglesStatut.Fige(statut), Manquantes(pieces));
     }
 
     private static List<string> Manquantes(string? section)
@@ -62,6 +62,22 @@ internal sealed class DepotEcrituresEf(DossiersDbContext db, TimeProvider horlog
         await db.Database.ExecuteSqlAsync($"UPDATE etat_dossier SET nb_relances = {rang} WHERE numero_contrat = {numeroContrat}", ct);
         await transaction.CommitAsync(ct);
         return rang;
+    }
+
+    public async Task<bool> ClasserSansSuite(string gestionnaireId, string numeroContrat, CancellationToken ct)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        // Le filtre sur le statut ferme la course avec une décision : un dossier figé entre-temps n'est pas touché.
+        var touches = await db.Set<Contrat>()
+            .Where(c => c.NumeroContrat == numeroContrat && c.GestionnaireId == gestionnaireId
+                && c.Statut != "ACCEPTE" && c.Statut != "REFUSE" && c.Statut != ReglesRelance.SansSuite)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.Statut, ReglesRelance.SansSuite).SetProperty(c => c.MisAJour, horloge.GetUtcNow()), ct);
+        if (touches == 0) return false;
+        // L'espace gestionnaire lit le statut du parcours dans la mémoire du dossier (D100).
+        await db.Set<EtatDossier>().Where(e => e.NumeroContrat == numeroContrat)
+            .ExecuteUpdateAsync(s => s.SetProperty(e => e.StatutParcours, ReglesRelance.SansSuite).SetProperty(e => e.MajLe, horloge.GetUtcNow()), ct);
+        await transaction.CommitAsync(ct);
+        return true;
     }
 
     public async Task<bool> EnregistrerBrouillon(string gestionnaireId, string numeroContrat, FicheBrouillon fiche,

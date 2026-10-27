@@ -42,4 +42,15 @@ public sealed class ReglesRelanceTests
 
     [Fact]
     public void Trois_relances_au_plus() => Assert.Equal(3, ReglesRelance.Max);
+
+    [Theory]
+    [InlineData(0, false, "RELANCES_NON_EPUISEES")]
+    [InlineData(2, false, "RELANCES_NON_EPUISEES")]
+    [InlineData(3, false, null)]
+    [InlineData(3, true, "DOSSIER_DECIDE")]
+    public void Sans_suite_seulement_apres_trois_relances_sur_un_dossier_non_decide(int dejaEnvoyees, bool decide, string? attendu) =>
+        Assert.Equal(attendu, ReglesRelance.RefusSansSuite(new SituationRelance(dejaEnvoyees, decide, Manquantes)));
+
+    [Fact]
+    public void Sans_suite_fige_le_dossier() => Assert.True(ReglesStatut.Fige("SANS_SUITE"));
 }

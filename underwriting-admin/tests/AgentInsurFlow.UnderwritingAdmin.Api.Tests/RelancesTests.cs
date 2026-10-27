@@ -24,11 +24,20 @@ public sealed class RelancesTests : IDisposable
         public List<(string Numero, string Texte, IReadOnlyList<string> Pieces)> Relances { get; } = [];
         public bool Decide { get; set; }
         public bool RangPris { get; set; } // un envoi simultané a pris le rang
+        public bool SansSuite { get; private set; }
+        public bool DecideEntreTemps { get; set; } // une décision arrive entre la lecture et le classement
 
         public Task<SituationRelance?> Situation(string gestionnaireId, string numeroContrat, CancellationToken ct) =>
             Task.FromResult(gestionnaireId == GestionnaireA && numeroContrat == "AIF-A1"
-                ? new SituationRelance(Relances.Count(r => r.Numero == numeroContrat), Decide, ["releve_information", "permis"])
+                ? new SituationRelance(Relances.Count(r => r.Numero == numeroContrat), Decide || SansSuite, ["releve_information", "permis"])
                 : null);
+
+        public Task<bool> ClasserSansSuite(string gestionnaireId, string numeroContrat, CancellationToken ct)
+        {
+            if (DecideEntreTemps) return Task.FromResult(false);
+            SansSuite = true;
+            return Task.FromResult(true);
+        }
 
         public Task<int?> Ajouter(string gestionnaireId, string numeroContrat, string texte, IReadOnlyList<string> pieces, CancellationToken ct)
         {
@@ -156,5 +165,53 @@ public sealed class RelancesTests : IDisposable
         Assert.Equal("DOSSIER_DECIDE", span.GetTagItem("relance.refus"));
         Assert.Null(span.GetTagItem("relance.rang"));
         Assert.DoesNotContain(span.TagObjects, t => t.Value?.ToString()?.Contains("confidentiel", StringComparison.Ordinal) == true);
+    }
+
+    private async Task<(HttpStatusCode Statut, string? Code)> ClasserSansSuite(string numero, string oid)
+    {
+        using var client = _usine.CreateClient();
+        using var requete = new HttpRequestMessage(HttpMethod.Post, $"/api/contrats/{numero}/sans-suite");
+        requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JetonsDeTest.Jeton(JetonsDeTest.AudienceParDefaut, oid, "Gestionnaire"));
+        using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
+        var corps = await reponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        return (reponse.StatusCode, corps.Length == 0 ? null : JsonDocument.Parse(corps).RootElement.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Sans_suite_avant_la_troisieme_relance_409()
+    {
+        await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
+        await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
+
+        Assert.Equal((HttpStatusCode.Conflict, "RELANCES_NON_EPUISEES"), await ClasserSansSuite("AIF-A1", GestionnaireA));
+        Assert.False(_depot.SansSuite);
+    }
+
+    [Fact]
+    public async Task Sans_suite_apres_trois_relances_puis_plus_aucune_relance()
+    {
+        for (var i = 0; i < 3; i++) await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
+
+        Assert.Equal((HttpStatusCode.NoContent, null), await ClasserSansSuite("AIF-A1", GestionnaireA));
+        Assert.True(_depot.SansSuite);
+        Assert.Equal((HttpStatusCode.Conflict, "DOSSIER_DECIDE"), await ClasserSansSuite("AIF-A1", GestionnaireA));
+    }
+
+    [Fact]
+    public async Task Sans_suite_autre_gestionnaire_404()
+    {
+        for (var i = 0; i < 3; i++) await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
+
+        Assert.Equal((HttpStatusCode.NotFound, "CONTRAT_INTROUVABLE"), await ClasserSansSuite("AIF-A1", GestionnaireB));
+        Assert.False(_depot.SansSuite);
+    }
+
+    [Fact]
+    public async Task Sans_suite_concurrente_d_une_decision_409()
+    {
+        for (var i = 0; i < 3; i++) await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
+        _depot.DecideEntreTemps = true;
+
+        Assert.Equal((HttpStatusCode.Conflict, "DOSSIER_DECIDE"), await ClasserSansSuite("AIF-A1", GestionnaireA));
     }
 }

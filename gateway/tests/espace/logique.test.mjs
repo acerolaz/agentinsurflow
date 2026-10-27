@@ -11,6 +11,7 @@ import {
   messageProbleme,
   routeDepuisHash,
   spansAffichables,
+  tokensEtape,
   themeInitial,
 } from "../../src/AgentInsurFlow.Gateway.Api/wwwroot/app/logique.js";
 
@@ -79,6 +80,18 @@ test("détail : outils et agents seulement, par une liste blanche d'attributs", 
     { nom: "Agent pieces · repli · llm_ko", duree_ms: 1800 },
     { nom: "Outil ? · deny", duree_ms: 1 },
   ]);
+});
+
+test("tokens : spans de l'agent de l'étape seulement (trace partagée), chaînes OTLP comprises ; null sans appel LLM", () => {
+  const agent = (nom, entree, sortie) => ({
+    name: "invoke_agent",
+    attributes: { "gen_ai.agent.name": nom, "gen_ai.usage.input_tokens": entree, "gen_ai.usage.output_tokens": sortie },
+  });
+  const outil = { name: "mcp.outil", attributes: { "mcp.outil": "lister_pieces" } };
+  const trace = [agent("analyste", 1000, 234), outil, agent("analyste", "50", "6"), agent("redacteur", 9, 9)];
+  assert.deepEqual(tokensEtape(trace, "analyste"), { entree: 1050, sortie: 240 });
+  assert.equal(tokensEtape([outil, { name: "invoke_agent", attributes: { "gen_ai.agent.name": "pieces" } }], "pieces"), null);
+  assert.equal(tokensEtape(null, "pieces"), null);
 });
 
 test("route : un dossier valide s'ouvre", () => {

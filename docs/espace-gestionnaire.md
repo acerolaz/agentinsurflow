@@ -83,7 +83,7 @@ Prévu dans le code :
 | Double clic sur « Lancer » : un seul appel, sinon message 409 | à vérifier |
 | Valider avec un motif, contrat affiché puis « Imprimer » : conditions particulières (souscripteur, véhicule, prime) et conditions générales (notice du contrat type) | à vérifier |
 | En tête du dossier : fiche du souscripteur (civilité, nom, prénom, adresse, mobile, e-mail, véhicule) ; 404 sur un dossier d'un autre gestionnaire | à vérifier |
-| Étape choisie : mode, cause, outils appelés | à vérifier |
+| Étape choisie : mode, cause, tokens (entrée + sortie, « aucun appel LLM » en repli), outils appelés | à vérifier |
 | Dossier sans relevé : trois relances, la quatrième refusée ; `<b>x</b>` affiché littéralement | à vérifier |
 | Après la troisième relance : « Classer sans suite », confirmation, statut `SANS_SUITE`, « Lancer l'évaluation » désactivé | à vérifier |
 | Motif de revue saisi, changement de sous-onglet puis retour : motif gardé ; curseur stable pendant l'évaluation | à vérifier |

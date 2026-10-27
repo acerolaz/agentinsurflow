@@ -77,6 +77,18 @@ export function spansAffichables(spans) {
   });
 }
 
+/**
+ * Tokens LLM d'une étape : somme des spans de son agent (la trace couvre toute l'évaluation), attributs
+ * gen_ai.usage.* ; null si aucun appel LLM tracé (repli déterministe).
+ */
+export function tokensEtape(spans, agent) {
+  const agents = (spans ?? []).filter((s) => s.name === "invoke_agent" && s.attributes?.["gen_ai.agent.name"] === agent
+    && s.attributes["gen_ai.usage.input_tokens"] != null);
+  if (!agents.length) return null;
+  const somme = (cle) => agents.reduce((t, s) => t + (Number(s.attributes[cle]) || 0), 0);
+  return { entree: somme("gen_ai.usage.input_tokens"), sortie: somme("gen_ai.usage.output_tokens") };
+}
+
 export const LIBELLES_PIECES = {
   releve_information: "relevé d'information",
   permis: "permis de conduire",

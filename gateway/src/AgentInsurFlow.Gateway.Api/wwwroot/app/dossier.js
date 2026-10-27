@@ -6,7 +6,7 @@ import { el, erreur, remplir } from "./dom.js";
 import {
   LIBELLES_GARANTIES, LIBELLES_PIECES, STATUTS_FIGES, classableSansSuite, conditionsGenerales, dateEcheance, etatAffiche,
   frise, gabaritRelance,
-  spansAffichables,
+  spansAffichables, tokensEtape,
 } from "./logique.js";
 
 const SOUS_ONGLETS = [
@@ -18,7 +18,7 @@ const SOUS_ONGLETS = [
 export async function afficherDossier(zone, numero) {
   const v = {
     numero, etat: null, fiche: null, contrat: null, conditions: null, enVol: false, lanceA: undefined, ecoule: null,
-    message: null, etape: null, sousOnglet: "detail", minuteur: null, tentativeAvant: null, motif: "",
+    message: null, etape: null, tokens: {}, sousOnglet: "detail", minuteur: null, tentativeAvant: null, motif: "",
   };
   const SUIVI_MAX_S = 120; // rechargement pendant une évaluation : l'état se relit au plus ce temps
   const chemin = encodeURIComponent(numero);
@@ -120,6 +120,25 @@ export async function afficherDossier(zone, numero) {
       : el("p", { class: "discret" }, "Aucun span d'outil pour cette étape."));
   }
 
+  // Tokens de l'étape : lus une fois dans la trace (span de l'agent), clé trace + agent.
+  async function lireTokens(e) {
+    const cle = `${e.rapport.trace_id}:${e.agent}`;
+    if (cle in v.tokens) return;
+    v.tokens[cle] = undefined;
+    const r = await appeler("GET", `/api/traces/${encodeURIComponent(e.rapport.trace_id)}`, { portee: "underwriting" });
+    v.tokens[cle] = r.statut === 200 ? tokensEtape(r.json, e.agent) : "indisponible";
+    rendre();
+  }
+
+  function texteTokens(e) {
+    const t = v.tokens[`${e.rapport.trace_id}:${e.agent}`];
+    if (t === undefined) return "lecture…";
+    if (t === null) return "— (aucun appel LLM)";
+    if (typeof t === "string") return t;
+    const n = (x) => x.toLocaleString("fr-FR");
+    return `${n(t.entree + t.sortie)} (entrée ${n(t.entree)}, sortie ${n(t.sortie)})`;
+  }
+
   // --- rendu -------------------------------------------------------------------------------------
   function statut() {
     return v.etat?.statut_parcours ?? null;
@@ -152,6 +171,7 @@ export async function afficherDossier(zone, numero) {
             v.etape = e.agent;
             v.sousOnglet = "detail";
             rendre();
+            lireTokens(e);
           },
         },
         el("span", { class: "libelle" }, e.libelle),
@@ -169,6 +189,7 @@ export async function afficherDossier(zone, numero) {
         el("dt", {}, "Mode"), el("dd", {}, e.rapport.mode === "llm" ? "Agent (LLM)" : "Repli déterministe"),
         el("dt", {}, "Cause"), el("dd", {}, e.rapport.cause ?? "—"),
         el("dt", {}, "Durée"), el("dd", {}, e.duree_s === null ? "—" : `${e.duree_s.toFixed(1)} s`),
+        el("dt", {}, "Tokens"), el("dd", {}, texteTokens(e)),
         el("dt", {}, "trace_id"), el("dd", {}, el("code", {}, e.rapport.trace_id))),
       el("button", { type: "button", class: "secondaire", onclick: () => afficherTraces(e, cible) }, "Outils appelés"),
       cible);

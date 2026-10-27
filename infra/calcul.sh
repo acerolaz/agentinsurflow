@@ -28,6 +28,11 @@ for app in "$CALCUL_APP_STAGING" "$CALCUL_APP_PRODUCTION"; do
       --flexconsumption-location "$AZURE_LOCATION" --runtime python --runtime-version 3.12 -o none
 done
 
+echo "①b Une instance toujours prête (déclencheurs HTTP) : pas de démarrage à froid (> 10 s) en recette ni en démo"
+for app in "$CALCUL_APP_STAGING" "$CALCUL_APP_PRODUCTION"; do
+  az functionapp scale config always-ready set -n "$app" -g "$RG" --settings http=1 -o none
+done
+
 echo "② Inscription Entra agentinsurflow-calcul"
 nom=agentinsurflow-calcul
 app_id=$(az ad app list --display-name "$nom" --query "[0].appId" -o tsv)

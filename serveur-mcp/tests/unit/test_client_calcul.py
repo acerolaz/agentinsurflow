@@ -124,7 +124,7 @@ async def test_sans_configuration_entra_calcul_indisponible(
     assert vues == []
 
 
-async def test_delai_de_10_secondes() -> None:
+async def test_delai_de_20_secondes_demarrage_a_froid() -> None:
     vues: list[httpx.Request] = []
     await client(httpx.Response(200, json=RESULTAT), vues).evaluer(FAITS)
-    assert vues[0].extensions["timeout"]["read"] == 10.0
+    assert vues[0].extensions["timeout"]["read"] == 20.0

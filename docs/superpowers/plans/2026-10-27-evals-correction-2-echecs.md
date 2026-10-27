@@ -63,8 +63,12 @@ Dans `test_perimetre`, ajouter `(NUM_ANNEXE, True)` et `("Annexe art. A121-10", 
 
 ```python
 def test_rattacher_annexe() -> None:
-    article = vers_article_entrant(ARTICLE_LF | {"num": "A121-1", "id": "V1", "cid": "C1", "texteHtml": "<p>art</p>"})
-    annexe = vers_article_entrant(ARTICLE_LF | {"num": NUM_ANNEXE, "id": "V2", "cid": "C2", "texteHtml": "<p>clause</p>"})
+    article = vers_article_entrant(
+        ARTICLE_LF | {"num": "A121-1", "id": "V1", "cid": "C1", "texteHtml": "<p>art</p>"}
+    )
+    annexe = vers_article_entrant(
+        ARTICLE_LF | {"num": NUM_ANNEXE, "id": "V2", "cid": "C2", "texteHtml": "<p>clause</p>"}
+    )
     fusion = rattacher_annexe(article, annexe)
     assert fusion["article"] == "A121-1" and fusion["doc_id"] == "C1"
     assert fusion["version"] == "V1+V2"

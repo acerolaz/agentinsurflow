@@ -128,6 +128,7 @@ services:
       # oid fictifs en local ; en Azure, ceux de deux gestionnaires de test (jamais commités)
       SEED_GESTIONNAIRE_A: ${SEED_GESTIONNAIRE_A:-00000000-0000-0000-0000-00000000000a}
       SEED_GESTIONNAIRE_B: ${SEED_GESTIONNAIRE_B:-00000000-0000-0000-0000-00000000000b}
+      SEED_GESTIONNAIRE_C: ${SEED_GESTIONNAIRE_C:-00000000-0000-0000-0000-00000000000c}
     ports: ["8002:8002"]
     depends_on:
       postgres: { condition: service_healthy }

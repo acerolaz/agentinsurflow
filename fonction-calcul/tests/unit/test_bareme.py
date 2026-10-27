@@ -145,3 +145,17 @@ def test_crm_hors_bornes_legales_refuse(crm):
 @pytest.mark.parametrize("crm", ["0.50", "3.50"])
 def test_crm_bornes_legales_incluses(crm):
     evaluer(faits(crm=Decimal(crm)))
+
+
+def test_profil_dossier_10_classe_refus():
+    """Dossier 10 du seed (gestionnaire A, démo K1) : profil du dossier 4, une suspension → R01."""
+    r = evaluer(
+        faits(
+            suspensions=1,
+            crm=Decimal("1.25"),
+            nb_sinistres_responsables_trois_ans=1,
+            nb_sinistres_trois_ans=2,
+            anciennete_permis_mois=70,
+        )
+    )
+    assert (r.classe, r.decision, [g.regle_id for g in r.regles]) == ("refus", "REFUSE", ["R01_SUSPENSION"])

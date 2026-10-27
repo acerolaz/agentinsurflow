@@ -62,7 +62,7 @@ public sealed class DossiersPostgresTests
         await Preparer();
 
         await using var db = DossiersDbContextFactory.Creer(Connexions().Migrateur);
-        Assert.Equal(8, (await db.Database.GetAppliedMigrationsAsync(TestContext.Current.CancellationToken)).Count());
+        Assert.Equal(9, (await db.Database.GetAppliedMigrationsAsync(TestContext.Current.CancellationToken)).Count());
         Assert.Empty(await db.Database.GetPendingMigrationsAsync(TestContext.Current.CancellationToken));
         var tables = await Lire(Connexions().Migrateur,
             "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '__EFMigrationsHistory'");
@@ -225,7 +225,7 @@ public sealed class DossiersPostgresTests
 
         var apres = new[] { await Compter("contrat"), await Compter("sinistre"), await Compter("prime"), await Compter("souscripteur") };
         Assert.Equal(avant, apres);
-        Assert.Equal(6L, avant[0]);
+        Assert.Equal(7L, avant[0]); // 1 à 6 (Seed) + 10, le dossier « refus » de A (SeedGestionnaireC) ; C n'est pas semé ici
     }
 
     [Fact]
@@ -250,7 +250,7 @@ public sealed class DossiersPostgresTests
         var deA = await depot.Lister(GestionnaireA, 100, 0, ct);
         var deB = await depot.Lister(GestionnaireB, 100, 0, ct);
 
-        Assert.Equal(3, deA.Count);
+        Assert.Equal(4, deA.Count); // 1 à 3 et 10 (dossier « refus », SeedGestionnaireC)
         Assert.Equal(3, deB.Count);
         Assert.Empty(deA.Select(v => v.NumeroContrat).Intersect(deB.Select(v => v.NumeroContrat)));
         Assert.Single(await depot.Lister(GestionnaireA, 1, 0, ct));

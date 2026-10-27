@@ -1,0 +1,66 @@
+{
+  "instantane_sha256": "49b0be96b9c12a50535edfc1537384f6fac99973e7dda7375dbe28a55d5a3b31",
+  "instantane_date": "2026-10-27",
+  "mode": "instantane",
+  "ingestions": [
+    6,
+    7,
+    8
+  ],
+  "lus": 119,
+  "inseres": 0,
+  "inchanges": 107,
+  "nouvelles_versions": 0,
+  "rejets": [
+    {
+      "doc_id": "LEGIARTI000006792318",
+      "raison": "non_en_vigueur:ABROGE_DIFF"
+    },
+    {
+      "doc_id": "LEGIARTI000006795361",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812118",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812128",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812143",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812165",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812178",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812192",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006812211",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006786667",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006786720",
+      "raison": "non_en_vigueur:ABROGE"
+    },
+    {
+      "doc_id": "LEGIARTI000006786748",
+      "raison": "non_en_vigueur:ABROGE"
+    }
+  ],
+  "quasi_doublons": [],
+  "duree_s": 0.446
+}

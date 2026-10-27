@@ -3,6 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  classableSansSuite,
   etatAffiche,
   frise,
   gabaritRelance,
@@ -108,7 +109,16 @@ test("messages : un texte lisible par statut et code", () => {
   assert.equal(messageProbleme(429, "TROP_DE_REQUETES"), "Trop de requêtes, réessayez dans quelques secondes");
   assert.equal(messageProbleme(409, "RELANCE_CONCURRENTE"), "Une autre relance vient d'être enregistrée : rechargez le dossier");
   assert.equal(messageProbleme(409, "RELANCES_EPUISEES"), "Les trois relances ont déjà été envoyées");
+  assert.equal(messageProbleme(409, "RELANCES_NON_EPUISEES"), "Le dossier se classe sans suite après la troisième relance");
   assert.equal(messageProbleme(502), "Service temporairement indisponible");
   assert.equal(messageProbleme(503), "Service temporairement indisponible");
   assert.equal(messageProbleme(500), "Une erreur est survenue");
+});
+
+test("sans suite : seulement après la troisième relance et avant toute décision", () => {
+  assert.equal(classableSansSuite(null), false);
+  assert.equal(classableSansSuite({ statut_parcours: "REVUE_HUMAINE", nb_relances: 2 }), false);
+  assert.equal(classableSansSuite({ statut_parcours: "REVUE_HUMAINE", nb_relances: 3 }), true);
+  for (const fige of ["ACCEPTE", "REFUSE", "SANS_SUITE"])
+    assert.equal(classableSansSuite({ statut_parcours: fige, nb_relances: 3 }), false);
 });

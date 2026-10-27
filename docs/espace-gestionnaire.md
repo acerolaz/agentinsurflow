@@ -84,6 +84,7 @@ Prévu dans le code :
 | Valider avec un motif, contrat affiché puis « Imprimer » | à vérifier |
 | Étape choisie : mode, cause, outils appelés | à vérifier |
 | Dossier sans relevé : trois relances, la quatrième refusée ; `<b>x</b>` affiché littéralement | à vérifier |
+| Après la troisième relance : « Classer sans suite », confirmation, statut `SANS_SUITE`, « Lancer l'évaluation » désactivé | à vérifier |
 | Motif de revue saisi, changement de sous-onglet puis retour : motif gardé ; curseur stable pendant l'évaluation | à vérifier |
 | Page rechargée pendant une évaluation : la frise reprend sa progression | à vérifier |
 

@@ -13,6 +13,11 @@ public interface IDepotRelances
     /// <c>null</c> : un envoi simultané a pris ce rang (clé <c>(numero_contrat, rang)</c>), rien n'est écrit.
     /// </summary>
     Task<int?> Ajouter(string gestionnaireId, string numeroContrat, string texte, IReadOnlyList<string> pieces, CancellationToken ct);
+
+    /// <summary>
+    /// Classe le dossier <c>SANS_SUITE</c> (statut du contrat et de l'état) ; <c>false</c> : il a été figé entre-temps, rien n'est écrit.
+    /// </summary>
+    Task<bool> ClasserSansSuite(string gestionnaireId, string numeroContrat, CancellationToken ct);
 }
 
 /// <summary><c>Rang=null, CodeRefus=null</c> : contrat introuvable (404).</summary>

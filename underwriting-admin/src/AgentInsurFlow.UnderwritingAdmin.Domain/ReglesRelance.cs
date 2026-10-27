@@ -16,6 +16,15 @@ public static partial class ReglesRelance
     public const string Epuisees = "RELANCES_EPUISEES";
     public const string Decide = "DOSSIER_DECIDE";
     public const string Concurrente = "RELANCE_CONCURRENTE";
+    public const string NonEpuisees = "RELANCES_NON_EPUISEES";
+    public const string SansSuite = "SANS_SUITE";
+
+    /// <summary>Fin de parcours (K8) : le gestionnaire classe sans suite, seulement après la dernière relance.</summary>
+    public static string? RefusSansSuite(SituationRelance situation)
+    {
+        ArgumentNullException.ThrowIfNull(situation);
+        return situation.Decide ? Decide : situation.Deja < Max ? NonEpuisees : null;
+    }
 
     /// <summary><c>null</c> si la relance est acceptée, sinon le code de refus.</summary>
     public static string? Refus(SituationRelance situation, string texte, IReadOnlyList<string> pieces)
@@ -46,7 +55,7 @@ public static partial class ReglesRelance
 }
 
 /// <summary>
-/// Ce qu'une relance doit savoir du dossier : relances déjà enregistrées, statut décidé (ACCEPTE ou REFUSE) et pièces
+/// Ce qu'une relance doit savoir du dossier : relances déjà enregistrées, statut figé (<see cref="ReglesStatut.Fige"/>) et pièces
 /// manquantes selon la section <c>pieces</c> de la tentative courante (vide si aucune ou si le dossier est complet).
 /// </summary>
 public sealed record SituationRelance(int Deja, bool Decide, IReadOnlyList<string> Manquantes);

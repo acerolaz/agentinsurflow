@@ -49,7 +49,7 @@ internal static class EcrituresEndpoints
                 : Reponse(await cas.Executer(oid, numeroContrat, corps.Vers(), ct)))
             .WithName("EnregistrerEtat")
             .WithSummary("Mémoire long terme du dossier (D100), idempotente : sections connues seulement, aucune donnée identifiante")
-            .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
+            .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
 
         contrats.MapPost("/{numero_contrat}/relances", async (ClaimsPrincipal utilisateur, EnregistrerRelance cas, CancellationToken ct,
                 [FromRoute(Name = "numero_contrat")] string numeroContrat, RelanceCorps corps) =>
@@ -60,11 +60,28 @@ internal static class EcrituresEndpoints
             .WithSummary("Relance de pièces manquantes, enregistrée et tracée comme envoyée (aucun e-mail avant #123), 3 au plus")
             .Produces<RelanceReponse>(201)
             .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
+
+        contrats.MapPost("/{numero_contrat}/sans-suite", async (ClaimsPrincipal utilisateur, ClasserSansSuite cas, CancellationToken ct,
+                [FromRoute(Name = "numero_contrat")] string numeroContrat) =>
+            ContratsEndpoints.Oid(utilisateur) is not { } oid
+                ? Problemes.Creer(403, "Jeton sans identité de gestionnaire", "ACCES_REFUSE")
+                : await cas.Executer(oid, numeroContrat, ct) switch
+                {
+                    { Ecrit: true } => Results.NoContent(),
+                    { CodeRefus: ReglesRelance.Decide } => Problemes.Creer(409, "Ce dossier a déjà reçu sa décision", ReglesRelance.Decide),
+                    { CodeRefus: { } code } => Problemes.Creer(409, "Les trois relances n'ont pas toutes été envoyées", code),
+                    _ => Problemes.Creer(404, "Contrat introuvable", "CONTRAT_INTROUVABLE"),
+                })
+            .WithName("ClasserSansSuite")
+            .WithSummary("Fin de parcours (K8) : classe le dossier SANS_SUITE, seulement après la 3e relance et avant toute décision")
+            .Produces(204)
+            .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
     }
 
-    // Le span porte le rang et les pièces, jamais le texte (il peut contenir des données personnelles).
+    // Le span porte le rang et les pièces, ou le code du refus, jamais le texte (il peut contenir des données personnelles).
     private static IResult Relance(ResultatRelance r, IReadOnlyList<string> pieces)
     {
+        if (r.CodeRefus is { } refus) Activity.Current?.SetTag("relance.refus", refus);
         if (r.Rang is not { } rang)
             return r.CodeRefus switch
             {

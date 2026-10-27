@@ -216,6 +216,38 @@ public sealed class EcrituresPostgresTests
     }
 
     [Fact]
+    public async Task Sans_suite_ecrit_contrat_et_etat_jamais_sur_un_dossier_decide()
+    {
+        var (db, depot, numero) = await Preparer();
+        await using var _ = db;
+        var ct = TestContext.Current.CancellationToken;
+        var migrateur = Connexions().Migrateur;
+        var origine = (string)(await Lire(migrateur, "SELECT statut FROM contrat WHERE numero_contrat = @p0", numero))[0][0];
+        const string Statuts = "SELECT c.statut, e.statut_parcours FROM contrat c JOIN etat_dossier e USING (numero_contrat) WHERE c.numero_contrat = @p0";
+        try
+        {
+            await Lire(migrateur, "UPDATE contrat SET statut = 'REVUE_HUMAINE' WHERE numero_contrat = @p0", numero);
+            foreach (var t in new[] { "tour_pilotage", "rapport_agent", "section_etat", "etat_dossier" })
+                await Lire(migrateur, $"DELETE FROM {t} WHERE numero_contrat = @p0", numero);
+            await depot.EnregistrerEtat(GestionnaireA, numero, new EtatEntrant("REVUE_HUMAINE", 1, [], [], []), ct);
+
+            Assert.False(await depot.ClasserSansSuite(GestionnaireB, numero, ct)); // BOLA : rien n'est écrit
+            Assert.True(await depot.ClasserSansSuite(GestionnaireA, numero, ct));
+            Assert.Equal(["SANS_SUITE", "SANS_SUITE"], (await Lire(migrateur, Statuts, numero))[0].Select(o => o.ToString()));
+            Assert.True((await depot.Situation(GestionnaireA, numero, ct))?.Decide);
+            Assert.False(await depot.ClasserSansSuite(GestionnaireA, numero, ct));
+
+            await Lire(migrateur, "UPDATE contrat SET statut = 'ACCEPTE' WHERE numero_contrat = @p0", numero);
+            Assert.False(await depot.ClasserSansSuite(GestionnaireA, numero, ct)); // décision entre-temps : la décision reste
+            Assert.Equal("ACCEPTE", (await Lire(migrateur, Statuts, numero))[0][0]);
+        }
+        finally
+        {
+            await Lire(migrateur, "UPDATE contrat SET statut = @p1 WHERE numero_contrat = @p0", numero, origine);
+        }
+    }
+
+    [Fact]
     public async Task Contrat_genere_lu_apres_ACCEPTE_avec_le_compte_dossiers_et_borne_au_gestionnaire()
     {
         var (db, depot, numero) = await Preparer();

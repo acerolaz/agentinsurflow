@@ -95,10 +95,19 @@ const MESSAGES = {
   DOSSIER_DECIDE: "Ce dossier a déjà reçu sa décision",
   AUCUNE_REVUE_EN_ATTENTE: "Aucune proposition n'attend votre validation",
   RELANCES_EPUISEES: "Les trois relances ont déjà été envoyées",
+  RELANCES_NON_EPUISEES: "Le dossier se classe sans suite après la troisième relance",
   RELANCE_CONCURRENTE: "Une autre relance vient d'être enregistrée : rechargez le dossier",
   CONTRAT_NON_ACCEPTE: "Le contrat n'est disponible qu'après acceptation",
   TEXTE_INVALIDE: "Le texte du message est vide ou trop long",
 };
+
+/** Statuts figés : plus d'évaluation, de relance ni de classement (la décision humaine n'est pas réversible). */
+export const STATUTS_FIGES = ["ACCEPTE", "REFUSE", "SANS_SUITE"];
+
+/** Fin de parcours (K8) : classable sans suite après la troisième relance, sur un dossier non figé. */
+export function classableSansSuite(etat) {
+  return (etat?.nb_relances ?? 0) >= 3 && !STATUTS_FIGES.includes(etat?.statut_parcours);
+}
 
 /** Message lisible d'une réponse en erreur (ProblemDetails avec un code). */
 export function messageProbleme(statut, code) {

@@ -12,8 +12,10 @@ public static class ReglesStatut
 
     public static readonly IReadOnlySet<string> Periodicites = new HashSet<string> { "mensuelle", "annuelle" };
 
-    /// <summary>Un dossier décidé (ACCEPTE/REFUSE) n'est plus modifiable : la décision humaine n'est pas réversible.</summary>
-    public static bool Fige(string statutContrat) => statutContrat is "ACCEPTE" or "REFUSE";
+    /// <summary>
+    /// Un dossier décidé (ACCEPTE/REFUSE) ou classé sans suite n'est plus modifiable : la décision humaine n'est pas réversible.
+    /// </summary>
+    public static bool Fige(string statutContrat) => statutContrat is "ACCEPTE" or "REFUSE" or ReglesRelance.SansSuite;
 
     /// <summary><c>null</c> si le changement est accepté, sinon le code de refus.</summary>
     public static string? Refus(string statutCible, string? validation)

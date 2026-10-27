@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import {
   doitInterroger,
   frise,
+  gabaritRelance,
   messageProbleme,
   routeDepuisHash,
   spansAffichables,
@@ -40,6 +41,17 @@ test("frise : rien encore", () => {
 test("interrogation : tant que l'évaluation est en vol", () => {
   assert.equal(doitInterroger(null, true), true);
   assert.equal(doitInterroger("EN_PAUSE", false), false);
+});
+
+test("relance : gabarit avec les libellés des pièces", () => {
+  assert.equal(
+    gabaritRelance(["releve_information"]),
+    "Bonjour,\n\nPour finaliser l'étude de votre dossier, merci de nous transmettre : relevé d'information.\n\nCordialement,",
+  );
+});
+
+test("relance : un type inconnu s'affiche tel quel", () => {
+  assert.match(gabaritRelance(["releve_information", "x_y"]), /relevé d'information, x_y\./);
 });
 
 test("détail : outils et agents seulement, par une liste blanche d'attributs", () => {

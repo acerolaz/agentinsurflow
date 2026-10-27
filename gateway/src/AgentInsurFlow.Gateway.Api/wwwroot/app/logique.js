@@ -71,6 +71,18 @@ export function spansAffichables(spans) {
   });
 }
 
+export const LIBELLES_PIECES = {
+  releve_information: "relevé d'information",
+  permis: "permis de conduire",
+  carte_grise: "certificat d'immatriculation",
+};
+
+/** Mail de relance prérempli (modifiable par le gestionnaire) ; un type inconnu reste tel quel. */
+export function gabaritRelance(manquantes) {
+  const pieces = manquantes.map((p) => LIBELLES_PIECES[p] ?? p).join(", ");
+  return `Bonjour,\n\nPour finaliser l'étude de votre dossier, merci de nous transmettre : ${pieces}.\n\nCordialement,`;
+}
+
 const MESSAGES = {
   EVALUATION_EN_COURS: "Une évaluation est déjà en cours pour ce dossier",
   EVALUATION_EN_ATTENTE: "Une revue est déjà en attente pour ce dossier",

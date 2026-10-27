@@ -45,10 +45,12 @@ Prévu dans le code :
 | Double clic sur « Lancer » : un seul appel, sinon message 409 | à vérifier |
 | Valider avec un motif, contrat affiché puis « Imprimer » | à vérifier |
 | Étape choisie : mode, cause, outils appelés | à vérifier |
+| Dossier sans relevé : trois relances, la quatrième refusée ; `<b>x</b>` affiché littéralement | à vérifier |
 
 ## Vue du dossier
 
 - **Lancer / Reprendre** : `POST /v1/souscriptions/{n}/evaluation` ; pendant l'appel, `GET /api/contrats/{n}/etat` chaque seconde (frise, temps écoulé, `trace_id`). Un second clic est ignoré tant que l'appel est en vol.
 - **Pause** : `POST /v1/souscriptions/{n}/pause`, actif pendant l'évaluation ; elle s'arrête après l'agent en cours (statut `EN_PAUSE`).
 - **Détail d'une étape** : mode, cause, durée, puis les spans de sa trace réduits à une liste blanche (outil MCP, décision, code ; agent, mode, cause) — jamais de prompt ni de sortie du modèle.
+- **Pièces manquantes** (pastille quand la section `pieces` est `incomplet`) : mail prérempli et modifiable ; « Envoyer la relance » fait `POST /api/contrats/{n}/relances`, qui l'**enregistre et le trace comme envoyé, sans e-mail** avant ACS (#123, 15/11). Trois au plus (`409 RELANCES_EPUISEES`) ; le span ne porte que le rang et les types de pièces, jamais le texte.
 - **Contrat proposé** : fiche et prime des sections de l'état ; revue avec motif obligatoire (Valider, Corriger et accepter, Refuser). Après `ACCEPTE`, `GET /v1/souscriptions/{n}/contrat` puis « Imprimer » (`@media print`).

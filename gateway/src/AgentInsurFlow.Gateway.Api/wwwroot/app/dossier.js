@@ -2,7 +2,7 @@
 // valider la proposition, puis afficher le contrat généré. L'état se relit chaque seconde pendant l'évaluation.
 import { appeler } from "./api.js";
 import { el, erreur, remplir } from "./dom.js";
-import { doitInterroger, frise, spansAffichables } from "./logique.js";
+import { LIBELLES_PIECES, doitInterroger, frise, gabaritRelance, spansAffichables } from "./logique.js";
 
 const SOUS_ONGLETS = [
   ["detail", "Détail de l'étape"],
@@ -136,14 +136,56 @@ export async function afficherDossier(zone, numero) {
       cible);
   }
 
+  function manquantes() {
+    const pieces = v.etat?.sections?.pieces;
+    return pieces?.statut === "incomplet" ? pieces.manquantes ?? [] : [];
+  }
+
+  async function envoyerRelance(texte, pieces) {
+    v.relanceEnVol = true;
+    rendre();
+    const r = await appeler("POST", `/api/contrats/${chemin}/relances`, { portee: "underwriting", corps: { texte, pieces } });
+    v.relanceEnVol = false;
+    if (r.statut === 201) {
+      v.relance = { message: el("p", { role: "status" }, `Relance ${r.json.rang}/${r.json.max} enregistrée (envoi par e-mail à partir du 15/11)`), texte };
+      await lireEtat();
+    } else {
+      v.relance = { message: r.statut === 409 ? el("p", { class: "erreur", role: "alert" }, "3 relances déjà envoyées") : erreur(r), texte: null };
+    }
+    rendre();
+  }
+
   function panneauPieces() {
     const pieces = v.etat?.sections?.pieces;
-    const manquantes = pieces?.manquantes ?? [];
     if (!pieces) return el("p", { class: "discret" }, "L'agent Pièces n'a pas encore rendu son rapport.");
-    if (manquantes.length === 0) return el("p", {}, "Toutes les pièces exigées sont présentes.");
-    return el("div", { id: "relance" },
-      el("p", {}, "Pièces manquantes :"),
-      el("ul", {}, manquantes.map((p) => el("li", {}, p))));
+    const liste = manquantes();
+    if (liste.length === 0) return el("p", {}, "Toutes les pièces exigées sont présentes.");
+    const envoyees = v.etat.nb_relances ?? 0;
+    const epuisees = envoyees >= 3;
+    v.brouillonRelance ??= gabaritRelance(liste);
+    const champ = el("textarea", {
+      id: "texte-relance", rows: "8", maxlength: "4000", required: true,
+      oninput: (e) => { v.brouillonRelance = e.currentTarget.value; },
+    });
+    champ.value = v.brouillonRelance; // propriété, jamais innerHTML
+    return el("div", {},
+      el("p", {}, "Pièces manquantes : ", liste.map((p) => LIBELLES_PIECES[p] ?? p).join(", ")),
+      el("p", { class: "discret" }, `Relance ${envoyees}/3`),
+      el("form", {
+        class: "revue",
+        onsubmit: (e) => {
+          e.preventDefault();
+          const texte = champ.value.trim();
+          if (texte && !epuisees && !v.relanceEnVol) envoyerRelance(texte, liste);
+        },
+      },
+      el("label", { for: "texte-relance" }, "Message au client (modifiable)"),
+      champ,
+      el("div", { class: "actions" },
+        el("button", { type: "submit", id: "envoyer-relance", "aria-disabled": String(epuisees || !!v.relanceEnVol) },
+          epuisees ? "3 relances déjà envoyées" : "Envoyer la relance"))),
+      v.relance?.message ?? null,
+      v.relance?.texte ? el("blockquote", { class: "texte-envoye" }, v.relance.texte) : null);
   }
 
   function liste(titre, valeurs) {
@@ -207,7 +249,7 @@ export async function afficherDossier(zone, numero) {
   }
 
   function sousOnglets() {
-    const nb = v.etat?.sections?.pieces?.manquantes?.length ?? 0;
+    const nb = manquantes().length;
     const panneaux = { detail: panneauDetail, pieces: panneauPieces, contrat: panneauContrat };
     const onglets = SOUS_ONGLETS.map(([cle, titre]) =>
       el("button", {

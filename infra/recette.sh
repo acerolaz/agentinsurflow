@@ -11,6 +11,23 @@ set -euo pipefail
 RG=$AZURE_RESOURCE_GROUP
 APP=${CLUSTER_APP_NAME:-ai-cluster-staging}
 
+# `az containerapp update` rend la main dès la révision créée : l'ancienne sert encore les évaluations
+# (recette du 27/10 : 000002 évalué LLM actif après llm-off). On attend la nouvelle, prête et à 100 %.
+attendre_revision() {
+  local rev etat=""
+  rev=$(az containerapp show -n "$APP" -g "$RG" --query properties.latestRevisionName -o tsv)
+  for _ in $(seq 60); do
+    etat=$(az containerapp revision show -n "$APP" -g "$RG" --revision "$rev" \
+      --query "[properties.runningState, properties.healthState, properties.trafficWeight]" -o tsv | tr '\n' ' ')
+    case "$etat" in
+      *Fail* | *Unhealthy*) echo "✘ $rev : $etat"; exit 1 ;; # avant le succès : « Unhealthy » contient « Healthy »
+      Running*Healthy\ 100*) echo "✔ $rev prête, 100 % du trafic : lancer l'évaluation"; return ;;
+    esac
+    sleep 5
+  done
+  echo "✘ $rev pas prête après 5 min ($etat) : ne pas lancer l'évaluation"; exit 1
+}
+
 case "${1:-}" in
   redemarrer)
     rev=$(az containerapp show -n "$APP" -g "$RG" --query properties.latestRevisionName -o tsv)
@@ -19,6 +36,7 @@ case "${1:-}" in
   llm-off | llm-on)
     [ "$1" = llm-off ] && actif=false || actif=true
     az containerapp update -n "$APP" -g "$RG" --set-env-vars "INSURFLOW_LLM_ACTIF=$actif" -o none
-    echo "✔ $APP : INSURFLOW_LLM_ACTIF=$actif (nouvelle révision)" ;;
+    echo "… $APP : INSURFLOW_LLM_ACTIF=$actif, nouvelle révision en cours d'activation"
+    attendre_revision ;;
   *) echo "usage : make recette ACTION=redemarrer|llm-off|llm-on [CLUSTER_APP_NAME=…]"; exit 1 ;;
 esac

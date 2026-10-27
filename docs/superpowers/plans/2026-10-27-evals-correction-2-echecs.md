@@ -35,7 +35,7 @@ Lecture seule ; aucune décision de code ne se prend avant ce résultat.
 - [ ] **Step 1 : Acerola lance la sonde** (identifiants PISTE du `.env`) depuis `brief2/src` :
 
 ```bash
-uv run --directory rag python -c "
+uv run python -c "
 import httpx
 from agentinsurflow_rag.infrastructure.legifrance.client import TEXT_ID, ConfigLegifrance, _articles_du_plan, appeler, jeton_piste
 cfg=ConfigLegifrance(); c=httpx.Client(timeout=60); j=jeton_piste(c,cfg)

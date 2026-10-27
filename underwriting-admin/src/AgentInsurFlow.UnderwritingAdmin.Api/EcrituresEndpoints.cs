@@ -49,7 +49,7 @@ internal static class EcrituresEndpoints
                 : Reponse(await cas.Executer(oid, numeroContrat, corps.Vers(), ct)))
             .WithName("EnregistrerEtat")
             .WithSummary("Mémoire long terme du dossier (D100), idempotente : sections connues seulement, aucune donnée identifiante")
-            .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
+            .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
 
         contrats.MapPost("/{numero_contrat}/relances", async (ClaimsPrincipal utilisateur, EnregistrerRelance cas, CancellationToken ct,
                 [FromRoute(Name = "numero_contrat")] string numeroContrat, RelanceCorps corps) =>

@@ -191,6 +191,15 @@ async def test_statut_fige_de_l_admin_devient_409_dossier_decide_sur_les_deux_ro
     assert r.status_code == 409 and r.json()["code"] == "DOSSIER_DECIDE"
 
 
+async def test_etat_refuse_sur_dossier_fige_409_et_statut_jamais_ecrit() -> None:
+    # Dossier classé SANS_SUITE (ou décidé) : l'admin refuse dès la première écriture d'état.
+    outils = FakeOutils(enregistrer_etat=ErreurOutil("STATUT_FIGE"))
+    async with client(Banc(outils=outils)) as c:
+        r = await c.post("/evaluations/C-1")
+    assert r.status_code == 409 and r.json()["code"] == "DOSSIER_DECIDE"
+    assert outils.corps("update_statut_dossier") == []
+
+
 def _jeton_de(oid: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {creer(oid=oid)}"}
 

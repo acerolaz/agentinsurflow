@@ -7,8 +7,11 @@ public sealed class EcrituresTests
 {
     private sealed class DepotSimule(bool resultat, string statut = "EN_ANALYSE") : IDepotEcritures
     {
-        public Task<bool> EnregistrerEtat(string gestionnaireId, string numeroContrat, EtatEntrant etat, CancellationToken ct) =>
-            throw new NotSupportedException();
+        public Task<bool> EnregistrerEtat(string gestionnaireId, string numeroContrat, EtatEntrant etat, CancellationToken ct)
+        {
+            Appels++;
+            return Task.FromResult(resultat);
+        }
 
         public int Appels { get; private set; }
 
@@ -39,6 +42,21 @@ public sealed class EcrituresTests
     [Theory]
     [InlineData("ACCEPTE")]
     [InlineData("REFUSE")]
+    [InlineData("SANS_SUITE")]
+    public async Task EnregistrerEtat_dossier_fige_STATUT_FIGE_sans_appel_au_depot(string statut)
+    {
+        var depot = new DepotSimule(true, statut);
+        var r = await new EnregistrerEtat(depot).Executer("A", "C-1", new EtatEntrant("EN_COURS", 2, [], [], []),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(new ResultatEcriture(false, "STATUT_FIGE"), r);
+        Assert.Equal(0, depot.Appels);
+    }
+
+    [Theory]
+    [InlineData("ACCEPTE")]
+    [InlineData("REFUSE")]
+    [InlineData("SANS_SUITE")]
     public async Task ChangerStatut_dossier_decide_STATUT_FIGE_sans_appel_au_depot(string statut)
     {
         var depot = new DepotSimule(true, statut);
@@ -52,6 +70,7 @@ public sealed class EcrituresTests
     [Theory]
     [InlineData("ACCEPTE")]
     [InlineData("REFUSE")]
+    [InlineData("SANS_SUITE")]
     public async Task EnregistrerBrouillon_dossier_decide_STATUT_FIGE_sans_appel_au_depot(string statut)
     {
         var depot = new DepotSimule(true, statut);

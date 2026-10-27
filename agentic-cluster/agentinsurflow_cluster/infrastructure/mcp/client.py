@@ -33,6 +33,11 @@ def _si_trop_de_requetes(e: BaseException) -> None:
         raise ErreurOutil("TROP_DE_REQUETES", e.response.headers.get("Retry-After", "60")) from e
 
 
+# Borne d'un appel d'outil, jeton OBO compris (aller-retour normal ~0,3 s). Sans elle, un OBO
+# ou un transport bloqué épuisait la garde globale (25 s) avant le premier agent (000010, 27/10).
+DELAI_APPEL_S = 5.0
+
+
 def _http_par_defaut(entetes: dict[str, str]) -> httpx.AsyncClient:
     return httpx.AsyncClient(headers=entetes, timeout=30)
 
@@ -46,11 +51,26 @@ class ClientMcpGateway:
         jetons: _Jetons,
         traceparent: Callable[[], str | None] = lambda: None,
         fabrique_http: Callable[[dict[str, str]], httpx.AsyncClient] = _http_par_defaut,
+        delai_s: float = DELAI_APPEL_S,
     ) -> None:
         self._url = f"{gateway_url.rstrip('/')}/mcp"
         self._jetons, self._traceparent, self._http = jetons, traceparent, fabrique_http
+        self._delai_s = delai_s
 
     async def appeler(
+        self,
+        agent: AgentOuSaga,
+        jeton_gestionnaire: str,
+        outil: str,
+        arguments: dict[str, Any],
+    ) -> dict[str, Any]:
+        try:
+            async with asyncio.timeout(self._delai_s):
+                return await self._appeler(agent, jeton_gestionnaire, outil, arguments)
+        except TimeoutError as e:  # le fil du jeton OBO, lui, finit seul
+            raise ErreurOutil("MCP_INDISPONIBLE", "TimeoutError") from e
+
+    async def _appeler(
         self,
         agent: AgentOuSaga,
         jeton_gestionnaire: str,

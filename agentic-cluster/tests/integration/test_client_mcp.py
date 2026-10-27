@@ -8,6 +8,7 @@ n'importe pas d'un service à l'autre ; son contrat de refus est couvert par ses
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -111,6 +112,19 @@ async def test_panne_de_transport_devient_mcp_indisponible() -> None:
     with pytest.raises(ErreurOutil) as exc:
         await client.appeler("analyste", "jeton-gestionnaire", "lister_pieces", {})
     assert exc.value.code == "MCP_INDISPONIBLE"
+
+
+class _JetonsBloques:
+    def pour_mcp(self, agent: str, jeton_gestionnaire: str) -> str:
+        time.sleep(0.5)  # OBO Entra qui ne répond pas (000010 en staging, 27/10 : 26 s)
+        return "jeton-mcp"
+
+
+async def test_appel_trop_long_devient_mcp_indisponible() -> None:
+    client = ClientMcpGateway("http://test", _JetonsBloques(), delai_s=0.05)
+    with pytest.raises(ErreurOutil) as exc:
+        await client.appeler("pieces", "jeton-gestionnaire", "lister_pieces", {})
+    assert (exc.value.code, str(exc.value)) == ("MCP_INDISPONIBLE", "TimeoutError")
 
 
 class _HttpAnnule:

@@ -63,23 +63,10 @@ function vueConnexion() {
 }
 
 // --- en-tête à onglets ---------------------------------------------------------------------------
+// Des liens de navigation (chacun atteignable par Tab, K6), pas un tablist : ils changent de page.
 function entete(vueActive) {
-  const onglets = ONGLETS.map((o) =>
-    el("a", {
-      role: "tab", href: o.hash, id: `onglet-${o.vue}`, "aria-controls": "vue",
-      "aria-selected": String(o.vue === vueActive), tabindex: o.vue === vueActive ? "0" : "-1",
-    }, picto(o.picto), o.titre));
-  const liste = el("nav", {
-    role: "tablist", "aria-label": "Sections",
-    onkeydown: (e) => {
-      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      const i = onglets.indexOf(document.activeElement);
-      if (i < 0) return;
-      const suivant = onglets[(i + (e.key === "ArrowRight" ? 1 : onglets.length - 1)) % onglets.length];
-      suivant.focus();
-      location.hash = suivant.getAttribute("href");
-    },
-  }, onglets);
+  const liste = el("nav", { "aria-label": "Sections" }, ONGLETS.map((o) =>
+    el("a", { href: o.hash, "aria-current": o.vue === vueActive ? "page" : null }, picto(o.picto), o.titre)));
   const compte = compteCourant();
   return el("header", { class: "entete" },
     el("span", { class: "marque" }, picto(PICTOS.marque), "AgentInsurFlow"),
@@ -157,7 +144,7 @@ async function afficher() {
   if (!compteCourant()) return vueConnexion();
   const route = routeDepuisHash(location.hash);
   const actif = route.vue === "tchat" ? "tchat" : "dossiers";
-  const zone = el("main", { id: "vue", role: "tabpanel", "aria-labelledby": `onglet-${actif}` });
+  const zone = el("main", { id: "vue" });
   remplir(racine, entete(actif), zone);
   if (route.vue === "tchat") return vueTchat(zone);
   if (route.vue === "dossier") {

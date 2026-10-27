@@ -66,7 +66,8 @@ Configuration publique, sans secret : `GET /app/config.json`, lue dans la sectio
 ## Accessibilité (RGAA 11.1 / WCAG 2.1.1)
 
 Prévu dans le code :
-- onglets `role="tablist"`, passage aux flèches gauche/droite, `aria-selected` ;
+- en-tête : liens de navigation dans un `<nav>`, chacun atteignable par Tab, `aria-current="page"` sur la page active (pas un `tablist` : ils changent de page) ;
+- sous-onglets du dossier `role="tablist"`, passage aux flèches gauche/droite, `aria-selected` ;
 - bouton de thème avec `aria-pressed` ; focus visible (`:focus-visible`) dans les deux thèmes ;
 - connexion par `<input type="radio">` étiquetés dans un `fieldset` ;
 - portefeuille : chaque numéro est un lien (Entrée l'ouvre) ;
@@ -77,8 +78,8 @@ Prévu dans le code :
 | Parcours | Résultat |
 |---|---|
 | Connexion A | à vérifier |
-| Onglets aux flèches | à vérifier |
-| Ouverture d'un dossier avec Entrée | à vérifier |
+| Liens de l'en-tête au Tab | staging 28/10 : « Tchat corpus » inatteignable (onglet ARIA en `tabindex="-1"`) → liens simples, à revérifier après déploiement |
+| Ouverture d'un dossier avec Entrée | staging 28/10 (000006) : OK, comme le lancement, les sous-onglets, le motif et la validation |
 | Thème basculé puis gardé après rechargement | à vérifier |
 | Question au tchat : réponse et sources | à vérifier |
 | Dossier : lancer, frise qui avance chaque seconde, focus gardé sur « Pause » | à vérifier |

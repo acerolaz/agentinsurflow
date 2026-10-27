@@ -159,6 +159,13 @@ services:
       Gateway__ClientId: ${GATEWAY_CLIENT_ID:-}
       Gateway__ClientSecret: ${GATEWAY_CLIENT_SECRET:-}
       SWAGGER_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
+      # espace gestionnaire http://localhost:8000/app/ (#103) : configuration publique, sans secret
+      Espace__Authority: https://login.microsoftonline.com/${AZURE_TENANT_ID:-common}
+      Espace__Scopes__Rag: api://agentinsurflow-rag/access_as_user
+      Espace__Scopes__Underwriting: api://agentinsurflow-underwriting/access_as_user
+      Espace__Scopes__Cluster: api://agentinsurflow-cluster/access_as_user
+      Espace__Comptes__A: ${ESPACE_COMPTE_A:-}
+      Espace__Comptes__B: ${ESPACE_COMPTE_B:-}
     ports: ["8000:8000"]
     depends_on: [rag, underwriting-admin, serveur-mcp]
 

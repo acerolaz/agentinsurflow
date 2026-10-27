@@ -278,6 +278,7 @@ jobs:
           # contrat d'un gestionnaire de la CI (témoin positif BOLA) : variable GitHub, pas un secret
           E2E_CONTRAT_PROPRE: ${{ vars.E2E_CONTRAT_PROPRE }}
           E2E_CONTRAT_HOSTILE: ${{ vars.E2E_CONTRAT_HOSTILE }}
+          E2E_CONTRAT_PAUSE: ${{ vars.E2E_CONTRAT_PAUSE }}
           E2E_CLUSTER_INTERNE: https://${{ needs.staging.outputs.cluster_fqdn }}
         run: |
           # 🔴 A4 : l'identité de CI porte les rôles Gestionnaire/Ingestion (rag), Gestionnaire (underwriting et serveur MCP)

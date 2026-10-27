@@ -14,6 +14,7 @@
 | **Réécrire** `X-Forwarded-For`/`-Proto`/`-Host`/`-Prefix` (mode `Set`) : un client ne peut pas se faire passer pour un appel interne | Contenir une règle métier |
 | Transmettre tels quels `Authorization` et `traceparent` | Modifier un corps de requête |
 | Servir la **page Swagger** des 3 API, à la racine `/` | — |
+| Servir l'**espace gestionnaire** (fichiers statiques, CSP stricte) sous `/app/` et sa configuration publique `/app/config.json` | Porter la logique de la page : elle n'appelle que les routes ci-dessous, avec le jeton du gestionnaire ([`docs/espace-gestionnaire.md`](../docs/espace-gestionnaire.md)) |
 | Exposer sa santé (`/health`) et celle des services (`/health/rag`, `/health/underwriting`) | — |
 | Émettre ses spans OpenTelemetry vers le référentiel SQL d'`underwriting-admin` | — |
 
@@ -97,7 +98,7 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 
 ## Routes du cluster d'agents
 
-`POST /v1/souscriptions/{numero_contrat}/evaluation` est réécrite en `POST /evaluations/{numero_contrat}` et `POST /v1/souscriptions/{numero_contrat}/revue` en `POST /evaluations/{numero_contrat}/revue`, vers le cluster `cluster` (Container App interne ; compose : `http://agentic-cluster:8004`). Politique `cluster-gestionnaire` : rôle `Gestionnaire` **et** audience `Entra__Audiences__cluster__0` (`api://agentinsurflow-cluster`). Le jeton du gestionnaire est **relayé tel quel** (comme pour `/mcp`) : le cluster le revalide, puis l'échange en OBO. Débit : limite `cluster` (`RateLimit__Cluster__PermitLimit`, 10/min), par `oid` + `azp`. `GET /health/cluster` est anonyme ; le document OpenAPI du cluster est servi en `/cluster/openapi.json` (page Swagger unique). Voir [`agentic-cluster/README.md`](../agentic-cluster/README.md).
+`POST /v1/souscriptions/{numero_contrat}/evaluation` est réécrite en `POST /evaluations/{numero_contrat}`, `POST /v1/souscriptions/{numero_contrat}/revue` en `POST /evaluations/{numero_contrat}/revue` et `POST /v1/souscriptions/{numero_contrat}/pause` en `POST /evaluations/{numero_contrat}/pause` (#129), vers le cluster `cluster` (Container App interne ; compose : `http://agentic-cluster:8004`). Politique `cluster-gestionnaire` : rôle `Gestionnaire` **et** audience `Entra__Audiences__cluster__0` (`api://agentinsurflow-cluster`). Le jeton du gestionnaire est **relayé tel quel** (comme pour `/mcp`) : le cluster le revalide, puis l'échange en OBO. Débit : limite `cluster` (`RateLimit__Cluster__PermitLimit`, 10/min), par `oid` + `azp`. `GET /health/cluster` est anonyme ; le document OpenAPI du cluster est servi en `/cluster/openapi.json` (page Swagger unique). Voir [`agentic-cluster/README.md`](../agentic-cluster/README.md).
 
 ## Swagger
 

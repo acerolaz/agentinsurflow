@@ -351,13 +351,15 @@ jobs:
           CALCUL_URL: ${{ vars.CALCUL_URL }}
           CALCUL_AUDIENCE: ${{ vars.CALCUL_AUDIENCE }}
           CALCUL_API_CLIENT_ID: ${{ vars.CALCUL_API_CLIENT_ID }}
+          ESPACE_COMPTE_A: ${{ vars.ESPACE_COMPTE_A }}
+          ESPACE_COMPTE_B: ${{ vars.ESPACE_COMPTE_B }}
         run: |
           # rag a sa Container App (entrée interne) : son FQDN existe depuis `make infra`, la gateway le vise (cluster rag)
           RAG_APP_FQDN=$(az containerapp show -n "$RAG_APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
           test -n "$RAG_APP_FQDN" || { echo "::error::FQDN interne de $RAG_APP introuvable (make infra)"; exit 1; }
           export RAG_APP_FQDN
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
-          envsubst '$IMAGE_GATEWAY $UNDERWRITING_APP_FQDN $APP_ENV $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $MCP_API_CLIENT_ID $AZURE_UAMI_CLIENT_ID $CALCUL_URL $CALCUL_AUDIENCE $CALCUL_API_CLIENT_ID $MCP_APP_FQDN $CLUSTER_APP_FQDN $INSURFLOW_CLUSTER_CLIENT_ID $RAG_APP_FQDN $LLM_AUDIENCE $LLM_API_CLIENT_ID $FOUNDRY_ENDPOINT' \
+          envsubst '$IMAGE_GATEWAY $UNDERWRITING_APP_FQDN $APP_ENV $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $MCP_API_CLIENT_ID $AZURE_UAMI_CLIENT_ID $CALCUL_URL $CALCUL_AUDIENCE $CALCUL_API_CLIENT_ID $MCP_APP_FQDN $CLUSTER_APP_FQDN $INSURFLOW_CLUSTER_CLIENT_ID $RAG_APP_FQDN $LLM_AUDIENCE $LLM_API_CLIENT_ID $FOUNDRY_ENDPOINT $ESPACE_COMPTE_A $ESPACE_COMPTE_B' \
             < infra/containerapp.yaml > "$RUNNER_TEMP/containerapp.yaml"
           az containerapp update -n "$APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp.yaml" -o none
           # Production : le domaine personnalisé (G4, #12) dès que PROD_URL est posée ; la fumée

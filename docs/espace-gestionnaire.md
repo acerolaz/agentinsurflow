@@ -2,6 +2,43 @@
 
 Page HTML + JavaScript sans étape de build, servie par la gateway sous **`/app/`** (Swagger garde la racine). Spec : [`superpowers/specs/2026-10-27-espace-gestionnaire-design.md`](superpowers/specs/2026-10-27-espace-gestionnaire-design.md) ; issues #103, #104, #101, #129, #130.
 
+## Écrans et routes
+
+| Écran | Ce qu'il fait | Routes (par la gateway) | Portée |
+|---|---|---|---|
+| Connexion | Cartes « Gestionnaire A » / « Gestionnaire B » : le choix préremplit l'UPN (`loginHint`), Entra authentifie | Entra (redirection vers `/app/`) | — |
+| Mes dossiers | Portefeuille du gestionnaire connecté (BOLA) | `GET /api/contrats` | underwriting |
+| Dossier | Lancer / Reprendre, Pause, frise, détail d'une étape, pièces manquantes et relance, proposition et revue, contrat | `POST /v1/souscriptions/{n}/evaluation`, `…/pause`, `…/revue` ; `GET /api/contrats/{n}/etat`, `POST /api/contrats/{n}/relances`, `GET /v1/souscriptions/{n}/contrat`, `GET /api/traces/{trace_id}` | cluster ; underwriting |
+| Tchat corpus | Question libre, réponse et sources (lien Légifrance quand l'extrait en porte un) | `POST /api/reponses` | rag |
+
+## Procédure de démo (30/10)
+
+1. `https://<gateway>/app/` → choisir **A** → « Se connecter avec Microsoft ».
+2. **Mes dossiers** → ouvrir le dossier 1 (acceptable) → **Lancer l'évaluation** : la frise avance chaque seconde.
+3. Pendant l'évaluation, **Pause** : elle s'arrête après l'agent en cours (`EN_PAUSE`) → **Reprendre**.
+4. **Contrat proposé** : lire fiche et prime → motif → **Valider** → contrat généré → **Imprimer**.
+5. Dossier 3 (sans relevé) → **Lancer** → **Pièces manquantes** : modifier le mail → **Envoyer la relance** (« Relance 1/3 enregistrée… »).
+6. Dossier 10 (refus R01) → **Lancer** → proposition de refus → **Refuser** avec un motif.
+7. **Tchat corpus** : « Quelles pièces pour souscrire une assurance auto ? » → réponse et sources.
+8. Se déconnecter, se connecter en **B** : le dossier de A est introuvable (même 404 qu'un dossier inexistant).
+
+## Commandes à lancer par Acerola
+
+Écritures Entra et variables GitHub : jamais lancées par un agent.
+
+```bash
+make entra DEMO_USER_ID=<oid de A>                         # rôles de A (rag, underwriting, mcp, cluster) et redirections /app/
+gh variable set SEED_GESTIONNAIRE_A --body <oid de A>
+gh variable set SEED_GESTIONNAIRE_C --body <oid de l'identité de la CI>
+gh variable set ESPACE_COMPTE_A --body <UPN de A>          # facultatif : préremplit la connexion
+gh variable set ESPACE_COMPTE_B --body <UPN de B>
+gh variable set E2E_CONTRAT_PROPRE --body AIF-2026-000007
+gh variable set E2E_CONTRAT_HOSTILE --body AIF-2026-000008
+gh variable set E2E_CONTRAT_PAUSE --body AIF-2026-000009
+```
+
+Puis redéployer (fusion sur `main` ou `deploy.yml` lancé à la main) : la base annexe est éphémère et repart des migrations, donc du seed avec les nouveaux `SEED_GESTIONNAIRE_*` ([`rollback.md`](rollback.md), « Base annexe éphémère »).
+
 ## Fichiers
 
 | Fichier (`gateway/src/AgentInsurFlow.Gateway.Api/wwwroot/app/`) | Rôle |

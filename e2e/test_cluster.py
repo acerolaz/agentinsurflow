@@ -2,7 +2,8 @@
 
 Variables : ``E2E_JETON_CLUSTER`` (ou « az login »), ``E2E_CONTRAT_PROPRE`` (dossier complet du
 gestionnaire connecté, jamais évalué), ``E2E_CONTRAT_HOSTILE`` (autre dossier du même gestionnaire :
-ses observations sont écrasées), ``E2E_CLUSTER_INTERNE`` (URL interne du cluster, staging). Variable
+ses observations sont écrasées), ``E2E_CONTRAT_PAUSE`` (troisième dossier : pause puis reprise),
+``E2E_CLUSTER_INTERNE`` (URL interne du cluster, staging). Variable
 absente : test sauté en local, échec en staging ou avec ``E2E_STRICT=1``. Le cluster échange le
 jeton du gestionnaire (On-Behalf-Of) : un jeton d'application (CI) ne peut pas passer, les parcours
 d'évaluation sont alors sautés (comme le test OBO de ``test_parcours.py``).
@@ -65,6 +66,23 @@ def test_seule_la_gateway_atteint_le_cluster(local, client, manque):
     # Environnement Container Apps sans VNet : son frontal répond lui-même au trafic externe vers
     # une application interne, page 404 « Azure Container App - Unavailable », sans la relayer
     assert r.status_code == 404, f"cluster joignable hors gateway : {r.status_code} {r.text[:99]}"
+
+
+def test_pause_puis_reprise(client, manque, utilisateur):
+    # dossier à part (E2E_CONTRAT_PAUSE) : E2E_CONTRAT_PROPRE finit ACCEPTE dans le test suivant
+    contrat = _contrat("E2E_CONTRAT_PAUSE", manque)
+    pause = client.post(
+        f"/v1/souscriptions/{contrat}/pause", headers=bearer(utilisateur), timeout=30
+    )
+    assert pause.status_code == 202, pause.text
+
+    arretee = _evaluation(client, utilisateur, contrat)
+    assert arretee.status_code == 200, arretee.text
+    assert arretee.json()["statut"] == "EN_PAUSE"
+
+    reprise = _evaluation(client, utilisateur, contrat)
+    assert reprise.status_code == 200, reprise.text
+    assert reprise.json()["statut"] in ("EN_ANALYSE", "REVUE_HUMAINE")
 
 
 def test_dossier_complet_en_analyse_puis_revue(client, manque, utilisateur):

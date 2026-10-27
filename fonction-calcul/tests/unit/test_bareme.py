@@ -158,4 +158,5 @@ def test_profil_dossier_10_classe_refus():
             anciennete_permis_mois=70,
         )
     )
-    assert (r.classe, r.decision, [g.regle_id for g in r.regles]) == ("refus", "REFUSE", ["R01_SUSPENSION"])
+    regles = [g.regle_id for g in r.regles]
+    assert (r.classe, r.decision, regles) == ("refus", "REFUSE", ["R01_SUSPENSION"])

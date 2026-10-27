@@ -39,13 +39,13 @@ CLUSTER_GESTIONNAIRE=9c2d4e61-3a7b-4d85-a1f0-6e8b2c4d5b01
 AGENTS=(orchestrateur pieces analyste redacteur actuaire) # « orchestrateur » : inscription Entra de la Saga (nom technique conservé)
 agent_scope() { echo "9c2d4e61-3a7b-4d85-a1f0-6e8b2c4d5a0$1"; }
 
-echo "① Redirections SPA de la page Swagger unique (S3-24)"
-redirections=("http://localhost:8000/oauth2-redirect.html")
+echo "① Redirections SPA de la page Swagger unique (S3-24) et de l'espace gestionnaire /app/ (#103)"
+redirections=("http://localhost:8000/oauth2-redirect.html" "http://localhost:8000/app/")
 for app in "$APP_STAGING" "$APP_PRODUCTION"; do
   fqdn=$(az containerapp show -n "$app" -g "$AZURE_RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
-  redirections+=("https://$fqdn/oauth2-redirect.html")
+  redirections+=("https://$fqdn/oauth2-redirect.html" "https://$fqdn/app/")
 done
-[ -z "${DOMAINE:-}" ] || redirections+=("https://$DOMAINE/oauth2-redirect.html")
+[ -z "${DOMAINE:-}" ] || redirections+=("https://$DOMAINE/oauth2-redirect.html" "https://$DOMAINE/app/")
 printf '   %s\n' "${redirections[@]}"
 spa=$(printf '%s\n' "${redirections[@]}" | jq -R . | jq -s .)
 

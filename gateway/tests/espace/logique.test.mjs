@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 
 import {
   classableSansSuite,
+  conditionsGenerales,
   etatAffiche,
   frise,
   gabaritRelance,
@@ -121,4 +122,32 @@ test("sans suite : seulement après la troisième relance et avant toute décisi
   assert.equal(classableSansSuite({ statut_parcours: "REVUE_HUMAINE", nb_relances: 3 }), true);
   for (const fige of ["ACCEPTE", "REFUSE", "SANS_SUITE"])
     assert.equal(classableSansSuite({ statut_parcours: fige, nb_relances: 3 }), false);
+});
+
+test("conditions générales : chunks recollés sans le recouvrement, titres et puces, version obsolète ignorée", () => {
+  const c1 = "# Notice « Tous risques »\nDocument fictif.\n## Garanties\n- Responsabilité civile\n- Vol";
+  const c2 = "nsabilité civile\n- Vol\n- Bris de glace\n## Franchises\nÀ la charge de l'assuré.";
+  const document = {
+    versions: [{ version: "v0", obsolete: true }, { version: "v1", obsolete: false }],
+    chunks: [
+      { version: "v1", ordre: 1, texte: c2 },
+      { version: "v0", ordre: 0, texte: "## Ancienne\n- à ignorer" },
+      { version: "v1", ordre: 0, texte: c1 },
+    ],
+  };
+
+  assert.deepEqual(conditionsGenerales(document), {
+    titre: "Notice « Tous risques »",
+    sections: [
+      { titre: "", lignes: [{ puce: false, texte: "Document fictif." }] },
+      { titre: "Garanties", lignes: [
+        { puce: true, texte: "Responsabilité civile" }, { puce: true, texte: "Vol" }, { puce: true, texte: "Bris de glace" }] },
+      { titre: "Franchises", lignes: [{ puce: false, texte: "À la charge de l'assuré." }] },
+    ],
+  });
+});
+
+test("conditions générales : document absent → null", () => {
+  assert.equal(conditionsGenerales(null), null);
+  assert.equal(conditionsGenerales({ versions: [], chunks: [] }), null);
 });

@@ -371,6 +371,76 @@ namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.Migrations
                     b.ToView("vue_contrat_minimisee", (string)null);
                 });
 
+            modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.PartiesContratAccepte", b =>
+                {
+                    b.Property<string>("Adresse")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("adresse");
+
+                    b.Property<string>("CodePostal")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("code_postal");
+
+                    b.Property<DateOnly>("DateNaissance")
+                        .HasColumnType("date")
+                        .HasColumnName("date_naissance");
+
+                    b.Property<string>("GestionnaireId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("gestionnaire_id");
+
+                    b.Property<string>("Immatriculation")
+                        .HasColumnType("text")
+                        .HasColumnName("immatriculation");
+
+                    b.Property<string>("Marque")
+                        .HasColumnType("text")
+                        .HasColumnName("marque");
+
+                    b.Property<string>("Modele")
+                        .HasColumnType("text")
+                        .HasColumnName("modele");
+
+                    b.Property<string>("Nom")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nom");
+
+                    b.Property<string>("NumeroContrat")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("numero_contrat");
+
+                    b.Property<DateOnly>("PermisDateObtention")
+                        .HasColumnType("date")
+                        .HasColumnName("permis_date_obtention");
+
+                    b.Property<string>("PermisNumero")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("permis_numero");
+
+                    b.Property<string>("Prenom")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("prenom");
+
+                    b.Property<int?>("PuissanceFiscaleCv")
+                        .HasColumnType("integer")
+                        .HasColumnName("puissance_fiscale_cv");
+
+                    b.Property<string>("TypeUsage")
+                        .HasColumnType("text")
+                        .HasColumnName("type_usage");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vue_contrat_accepte", (string)null);
+                });
+
             modelBuilder.Entity("AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers.PieceJustificative", b =>
                 {
                     b.Property<Guid>("Id")

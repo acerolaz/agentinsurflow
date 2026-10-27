@@ -118,3 +118,33 @@ export function messageProbleme(statut, code) {
   if (statut === 403) return "Accès refusé";
   return MESSAGES[code] ?? "Une erreur est survenue";
 }
+
+/** Recolle deux chunks : le suivant recommence par la fin du précédent puis « \n » (découpage du rag). */
+function recoller(precedent, suivant) {
+  for (let k = Math.min(precedent.length, suivant.length - 1); k > 0; k--)
+    if (suivant[k] === "\n" && precedent.endsWith(suivant.slice(0, k))) return precedent + suivant.slice(k);
+  return `${precedent}\n${suivant}`;
+}
+
+/**
+ * Conditions générales du contrat imprimé : la notice du contrat type (GET /api/documents/{doc_id}), version en vigueur,
+ * chunks recollés dans l'ordre, découpée en sections (« ## ») et lignes (« - » = puce). null si rien à afficher.
+ */
+export function conditionsGenerales(document) {
+  const enVigueur = document?.versions?.filter((v) => !v.obsolete).at(-1)?.version;
+  const chunks = (document?.chunks ?? []).filter((c) => c.version === enVigueur).sort((a, b) => a.ordre - b.ordre);
+  if (!chunks.length) return null;
+  const texte = chunks.map((c) => c.texte).reduce(recoller);
+  let titre = "";
+  const sections = [];
+  for (const ligne of texte.split("\n").map((l) => l.trim()).filter(Boolean)) {
+    if (ligne.startsWith("## ")) sections.push({ titre: ligne.slice(3), lignes: [] });
+    else if (ligne.startsWith("# ")) titre = ligne.slice(2);
+    else {
+      if (!sections.length) sections.push({ titre: "", lignes: [] });
+      const puce = ligne.startsWith("- ");
+      sections.at(-1).lignes.push({ puce, texte: puce ? ligne.slice(2) : ligne });
+    }
+  }
+  return { titre, sections };
+}

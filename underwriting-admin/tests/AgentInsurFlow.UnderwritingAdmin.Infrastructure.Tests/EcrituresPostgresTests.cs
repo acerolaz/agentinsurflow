@@ -271,7 +271,25 @@ public sealed class EcrituresPostgresTests
         Assert.NotNull(contrat);
         Assert.Equal(("512.40", "42.70", "f-1", "v1", GestionnaireA), (contrat.PrimeTtcAnnuelle, contrat.PrimeMensuelle, contrat.VersionFormule, contrat.VersionBareme, contrat.ValidePar));
         Assert.Equal(["cit"], contrat.Citations);
+        // Parties au contrat (seed du n° 1) : lues par vue_contrat_accepte, seulement après ACCEPTE
+        Assert.Equal(new SouscripteurContrat("Nom1", "Prenom1", new DateOnly(1999, 3, 14), "1 rue Fictive", "75011",
+            "PERMIS000001", new DateOnly(2018, 6, 1)), contrat.Souscripteur);
+        Assert.Equal(new VehiculeContrat("Marque", "Modele", "AA-001-AA", 5, "prive"), contrat.Vehicule);
+        Assert.Equal(0.9, contrat.CrmBonusMalus);
         Assert.Equal((null, false), await lecteur.LireContratGenere(GestionnaireB, numero, ct));
+    }
+
+    [Fact]
+    public async Task Compte_dossiers_ne_lit_ni_souscripteur_ni_un_contrat_non_accepte_dans_la_vue_du_contrat()
+    {
+        var (db, _, numero) = await Preparer();
+        await using var __ = db;
+        var dossiers = Connexions().Dossiers;
+        await Lire(Connexions().Migrateur, "UPDATE contrat SET statut = 'EN_ANALYSE' WHERE numero_contrat = @p0", numero);
+
+        var refus = await Assert.ThrowsAsync<PostgresException>(() => Lire(dossiers, "SELECT nom FROM souscripteur LIMIT 1"));
+        Assert.Equal("42501", refus.SqlState); // insufficient_privilege : la table reste fermée
+        Assert.Empty(await Lire(dossiers, "SELECT nom FROM vue_contrat_accepte WHERE numero_contrat = @p0", numero));
     }
 
     [Fact]

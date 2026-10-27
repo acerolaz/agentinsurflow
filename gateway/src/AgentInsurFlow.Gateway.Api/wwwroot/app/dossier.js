@@ -4,7 +4,8 @@
 import { appeler } from "./api.js";
 import { el, erreur, remplir } from "./dom.js";
 import {
-  LIBELLES_PIECES, STATUTS_FIGES, classableSansSuite, etatAffiche, frise, gabaritRelance, spansAffichables,
+  LIBELLES_PIECES, STATUTS_FIGES, classableSansSuite, conditionsGenerales, etatAffiche, frise, gabaritRelance,
+  spansAffichables,
 } from "./logique.js";
 
 const SOUS_ONGLETS = [
@@ -15,7 +16,7 @@ const SOUS_ONGLETS = [
 
 export async function afficherDossier(zone, numero) {
   const v = {
-    numero, etat: null, contrat: null, enVol: false, lanceA: undefined, ecoule: null,
+    numero, etat: null, contrat: null, conditions: null, enVol: false, lanceA: undefined, ecoule: null,
     message: null, etape: null, sousOnglet: "detail", minuteur: null, tentativeAvant: null, motif: "",
   };
   const SUIVI_MAX_S = 120; // rechargement pendant une évaluation : l'état se relit au plus ce temps
@@ -53,6 +54,10 @@ export async function afficherDossier(zone, numero) {
   async function lireContrat() {
     const r = await appeler("GET", `/v1/souscriptions/${chemin}/contrat`, { portee: "underwriting" });
     v.contrat = r.statut === 200 ? r.json : null;
+    // Conditions générales : la notice du contrat type, lue au corpus (rag) ; absente, le contrat s'imprime sans elles.
+    if (!v.contrat) return;
+    const n = await appeler("GET", `/api/documents/${encodeURIComponent(v.contrat.contrat_type)}`, { portee: "rag" });
+    v.conditions = n.statut === 200 ? conditionsGenerales(n.json) : null;
   }
 
   // --- actions -----------------------------------------------------------------------------------
@@ -282,17 +287,37 @@ export async function afficherDossier(zone, numero) {
 
   function contratGenere() {
     const c = v.contrat;
+    const s = c.souscripteur;
+    const auto = c.vehicule;
+    const jour = (d) => d.split("-").reverse().join("/"); // AAAA-MM-JJ → JJ/MM/AAAA, sans décalage de fuseau
+    const cg = v.conditions;
     return el("article", { class: "contrat-imprimable", "aria-labelledby": "titre-contrat" },
-      el("h2", { id: "titre-contrat" }, `Contrat ${c.numero_contrat}`),
+      el("h2", { id: "titre-contrat" }, `Contrat d'assurance automobile n° ${c.numero_contrat}`),
+      el("p", {}, "AgentInsurFlow — document fictif généré pour le projet de certification."),
+      el("h3", {}, "Conditions particulières"),
       el("dl", {},
+        el("dt", {}, "Souscripteur"), el("dd", {}, `${s.prenom} ${s.nom}, né(e) le ${jour(s.date_naissance)}`),
+        el("dt", {}, "Adresse"), el("dd", {}, `${s.adresse}, ${s.code_postal}`),
+        el("dt", {}, "Permis"), el("dd", {}, `n° ${s.permis_numero}, obtenu le ${jour(s.permis_date_obtention)}`),
+        auto && [el("dt", {}, "Véhicule"),
+          el("dd", {}, `${auto.marque} ${auto.modele}, ${auto.immatriculation}, ${auto.puissance_fiscale_cv} CV, usage ${auto.type_usage}`)],
         el("dt", {}, "Formule"), el("dd", {}, c.formule),
-        el("dt", {}, "Type"), el("dd", {}, c.contrat_type),
-        el("dt", {}, "Date d'effet"), el("dd", {}, c.date_effet),
-        el("dt", {}, "Prime"), el("dd", {}, `${c.prime_ttc_annuelle} € par an, soit ${c.prime_mensuelle} € par mois`),
+        el("dt", {}, "Contrat type"), el("dd", {}, c.contrat_type),
+        el("dt", {}, "Date d'effet"), el("dd", {}, jour(c.date_effet)),
+        el("dt", {}, "Bonus-malus (CRM)"), el("dd", {}, String(c.crm_bonus_malus)),
+        el("dt", {}, "Prime"), el("dd", {}, `${c.prime_ttc_annuelle} € TTC par an, soit ${c.prime_mensuelle} € par mois`),
         el("dt", {}, "Barème / formule"), el("dd", {}, `${c.version_bareme} / ${c.version_formule}`),
         ...liste("Motifs", c.motifs),
-        ...liste("Citations", c.citations),
-        el("dt", {}, "Validé le"), el("dd", {}, new Date(c.valide_le).toLocaleString("fr-FR"))),
+        ...liste("Citations", c.citations)),
+      el("h3", {}, "Conditions générales"),
+      cg
+        ? [el("p", {}, cg.titre), ...cg.sections.flatMap((sec) => [
+          sec.titre && el("h4", {}, sec.titre),
+          ...sec.lignes.filter((l) => !l.puce).map((l) => el("p", {}, l.texte)),
+          sec.lignes.some((l) => l.puce) && el("ul", {}, sec.lignes.filter((l) => l.puce).map((l) => el("li", {}, l.texte)))])]
+        : el("p", {}, `Notice du contrat type « ${c.contrat_type} », consultable au corpus.`),
+      el("p", {}, `Contrat validé par le gestionnaire le ${new Date(c.valide_le).toLocaleString("fr-FR")}.`),
+      el("p", { class: "signature" }, "Fait pour valoir ce que de droit. Signature de l'assuré :"),
       el("button", { type: "button", class: "ne-pas-imprimer", onclick: () => window.print() }, "Imprimer"));
   }
 

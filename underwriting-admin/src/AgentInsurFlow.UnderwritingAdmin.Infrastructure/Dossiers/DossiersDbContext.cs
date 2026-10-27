@@ -120,5 +120,10 @@ public sealed class DossiersDbContext(DbContextOptions<DossiersDbContext> option
             e.HasNoKey();
             e.ToView("vue_contrat_minimisee");
         });
+        modelBuilder.Entity<PartiesContratAccepte>(e =>
+        {
+            e.HasNoKey();
+            e.ToView("vue_contrat_accepte");
+        });
     }
 }

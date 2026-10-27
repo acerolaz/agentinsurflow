@@ -26,9 +26,13 @@ internal sealed class DepotDossiersEf(DossiersDbContext db) : IDepotDossiers, ID
             .FirstOrDefaultAsync(ct);
         var vue = await db.Vue.AsNoTracking()
             .Where(l => l.GestionnaireId == gestionnaireId && l.NumeroContrat == numeroContrat)
-            .Select(l => new { l.Formule, l.DateEffet })
+            .Select(l => new { l.Formule, l.DateEffet, l.CrmBonusMalus })
             .FirstOrDefaultAsync(ct);
-        if (decision is null || vue is null) return (null, true);
+        // Parties au contrat imprimé : vue_contrat_accepte ne rend que les contrats ACCEPTE (BOLA ici aussi).
+        var parties = await db.Set<PartiesContratAccepte>().AsNoTracking()
+            .Where(p => p.GestionnaireId == gestionnaireId && p.NumeroContrat == numeroContrat)
+            .FirstOrDefaultAsync(ct);
+        if (decision is null || vue is null || parties is null) return (null, true);
 
         // Montants et version de formule : section « prime » de la tentative courante (réponse de la Function de calcul).
         var prime = await db.Set<SectionEtat>().AsNoTracking()
@@ -42,7 +46,12 @@ internal sealed class DepotDossiersEf(DossiersDbContext db) : IDepotDossiers, ID
         return (new ContratGenere(numeroContrat, vue.Formule, decision.ContratType, vue.DateEffet,
             Champ("prime_ttc_annuelle"), Champ("prime_mensuelle"), decision.VersionBareme, Champ("version_formule"),
             JsonSerializer.Deserialize<List<string>>(decision.Motifs) ?? [], JsonSerializer.Deserialize<List<string>>(decision.Citations) ?? [],
-            decision.Auteur, decision.Horodatage), true);
+            decision.Auteur, decision.Horodatage,
+            new SouscripteurContrat(parties.Nom, parties.Prenom, parties.DateNaissance, parties.Adresse, parties.CodePostal,
+                parties.PermisNumero, parties.PermisDateObtention),
+            parties.Immatriculation is null ? null : new VehiculeContrat(parties.Marque ?? "", parties.Modele ?? "",
+                parties.Immatriculation, parties.PuissanceFiscaleCv ?? 0, parties.TypeUsage ?? ""),
+            vue.CrmBonusMalus), true);
     }
 
     public async Task<EtatLu?> LireEtat(string gestionnaireId, string numeroContrat, CancellationToken ct)

@@ -18,7 +18,9 @@ public sealed class ContratGenereTests : IDisposable
 
     private static readonly ContratGenere Accepte = new("AIF-A1", "tiers_plus", "standard", new DateOnly(2026, 11, 1),
         "612.40", "51.03", "bareme-2026.1", "formule-2026.1", ["Profil sans sinistre"], ["Code des assurances, art. A121-1"],
-        GestionnaireA, new DateTimeOffset(2026, 10, 27, 10, 0, 0, TimeSpan.Zero));
+        GestionnaireA, new DateTimeOffset(2026, 10, 27, 10, 0, 0, TimeSpan.Zero),
+        new SouscripteurContrat("Durand", "Alice", new DateOnly(1990, 1, 2), "3 rue des Lilas", "69003", "PERMIS42", new DateOnly(2010, 5, 6)),
+        new VehiculeContrat("Peugeot", "208", "AB-123-CD", 5, "prive"), 0.85);
 
     private sealed class DepotEnMemoire : IDepotContratGenere
     {
@@ -52,7 +54,7 @@ public sealed class ContratGenereTests : IDisposable
     }
 
     [Fact]
-    public async Task Contrat_accepte_200_sans_donnee_identifiante()
+    public async Task Contrat_accepte_200_avec_les_parties_au_contrat_sans_contact()
     {
         var (statut, corps, brut) = await Get("AIF-A1", GestionnaireA);
 
@@ -64,7 +66,15 @@ public sealed class ContratGenereTests : IDisposable
         Assert.Equal("2026-11-01", corps.GetProperty("date_effet").GetString());
         Assert.Equal(GestionnaireA, corps.GetProperty("valide_par").GetString());
         Assert.Equal("Code des assurances, art. A121-1", corps.GetProperty("citations")[0].GetString());
-        foreach (var interdit in new[] { "nom", "rue", "PERMIS", "adresse" })
+        // Exception assumée (contrat imprimé, ACCEPTE seulement) : identité et véhicule ; jamais de quoi contacter l'assuré.
+        var souscripteur = corps.GetProperty("souscripteur");
+        Assert.Equal(("Durand", "Alice", "3 rue des Lilas", "69003", "PERMIS42", "1990-01-02"),
+            (souscripteur.GetProperty("nom").GetString(), souscripteur.GetProperty("prenom").GetString(),
+             souscripteur.GetProperty("adresse").GetString(), souscripteur.GetProperty("code_postal").GetString(),
+             souscripteur.GetProperty("permis_numero").GetString(), souscripteur.GetProperty("date_naissance").GetString()));
+        Assert.Equal("AB-123-CD", corps.GetProperty("vehicule").GetProperty("immatriculation").GetString());
+        Assert.Equal(0.85, corps.GetProperty("crm_bonus_malus").GetDouble());
+        foreach (var interdit in new[] { "email", "telephone", "@" })
             Assert.DoesNotContain(interdit, brut, StringComparison.OrdinalIgnoreCase);
     }
 

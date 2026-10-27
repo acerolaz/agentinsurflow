@@ -496,7 +496,7 @@
         "tags": [
           "Contrats"
         ],
-        "summary": "Contrat généré après ACCEPTE : décision validée, prime, formule ; aucune donnée identifiante",
+        "summary": "Contrat généré après ACCEPTE (conditions particulières) : décision validée, prime, formule, souscripteur et véhicule ; ni e-mail ni téléphone",
         "operationId": "LireContratGenere",
         "parameters": [
           {
@@ -998,7 +998,10 @@
           "motifs",
           "citations",
           "valide_par",
-          "valide_le"
+          "valide_le",
+          "souscripteur",
+          "vehicule",
+          "crm_bonus_malus"
         ],
         "type": "object",
         "properties": {
@@ -1045,6 +1048,27 @@
           "valide_le": {
             "type": "string",
             "format": "date-time"
+          },
+          "souscripteur": {
+            "$ref": "#/components/schemas/SouscripteurContrat"
+          },
+          "vehicule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VehiculeContrat"
+              }
+            ]
+          },
+          "crm_bonus_malus": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },
@@ -1464,6 +1488,43 @@
           }
         }
       },
+      "SouscripteurContrat": {
+        "required": [
+          "nom",
+          "prenom",
+          "date_naissance",
+          "adresse",
+          "code_postal",
+          "permis_numero",
+          "permis_date_obtention"
+        ],
+        "type": "object",
+        "properties": {
+          "nom": {
+            "type": "string"
+          },
+          "prenom": {
+            "type": "string"
+          },
+          "date_naissance": {
+            "type": "string",
+            "format": "date"
+          },
+          "adresse": {
+            "type": "string"
+          },
+          "code_postal": {
+            "type": "string"
+          },
+          "permis_numero": {
+            "type": "string"
+          },
+          "permis_date_obtention": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
       "SpanReponse": {
         "required": [
           "trace_id",
@@ -1631,6 +1692,38 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "VehiculeContrat": {
+        "required": [
+          "marque",
+          "modele",
+          "immatriculation",
+          "puissance_fiscale_cv",
+          "type_usage"
+        ],
+        "type": "object",
+        "properties": {
+          "marque": {
+            "type": "string"
+          },
+          "modele": {
+            "type": "string"
+          },
+          "immatriculation": {
+            "type": "string"
+          },
+          "puissance_fiscale_cv": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "type_usage": {
+            "type": "string"
           }
         }
       },

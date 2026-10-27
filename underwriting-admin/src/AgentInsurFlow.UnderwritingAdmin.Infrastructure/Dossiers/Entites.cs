@@ -197,6 +197,28 @@ internal sealed class LigneVue
     public string? Observations { get; set; }
 }
 
+/// <summary>
+/// Ligne de <c>vue_contrat_accepte</c> : parties au contrat imprimé, pour les contrats ACCEPTE seulement (la vue filtre).
+/// Ni e-mail ni téléphone ; la table <c>souscripteur</c> reste fermée au compte <c>dossiers</c>.
+/// </summary>
+internal sealed class PartiesContratAccepte
+{
+    public string NumeroContrat { get; set; } = "";
+    public string GestionnaireId { get; set; } = "";
+    public string Nom { get; set; } = "";
+    public string Prenom { get; set; } = "";
+    public DateOnly DateNaissance { get; set; }
+    public string Adresse { get; set; } = "";
+    public string CodePostal { get; set; } = "";
+    public string PermisNumero { get; set; } = "";
+    public DateOnly PermisDateObtention { get; set; }
+    public string? Marque { get; set; }
+    public string? Modele { get; set; }
+    public string? Immatriculation { get; set; }
+    public int? PuissanceFiscaleCv { get; set; }
+    public string? TypeUsage { get; set; }
+}
+
 // Mémoire long terme du dossier (D100) : aucune colonne identifiante (nom, adresse…), la liste blanche des sections y veille.
 
 /// <summary>État courant du parcours d'un dossier (une ligne par contrat, clé étrangère vers `contrat.numero_contrat`).</summary>

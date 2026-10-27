@@ -27,13 +27,16 @@ const ETAPES = [
 
 /**
  * Frise des cinq étapes d'une évaluation depuis l'état lu (GET …/etat).
- * Durée d'un agent = écart de cree_le avec le rapport précédent ; le premier part du clic (lanceA, ms) s'il est connu.
+ * Durée d'un agent = écart de cree_le avec le rapport précédent ; un rapport postérieur au clic (lanceA, ms : lancer
+ * ou reprendre) part au plus tôt du clic, la pause ne compte pas ; le premier rapport antérieur au clic n'a pas de durée.
  */
 export function frise(etat, lanceA) {
   const rapports = etat?.rapports ?? [];
   const durees = {};
   rapports.forEach((r, i) => {
-    const avant = i > 0 ? Date.parse(rapports[i - 1].cree_le) : lanceA;
+    const precedent = i > 0 ? Date.parse(rapports[i - 1].cree_le) : undefined;
+    const apresClic = lanceA !== undefined && Date.parse(r.cree_le) >= lanceA;
+    const avant = apresClic ? Math.max(precedent ?? lanceA, lanceA) : precedent;
     durees[r.agent] = avant === undefined ? null : Math.round(Date.parse(r.cree_le) - avant) / 1000;
   });
   const etapes = ETAPES.map(([agent, libelle]) => ({

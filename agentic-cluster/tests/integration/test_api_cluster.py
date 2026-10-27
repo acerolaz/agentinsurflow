@@ -478,6 +478,31 @@ async def test_deux_evaluations_simultanees_la_seconde_409_en_cours() -> None:
     assert refus.json()["code"] == "EVALUATION_EN_COURS"
 
 
+async def test_pause_restee_apres_une_evaluation_en_echec_est_oubliee() -> None:
+    outils = FakeOutils(get_contrat=ErreurOutil("MCP_INDISPONIBLE"))
+    async with client(Banc(outils=outils)) as c:
+        await c.post("/evaluations/C-1/pause")
+        assert (await c.post("/evaluations/C-1")).status_code == 502
+        outils.reponses["get_contrat"] = CONTRAT
+        r = await c.post("/evaluations/C-1")
+    assert r.json()["statut"] == "EN_ANALYSE", r.text
+
+
+async def test_evaluation_en_cours_d_un_autre_gestionnaire_404_et_non_409() -> None:
+    async def lente(agent: str, vue: dict[str, Any], budget_s: float, jeton: str = "") -> Any:
+        await asyncio.sleep(0.2)
+        return redaction_fidele(agent, vue)  # type: ignore[arg-type]
+
+    banc = Banc()
+    banc.redaction.rediger = lente  # type: ignore[method-assign]
+    async with client(banc) as c:
+        a = asyncio.create_task(c.post("/evaluations/C-1"))
+        await asyncio.sleep(0.05)
+        b = await c.post("/evaluations/C-1", headers=_jeton_de("oid-gestionnaire-b"))
+        await a
+    assert b.status_code == 404 and b.json()["code"] == "CONTRAT_INTROUVABLE"
+
+
 async def test_outil_en_429_rend_429_avec_retry_after() -> None:
     banc = Banc(outils=FakeOutils(get_contrat=ErreurOutil("TROP_DE_REQUETES", "17")))
     async with client(banc) as c:

@@ -219,6 +219,7 @@ class ServiceEvaluation:
         self._pauses.add((numero, oid))
 
     async def evaluer(self, numero: str, jeton: str, oid: str) -> Resultat:
+        await self._controler_proprietaire(numero, oid)  # 404 avant 409 (BOLA)
         if self._verrou(numero).locked():  # double clic : ne pas attendre la première
             raise EvaluationEnCours(numero)
         async with self._verrou(numero):
@@ -240,6 +241,8 @@ class ServiceEvaluation:
                     )
             except TimeoutError:
                 await self._conclure_en_revue(numero, jeton)
+            finally:  # demande non consommée (échec, arrivée pendant proposer) : jamais reportée
+                self._pauses.discard((numero, oid))
             return await self._resultat(numero)
 
     async def _conclure_en_revue(self, numero: str, jeton: str) -> None:

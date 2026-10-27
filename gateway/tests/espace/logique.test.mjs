@@ -29,6 +29,14 @@ test("frise : la première durée part du clic quand il est connu", () => {
   assert.equal(f[0].duree_s, 3.1);
 });
 
+test("frise : après une reprise, ni durée négative ni pause comptée", () => {
+  const T2 = "2026-10-27T10:01:00+00:00"; // Reprendre cliqué à T2, une minute après la pause
+  const T3 = "2026-10-27T10:01:02.500+00:00";
+  const f = frise({ statut_parcours: "EN_COURS", rapports: [rapport("pieces", T0), rapport("analyste", T3)] }, Date.parse(T2));
+  assert.equal(f[0].duree_s, null);
+  assert.equal(f[1].duree_s, 2.5);
+});
+
 test("frise : validation en cours puis faite", () => {
   assert.equal(frise({ statut_parcours: "EN_ANALYSE", rapports: [] })[4].statut, "en_cours");
   assert.equal(frise({ statut_parcours: "ACCEPTE", rapports: [] })[4].statut, "fait");

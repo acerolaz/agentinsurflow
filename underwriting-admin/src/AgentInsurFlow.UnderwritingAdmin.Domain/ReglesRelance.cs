@@ -1,3 +1,5 @@
+using System.Buffers;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace AgentInsurFlow.UnderwritingAdmin.Domain;
@@ -17,8 +19,20 @@ public static partial class ReglesRelance
     {
         ArgumentNullException.ThrowIfNull(pieces);
         if (dejaEnvoyees >= Max) return Epuisees;
-        if (string.IsNullOrWhiteSpace(texte) || texte.Length > TexteMax) return "TEXTE_INVALIDE";
-        return pieces.Count > 0 && pieces.All(p => TypePiece().IsMatch(p)) ? null : "PIECES_INVALIDES";
+        if (string.IsNullOrWhiteSpace(texte) || texte.Length > TexteMax || !Stockable(texte)) return "TEXTE_INVALIDE";
+        return pieces.Count > 0 && pieces.All(p => p is not null && TypePiece().IsMatch(p)) ? null : "PIECES_INVALIDES";
+    }
+
+    /// <summary>Ni NUL (refusé par PostgreSQL) ni substitut isolé (non encodable en UTF-8).</summary>
+    private static bool Stockable(string texte)
+    {
+        var reste = texte.AsSpan();
+        while (!reste.IsEmpty)
+        {
+            if (Rune.DecodeFromUtf16(reste, out var r, out var lus) != OperationStatus.Done || r.Value == 0) return false;
+            reste = reste[lus..];
+        }
+        return true;
     }
 
     [GeneratedRegex("^[a-z_]{1,40}$")]

@@ -14,6 +14,11 @@ public sealed class ReglesRelanceTests
         { 0, "Bonjour", [], "PIECES_INVALIDES" },
         { 0, "Bonjour", ["Permis!"], "PIECES_INVALIDES" },
         { 0, "Bonjour", [new string('a', 41)], "PIECES_INVALIDES" },
+        { 0, "Bonjour", [null!], "PIECES_INVALIDES" },
+        // refusés par PostgreSQL (0x00) ou par l'encodage UTF-8 (substitut isolé) : 400, pas 500
+        { 0, "a\0b", ["permis"], "TEXTE_INVALIDE" },
+        { 0, "a\ud800b", ["permis"], "TEXTE_INVALIDE" },
+        { 0, "Bonjour 🚗", ["permis"], null },
     };
 
     [Theory]

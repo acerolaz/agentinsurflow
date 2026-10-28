@@ -1,0 +1,5 @@
+// AL-8 : nombre de réponses 429 de Foundry vues par la gateway. Source : AppDependencies.
+AppDependencies
+| where _ResourceId =~ "$APPI_ID"
+| where ResultCode == "429"
+| summarize valeur = count()

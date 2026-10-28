@@ -1,0 +1,6 @@
+// Tuile : évaluations par heure. Source : audit.evaluation (AppTraces).
+AppTraces
+| where _ResourceId =~ "$APPI_ID"
+| where Message == "audit.evaluation"
+| summarize evaluations = count() by bin(TimeGenerated, 1h)
+| order by TimeGenerated asc

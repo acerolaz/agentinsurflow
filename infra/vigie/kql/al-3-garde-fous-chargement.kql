@@ -1,0 +1,5 @@
+// AL-3 : secondes entre le premier et le dernier échec de sonde du cluster (chargement des garde-fous). Source : ContainerAppSystemLogs_CL.
+ContainerAppSystemLogs_CL
+| where ContainerAppName_s == "$CLUSTER_APP"
+| where Reason_s == "ProbeFailed"
+| summarize valeur = (max(TimeGenerated) - min(TimeGenerated)) / 1s

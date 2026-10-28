@@ -1,0 +1,6 @@
+// AL-5 : pourcentage d'évaluations en REVUE_HUMAINE, nul sous 10 évaluations. Source : audit.evaluation (AppTraces).
+AppTraces
+| where _ResourceId =~ "$APPI_ID"
+| where Message == "audit.evaluation"
+| summarize n = count(), revue = countif(tostring(Properties.statut_final) == "REVUE_HUMAINE")
+| project valeur = iff(n < 10, real(null), 100.0 * revue / n)

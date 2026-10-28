@@ -1,0 +1,9 @@
+// Tuile : coût en USD par agent et par modèle (prix par million de jetons). Source : audit.agent (AppTraces).
+let prix = datatable(modele:string, entree:real, sortie:real)[$PRIX_KQL];
+AppTraces
+| where _ResourceId =~ "$APPI_ID"
+| where Message == "audit.agent"
+| extend agent = tostring(Properties.agent), modele = tostring(Properties.modele), tin = toint(Properties.tokens_entree), tout = toint(Properties.tokens_sortie)
+| join kind=inner prix on modele
+| summarize cout_usd = sum(tin * entree / 1000000 + tout * sortie / 1000000) by agent, modele
+| order by cout_usd desc

@@ -1,0 +1,7 @@
+// Tuile : évaluations en REVUE_HUMAINE par cause. Source : audit.evaluation (AppTraces).
+AppTraces
+| where _ResourceId =~ "$APPI_ID"
+| where Message == "audit.evaluation"
+| where tostring(Properties.statut_final) == "REVUE_HUMAINE"
+| summarize evaluations = count() by cause = tostring(Properties.cause)
+| order by evaluations desc

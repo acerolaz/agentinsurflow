@@ -9,6 +9,7 @@ reprise de LangGraph transforme les tuples en listes. Le jeton du gestionnaire p
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import asdict, dataclass, field, replace
 from typing import Any, TypedDict
 
@@ -154,6 +155,7 @@ class ServiceEvaluation:
         self.reglages = deps.reglages  # lus par /health, avec les empreintes du démarrage
         self.versions_prompt = deps.versions_prompt
         self._budget_s = deps.budget_global_s + deps.reserve_s
+        self._audit = deps.audit
         self._verrous: dict[str, asyncio.Lock] = {}
         # ponytail: en mémoire, une réplique (comme les verrous) ; perdue au redémarrage
         self._pauses: set[tuple[str, str]] = set()
@@ -226,22 +228,38 @@ class ServiceEvaluation:
                 raise EvaluationEnAttente(numero)
             if instantane.values.get("statut") in ("ACCEPTE", "REFUSE"):
                 raise DossierDecide(numero)
-            entree: Any
-            if self._en_pause(instantane):  # reprise au point de reprise, même tentative
-                entree = Command(resume=True)
-            else:
-                precedente = (instantane.values.get("etat") or {}).get("tentative", 0)
-                entree = {"numero": numero, "oid": oid, "tentative": precedente + 1}
+            debut = time.monotonic()
+            statut_final, cause = "ERREUR", None  # toute autre exception : ERREUR sans cause
             try:
-                async with asyncio.timeout(self._budget_s):
-                    await self._graphe.ainvoke(
-                        entree, self._config(numero), context=Contexte(jeton)
-                    )
-            except TimeoutError:
-                await self._conclure_en_revue(numero, jeton)
-            finally:  # demande non consommée (échec, arrivée pendant proposer) : jamais reportée
-                self._pauses.discard((numero, oid))
-            return await self._resultat(numero)
+                resultat = await self._saga(numero, jeton, oid, instantane)
+                statut_final, cause = resultat.statut, resultat.etat.cause
+                return resultat
+            except DelaiDepasse:
+                cause = "delai_depasse"
+                raise
+            except ErreurOutil as e:
+                cause = e.args[0]
+                raise
+            finally:  # une ligne par évaluation entrée dans la Saga (les refus plus haut : aucune)
+                await self._audit.evaluation(
+                    numero, statut_final, cause, int((time.monotonic() - debut) * 1000)
+                )
+
+    async def _saga(self, numero: str, jeton: str, oid: str, instantane: Any) -> Resultat:
+        entree: Any
+        if self._en_pause(instantane):  # reprise au point de reprise, même tentative
+            entree = Command(resume=True)
+        else:
+            precedente = (instantane.values.get("etat") or {}).get("tentative", 0)
+            entree = {"numero": numero, "oid": oid, "tentative": precedente + 1}
+        try:
+            async with asyncio.timeout(self._budget_s):
+                await self._graphe.ainvoke(entree, self._config(numero), context=Contexte(jeton))
+        except TimeoutError:
+            await self._conclure_en_revue(numero, jeton)
+        finally:  # demande non consommée (échec, arrivée pendant proposer) : jamais reportée
+            self._pauses.discard((numero, oid))
+        return await self._resultat(numero)
 
     async def _conclure_en_revue(self, numero: str, jeton: str) -> None:
         """Budget épuisé : revue humaine « duree » si un agent était en cours, sinon 503.

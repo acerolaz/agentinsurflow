@@ -164,6 +164,7 @@ class FakeAudit:
     def __init__(self) -> None:
         self.traces: list[tuple[str, Rapport, list[str], int]] = []
         self.signaux: list[float] = []
+        self.evaluations: list[tuple[str, str, str | None]] = []
 
     async def tracer(
         self,
@@ -179,3 +180,8 @@ class FakeAudit:
         if signal_injection is not None:
             self.signaux.append(signal_injection)
         self.traces.append((numero_contrat, rapport, garde_fous, duree_ms))
+
+    async def evaluation(
+        self, numero_contrat: str, statut_final: str, cause: str | None, duree_ms: int
+    ) -> None:
+        self.evaluations.append((numero_contrat, statut_final, cause))

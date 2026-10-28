@@ -5,6 +5,8 @@ Un fournisseur local (jamais le global) : aucune interférence avec les autres s
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 from typing import Any
 
@@ -170,3 +172,19 @@ def test_toutes_les_instrumentations_du_distro_sont_coupees() -> None:
     assert INSTRUMENTATIONS_DISTRO_COUPEES.keys() == set(_ALL_SUPPORTED_INSTRUMENTED_LIBRARIES)
     assert {"httpx", "httpx2"} <= INSTRUMENTATIONS_DISTRO_COUPEES.keys()
     assert all(v == {"enabled": False} for v in INSTRUMENTATIONS_DISTRO_COUPEES.values())
+
+
+def test_ligne_audit_evaluation_sans_donnee_personnelle(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(logging.getLogger("insurflow.audit"), "propagate", True)
+    with caplog.at_level(logging.INFO, logger="insurflow.audit"):
+        asyncio.run(
+            audit.AuditOtel().evaluation("AIF-2026-000001", "REVUE_HUMAINE", "llm_ko", 9876)
+        )
+    (enreg,) = [r for r in caplog.records if r.name == "insurflow.audit"]
+    ligne = json.loads(audit.FormatJson().format(enreg))
+    assert ligne["message"] == "audit.evaluation"
+    assert (ligne["numero_contrat"], ligne["statut_final"]) == ("AIF-2026-000001", "REVUE_HUMAINE")
+    assert (ligne["cause"], ligne["duree_ms"]) == ("llm_ko", 9876)
+    assert set(ligne) <= {"message", *audit.CHAMPS}

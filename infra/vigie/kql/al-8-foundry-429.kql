@@ -1,4 +1,5 @@
-// AL-8 : nombre de réponses 429 de Foundry vues par la gateway. Source : AppDependencies. Cible Foundry à confirmer en staging (Task 5).
+// AL-8 : nombre de réponses 429 de Foundry vues par la gateway. Source : AppDependencies.
+// Cible Foundry à confirmer en staging (Task 5).
 AppDependencies
 | where _ResourceId =~ "$APPI_ID"
 | where AppRoleName == "agentinsurflow-gateway"

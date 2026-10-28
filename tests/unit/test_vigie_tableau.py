@@ -66,6 +66,27 @@ def test_assemblage_sans_placeholder(tmp_path):
     chemin = re.search(r"--input-path (\S+)", appel).group(1)
     texte = open(chemin).read()
     json.loads(texte)
-    for interdit in ("@kql:", "$APPI_ID", "$WORKSPACE_ID", "$PRIX_KQL", "$ENV", "$LOCATION"):
+    for interdit in (
+        "@kql:",
+        "$APPI_ID",
+        "$CLUSTER_APP",
+        "$WORKSPACE_ID",
+        "$PRIX_KQL",
+        "$ENV",
+        "$LOCATION",
+    ):
         assert interdit not in texte
     assert "gpt-x" in texte  # le tarif est bien substitué dans la tuile de coût
+
+
+def test_periode_24h_actualisation_et_types_de_tuile():
+    modele = _modele()
+    md = modele["properties"]["metadata"]["model"]
+    assert md["timeRange"]["value"]["relative"] == {"duration": 24, "timeUnit": 1}
+    assert md["refreshInterval"]["value"] == {"interval": 5, "unit": "min"}
+    for p in modele["properties"]["lenses"][0]["parts"]:
+        m = p["metadata"]
+        if m["type"].endswith("LogsDashboardPart"):
+            assert {"name": "TimeRange", "value": "PT24H"} in m["inputs"]
+        else:
+            assert m["type"].endswith("MarkdownPart")

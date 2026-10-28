@@ -35,7 +35,7 @@ async def checkpointer(cfg: ConfigCluster | None = None, delai_s: float = 25) ->
             )
             portee = f"{cfg.telemetrie_audience}/.default"
             # ponytail: un appel ne dépasse jamais le budget global d'une évaluation (garde) ;
-            # à confirmer par la latence mesurée en staging (preuve K11, docs/dossier/amendements-d106.md)
+            # à confirmer par la latence mesurée en staging (preuve K11)
             try:
                 async with httpx.AsyncClient(base_url=cfg.gateway_url, timeout=delai_s) as client:
                     yield CheckpointerHttp(client, lambda: credential.get_token(portee).token)

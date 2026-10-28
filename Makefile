@@ -12,7 +12,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 .PHONY: recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
-	uv sync --locked
+	uv sync --locked --all-packages --all-groups
 
 fmt:
 	uv run ruff format .

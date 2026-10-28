@@ -61,7 +61,7 @@ for app in "$MCP_APP_STAGING" "$MCP_APP_PRODUCTION"; do
 done
 # Cluster d'agents (#7) : sa propre Container App, entrée INTERNE (port 8004) : joignable par la gateway seulement,
 # jamais depuis Internet. Même image d'amorçage ; son identité managée propre (uami-insurflow-cluster) est rattachée par
-# infra/entra.sh ⑧, son secret checkpoint-dsn posé par infra/postgres-annexe.sh, son modèle par deploy.yml.
+# infra/entra.sh ⑧, son modèle par deploy.yml.
 for app in "$CLUSTER_APP_STAGING" "$CLUSTER_APP_PRODUCTION"; do
   existe az containerapp show -n "$app" -g "$RG" ||
     az containerapp create -n "$app" -g "$RG" --environment "$CONTAINERAPPS_ENV" \

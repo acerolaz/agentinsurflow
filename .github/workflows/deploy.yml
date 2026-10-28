@@ -198,7 +198,7 @@ jobs:
       # la séparation ; les clients, redéployés ensuite, repartent sur une base fraîche.
       - name: Déployer la base annexe (modèle infra/containerapp-postgres.yaml, TCP interne 5432)
         env:
-          IMAGE_POSTGRES: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-postgres:2 # tag fixe, construit à la main (infra/postgres-annexe.sh)
+          IMAGE_POSTGRES: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-postgres:3 # tag fixe, construit à la main (infra/postgres-annexe.sh)
           TAG: ${{ steps.image.outputs.tag }}
         run: |
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
@@ -220,7 +220,7 @@ jobs:
           jq -e '.properties.configuration.ingress | (.external == false) and ((.transport // "" | ascii_downcase) == "tcp") and (.targetPort == 5432)' <<<"$pg" > /dev/null ||
             { echo "::error::$PG_APP : l'entrée doit être TCP interne sur 5432 (relancer make infra, voir docs/secrets.md)"; exit 1; }
           for secret in pg-postgres-password pg-migrateur-password pg-writer-password pg-reader-password \
-            pg-dossiers-password pg-traces-writer-password pg-traces-reader-password pg-agent-state-password; do
+            pg-dossiers-password pg-traces-writer-password pg-traces-reader-password pg-points-reprise-password; do
             jq -e --arg s "$secret" '[.properties.configuration.secrets[]?.name] | index($s)' <<<"$pg" > /dev/null ||
               { echo "::error::secret $secret absent de $PG_APP (relancer infra/postgres-annexe.sh)"; exit 1; }
           done
@@ -255,11 +255,11 @@ jobs:
           uw=$(az containerapp show -n "$UW_APP" -g "$RG" -o json)
           jq -e '.properties.configuration.ingress.external == false' <<<"$uw" > /dev/null ||
             { echo "::error::$UW_APP exposé hors de l'environnement : l'entrée doit rester interne"; exit 1; }
-          for secret in pg-migrateur-password pg-dossiers-password pg-traces-writer-password pg-traces-reader-password; do
+          for secret in pg-migrateur-password pg-dossiers-password pg-traces-writer-password pg-traces-reader-password pg-points-reprise-password; do
             jq -e --arg s "$secret" '[.properties.configuration.secrets[]?.name] | index($s)' <<<"$uw" > /dev/null ||
               { echo "::error::secret $secret perdu par l'update de $UW_APP (relancer infra/postgres-annexe.sh)"; exit 1; }
           done
-          echo "✔ $UW_APP déployé, entrée interne $fqdn, 4 secrets pg-* conservés"
+          echo "✔ $UW_APP déployé, entrée interne $fqdn, secrets pg-* conservés"
 
       - name: Secret appinsights-connection présent sur $MCP_APP (lecture seule, porte bloquante)
         run: |
@@ -303,8 +303,8 @@ jobs:
             { echo "::error::$MCP_APP exposé hors de l'environnement : l'entrée doit rester interne"; exit 1; }
           echo "✔ $MCP_APP déployé, entrée interne $fqdn, identité managée propre posée"
 
-      # Cluster d'agents avant la gateway : son FQDN interne est le cluster `cluster` de la gateway. Après la base annexe :
-      # il y ouvre ses points de reprise (compte agent_state) dès son démarrage.
+      # Cluster d'agents avant la gateway : son FQDN interne est le cluster `cluster` de la gateway. Il n'ouvre plus PostgreSQL :
+      # ses points de reprise passent par la gateway puis underwriting-admin (D106).
       - name: Secret appinsights-connection présent sur $CLUSTER_APP (lecture seule, porte bloquante)
         run: |
           az containerapp show -n "$CLUSTER_APP" -g "$RG" -o json |
@@ -343,11 +343,9 @@ jobs:
             { echo "::error::identité managée $AZURE_UAMI_CLUSTER_CLIENT_ID absente de $CLUSTER_APP après l'update (OBO du cluster impossible)"; exit 1; }
           jq -e '.properties.configuration.ingress.external == false' <<<"$cluster" > /dev/null ||
             { echo "::error::$CLUSTER_APP exposé hors de l'environnement : l'entrée doit rester interne"; exit 1; }
-          jq -e '[.properties.configuration.secrets[]?.name] | index("checkpoint-dsn")' <<<"$cluster" > /dev/null ||
-            { echo "::error::secret checkpoint-dsn absent de $CLUSTER_APP (relancer infra/postgres-annexe.sh)"; exit 1; }
           jq -e '.properties.template.scale | (.minReplicas == 1) and (.maxReplicas == 1)' <<<"$cluster" > /dev/null ||
             { echo "::error::$CLUSTER_APP : une seule réplique exigée (verrou par dossier, R17)"; exit 1; }
-          echo "✔ $CLUSTER_APP déployé, entrée interne $fqdn, identité managée propre, une réplique, secret checkpoint-dsn conservé"
+          echo "✔ $CLUSTER_APP déployé, entrée interne $fqdn, identité managée propre, une réplique"
 
       - name: Secret appinsights-connection présent sur $APP (lecture seule, porte bloquante)
         run: |
@@ -470,6 +468,8 @@ jobs:
           [ "$code" = 401 ] || { echo "::error::POST /api/reponses sans jeton : $code ≠ 401"; exit 1; }
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/calcul/evaluer" -H 'content-type: application/json' -d '{}')
           [ "$code" = 401 ] || { echo "::error::POST /api/calcul/evaluer sans jeton : $code ≠ 401"; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/calcul/frequence" -H 'content-type: application/json' -d '{}')
+          [ "$code" = 401 ] || { echo "::error::POST /api/calcul/frequence sans jeton : $code ≠ 401"; exit 1; }
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/llm/v1/chat/completions" -H 'content-type: application/json' -d '{}')
           [ "$code" = 401 ] || { echo "::error::POST /api/llm/v1/chat/completions sans jeton : $code ≠ 401"; exit 1; }
           # Le LLM avec jeton (rôle LLM de rag) est vérifié par le job evals (staging), via /api/reponses

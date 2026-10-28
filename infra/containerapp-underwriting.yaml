@@ -29,6 +29,7 @@ properties:
           - { name: PG_DOSSIERS_PASSWORD, secretRef: pg-dossiers-password }
           - { name: PG_TRACES_WRITER_PASSWORD, secretRef: pg-traces-writer-password }
           - { name: PG_TRACES_READER_PASSWORD, secretRef: pg-traces-reader-password }
+          - { name: PG_POINTS_REPRISE_PASSWORD, secretRef: pg-points-reprise-password }
           # oid des gestionnaires de test A, B (démo) et C (CI) (variables GitHub, pas des secrets)
           - { name: SEED_GESTIONNAIRE_A, value: "${SEED_GESTIONNAIRE_A}" }
           - { name: SEED_GESTIONNAIRE_B, value: "${SEED_GESTIONNAIRE_B}" }

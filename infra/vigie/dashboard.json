@@ -1,0 +1,978 @@
+{
+ "location": "$LOCATION",
+ "tags": {
+  "hidden-title": "vigie-$ENV"
+ },
+ "properties": {
+  "lenses": [
+   {
+    "order": 0,
+    "parts": [
+     {
+      "position": {
+       "x": 0,
+       "y": 0,
+       "colSpan": 6,
+       "rowSpan": 4
+      },
+      "metadata": {
+       "type": "Extension/HubsExtension/PartType/MarkdownPart",
+       "inputs": [],
+       "settings": {
+        "content": {
+         "settings": {
+          "title": "Comment lire ce tableau",
+          "subtitle": "Période : 24 h, actualisation automatique",
+          "content": "Chaque tuile pose une question ; l'objectif est écrit dans son sous-titre. Valeur hors objectif ? Suivre la section correspondante de [docs/exploitation.md](https://github.com/acerolaz/agentinsurflow/blob/main/docs/exploitation.md). Environnement : $ENV."
+         }
+        }
+       }
+      }
+     },
+     {
+      "position": {
+       "x": 6,
+       "y": 0,
+       "colSpan": 3,
+       "rowSpan": 4
+      },
+      "metadata": {
+       "type": "Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart",
+       "inputs": [
+        {
+         "name": "resourceTypeMode",
+         "isOptional": true
+        },
+        {
+         "name": "ComponentId",
+         "value": "$WORKSPACE_ID"
+        },
+        {
+         "name": "Scope",
+         "value": {
+          "resourceIds": [
+           "$WORKSPACE_ID"
+          ]
+         }
+        },
+        {
+         "name": "PartId",
+         "isOptional": true
+        },
+        {
+         "name": "Version",
+         "value": "2.0"
+        },
+        {
+         "name": "TimeRange",
+         "value": "PT24H"
+        },
+        {
+         "name": "DashboardId",
+         "isOptional": true
+        },
+        {
+         "name": "DraftRequestParameters",
+         "isOptional": true
+        },
+        {
+         "name": "Query",
+         "value": "@kql:tuiles/disponibilite.kql"
+        },
+        {
+         "name": "ControlType",
+         "value": "AnalyticsGrid"
+        },
+        {
+         "name": "SpecificChart",
+         "isOptional": true
+        },
+        {
+         "name": "PartTitle",
+         "value": "Le service répond-il ?"
+        },
+        {
+         "name": "PartSubTitle",
+         "value": "Objectif : 100 % de réussite du test /health"
+        },
+        {
+         "name": "Dimensions",
+         "isOptional": true
+        },
+        {
+         "name": "LegendOptions",
+         "isOptional": true
+        },
+        {
+         "name": "IsQueryContainTimeRange",
+         "value": false
+        }
+       ],
+       "settings": {}
+      }
+     },
+     {
+      "position": {
+       "x": 9,
+       "y": 0,
+       "colSpan": 3,
+       "rowSpan": 4
+      },
+      "metadata": {
+       "type": "Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart",
+       "inputs": [
+        {
+         "name": "resourceTypeMode",
+         "isOptional": true
+        },
+        {
+         "name": "ComponentId",
+         "value": "$WORKSPACE_ID"
+        },
+        {
+         "name": "Scope",
+         "value": {
+          "resourceIds": [
+           "$WORKSPACE_ID"
+          ]
+         }
+        },
+        {
+         "name": "PartId",
+         "isOptional": true
+        },
+        {
+         "name": "Version",
+         "value": "2.0"
+        },
+        {
+         "name": "TimeRange",
+         "value": "PT24H"
+        },
+        {
+         "name": "DashboardId",
+         "isOptional": true
+        },
+        {
+         "name": "DraftRequestParameters",
+         "isOptional": true
+        },
+        {
+         "name": "Query",
+         "value": "@kql:tuiles/evaluations-par-heure.kql"
+        },
+        {
+         "name": "ControlType",
+         "value": "Chart"
+        },
+        {
+         "name": "SpecificChart",
+         "isOptional": true
+        },
+        {
+         "name": "PartTitle",
+         "value": "Combien de dossiers évalués ?"
+        },
+        {
+         "name": "PartSubTitle",
+         "value": "Par heure, pas d'objectif"
+        },
+        {
+         "name": "Dimensions",
+         "isOptional": true
+        },
+        {
+         "name": "LegendOptions",
+         "isOptional": true
+        },
+        {
+         "name": "IsQueryContainTimeRange",
+         "value": false
+        }
+       ],
+       "settings": {}
+      }
+     },
+     {
+      "position": {
+       "x": 0,
+       "y": 4,
+       "colSpan": 4,
+       "rowSpan": 4
+      },
+      "metadata": {
+       "type": "Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart",
+       "inputs": [
+        {
+         "name": "resourceTypeMode",
+         "isOptional": true
+        },
+        {
+         "name": "ComponentId",
+         "value": "$WORKSPACE_ID"
+        },
+        {
+         "name": "Scope",
+         "value": {
+          "resourceIds": [
+           "$WORKSPACE_ID"
+          ]
+         }
+        },
+        {
+         "name": "PartId",
+         "isOptional": true
+        },
+        {
+         "name": "Version",
+         "value": "2.0"
+        },
+        {
+         "name": "TimeRange",
+         "value": "PT24H"
+        },
+        {
+         "name": "DashboardId",
+         "isOptional": true
+        },
+        {
+         "name": "DraftRequestParameters",
+         "isOptional": true
+        },
+        {
+         "name": "Query",
+         "value": "@kql:al-1-latence-p95.kql"
+        },
+        {
+         "name": "ControlType",
+         "value": "AnalyticsGrid"
+        },
+        {
+         "name": "SpecificChart",
+         "isOptional": true
+        },
+        {
+         "name": "PartTitle",
+         "value": "Combien de temps prend une évaluation ?"
+        },
+        {
+         "name": "PartSubTitle",
+         "value": "p95 en millisecondes — objectif ≤ 30 s (30 000 ms)"
+        },
+        {
+         "name": "Dimensions",
+         "isOptional": true
+        },
+        {
+         "name": "LegendOptions",
+         "isOptional": true
+        },
+        {
+         "name": "IsQueryContainTimeRange",
+         "value": false
+        }
+       ],
+       "settings": {}
+      }
+     },
+     {
+      "position": {
+       "x": 4,
+       "y": 4,
+       "colSpan": 4,
+       "rowSpan": 4
+      },
+      "metadata": {
+       "type": "Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart",
+       "inputs": [
+        {
+         "name": "resourceTypeMode",
+         "isOptional": true
+        },
+        {
+         "name": "ComponentId",
+         "value": "$WORKSPACE_ID"
+        },
+        {
+         "name": "Scope",
+         "value": {
+          "resourceIds": [
+           "$WORKSPACE_ID"
+          ]
+         }
+        },
+        {
+         "name": "PartId",
+         "isOptional": true
+        },
+        {
+         "name": "Version",
+         "value": "2.0"
+        },
+        {
+         "name": "TimeRange",
+         "value": "PT24H"
+        },
+        {
+         "name": "DashboardId",
+         "isOptional": true
+        },
+        {
+         "name": "DraftRequestParameters",
+         "isOptional": true
+        },
+        {
+         "name": "Query",
+         "value": "@kql:al-5-revue-humaine.kql"
+        },
+        {
+         "name": "ControlType",
+         "value": "AnalyticsGrid"
+        },
+        {
+         "name": "SpecificChart",
+         "isOptional": true
+        },
+        {
+         "name": "PartTitle",
+         "value": "Quelle part part en revue humaine, et pourquoi ?"
+        },
+        {
+         "name": "PartSubTitle",
+         "value": "Part en % — objectif ≤ 20 % ; alerte > 30 %"
+        },
+        {
+         "name": "Dimensions",
+         "isOptional": true
+        },
+        {
+         "name": "LegendOptions",
+         "isOptional": true
+        },
+        {
+         "name": "IsQueryContainTimeRange",
+         "value": false
+        }
+       ],
+       "settings": {}
+      }
+     },
+     {
+      "position": {
+       "x": 8,
+       "y": 4,
+       "colSpan": 4,
+       "rowSpan": 4
+      },
+      "metadata": {
+       "type": "Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart",
+       "inputs": [
+        {
+         "name": "resourceTypeMode",
+         "isOptional": true
+        },
+        {
+         "name": "ComponentId",
+         "value": "$WORKSPACE_ID"
+        },
+        {
+         "name": "Scope",
+         "value": {
+          "resourceIds": [
+           "$WORKSPACE_ID"
+          ]
+         }
+        },
+        {
+         "name": "PartId",
+         "isOptional": true
+        },
+        {
+         "name": "Version",
+         "value": "2.0"
+        },
+        {
+         "name": "TimeRange",
+         "value": "PT24H"
+        },
+        {
+         "name": "DashboardId",
+         "isOptional": true
+        },
+        {
+         "name": "DraftRequestParameters",
+         "isOptional": true
+        },
+        {
+         "name": "Query",
+         "value": "@kql:tuiles/revue-par-cause.kql"
+        },
+        {
+         "name": "ControlType",
+         "value": "AnalyticsGrid"
+        },
+        {
+         "name": "SpecificChart",
+         "isOptional": true
+        },
+        {
+         "name": "PartTitle",
+         "value": "Quelle part part en revue humaine, et pourquoi ?"
+        },
+        {
+         "name": "PartSubTitle",
+         "value": "Répartition par cause"
+        },
+        {
+         "name": "Dimensions",
+         "isOptional": true
+        },
+        {
+         "name": "LegendOptions",
+         "isOptional": true
+        },
+        {
+         "name": "IsQueryContainTimeRange",
+         "value": false
+        }
+       ],
+       "settings": {}
+      }
+     },
+     {
+      "position": {
+       "x": 0,
+       "y": 8,
+       "colSpan": 4,
+       "rowSpan": 4
+      },
+      "metadata": {
+       "type": "Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart",
+       "inputs": [
+        {
+         "name": "resourceTypeMode",
+         "isOptional": true
+        },
+        {
+         "name": "ComponentId",
+         "value": "$WORKSPACE_ID"
+        },
+        {
+         "name": "Scope",
+         "value": {
+          "resourceIds": [
+           "$WORKSPACE_ID"
+          ]
+         }
+        },
+        {
+         "name": "PartId",
+         "isOptional": true
+        },
+        {
+         "name": "Version",
+         "value": "2.0"
+        },
+        {
+         "name": "TimeRange",
+         "value": "PT24H"
+        },
+        {
+         "name": "DashboardId",
+         "isOptional": true
+        },
+        {
+         "name": "DraftRequestParameters",
+         "isOptional": true
+        },
+        {
+         "name": "Query",
+         "value": "@kql:al-6-cout-dossier.kql"
+        },
+        {
+         "name": "ControlType",
+         "value": "AnalyticsGrid"
+        },
+        {
+         "name": "SpecificChart",
+         "isOptional": true
+        },
+        {
+         "name": "PartTitle",
+         "value": "Combien coûte un dossier ?"
+        },
+        {
+         "name": "PartSubTitle",
+         "value": "Moyenne en $ — alerte > 0,15 $ (objectif 0,15 €)"
+        },
+        {
+         "name": "Dimensions",
+         "isOptional": true
+        },
+        {
+         "name": "LegendOptions",
+         "isOptional": true
+        },
+        {
+         "name": "IsQueryContainTimeRange",
+         "value": false
+        }
+       ],
+       "settings": {}
+      }
+     },
+     {
+      "position": {
+       "x": 4,
+       "y": 8,
+       "colSpan": 4,
+       "rowSpan": 4
+      },
+      "metadata": {
+       "type": "Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart",
+       "inputs": [
+        {
+         "name": "resourceTypeMode",
+         "isOptional": true
+        },
+        {
+         "name": "ComponentId",
+         "value": "$WORKSPACE_ID"
+        },
+        {
+         "name": "Scope",
+         "value": {
+          "resourceIds": [
+           "$WORKSPACE_ID"
+          ]
+         }
+        },
+        {
+         "name": "PartId",
+         "isOptional": true
+        },
+        {
+         "name": "Version",
+         "value": "2.0"
+        },
+        {
+         "name": "TimeRange",
+         "value": "PT24H"
+        },
+        {
+         "name": "DashboardId",
+         "isOptional": true
+        },
+        {
+         "name": "DraftRequestParameters",
+         "isOptional": true
+        },
+        {
+         "name": "Query",
+         "value": "@kql:tuiles/cout-par-agent.kql"
+        },
+        {
+         "name": "ControlType",
+         "value": "AnalyticsGrid"
+        },
+        {
+         "name": "SpecificChart",
+         "isOptional": true
+        },
+        {
+         "name": "PartTitle",
+         "value": "Combien coûte un dossier ?"
+        },
+        {
+         "name": "PartSubTitle",
+         "value": "$ par agent et modèle"
+        },
+        {
+         "name": "Dimensions",
+         "isOptional": true
+        },
+        {
+         "name": "LegendOptions",
+         "isOptional": true
+        },
+        {
+         "name": "IsQueryContainTimeRange",
+         "value": false
+        }
+       ],
+       "settings": {}
+      }
+     },
+     {
+      "position": {
+       "x": 8,
+       "y": 8,
+       "colSpan": 4,
+       "rowSpan": 4
+      },
+      "metadata": {
+       "type": "Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart",
+       "inputs": [
+        {
+         "name": "resourceTypeMode",
+         "isOptional": true
+        },
+        {
+         "name": "ComponentId",
+         "value": "$WORKSPACE_ID"
+        },
+        {
+         "name": "Scope",
+         "value": {
+          "resourceIds": [
+           "$WORKSPACE_ID"
+          ]
+         }
+        },
+        {
+         "name": "PartId",
+         "isOptional": true
+        },
+        {
+         "name": "Version",
+         "value": "2.0"
+        },
+        {
+         "name": "TimeRange",
+         "value": "PT24H"
+        },
+        {
+         "name": "DashboardId",
+         "isOptional": true
+        },
+        {
+         "name": "DraftRequestParameters",
+         "isOptional": true
+        },
+        {
+         "name": "Query",
+         "value": "@kql:al-7-refus-garde-fous.kql"
+        },
+        {
+         "name": "ControlType",
+         "value": "AnalyticsGrid"
+        },
+        {
+         "name": "SpecificChart",
+         "isOptional": true
+        },
+        {
+         "name": "PartTitle",
+         "value": "Les garde-fous bloquent-ils plus que d'habitude ?"
+        },
+        {
+         "name": "PartSubTitle",
+         "value": "Taux 1 h / moyenne de référence — alerte > 2×"
+        },
+        {
+         "name": "Dimensions",
+         "isOptional": true
+        },
+        {
+         "name": "LegendOptions",
+         "isOptional": true
+        },
+        {
+         "name": "IsQueryContainTimeRange",
+         "value": false
+        }
+       ],
+       "settings": {}
+      }
+     },
+     {
+      "position": {
+       "x": 0,
+       "y": 12,
+       "colSpan": 4,
+       "rowSpan": 4
+      },
+      "metadata": {
+       "type": "Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart",
+       "inputs": [
+        {
+         "name": "resourceTypeMode",
+         "isOptional": true
+        },
+        {
+         "name": "ComponentId",
+         "value": "$WORKSPACE_ID"
+        },
+        {
+         "name": "Scope",
+         "value": {
+          "resourceIds": [
+           "$WORKSPACE_ID"
+          ]
+         }
+        },
+        {
+         "name": "PartId",
+         "isOptional": true
+        },
+        {
+         "name": "Version",
+         "value": "2.0"
+        },
+        {
+         "name": "TimeRange",
+         "value": "PT24H"
+        },
+        {
+         "name": "DashboardId",
+         "isOptional": true
+        },
+        {
+         "name": "DraftRequestParameters",
+         "isOptional": true
+        },
+        {
+         "name": "Query",
+         "value": "@kql:tuiles/sans-decision.kql"
+        },
+        {
+         "name": "ControlType",
+         "value": "AnalyticsGrid"
+        },
+        {
+         "name": "SpecificChart",
+         "isOptional": true
+        },
+        {
+         "name": "PartTitle",
+         "value": "Combien d'évaluations sans décision ?"
+        },
+        {
+         "name": "PartSubTitle",
+         "value": "En % — objectif < 1 %"
+        },
+        {
+         "name": "Dimensions",
+         "isOptional": true
+        },
+        {
+         "name": "LegendOptions",
+         "isOptional": true
+        },
+        {
+         "name": "IsQueryContainTimeRange",
+         "value": false
+        }
+       ],
+       "settings": {}
+      }
+     },
+     {
+      "position": {
+       "x": 4,
+       "y": 12,
+       "colSpan": 4,
+       "rowSpan": 4
+      },
+      "metadata": {
+       "type": "Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart",
+       "inputs": [
+        {
+         "name": "resourceTypeMode",
+         "isOptional": true
+        },
+        {
+         "name": "ComponentId",
+         "value": "$WORKSPACE_ID"
+        },
+        {
+         "name": "Scope",
+         "value": {
+          "resourceIds": [
+           "$WORKSPACE_ID"
+          ]
+         }
+        },
+        {
+         "name": "PartId",
+         "isOptional": true
+        },
+        {
+         "name": "Version",
+         "value": "2.0"
+        },
+        {
+         "name": "TimeRange",
+         "value": "PT24H"
+        },
+        {
+         "name": "DashboardId",
+         "isOptional": true
+        },
+        {
+         "name": "DraftRequestParameters",
+         "isOptional": true
+        },
+        {
+         "name": "Query",
+         "value": "@kql:al-2-llm-ko.kql"
+        },
+        {
+         "name": "ControlType",
+         "value": "AnalyticsGrid"
+        },
+        {
+         "name": "SpecificChart",
+         "isOptional": true
+        },
+        {
+         "name": "PartTitle",
+         "value": "Le modèle de langage est-il disponible ?"
+        },
+        {
+         "name": "PartSubTitle",
+         "value": "Appels en échec (llm_ko) — objectif 0"
+        },
+        {
+         "name": "Dimensions",
+         "isOptional": true
+        },
+        {
+         "name": "LegendOptions",
+         "isOptional": true
+        },
+        {
+         "name": "IsQueryContainTimeRange",
+         "value": false
+        }
+       ],
+       "settings": {}
+      }
+     },
+     {
+      "position": {
+       "x": 8,
+       "y": 12,
+       "colSpan": 4,
+       "rowSpan": 4
+      },
+      "metadata": {
+       "type": "Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart",
+       "inputs": [
+        {
+         "name": "resourceTypeMode",
+         "isOptional": true
+        },
+        {
+         "name": "ComponentId",
+         "value": "$WORKSPACE_ID"
+        },
+        {
+         "name": "Scope",
+         "value": {
+          "resourceIds": [
+           "$WORKSPACE_ID"
+          ]
+         }
+        },
+        {
+         "name": "PartId",
+         "isOptional": true
+        },
+        {
+         "name": "Version",
+         "value": "2.0"
+        },
+        {
+         "name": "TimeRange",
+         "value": "PT24H"
+        },
+        {
+         "name": "DashboardId",
+         "isOptional": true
+        },
+        {
+         "name": "DraftRequestParameters",
+         "isOptional": true
+        },
+        {
+         "name": "Query",
+         "value": "@kql:al-8-foundry-429.kql"
+        },
+        {
+         "name": "ControlType",
+         "value": "AnalyticsGrid"
+        },
+        {
+         "name": "SpecificChart",
+         "isOptional": true
+        },
+        {
+         "name": "PartTitle",
+         "value": "Le modèle de langage est-il disponible ?"
+        },
+        {
+         "name": "PartSubTitle",
+         "value": "Réponses 429 — objectif 0"
+        },
+        {
+         "name": "Dimensions",
+         "isOptional": true
+        },
+        {
+         "name": "LegendOptions",
+         "isOptional": true
+        },
+        {
+         "name": "IsQueryContainTimeRange",
+         "value": false
+        }
+       ],
+       "settings": {}
+      }
+     },
+     {
+      "position": {
+       "x": 0,
+       "y": 16,
+       "colSpan": 12,
+       "rowSpan": 2
+      },
+      "metadata": {
+       "type": "Extension/HubsExtension/PartType/MarkdownPart",
+       "inputs": [],
+       "settings": {
+        "content": {
+         "settings": {
+          "title": "Alertes en cours",
+          "subtitle": "Objectif : aucune",
+          "content": "[Ouvrir les alertes déclenchées](https://portal.azure.com/#view/Microsoft_Azure_Monitoring/AzureMonitoringBrowseBlade/~/alertsV2) — règles al-*-$ENV."
+         }
+        }
+       }
+      }
+     }
+    ]
+   }
+  ],
+  "metadata": {
+   "model": {
+    "timeRange": {
+     "value": {
+      "relative": {
+       "duration": 24,
+       "timeUnit": 1
+      }
+     },
+     "type": "MsPortalFx.Composition.Configuration.ValueTypes.TimeRange"
+    },
+    "refreshInterval": {
+     "value": {
+      "interval": 5,
+      "unit": "min"
+     }
+    }
+   }
+  }
+ }
+}

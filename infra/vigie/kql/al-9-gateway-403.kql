@@ -1,0 +1,5 @@
+// AL-9 : nombre de réponses 403 de la gateway. Source : AppRequests.
+AppRequests
+| where _ResourceId =~ "$APPI_ID"
+| where ResultCode == "403"
+| summarize valeur = count()

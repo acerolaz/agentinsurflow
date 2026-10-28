@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using AgentInsurFlow.UnderwritingAdmin.Api;
 using AgentInsurFlow.UnderwritingAdmin.Application;
 using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
+using AgentInsurFlow.UnderwritingAdmin.Infrastructure.PointsDeReprise;
 using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Traces;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.Identity.Web;
@@ -55,6 +56,8 @@ builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.Authenticatio
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("Gestionnaire", p => p.RequireRole("Gestionnaire"))
     .AddPolicy("Telemetrie", p => p.RequireRole("Telemetrie"))
+    // Points de reprise du cluster seul (D106)
+    .AddPolicy("PointsDeReprise", p => p.RequireRole("PointsDeReprise"))
     // Règle S3-21 pour /v1/traces : source locale sans X-Forwarded-For, ou rôle Telemetrie
     .AddPolicy("Otlp", p => p.AddRequirements(new SourceSansJetonOuTelemetrie()))
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
@@ -107,6 +110,12 @@ var connexionsTraces = new ConnexionsTraces(
     MotDePasse("PG_TRACES_READER_PASSWORD"));
 builder.Services.AjouterTraces(connexionsTraces);
 builder.Services.AddSingleton(TimeProvider.System);
+
+// Points de reprise LangGraph du cluster : schéma points_reprise, compte points_reprise ; migrations par `migrateur`.
+var connexionsPointsDeReprise = new ConnexionsPointsDeReprise(
+    connexions.Hote, connexions.Port, connexions.SuffixeBase, connexions.MotDePasseMigrateur,
+    MotDePasse("PG_POINTS_REPRISE_PASSWORD"));
+builder.Services.AjouterPointsDeReprise(connexionsPointsDeReprise);
 builder.Services.AddScoped<EnregistrerSpans>().AddScoped<LireTrace>();
 
 // Les spans de ce service rejoignent leur propre référentiel, par son /v1/traces en localhost.
@@ -152,6 +161,7 @@ if (builder.Configuration.GetValue<bool>("Migrations:AuDemarrage"))
 {
     await MigrationsDossiers.AppliquerAsync(connexions, TimeSpan.FromSeconds(60), CancellationToken.None);
     await MigrationsTraces.AppliquerAsync(connexionsTraces, TimeSpan.FromSeconds(60), CancellationToken.None);
+    await MigrationsPointsDeReprise.AppliquerAsync(connexionsPointsDeReprise, TimeSpan.FromSeconds(60), CancellationToken.None);
 }
 
 app.UseForwardedHeaders();
@@ -166,6 +176,7 @@ app.MapGet("/health", (IConfiguration cfg) =>
 app.MapContrats();
 app.MapEcritures();
 app.MapTraces();
+app.MapPointsDeReprise();
 app.MapOpenApi().AllowAnonymous(); // /openapi/v1.json
 
 await app.RunAsync();

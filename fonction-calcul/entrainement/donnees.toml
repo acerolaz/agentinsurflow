@@ -1,0 +1,14 @@
+# freMTPL2freq figé (C12) : le fichier est téléchargé tel quel, jamais commité (cache CI).
+# Vérifié le 28/10/2026 sur l'API OpenML (data/41214).
+[source]
+nom = "freMTPL2freq"
+url = "https://openml.org/data/v1/download/20649148/freMTPL2freq.arff"
+fichier = "freMTPL2freq.arff"
+openml_data_id = 41214
+version = "1"                 # version OpenML (version_label)
+sha256 = "a45363e056e2ea56408b38eeb9d4d04d7f6c6982eb7a14ed5e807c7c71807cdd"
+md5_openml = "f8875568bf0ca622929105197e2db613"  # md5_checksum publié par OpenML, concordant
+licence = "CC0"               # tel qu'affiché par OpenML
+origine = "CASdatasets (C. Dutang, A. Charpentier, 2018), https://github.com/dutangc/CASdatasets"
+# La description OpenML annonce 677 991 contrats ; le fichier en contient 678 013 (mesuré).
+lignes = 678013

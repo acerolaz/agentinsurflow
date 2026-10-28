@@ -81,7 +81,7 @@ jobs:
         with: { global-json-file: global.json }
       - name: Mots de passe PostgreSQL éphémères (générés à chaque run, jamais stockés)
         run: |
-          for v in MIGRATEUR WRITER READER DOSSIERS TRACES_WRITER TRACES_READER AGENT_STATE POSTGRES; do
+          for v in MIGRATEUR WRITER READER DOSSIERS TRACES_WRITER TRACES_READER POINTS_REPRISE POSTGRES; do
             mdp=$(openssl rand -hex 16); echo "::add-mask::$mdp"
             echo "PG_${v}_PASSWORD=$mdp" >> "$GITHUB_ENV"
           done
@@ -142,6 +142,94 @@ jobs:
           echo "Release $release · manifeste $manifeste"
         env:
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
+
+  modele:
+    # Porte du GLM de fréquence (C13) : ne travaille que si le modèle, ses données ou son code ont changé ;
+    # sinon les pas sont sautés et le job passe. Un échec ici bloque staging (voir ses needs).
+    needs: lint
+    runs-on: ubuntu-latest
+    env:
+      FREMTPL2_CACHE: /tmp/fremtpl2-cache
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Le modèle est-il touché ?
+        id: diff
+        run: |
+          base=${{ github.event.pull_request.base.sha || github.event.before }}
+          if git cat-file -e "$base^{commit}" 2>/dev/null; then
+            touches=$(git diff --name-only "$base" HEAD | grep -E "$DECLENCHEURS_MODELE" || true)
+          else
+            touches="base inconnue"
+          fi
+          echo "Fichiers du modèle modifiés : ${touches:-aucun}"
+          echo "actif=$([ -n "$touches" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+        env:
+          DECLENCHEURS_MODELE: '^(uv\.lock|fonction-calcul/pyproject\.toml|\.github/workflows/ci-cd\.yml)$|^fonction-calcul/(entrainement/|agentinsurflow_calcul/(domain/frequence\.py|domain/regions\.py|modeles/))'
+      - if: steps.diff.outputs.actif == 'true'
+        uses: astral-sh/setup-uv@v6
+        with: { version: "0.11.13", enable-cache: true }
+      - if: steps.diff.outputs.actif == 'true'
+        uses: actions/cache@v4 # freMTPL2 (SHA-256 vérifié au chargement) : téléchargé une fois par version des données
+        with:
+          path: ${{ env.FREMTPL2_CACHE }}
+          key: fremtpl2-${{ hashFiles('fonction-calcul/entrainement/donnees.toml') }}
+      - if: steps.diff.outputs.actif == 'true'
+        run: make install
+      - name: Tests de la Function, dont les tests lents (données réelles)
+        if: steps.diff.outputs.actif == 'true'
+        run: uv run pytest fonction-calcul/tests -m "lent or not lent" --no-cov
+      - name: Réentraîner (porte seuils.toml)
+        if: steps.diff.outputs.actif == 'true'
+        run: make modele
+      - name: L'artefact réentraîné est identique au commité (hors commit et date)
+        if: steps.diff.outputs.actif == 'true'
+        run: |
+          python3 - <<'PY'
+          import difflib, json, math, subprocess
+          from pathlib import Path
+          dossier = "fonction-calcul/agentinsurflow_calcul/modeles"
+          commite = subprocess.run(["git", "ls-tree", "--name-only", "HEAD", f"{dossier}/"],
+                                   capture_output=True, text=True, check=True).stdout.split()
+          commite = [f for f in commite if f.endswith(".json")]
+          assert len(commite) == 1, f"un seul artefact commité attendu : {commite}"
+          recent = max(Path(dossier).glob("*.json"), key=lambda p: p.stat().st_mtime)
+          # commit, date d'entraînement et version (nommée d'après la date) changent à chaque exécution
+          # écart BLAS macOS (commité) / Linux (CI) mesuré le 28/10 : ≤ 6e-5 relatif ; 1e-3 l'absorbe,
+          # un changement de données ou de code déplace les coefficients bien au-delà
+          def proche(a, b):
+              if isinstance(a, dict) and isinstance(b, dict):
+                  return a.keys() == b.keys() and all(proche(a[k], b[k]) for k in a)
+              if isinstance(a, list) and isinstance(b, list):
+                  return len(a) == len(b) and all(map(proche, a, b))
+              if isinstance(a, float) or isinstance(b, float):
+                  return (all(isinstance(x, (int, float)) for x in (a, b))
+                          and math.isclose(a, b, rel_tol=1e-3, abs_tol=1e-6))
+              return a == b
+          def charge(texte):
+              d = json.loads(texte)
+              for cle in ("commit", "entraine_le", "version"):
+                  d.pop(cle, None)
+              # fréquence observée par décile : quelques contrats changent de décile au moindre écart de
+              # prédiction (1,6e-3 relatif mesuré), elle n'est pas reproductible d'une machine à l'autre
+              for c in d.get("metriques", {}).get("calibration", []):
+                  c.pop("observee", None)
+              return d
+          avant = charge(subprocess.run(["git", "show", f"HEAD:{commite[0]}"], capture_output=True,
+                                        text=True, check=True).stdout)
+          apres = charge(recent.read_text("utf-8"))
+          if not proche(avant, apres):
+              lignes = [json.dumps(d, sort_keys=True, indent=2).splitlines() for d in (avant, apres)]
+              print("\n".join(difflib.unified_diff(*lignes, "commité", "réentraîné", lineterm="")))
+              raise SystemExit("réentraîné ≠ commité : commiter le nouvel artefact")
+          print(f"✔ {recent.name} identique à {commite[0]}")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.diff.outputs.actif == 'true'
+        with:
+          name: rapport-modele-${{ github.sha }}
+          path: rapport-modele.md
+          if-no-files-found: warn
 
   evals-pr:
     needs: [test, changements]
@@ -222,7 +310,9 @@ jobs:
           done
 
   staging:
-    needs: build
+    # modele sauté ou passé = feu vert ; modele en échec = pas de staging
+    needs: [build, modele]
+    if: ${{ !cancelled() && needs.build.result == 'success' && (needs.modele.result == 'success' || needs.modele.result == 'skipped') }}
     permissions: { contents: read, id-token: write }
     uses: ./.github/workflows/deploy.yml
     with: { environnement: staging, tag: "${{ github.sha }}" }

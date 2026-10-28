@@ -25,6 +25,7 @@ properties:
           - { name: Entra__McpClientId, value: "${MCP_API_CLIENT_ID}" } # azp des jetons OBO du MCP : seul appelant de PUT …/etat
           - { name: Entra__Audiences__cluster__0, value: api://agentinsurflow-cluster }
           - { name: Entra__Audiences__cluster__1, value: "${INSURFLOW_CLUSTER_CLIENT_ID}" }
+          - { name: Entra__ClusterClientId, value: "${INSURFLOW_CLUSTER_CLIENT_ID}" } # azp des jetons du cluster : seul appelant de /api/points-de-reprise/**
           - { name: Entra__Audiences__calcul__0, value: "${CALCUL_AUDIENCE}" }
           - { name: Entra__Audiences__calcul__1, value: "${CALCUL_API_CLIENT_ID}" }
           # LLM par la gateway (#70) : rôle LLM + audience api://<appId llm> (__0) et GUID (__1, jetons v2)

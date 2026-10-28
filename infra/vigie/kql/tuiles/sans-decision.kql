@@ -1,0 +1,6 @@
+// Tuile : pourcentage d'évaluations sans décision (statut_final ERREUR). Source : audit.evaluation (AppTraces).
+AppTraces
+| where _ResourceId =~ "$APPI_ID"
+| where Message == "audit.evaluation"
+| summarize n = count(), erreurs = countif(tostring(Properties.statut_final) == "ERREUR")
+| project pourcentage = iff(n == 0, real(null), 100.0 * erreurs / n)

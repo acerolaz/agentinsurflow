@@ -129,7 +129,9 @@ def test_sante(monkeypatch):
     monkeypatch.delenv("APP_VERSION", raising=False)
     r = appeler("sante", methode="GET")
     assert r.status_code == 200
-    assert json.loads(r.get_body()) == {
+    corps = json.loads(r.get_body())
+    assert corps.pop("modele_frequence").startswith("glm-freq-")
+    assert corps == {
         "version": "dev",
         "bareme": "bareme-2026.10-v1",
         "formule": "formule-2026.10-v1",
@@ -139,3 +141,65 @@ def test_sante(monkeypatch):
 def test_sante_version_depuis_l_environnement(monkeypatch):
     monkeypatch.setenv("APP_VERSION", "abc123")
     assert json.loads(appeler("sante", methode="GET").get_body())["version"] == "abc123"
+
+
+# --- /api/frequence (GLM, comparaison seulement) ---
+FAITS_FREQUENCE = {"crm": "0.90", "puissance_fiscale_cv": 5, "departement": "75"}
+
+
+def test_frequence_200():
+    r = appeler("frequence", FAITS_FREQUENCE)
+    assert r.status_code == 200
+    corps = json.loads(r.get_body())
+    assert set(corps) == {"version_modele", "frequence_annuelle", "variables"}
+    assert corps["version_modele"].startswith("glm-freq-")
+    assert 0 < corps["frequence_annuelle"] < 1
+    assert corps["variables"] == ["BonusMalus", "VehPower", "Region"]
+
+
+@pytest.mark.parametrize(
+    "corps",
+    [
+        _sans(FAITS_FREQUENCE, "crm"),
+        {**FAITS_FREQUENCE, "extra": 1},
+        {**FAITS_FREQUENCE, "crm": 0.9},
+        {**FAITS_FREQUENCE, "crm": "-0.9"},
+        {**FAITS_FREQUENCE, "puissance_fiscale_cv": "5"},
+        {**FAITS_FREQUENCE, "puissance_fiscale_cv": True},
+        [],
+    ],
+)
+def test_frequence_corps_invalide_400(corps):
+    r = appeler("frequence", corps)
+    assert r.status_code == 400
+    assert json.loads(r.get_body()) == {"code": "REQUETE_INVALIDE"}
+
+
+def test_frequence_json_invalide_400():
+    assert appeler("frequence", brut=b"{").status_code == 400
+
+
+def test_frequence_dom_422():
+    r = appeler("frequence", {**FAITS_FREQUENCE, "departement": "971"})
+    assert r.status_code == 422
+    assert json.loads(r.get_body()) == {"code": "DONNEE_HORS_MODELE", "champ": "departement"}
+
+
+def test_frequence_champ_null_422():
+    r = appeler("frequence", {**FAITS_FREQUENCE, "crm": None})
+    assert r.status_code == 422
+    assert json.loads(r.get_body())["champ"] == "crm"
+
+
+def test_frequence_journal_sans_profil(caplog):
+    caplog.set_level("INFO")
+    appeler("frequence", {"crm": "1.37", "puissance_fiscale_cv": 11, "departement": "2A"})
+    messages = [r.getMessage() for r in caplog.records]
+    assert any(m.startswith("glm.frequence version=glm-freq-") for m in messages)
+    texte = " ".join(messages)
+    assert "1.37" not in texte and "2A" not in texte and "crm" not in texte
+
+
+def test_sante_porte_la_version_du_modele():
+    corps = json.loads(appeler("sante", methode="GET").get_body())
+    assert corps["modele_frequence"].startswith("glm-freq-")

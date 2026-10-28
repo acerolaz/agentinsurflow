@@ -11,7 +11,7 @@ x-mots-de-passe: &mots-de-passe
   PG_DOSSIERS_PASSWORD: ${PG_DOSSIERS_PASSWORD:?PG_DOSSIERS_PASSWORD manquant (.env)}
   PG_TRACES_WRITER_PASSWORD: ${PG_TRACES_WRITER_PASSWORD:?PG_TRACES_WRITER_PASSWORD manquant (.env)}
   PG_TRACES_READER_PASSWORD: ${PG_TRACES_READER_PASSWORD:?PG_TRACES_READER_PASSWORD manquant (.env)}
-  PG_AGENT_STATE_PASSWORD: ${PG_AGENT_STATE_PASSWORD:?PG_AGENT_STATE_PASSWORD manquant (.env)}
+  PG_POINTS_REPRISE_PASSWORD: ${PG_POINTS_REPRISE_PASSWORD:?PG_POINTS_REPRISE_PASSWORD manquant (.env)}
 
 services:
   postgres:
@@ -96,7 +96,6 @@ services:
       INSURFLOW_PIECES_EXIGEES: ${INSURFLOW_PIECES_EXIGEES:-}
       INSURFLOW_BUDGET_S: ${INSURFLOW_BUDGET_S:-25}
       INSURFLOW_RESERVE_S: ${INSURFLOW_RESERVE_S:-2}
-      INSURFLOW_CHECKPOINT_DSN: ${INSURFLOW_CHECKPOINT_DSN:-} # vide : points de reprise en mémoire
       OTEL_SERVICE_NAME: agentic-cluster
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://underwriting-admin:8002/v1/traces
       APP_ENV: local
@@ -123,6 +122,7 @@ services:
       PG_DOSSIERS_PASSWORD: ${PG_DOSSIERS_PASSWORD}
       # base traces : écriture (traces_writer) et relecture (traces_reader) ; migrations par migrateur
       PG_TRACES_WRITER_PASSWORD: ${PG_TRACES_WRITER_PASSWORD}
+      PG_POINTS_REPRISE_PASSWORD: ${PG_POINTS_REPRISE_PASSWORD}
       PG_TRACES_READER_PASSWORD: ${PG_TRACES_READER_PASSWORD}
       # règle S3-21 : sans jeton, la loopback et le réseau interne du compose (sans X-Forwarded-For) ; Azure : loopback seule
       Otlp__SourcesSansJeton: 127.0.0.1/32,::1/128,172.29.250.0/24
@@ -151,6 +151,7 @@ services:
       Entra__McpClientId: ${MCP_API_CLIENT_ID:-}  # azp des jetons OBO du MCP (vide : PUT …/etat refusé)
       Entra__Audiences__cluster__0: ${CLUSTER_API_AUDIENCES:-api://agentinsurflow-cluster}
       Entra__Audiences__cluster__1: ${INSURFLOW_CLUSTER_CLIENT_ID:-}
+      Entra__ClusterClientId: ${INSURFLOW_CLUSTER_CLIENT_ID:-}  # azp des jetons du cluster (vide : /api/points-de-reprise refusé)
       Entra__Audiences__calcul__0: ${CALCUL_API_AUDIENCES:-api://agentinsurflow-calcul}
       Entra__Audiences__calcul__1: ${CALCUL_API_CLIENT_ID:-}
       Entra__Audiences__llm__0: ${LLM_API_AUDIENCES:-api://agentinsurflow-llm}

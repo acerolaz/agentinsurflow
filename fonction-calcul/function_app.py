@@ -7,6 +7,7 @@ requête ni de la réponse : ils contiennent les faits du dossier et les montant
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from collections.abc import Callable
@@ -17,6 +18,12 @@ import azure.functions as func
 
 from agentinsurflow_calcul.domain.bareme import VERSION_BAREME, evaluer
 from agentinsurflow_calcul.domain.formule import VERSION_FORMULE, calculer
+from agentinsurflow_calcul.domain.frequence import (
+    DonneeHorsModele,
+    ProfilFrequence,
+    charger_modele,
+    predire,
+)
 from agentinsurflow_calcul.domain.models import DonneeHorsBareme, FaitsPrime, FaitsRisque
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
@@ -37,6 +44,11 @@ _CHAMPS_PRIME: dict[str, type] = {
     "puissance_fiscale_cv": int,
     "type_usage": str,
     "crm": Decimal,
+}
+_CHAMPS_FREQUENCE: dict[str, type] = {
+    "crm": Decimal,
+    "puissance_fiscale_cv": int,
+    "departement": str,
 }
 _DECIMAL_STRICT = re.compile(r"[0-9]+(\.[0-9]+)?")  # ni exposant, espace, signe, NaN
 
@@ -77,13 +89,15 @@ def _executer(
     champs: dict[str, type],
     traiter: Callable[[dict[str, object]], dict[str, Any]],
 ) -> func.HttpResponse:
-    """400 si le corps n'est pas conforme, 422 si une donnée est hors barème, sinon 200."""
+    """400 corps non conforme, 422 donnée hors barème ou hors modèle, sinon 200."""
     try:
         return _json(200, traiter(_faits(req, champs)))
     except _RequeteInvalide:
         return _json(400, {"code": "REQUETE_INVALIDE"})
     except DonneeHorsBareme as e:
         return _json(422, {"code": "DONNEE_HORS_BAREME", "champ": e.champ})
+    except DonneeHorsModele as e:
+        return _json(422, {"code": "DONNEE_HORS_MODELE", "champ": e.champ})
 
 
 def _risque(faits: dict[str, object]) -> dict[str, Any]:
@@ -109,6 +123,17 @@ def _prime(faits: dict[str, object]) -> dict[str, Any]:
     }
 
 
+def _frequence(faits: dict[str, object]) -> dict[str, Any]:
+    p = predire(charger_modele(), ProfilFrequence(**faits))  # type: ignore[arg-type]
+    # version et fréquence seulement : jamais de donnée du profil
+    logging.info("glm.frequence version=%s frequence=%.4f", p.version_modele, p.frequence_annuelle)
+    return {
+        "version_modele": p.version_modele,
+        "frequence_annuelle": p.frequence_annuelle,
+        "variables": ["BonusMalus", "VehPower", "Region"],
+    }
+
+
 @app.function_name(name="evaluer")
 @app.route(route="evaluer", methods=["POST"])
 def evaluer_route(req: func.HttpRequest) -> func.HttpResponse:
@@ -121,6 +146,13 @@ def calculer_route(req: func.HttpRequest) -> func.HttpResponse:
     return _executer(req, _CHAMPS_PRIME, _prime)
 
 
+@app.function_name(name="frequence")
+@app.route(route="frequence", methods=["POST"])
+def frequence_route(req: func.HttpRequest) -> func.HttpResponse:
+    """Comparaison seulement : la fréquence n'entre ni dans la décision ni dans la prime."""
+    return _executer(req, _CHAMPS_FREQUENCE, _frequence)
+
+
 @app.function_name(name="sante")
 @app.route(route="sante", methods=["GET"])
 def sante_route(req: func.HttpRequest) -> func.HttpResponse:
@@ -130,5 +162,6 @@ def sante_route(req: func.HttpRequest) -> func.HttpResponse:
             "version": os.environ.get("APP_VERSION", "dev"),
             "bareme": VERSION_BAREME,
             "formule": VERSION_FORMULE,
+            "modele_frequence": charger_modele()["version"],
         },
     )

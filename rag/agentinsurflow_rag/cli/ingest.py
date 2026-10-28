@@ -199,7 +199,10 @@ def jeton_api(application: str, variable: str) -> str:
         capture_output=True, text=True, check=False,
     )  # fmt: skip
     if sortie.returncode != 0 or not sortie.stdout.strip():
-        raise ErreurEnvoi(f"aucun jeton pour api://{application} : {variable} ou « az login »")
+        raise ErreurEnvoi(
+            f"aucun jeton pour api://{application} : {variable} ou « az login »"
+            f" ({sortie.stderr.strip() or 'az sans message'})"
+        )
     return sortie.stdout.strip()
 
 

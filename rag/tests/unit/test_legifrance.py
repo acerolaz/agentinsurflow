@@ -319,3 +319,16 @@ def test_cumuler_les_rapports() -> None:
         "quasi_doublons": [{"doc_id": "A", "proche_de": "B", "score": 0.97}],
         "duree_s": 0.75,
     }
+
+
+def test_jeton_refuse_par_az_donne_sa_raison(monkeypatch: pytest.MonkeyPatch) -> None:
+    # production du 28/10 : l'assertion OIDC avait expiré, le message seul ne disait pas pourquoi
+    monkeypatch.delenv("JETON_RAG", raising=False)
+    refus = "AADSTS700024: Client assertion is not within its valid time range."
+    monkeypatch.setattr(
+        ingest.subprocess,
+        "run",
+        lambda *a, **k: subprocess.CompletedProcess(a, 1, stdout="", stderr=refus + "\n"),
+    )
+    with pytest.raises(ErreurEnvoi, match="AADSTS700024"):
+        ingest.jeton_api("agentinsurflow-rag", "JETON_RAG")

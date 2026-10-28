@@ -23,6 +23,8 @@ Service C# (.NET 10, Clean Architecture), port **8002**, **sa propre Container A
 | `POST /api/contrats/{numero_contrat}/sans-suite` | `Gestionnaire` | 204 (`SANS_SUITE`, après la 3e relance et avant toute décision, K8) · 404 · 409 `DOSSIER_DECIDE`, `RELANCES_NON_EPUISEES` |
 | `POST /v1/traces` | sans jeton depuis `Otlp:SourcesSansJeton` sans `X-Forwarded-For`, sinon `Telemetrie` | 200 (protobuf) · 400 `OTLP_INVALIDE` (protobuf illisible, identifiant de mauvaise longueur, horodatage > `long.MaxValue`) · 401 · 403 · 415 |
 | `GET /api/traces/{trace_id}` | `Gestionnaire` | 200 (spans dans l'ordre) · 400 `TRACE_ID_INVALIDE` · 404 `TRACE_INTROUVABLE` |
+| `GET /api/points-de-reprise/{thread_id}?ns&id` · `GET …/{thread_id}/liste?ns&avant&limite` | `PointsDeReprise` (cluster seul) | 200 (dernier point si `id` absent) · 404 · 401 · 403 |
+| `PUT /api/points-de-reprise/{thread_id}` · `PUT …/{thread_id}/ecritures` · `DELETE …/{thread_id}` | `PointsDeReprise` (cluster seul) | 204 · 400 · 401 · 403 |
 | `GET /health` | aucun | `statut`, `version` (SHA), `release` |
 | `GET /openapi/v1.json` | aucun | Document affiché dans la page Swagger unique de la gateway (pas de Swagger UI propre) |
 
@@ -39,7 +41,7 @@ Service C# (.NET 10, Clean Architecture), port **8002**, **sa propre Container A
 |---|---|
 | `AzureAd__TenantId`, `AzureAd__ClientId` | Inscription Entra `agentinsurflow-underwriting` |
 | `Entra__Audiences__underwriting__0` | Liste « a, b » des audiences acceptées (la même que la gateway) |
-| `PG_HOST`, `PG_PORT`, `PG_*_PASSWORD` | Comptes `migrateur`, `dossiers`, `traces_writer`, `traces_reader`. Hors Development, un mot de passe absent ou un `PG_PORT` invalide arrête le démarrage en nommant la clé |
+| `PG_HOST`, `PG_PORT`, `PG_*_PASSWORD` | Comptes `migrateur`, `dossiers`, `traces_writer`, `traces_reader`, `points_reprise` (schéma `points_reprise`, mot de passe `PG_POINTS_REPRISE_PASSWORD`, secret `pg-points-reprise-password` ; tables créées par la migration EF avec `migrateur`, stockage opaque des points de reprise du cluster, D105). Hors Development, un mot de passe absent ou un `PG_PORT` invalide arrête le démarrage en nommant la clé |
 | `Migrations__AuDemarrage` | `true` : migrations et seed au démarrage (compte `migrateur`, attente de PostgreSQL ≤ 60 s) |
 | `SEED_GESTIONNAIRE_A`, `SEED_GESTIONNAIRE_B`, `SEED_GESTIONNAIRE_C` | `oid` Entra des gestionnaires du seed (jamais commités) : `AIF-2026-000001` à `000003` et `000010` (refusé par le barème, R01) → A, `000004` à `000006` → B (A et B : comptes humains de la démo), `000007` à `000009` → C (identité de la CI, migration `SeedGestionnaireC`, facultative). Une valeur qui n'est pas un GUID fait échouer la migration du seed |
 | `Otlp__SourcesSansJeton` | CIDR acceptés sans jeton sur `/v1/traces` (défaut : boucle locale) ; un CIDR invalide fait échouer la première requête avec une erreur qui nomme la clé et la valeur |

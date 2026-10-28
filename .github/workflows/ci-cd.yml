@@ -165,7 +165,7 @@ jobs:
           echo "Fichiers du modèle modifiés : ${touches:-aucun}"
           echo "actif=$([ -n "$touches" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
         env:
-          DECLENCHEURS_MODELE: '^fonction-calcul/(entrainement/|agentinsurflow_calcul/(domain/frequence\.py|domain/regions\.py|modeles/))'
+          DECLENCHEURS_MODELE: '^(uv\.lock|fonction-calcul/pyproject\.toml|\.github/workflows/ci-cd\.yml)$|^fonction-calcul/(entrainement/|agentinsurflow_calcul/(domain/frequence\.py|domain/regions\.py|modeles/))'
       - if: steps.diff.outputs.actif == 'true'
         uses: astral-sh/setup-uv@v6
         with: { version: "0.11.13", enable-cache: true }
@@ -214,7 +214,7 @@ jobs:
         with:
           name: rapport-modele-${{ github.sha }}
           path: rapport-modele.md
-          if-no-files-found: error
+          if-no-files-found: warn
 
   evals-pr:
     needs: [test, changements]
@@ -297,7 +297,7 @@ jobs:
   staging:
     # modele sauté ou passé = feu vert ; modele en échec = pas de staging
     needs: [build, modele]
-    if: ${{ !cancelled() && needs.build.result == 'success' && needs.modele.result != 'failure' }}
+    if: ${{ !cancelled() && needs.build.result == 'success' && (needs.modele.result == 'success' || needs.modele.result == 'skipped') }}
     permissions: { contents: read, id-token: write }
     uses: ./.github/workflows/deploy.yml
     with: { environnement: staging, tag: "${{ github.sha }}" }

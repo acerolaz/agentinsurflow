@@ -8,6 +8,7 @@ using System.Threading.RateLimiting;
 using Azure;
 using Azure.Core;
 using Azure.Identity;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using AgentInsurFlow.Gateway.Api;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -202,10 +203,14 @@ builder.Services.AddOpenTelemetry()
             o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health");
             // client.address (S3-26) : l'instrumentation ne le pose pas ; lu en fin de requête, donc après
             // UseForwardedHeaders : l'IP réelle derrière l'envoy, pas celle de l'envoy
+            o.EnrichWithHttpRequest = (activite, _) => MasquageNumero.Appliquer(activite);
             o.EnrichWithHttpResponse = (activite, reponse) =>
+            {
                 activite.SetTag("client.address", reponse.HttpContext.Connection.RemoteIpAddress?.ToString());
+                MasquageNumero.Appliquer(activite); // le nom du span reçoit la route en fin de requête
+            };
         })
-        .AddHttpClientInstrumentation()
+        .AddHttpClientInstrumentation(o => o.EnrichWithHttpRequestMessage = (activite, _) => MasquageNumero.Appliquer(activite))
         .AddOtlpExporter(o =>
         {
             o.Endpoint = new Uri(otlp);
@@ -216,6 +221,12 @@ builder.Services.AddOpenTelemetry()
                 string.IsNullOrEmpty(audienceTelemetrie) ? null : $"{audienceTelemetrie}/.default")
             { InnerHandler = new HttpClientHandler() });
         }));
+
+// Export Azure Monitor (App Insights) en plus de l'OTLP, seulement si la chaîne de connexion est posée
+if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+{
+    builder.Services.AddOpenTelemetry().UseAzureMonitor();
+}
 
 var app = builder.Build();
 fournisseur = app.Services;

@@ -274,6 +274,48 @@ public sealed class TracesTests : IDisposable
     private static string Chemin(Activity a) => a.GetTagItem("url.path")?.ToString() ?? "";
 
     [Fact]
+    public void Masquer_remplace_le_numero() =>
+        Assert.Equal("/v1/souscriptions/{numero_contrat}/evaluation",
+            MasquageNumero.Masquer("/v1/souscriptions/AIF-2026-000001/evaluation"));
+
+    /// <summary>Requête dans une trace propre : les fournisseurs reçoivent aussi les spans des tests parallèles.</summary>
+    private async Task<Activity[]> SpansDeLaRequeteContrat(WebApplicationFactory<Program> usine)
+    {
+        var trace = ActivityTraceId.CreateRandom().ToString();
+        using var client = usine.CreateClient();
+        using var requete = new HttpRequestMessage(HttpMethod.Get, "/api/contrats/AIF-2026-000001");
+        requete.Headers.Add("traceparent", $"00-{trace}-0123456789abcdef-01");
+        using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
+        await Task.Delay(200, TestContext.Current.CancellationToken);
+        return [.. _activites.ToArray().Where(a => a.TraceId.ToString() == trace)];
+    }
+
+    [Fact]
+    public async Task Span_serveur_sans_numero_de_contrat()
+    {
+        var activites = await SpansDeLaRequeteContrat(_usine);
+        Assert.Contains(activites, a => a.Kind == ActivityKind.Server);
+        Assert.All(activites, a =>
+        {
+            Assert.DoesNotContain("AIF-", a.DisplayName);
+            Assert.All(a.TagObjects, t => Assert.DoesNotContain("AIF-", t.Value?.ToString() ?? ""));
+        });
+    }
+
+    [Fact]
+    public async Task Avec_chaine_app_insights_un_seul_span_serveur_par_requete()
+    {
+        using var usine = JetonsDeTest.Usine(b =>
+        {
+            b.UseSetting("APPLICATIONINSIGHTS_CONNECTION_STRING", "InstrumentationKey=00000000-0000-0000-0000-000000000000");
+            b.ConfigureTestServices(s => s.ConfigureOpenTelemetryTracerProvider(t => t.AddInMemoryExporter(_activites)));
+        });
+        var activites = await SpansDeLaRequeteContrat(usine);
+
+        Assert.Single(activites, a => a.Kind == ActivityKind.Server);
+    }
+
+    [Fact]
     public async Task OpenApi_declare_les_deux_routes_et_leurs_erreurs()
     {
         using var client = _usine.CreateClient();

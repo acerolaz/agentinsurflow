@@ -8,6 +8,7 @@ using AgentInsurFlow.UnderwritingAdmin.Api;
 using AgentInsurFlow.UnderwritingAdmin.Application;
 using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
 using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Traces;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.Identity.Web;
 using Microsoft.OpenApi;
 using OpenTelemetry.Exporter;
@@ -113,14 +114,25 @@ builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService(
         "agentinsurflow-underwriting", serviceVersion: builder.Configuration["APP_VERSION"] ?? "dev"))
     .WithTracing(t => t
-        .AddAspNetCoreInstrumentation(o => o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health")
-            && !ctx.Request.Path.StartsWithSegments("/v1/traces")) // pas de boucle : l'export lui-même n'est pas tracé
-        .AddHttpClientInstrumentation()
+        .AddAspNetCoreInstrumentation(o =>
+        {
+            o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health")
+                && !ctx.Request.Path.StartsWithSegments("/v1/traces"); // pas de boucle : l'export lui-même n'est pas tracé
+            o.EnrichWithHttpRequest = (activite, _) => MasquageNumero.Appliquer(activite);
+            o.EnrichWithHttpResponse = (activite, _) => MasquageNumero.Appliquer(activite); // nom du span = route, posé en fin de requête
+        })
+        .AddHttpClientInstrumentation(o => o.EnrichWithHttpRequestMessage = (activite, _) => MasquageNumero.Appliquer(activite))
         .AddOtlpExporter(o =>
         {
             o.Endpoint = new Uri(otlp);
             o.Protocol = OtlpExportProtocol.HttpProtobuf;
         }));
+
+// Export Azure Monitor (App Insights) en plus de l'OTLP, seulement si la chaîne de connexion est posée
+if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+{
+    builder.Services.AddOpenTelemetry().UseAzureMonitor();
+}
 
 var app = builder.Build();
 

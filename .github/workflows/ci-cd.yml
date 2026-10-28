@@ -210,6 +210,10 @@ jobs:
               d = json.loads(texte)
               for cle in ("commit", "entraine_le", "version"):
                   d.pop(cle, None)
+              # fréquence observée par décile : quelques contrats changent de décile au moindre écart de
+              # prédiction (1,6e-3 relatif mesuré), elle n'est pas reproductible d'une machine à l'autre
+              for c in d.get("metriques", {}).get("calibration", []):
+                  c.pop("observee", None)
               return d
           avant = charge(subprocess.run(["git", "show", f"HEAD:{commite[0]}"], capture_output=True,
                                         text=True, check=True).stdout)

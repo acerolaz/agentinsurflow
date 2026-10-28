@@ -17,7 +17,7 @@ On peut aussi passer par l'interface : Actions › **deploy** › *Run workflow*
 1. `deploy.yml` lit les révisions de la Container App et retient le **SHA de l'avant-dernière révision**, lu sur
    l'image de son conteneur `gateway`.
 2. Il crée une nouvelle révision depuis `infra/containerapp.yaml` avec les **images à ce SHA**
-   (`agentinsurflow-gateway` pour la principale, `agentinsurflow-underwriting` pour celle d'underwriting-admin, déployée avant, `agentinsurflow-mcp` pour la Container App du serveur MCP, `agentinsurflow-cluster` pour celle du cluster d'agents, déployée après le MCP et avant la gateway, `agentinsurflow-rag` pour celle de rag, déployée en dernier) ; l'image PostgreSQL annexe (`agentinsurflow-postgres:2`), les
+   (`agentinsurflow-gateway` pour la principale, `agentinsurflow-underwriting` pour celle d'underwriting-admin, `agentinsurflow-mcp` pour la Container App du serveur MCP, `agentinsurflow-cluster` pour celle du cluster d'agents, `agentinsurflow-rag` pour celle de rag ; les cinq sont lancées ensemble après la base annexe, #172) ; l'image PostgreSQL annexe (`agentinsurflow-postgres:3`), les
    variables et les secrets des Container Apps restent identiques.
 3. Le **test de fumée**, par la gateway, vérifie que `/health`, `/health/rag`, `/health/underwriting`, `/health/mcp`, `/health/calcul` et `/health/cluster` renvoient ce SHA et que
    `/api/reponses`, `/api/calcul/evaluer` et `/api/llm/v1/chat/completions` répondent 401 sans jeton.

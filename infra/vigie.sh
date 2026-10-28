@@ -112,6 +112,7 @@ echo "⑦ Tableau de bord vigie-$env"
 az extension add -n portal -y -o none
 # Modèle : chaque "@kql:<fichier>" devient le texte du .kql (identifiants substitués), puis $WORKSPACE_ID, $ENV, $LOCATION.
 tableau=$(mktemp "${TMPDIR:-/tmp}/vigie-tableau.XXXXXX")
+trap 'rm -f "$tableau" "$tableau.new"' EXIT
 cp "$dossier/dashboard.json" "$tableau"
 for ref in $(jq -r '.. | strings | select(startswith("@kql:"))' "$tableau" | sort -u); do
   q=$(<"$dossier/kql/${ref#@kql:}")

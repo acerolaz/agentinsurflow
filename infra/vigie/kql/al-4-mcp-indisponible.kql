@@ -1,0 +1,6 @@
+// AL-4 : nombre d'évaluations dont la cause est MCP_INDISPONIBLE. Source : audit.evaluation (AppTraces).
+AppTraces
+| where _ResourceId =~ "$APPI_ID"
+| where Message == "audit.evaluation"
+| where tostring(Properties.cause) == "MCP_INDISPONIBLE"
+| summarize valeur = count()

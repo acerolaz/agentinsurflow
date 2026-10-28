@@ -30,3 +30,6 @@ TestResults/
 
 # Instantanés Légifrance : seul le fichier final est versionné, jamais le temporaire
 data/raw/*.tmp
+
+# Rapport d'entraînement du GLM (jamais commité)
+rapport-modele.md

@@ -1,0 +1,5 @@
+// AL-1 : latence p95 d'un dossier en millisecondes. Source : audit.evaluation (AppTraces).
+AppTraces
+| where _ResourceId =~ "$APPI_ID"
+| where Message == "audit.evaluation"
+| summarize valeur = percentile(toint(Properties.duree_ms), 95)

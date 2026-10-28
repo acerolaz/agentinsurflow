@@ -1,0 +1,5 @@
+// Tuile : pourcentage de réussite du test de disponibilité /health. Source : AppAvailabilityResults.
+AppAvailabilityResults
+| where _ResourceId =~ "$APPI_ID"
+| summarize reussites = countif(Success == true), total = count()
+| project pourcentage = iff(total == 0, real(null), 100.0 * reussites / total)

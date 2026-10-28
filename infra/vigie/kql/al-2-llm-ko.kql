@@ -1,0 +1,6 @@
+// AL-2 : nombre d'appels LLM en échec (cause llm_ko). Source : audit.agent (AppTraces).
+AppTraces
+| where _ResourceId =~ "$APPI_ID"
+| where Message == "audit.agent"
+| where tostring(Properties.cause) == "llm_ko"
+| summarize valeur = count()

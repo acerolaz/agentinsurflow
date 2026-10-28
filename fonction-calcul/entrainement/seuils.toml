@@ -1,0 +1,5 @@
+# Porte de qualité du GLM de fréquence : seuil = mesure - marge, jamais inventé.
+d2_min = 0.016854
+d2_mesure = 0.021854
+mesure_le = "2026-10-28"
+commit = "64738752331a6862af870a684a581de97f86dcf7"

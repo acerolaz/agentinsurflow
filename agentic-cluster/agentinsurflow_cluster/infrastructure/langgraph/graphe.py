@@ -238,7 +238,7 @@ class ServiceEvaluation:
                 cause = "delai_depasse"
                 raise
             except ErreurOutil as e:
-                cause = e.args[0]
+                cause = e.args[0] if e.args else None
                 raise
             finally:  # une ligne par évaluation entrée dans la Saga (les refus plus haut : aucune)
                 await self._audit.evaluation(

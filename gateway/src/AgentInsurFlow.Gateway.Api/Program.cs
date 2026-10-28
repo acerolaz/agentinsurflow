@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.FileProviders;
 using OpenTelemetry.Exporter;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Yarp.ReverseProxy.Transforms;
@@ -223,6 +224,8 @@ builder.Services.AddOpenTelemetry()
 if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
 {
     // 100 % des traces : l'échantillonneur par défaut (5/s) écarterait aussi des spans de l'export vers le référentiel SQL (D-V2)
+    // journaux masqués avant l'export Azure Monitor (le processeur doit précéder UseAzureMonitor)
+    builder.Services.AddOpenTelemetry().WithLogging(l => l.AddProcessor(new MasquageNumero.ProcesseurJournaux()));
     builder.Services.AddOpenTelemetry().UseAzureMonitor(o => { o.SamplingRatio = 1; o.TracesPerSecond = null; });
     // UseAzureMonitor exporte aussi les journaux : « Request starting … /api/contrats/AIF-… » (Information) porte le numéro
     foreach (var categorie in new[] { "Microsoft", "System", "Yarp" })

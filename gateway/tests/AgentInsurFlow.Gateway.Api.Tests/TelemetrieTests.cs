@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Trace;
@@ -57,6 +58,9 @@ public sealed class TelemetrieTests(Backends backends) : IClassFixture<Backends>
                 s.ConfigureOpenTelemetryTracerProvider(t => t.AddProcessor(new Collecteur(activites)));
                 s.AddOpenTelemetry().WithLogging(l => l.AddProcessor(new CollecteurJournaux(journaux)));
             }));
+        // un avertissement d'une catégorie filtrée à Warning qui porte le numéro (ex. « Request failed » de YARP)
+        usine.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Yarp.ReverseProxy").Log(
+            LogLevel.Warning, default, "Échec du renvoi vers /api/contrats/AIF-2026-000001", null, (message, _) => message);
         using var client = usine.CreateClient();
         // trace propre à la requête : les fournisseurs reçoivent aussi les spans des tests parallèles
         var trace = ActivityTraceId.CreateRandom().ToString();
@@ -68,7 +72,6 @@ public sealed class TelemetrieTests(Backends backends) : IClassFixture<Backends>
         {
             await Task.Delay(50, TestContext.Current.CancellationToken);
         }
-        await Task.Delay(200, TestContext.Current.CancellationToken);
         lock (activites)
         lock (journaux)
         {
@@ -114,6 +117,7 @@ public sealed class TelemetrieTests(Backends backends) : IClassFixture<Backends>
     {
         var (_, journaux) = await Executer(AppInsights, "/api/contrats/AIF-2026-000001");
 
+        Assert.Contains(journaux, j => j.Contains("{numero_contrat}", StringComparison.Ordinal));
         Assert.All(journaux, j => Assert.DoesNotContain("AIF-", j));
     }
 }

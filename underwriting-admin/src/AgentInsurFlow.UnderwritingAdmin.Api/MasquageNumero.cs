@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using OpenTelemetry;
+using OpenTelemetry.Logs;
 
 namespace AgentInsurFlow.UnderwritingAdmin.Api;
 
@@ -36,5 +37,30 @@ public static partial class MasquageNumero
     public sealed class Processeur : BaseProcessor<Activity>
     {
         public override void OnEnd(Activity data) => Appliquer(data);
+    }
+
+    /// <summary>
+    /// Masque chaque journal exporté (message, corps, valeurs texte des attributs) : les avertissements et erreurs
+    /// de Kestrel ou de YARP citent parfois le chemin. À ajouter dans <c>WithLogging</c>, avant <c>UseAzureMonitor</c>.
+    /// </summary>
+    public sealed class ProcesseurJournaux : BaseProcessor<LogRecord>
+    {
+        public override void OnEnd(LogRecord data)
+        {
+            if (data.FormattedMessage is { } message)
+            {
+                data.FormattedMessage = Masquer(message);
+            }
+            if (data.Body is { } corps)
+            {
+                data.Body = Masquer(corps);
+            }
+            if (data.Attributes is { } attributs)
+            {
+                data.Attributes = [.. attributs.Select(a => a.Value is string valeur
+                    ? new KeyValuePair<string, object?>(a.Key, Masquer(valeur))
+                    : a)];
+            }
+        }
     }
 }

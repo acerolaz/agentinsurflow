@@ -107,7 +107,6 @@ def configurer_telemetrie(version: str) -> None:
         return
     fournisseur = TracerProvider(resource=ressource)
     if otlp:
-        # ponytail: une perte de spans (collecteur en panne) ne bloque jamais une réponse
         fournisseur.add_span_processor(BatchSpanProcessor(creer_exportateur()))
     trace.set_tracer_provider(fournisseur)
 

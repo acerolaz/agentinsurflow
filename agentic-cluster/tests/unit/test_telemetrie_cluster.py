@@ -152,8 +152,7 @@ def test_app_insights_seul(
     monkeypatch: pytest.MonkeyPatch, appels_azure: list[dict[str, Any]]
 ) -> None:
     monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", _CHAINE)
-    monkeypatch.setenv("OTEL_TRACES_SAMPLER", "")  # isole : restauré à la fin du test
-    monkeypatch.delenv("OTEL_TRACES_SAMPLER")
+    monkeypatch.delenv("OTEL_TRACES_SAMPLER", raising=False)
     configurer_telemetrie("t")
     assert os.environ["OTEL_TRACES_SAMPLER"] == "parentbased_always_on"
     kw = appels_azure[0]

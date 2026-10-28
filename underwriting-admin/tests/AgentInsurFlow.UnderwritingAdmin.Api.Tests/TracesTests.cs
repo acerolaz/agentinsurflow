@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Proto.Collector.Trace.V1;
@@ -307,6 +308,9 @@ public sealed class TracesTests : IDisposable
                 s.AddOpenTelemetry().WithLogging(l => l.AddProcessor(new CollecteurJournaux(journaux)));
             });
         });
+        // un avertissement d'une catégorie filtrée à Warning qui porte le numéro (ex. « Request failed » de YARP)
+        usine.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Yarp.ReverseProxy").Log(
+            LogLevel.Warning, default, "Échec du renvoi vers /api/contrats/AIF-2026-000001", null, (message, _) => message);
         using var client = usine.CreateClient();
         using var requete = new HttpRequestMessage(HttpMethod.Get, chemin);
         requete.Headers.Add("traceparent", $"00-{trace}-0123456789abcdef-01");
@@ -316,7 +320,6 @@ public sealed class TracesTests : IDisposable
         {
             await Task.Delay(50, TestContext.Current.CancellationToken);
         }
-        await Task.Delay(200, TestContext.Current.CancellationToken);
         lock (journaux)
         {
             return ([.. activites.ToArray().Where(a => a.TraceId.ToString() == trace)], [.. journaux]);
@@ -360,6 +363,7 @@ public sealed class TracesTests : IDisposable
     {
         var (_, journaux) = await Executer(AppInsights, "/api/contrats/AIF-2026-000001");
 
+        Assert.Contains(journaux, j => j.Contains("{numero_contrat}", StringComparison.Ordinal));
         Assert.All(journaux, j => Assert.DoesNotContain("AIF-", j));
     }
 

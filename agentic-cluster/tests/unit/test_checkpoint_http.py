@@ -46,6 +46,18 @@ class FauxUnderwriting:
             self.ecritures = {k: v for k, v in self.ecritures.items() if k[0] != chemin}
             return httpx.Response(204)
         if requete.method == "PUT" and chemin.endswith("/ecritures"):
+            if not (
+                corps.get("checkpoint_id")
+                and corps.get("task_id") is not None
+                and isinstance(corps.get("ecritures"), list)
+                and all(
+                    e.get("canal") is not None
+                    and e.get("type") is not None
+                    and e.get("valeur") is not None
+                    for e in corps["ecritures"]
+                )
+            ):
+                return httpx.Response(400, json={"code": "CORPS_INVALIDE"})
             fil = chemin.removesuffix("/ecritures")
             tas = self.ecritures.setdefault((fil, corps["ns"], corps["checkpoint_id"]), {})
             for e in corps["ecritures"]:
@@ -55,6 +67,9 @@ class FauxUnderwriting:
                 tas[cle] = {"task_id": corps["task_id"], "task_path": corps["task_path"], **e}
             return httpx.Response(204)
         if requete.method == "PUT":
+            champs = ("type", "checkpoint", "type_metadata", "metadata")
+            if not (corps.get("checkpoint_id") and all(corps.get(k) is not None for k in champs)):
+                return httpx.Response(400, json={"code": "CORPS_INVALIDE"})
             self.points[(chemin, corps["ns"], corps["checkpoint_id"])] = corps
             return httpx.Response(204)
         if chemin.endswith("/liste"):
@@ -328,3 +343,57 @@ async def test_configuration_http_complete_donne_le_saver_http(
     async with checkpointer(_config(**_AZURE)) as saver:
         assert isinstance(saver, CheckpointerHttp)
         assert str(saver.client.base_url).rstrip("/") == "http://gateway"
+
+
+def _repond(statut: int, corps: dict[str, Any] | None = None) -> CheckpointerHttp:
+    def h(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(statut, json=corps if corps is not None else {})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(h), base_url="http://g")
+    return CheckpointerHttp(client, lambda: "j")
+
+
+async def test_404_de_la_gateway_leve_une_erreur_seul_le_code_metier_rend_none() -> None:
+    saver = _repond(404, {"title": "route absente"})
+    with pytest.raises(httpx.HTTPStatusError):
+        await saver.aget_tuple(_cfg())
+    with pytest.raises(httpx.HTTPStatusError):
+        await _ecrire(saver, "a", 1, _cfg())
+    with pytest.raises(httpx.HTTPStatusError):
+        _ = [t async for t in saver.alist(_cfg())]
+    with pytest.raises(httpx.HTTPStatusError):
+        await saver.aput_writes(_cfg(cid="x"), [("c", 1)], "t")
+    metier = _repond(404, {"code": "POINT_DE_REPRISE_INTROUVABLE"})
+    assert await metier.aget_tuple(_cfg()) is None
+    with pytest.raises(httpx.HTTPStatusError):  # le code métier n'est toléré qu'en lecture
+        await _ecrire(metier, "a", 1, _cfg())
+
+
+async def test_deux_espaces_de_noms_dans_le_meme_fil() -> None:
+    saver = _saver(FauxUnderwriting())
+    racine = await _ecrire(saver, "racine", 1, _cfg())
+    enfant = await _ecrire(saver, "enfant", 1, _cfg(ns="enfant:1"))
+    await saver.aput_writes(racine, [("c", "r")], "t-r")
+    await saver.aput_writes(enfant, [("c", "e")], "t-e")
+
+    t_racine = await saver.aget_tuple(_cfg())
+    t_enfant = await saver.aget_tuple(_cfg(ns="enfant:1"))
+    assert t_racine is not None and t_enfant is not None
+    assert t_racine.checkpoint["channel_values"]["etat"] == {"valeur": "racine"}
+    assert t_enfant.checkpoint["channel_values"]["etat"] == {"valeur": "enfant"}
+    assert t_racine.pending_writes == [("t-r", "c", "r")]
+    assert t_enfant.pending_writes == [("t-e", "c", "e")]
+    assert t_enfant.config["configurable"]["checkpoint_ns"] == "enfant:1"
+
+    seul = [t async for t in saver.alist(_cfg(ns="enfant:1"))]
+    assert [t.config["configurable"]["checkpoint_ns"] for t in seul] == ["enfant:1"]
+    tous = [t async for t in saver.alist({"configurable": {"thread_id": "AIF-1"}})]
+    assert {t.config["configurable"]["checkpoint_ns"] for t in tous} == {"", "enfant:1"}
+
+
+async def test_le_faux_refuse_un_corps_incomplet() -> None:
+    saver = _saver(FauxUnderwriting())
+    with pytest.raises(httpx.HTTPStatusError):
+        await saver._appeler("PUT", "AIF-1", json={"ns": "", "checkpoint_id": "x"})
+    with pytest.raises(httpx.HTTPStatusError):
+        await saver._appeler("PUT", "AIF-1/ecritures", json={"ns": "", "checkpoint_id": "x"})

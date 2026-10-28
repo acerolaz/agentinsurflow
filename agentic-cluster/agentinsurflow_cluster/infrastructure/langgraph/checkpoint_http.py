@@ -32,11 +32,23 @@ from langgraph.checkpoint.base import (
 RACINE = "/api/points-de-reprise/"
 
 
+def _config(fil: str, ns: str, checkpoint_id: str) -> RunnableConfig:
+    return {"configurable": {"thread_id": fil, "checkpoint_ns": ns, "checkpoint_id": checkpoint_id}}
+
+
+def _point_introuvable(reponse: httpx.Response) -> bool:
+    """404 d'underwriting-admin (``code``), pas celui d'une gateway ou d'une route absente."""
+    try:
+        return bool(reponse.json().get("code") == "POINT_DE_REPRISE_INTROUVABLE")
+    except (ValueError, AttributeError):
+        return False
+
+
 def _b64(octets: bytes) -> str:
     return base64.b64encode(octets).decode("ascii")
 
 
-class CheckpointerHttp(BaseCheckpointSaver[str]):
+class CheckpointerHttp(BaseCheckpointSaver[int]):
     """``jeton`` est appelé (dans un thread) avant chaque requête ; le cache est celui du SDK."""
 
     def __init__(self, client: httpx.AsyncClient, jeton: Callable[[], str]) -> None:
@@ -44,7 +56,9 @@ class CheckpointerHttp(BaseCheckpointSaver[str]):
         self.client = client
         self.jeton = jeton
 
-    async def _appeler(self, methode: str, chemin: str, **kw: Any) -> httpx.Response:
+    async def _appeler(
+        self, methode: str, chemin: str, *, accepte_404: bool = False, **kw: Any
+    ) -> httpx.Response:
         jeton = await asyncio.to_thread(self.jeton)
         reponse = await self.client.request(
             methode,
@@ -52,8 +66,9 @@ class CheckpointerHttp(BaseCheckpointSaver[str]):
             headers={"Authorization": f"Bearer {jeton}"},
             **kw,
         )
-        if reponse.status_code != 404:  # seul 404 a un sens (point absent) ; le reste remonte
-            reponse.raise_for_status()
+        if accepte_404 and reponse.status_code == 404 and _point_introuvable(reponse):
+            return reponse
+        reponse.raise_for_status()  # tout le reste remonte, y compris un 404 de la gateway
         return reponse
 
     def _tuple(self, fil: str, p: dict[str, Any]) -> CheckpointTuple:
@@ -66,26 +81,10 @@ class CheckpointerHttp(BaseCheckpointSaver[str]):
             key=lambda e: writes_sort_key(e["task_path"], e["task_id"], e["idx"]),
         )
         return CheckpointTuple(
-            config={
-                "configurable": {
-                    "thread_id": fil,
-                    "checkpoint_ns": p["ns"],
-                    "checkpoint_id": p["checkpoint_id"],
-                }
-            },
+            config=_config(fil, p["ns"], p["checkpoint_id"]),
             checkpoint=checkpoint,
             metadata=metadata,
-            parent_config=(
-                {
-                    "configurable": {
-                        "thread_id": fil,
-                        "checkpoint_ns": p["ns"],
-                        "checkpoint_id": p["parent_id"],
-                    }
-                }
-                if p.get("parent_id")
-                else None
-            ),
+            parent_config=_config(fil, p["ns"], p["parent_id"]) if p.get("parent_id") else None,
             pending_writes=[
                 (
                     e["task_id"],
@@ -102,7 +101,7 @@ class CheckpointerHttp(BaseCheckpointSaver[str]):
         params = {"ns": c.get("checkpoint_ns", "")}
         if c.get("checkpoint_id"):
             params["id"] = c["checkpoint_id"]
-        reponse = await self._appeler("GET", quote(fil, safe=""), params=params)
+        reponse = await self._appeler("GET", quote(fil, safe=""), params=params, accepte_404=True)
         return None if reponse.status_code == 404 else self._tuple(fil, reponse.json())
 
     async def alist(
@@ -164,13 +163,7 @@ class CheckpointerHttp(BaseCheckpointSaver[str]):
                 "metadata": _b64(octets_meta),
             },
         )
-        return {
-            "configurable": {
-                "thread_id": fil,
-                "checkpoint_ns": ns,
-                "checkpoint_id": checkpoint["id"],
-            }
-        }
+        return _config(fil, ns, checkpoint["id"])
 
     async def aput_writes(
         self,

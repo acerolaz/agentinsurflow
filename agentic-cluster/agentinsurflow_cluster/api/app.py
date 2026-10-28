@@ -76,7 +76,7 @@ async def _assembler(
         budget_global_s=budget_global_s,
         reserve_s=float(os.environ.get("INSURFLOW_RESERVE_S") or 2),
     )
-    async with checkpointer(cfg) as saver:
+    async with checkpointer(cfg, budget_global_s) as saver:
         yield ServiceEvaluation(deps, saver)
 
 

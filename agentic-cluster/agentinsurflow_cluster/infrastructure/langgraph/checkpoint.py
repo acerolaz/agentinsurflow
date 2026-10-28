@@ -22,12 +22,10 @@ from .checkpoint_http import CheckpointerHttp
 
 journal = logging.getLogger(__name__)
 ENVIRONNEMENTS_AZURE = ("staging", "production")
-# ponytail: délai d'un appel gateway ; à ajuster avec la mesure de la Task 5
-DELAI_S = 30
 
 
 @asynccontextmanager
-async def checkpointer(cfg: ConfigCluster | None = None) -> AsyncIterator[Any]:
+async def checkpointer(cfg: ConfigCluster | None = None, delai_s: float = 25) -> AsyncIterator[Any]:
     cfg = cfg or ConfigCluster()
     if cfg.telemetrie_audience and cfg.azure_tenant_id and cfg.insurflow_cluster_client_id:
         assertion = source_assertion(cfg)
@@ -36,8 +34,13 @@ async def checkpointer(cfg: ConfigCluster | None = None) -> AsyncIterator[Any]:
                 cfg.azure_tenant_id, cfg.insurflow_cluster_client_id, assertion
             )
             portee = f"{cfg.telemetrie_audience}/.default"
-            async with httpx.AsyncClient(base_url=cfg.gateway_url, timeout=DELAI_S) as client:
-                yield CheckpointerHttp(client, lambda: credential.get_token(portee).token)
+            # ponytail: un appel ne dépasse jamais le budget global d'une évaluation (garde) ;
+            # à confirmer par la mesure de la Task 5
+            try:
+                async with httpx.AsyncClient(base_url=cfg.gateway_url, timeout=delai_s) as client:
+                    yield CheckpointerHttp(client, lambda: credential.get_token(portee).token)
+            finally:
+                credential.close()
             return
     env = os.environ.get("APP_ENV", "")
     if env in ENVIRONNEMENTS_AZURE:

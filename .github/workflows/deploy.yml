@@ -478,6 +478,14 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with: { version: "0.11.13", enable-cache: true }
 
+      # nouvelle assertion OIDC : celle du premier login expire en quelques minutes, or le jeton api://agentinsurflow-rag
+      # n'est demandé qu'ici, après ≈ 13 min de mises à jour (échec de la production du 28/10)
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
       - name: Corpus — base annexe éphémère, chaque révision (déploiement ou rollback) repart vide
         # dernier instantané versionné puis documents rédigés (#98), par la gateway ; jeton az de la CI (rôle Ingestion)
         env:

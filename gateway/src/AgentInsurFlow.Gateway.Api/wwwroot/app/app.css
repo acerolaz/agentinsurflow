@@ -91,9 +91,9 @@ button[aria-pressed="true"] { border-color: var(--accent); }
 
 .marque { font-weight: 700; margin-right: 12px; }
 
-[role="tablist"] { display: flex; gap: 4px; flex: 1; }
+[role="tablist"], .entete nav { display: flex; gap: 4px; flex: 1; }
 
-[role="tab"] {
+[role="tab"], .entete nav a {
   padding: 8px 14px;
   border-radius: 6px 6px 0 0;
   text-decoration: none;
@@ -101,7 +101,7 @@ button[aria-pressed="true"] { border-color: var(--accent); }
   border-bottom: 3px solid transparent;
 }
 
-[role="tab"][aria-selected="true"] {
+[role="tab"][aria-selected="true"], .entete nav a[aria-current="page"] {
   color: var(--texte);
   border-bottom-color: var(--accent);
   font-weight: 600;
@@ -293,6 +293,31 @@ dd ul { margin: 0; padding-left: 18px; }
 }
 
 .contrat-imprimable .signature { margin-top: 3em; }
+
+/* Visionneuse du contrat : cadre défilant, page à largeur fixe (A4 ≈ 794 px) ; défilement horizontal si l'écran est plus étroit. */
+.visionneuse {
+  max-height: 70vh;
+  overflow: auto;
+  margin-bottom: 12px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: 10px;
+}
+
+.visionneuse .contrat-imprimable {
+  width: 794px;
+  margin: 0 auto;
+  padding: 32px 40px;
+  background: #fff;
+  color: #000;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+@media print {
+  .visionneuse { max-height: none; overflow: visible; padding: 0; border: 0; background: none; }
+  .visionneuse .contrat-imprimable { width: auto; padding: 0; box-shadow: none; }
+}
 
 @media (max-width: 600px) {
   .frise { grid-template-columns: 1fr; }

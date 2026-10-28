@@ -23,7 +23,9 @@ from ..otel.telemetrie import echec, tracer
 
 journal = logging.getLogger(__name__)
 
-DELAI = 10.0
+# Démarrage à froid de la Function (Flex Consumption) : plus de 10 s observées en staging (27/10) ;
+# une instance toujours prête (infra/calcul.sh ①b) le supprime, ce délai le tolère sinon.
+DELAI = 20.0
 
 
 class ConfigCalcul(BaseSettings):

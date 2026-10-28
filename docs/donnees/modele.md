@@ -146,7 +146,7 @@ erDiagram
 ## 6. Installation pas à pas
 
 ```bash
-make up          # postgres annexe (crée les 3 bases et les comptes), rag, underwriting-admin, gateway
+make up          # postgres annexe (crée les 3 bases et les comptes), rag, underwriting-admin, serveur MCP, cluster d'agents, calcul, gateway
 make migrate     # base vecteurs (Alembic) ; dossiers et traces migrent au démarrage d'underwriting-admin
 make ingest URL=http://localhost:8000 INSTANTANE=data/raw/code-assurances-2026-10-20.json
 ```

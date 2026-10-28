@@ -13,8 +13,8 @@ LIGNES = {  # id: (kql, frequence, fenetre, operateur, seuil, gravite) — spec 
     "AL-3": ("al-3-garde-fous-chargement.kql", "5m", "5m", ">", "180", "1"),
     "AL-4": ("al-4-mcp-indisponible.kql", "5m", "5m", ">=", "1", "1"),
     "AL-5": ("al-5-revue-humaine.kql", "1h", "2h", ">", "30", "2"),
-    "AL-6": ("al-6-cout-dossier.kql", "1h", "1d", ">", "0.15", "2"),
-    "AL-7": ("al-7-refus-garde-fous.kql", "1h", "2d", ">", "2", "2"),
+    "AL-6": ("al-6-cout-dossier.kql", "1h", "24h", ">", "0.15", "2"),
+    "AL-7": ("al-7-refus-garde-fous.kql", "1h", "48h", ">", "2", "2"),
     "AL-8": ("al-8-foundry-429.kql", "1h", "1h", ">=", "env:SEUIL_AL8", "2"),
     "AL-9": ("al-9-gateway-403.kql", "1h", "1h", ">=", "env:SEUIL_AL9", "2"),
 }

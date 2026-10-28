@@ -142,3 +142,10 @@ def test_noms_stables_entre_deux_lancements(tmp_path):
 def test_chaine_jamais_affichee(tmp_path):
     r, _ = _vigie(tmp_path, **COMPLET)
     assert "chaine-factice" not in r.stdout + r.stderr
+
+
+def test_prix_tolere_espaces_et_point_virgule_final(tmp_path):
+    prix = " gpt-x=1.5/6; gpt-y = 0.2/0.8 ;"
+    _, lignes = _vigie(tmp_path, PRIX_USD_MILLION=prix, SEUIL_AL8="1", SEUIL_AL9="1")
+    al6 = next(li for li in _regles(lignes) if "-n al-6-staging " in li)
+    assert '"gpt-x",1.5,6,"gpt-y",0.2,0.8,' in al6 and '," ' not in al6

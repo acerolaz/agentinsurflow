@@ -3,6 +3,7 @@
 # puis Action Group e-mail, règles d'alerte AL-1 → AL-9 (infra/vigie/alertes.tsv) et test de disponibilité (S2).
 # `make vigie ENV=staging|production` (lit le .env via le Makefile). Idempotent : tout est un PUT ARM.
 # Lancé À LA MAIN par Acerola, jamais par un agent ni la CI : écritures Azure.
+# ALERTE_EMAIL est exigé dès le départ, y compris pour les seules étapes App Insights (S1).
 # La chaîne de connexion ne s'affiche jamais (ni `set -x`, ni echo).
 # SC2016 : les marqueurs $APPI_ID… des .kql sont littéraux, substitués sans envsubst (absent du Mac).
 # shellcheck disable=SC2016
@@ -61,6 +62,8 @@ PRIX_KQL=""
 if [ -n "${PRIX_USD_MILLION:-}" ]; then
   IFS=';' read -r -a prix <<<"$PRIX_USD_MILLION"
   for p in "${prix[@]}"; do
+    p=${p//[[:space:]]/}
+    [ -n "$p" ] || continue
     tarif=${p#*=}
     PRIX_KQL="$PRIX_KQL\"${p%%=*}\",${tarif%%/*},${tarif#*/},"
   done
@@ -99,7 +102,10 @@ gateway="APP_$suffixe"
 GATEWAY_FQDN=$(az containerapp show -n "${!gateway}" -g "$RG" \
   --query properties.configuration.ingress.fqdn -o tsv)
 az monitor app-insights web-test create -n "web-sante-$env" -g "$RG" -l "$AZURE_LOCATION" \
-  --kind standard --request-url "https://$GATEWAY_FQDN/health" --frequency 300 \
+  --web-test-kind standard --defined-web-test-name "web-sante-$env" --synthetic-monitor-id "web-sante-$env" \
+  --request-url "https://$GATEWAY_FQDN/health" --http-verb GET --expected-status-code 200 \
+  --frequency 300 --timeout 30 --enabled true \
+  --locations Id=emea-fr-pra-edge --locations Id=emea-nl-ams-azr --locations Id=emea-gb-db3-azr \
   --tags "hidden-link:$APPI_ID=Resource" -o none
 
 echo "⑦ ✔ $appi branché sur les 5 apps et la Function ($env). Chaîne de connexion non affichée."

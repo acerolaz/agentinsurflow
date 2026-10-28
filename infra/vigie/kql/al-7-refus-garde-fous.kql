@@ -1,4 +1,4 @@
-// AL-7 : taux de refus des garde-fous sur 1 h divisé par le taux de référence (reste de la fenêtre de 2 j, heure courante exclue, plancher d'un refus), nul sous 10 évaluations dans l'heure. Source : audit.evaluation (AppTraces).
+// AL-7 : taux de refus des garde-fous sur 1 h divisé par le taux de référence (reste de la fenêtre de 48 h, heure courante exclue, plancher d'un refus), nul sous 10 évaluations dans l'heure. Source : audit.evaluation (AppTraces).
 AppTraces
 | where _ResourceId =~ "$APPI_ID"
 | where Message == "audit.evaluation"

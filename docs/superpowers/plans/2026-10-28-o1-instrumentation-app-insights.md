@@ -69,14 +69,19 @@ def test_sans_rien_aucun_export(monkeypatch, espion_azure):
     configurer_telemetrie("t")
     assert espion_azure.appels == []
 
+
 def test_otlp_seul_garde_le_comportement_actuel(monkeypatch, espion_azure):
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://x/v1/traces")
     configurer_telemetrie("t")
     assert espion_azure.appels == []
     # le TracerProvider global porte un BatchSpanProcessor(OTLPSpanExporter)
 
+
 def test_app_insights_seul(monkeypatch, espion_azure):
-    monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "InstrumentationKey=00000000-0000-0000-0000-000000000000")
+    monkeypatch.setenv(
+        "APPLICATIONINSIGHTS_CONNECTION_STRING",
+        "InstrumentationKey=00000000-0000-0000-0000-000000000000",
+    )
     configurer_telemetrie("t")
     kw = espion_azure.appels[0]
     assert kw["span_processors"] == []
@@ -85,15 +90,26 @@ def test_app_insights_seul(monkeypatch, espion_azure):
     assert kw["instrumentation_options"] == INSTRUMENTATIONS_DISTRO_COUPEES
     assert kw["resource"].attributes["deployment.environment"] == "local"
 
+
 def test_double_export(monkeypatch, espion_azure):
-    monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "InstrumentationKey=00000000-0000-0000-0000-000000000000")
+    monkeypatch.setenv(
+        "APPLICATIONINSIGHTS_CONNECTION_STRING",
+        "InstrumentationKey=00000000-0000-0000-0000-000000000000",
+    )
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://x/v1/traces")
     configurer_telemetrie("t")
     (proc,) = espion_azure.appels[0]["span_processors"]
     assert isinstance(proc.span_exporter, OTLPSpanExporter)
 
+
 def test_toutes_les_instrumentations_du_distro_sont_coupees():
-    assert {"httpx", "requests", "urllib3", "urllib", "fastapi"} <= INSTRUMENTATIONS_DISTRO_COUPEES.keys()
+    assert {
+        "httpx",
+        "requests",
+        "urllib3",
+        "urllib",
+        "fastapi",
+    } <= INSTRUMENTATIONS_DISTRO_COUPEES.keys()
     assert all(v == {"enabled": False} for v in INSTRUMENTATIONS_DISTRO_COUPEES.values())
 ```
 
@@ -140,7 +156,10 @@ git commit -m "feat(cluster): export App Insights (#54) en plus de l'OTLP, instr
 
 ```python
 def test_httpx_reste_non_instrumente(monkeypatch, espion_azure):
-    monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "InstrumentationKey=00000000-0000-0000-0000-000000000000")
+    monkeypatch.setenv(
+        "APPLICATIONINSIGHTS_CONNECTION_STRING",
+        "InstrumentationKey=00000000-0000-0000-0000-000000000000",
+    )
     configurer_telemetrie("t")
     assert espion_azure.appels[0]["instrumentation_options"]["httpx"] == {"enabled": False}
 ```
@@ -175,26 +194,34 @@ async def test_evaluation_nominale_trace_son_statut_final(service, audit):
     r = await service.evaluer("AIF-2026-000001", "jeton", "oid-a")
     assert audit.evaluations == [("AIF-2026-000001", r.statut, r.etat.cause)]
 
+
 async def test_budget_depasse_sans_conclusion_trace_erreur(service_lent, audit):
     with pytest.raises(DelaiDepasse):
         await service_lent.evaluer("AIF-2026-000001", "jeton", "oid-a")
     assert audit.evaluations == [("AIF-2026-000001", "ERREUR", "delai_depasse")]
+
 
 async def test_mcp_indisponible_trace_erreur_avec_le_code(service_mcp_ko, audit):
     with pytest.raises(ErreurOutil):
         await service_mcp_ko.evaluer("AIF-2026-000001", "jeton", "oid-a")
     assert audit.evaluations == [("AIF-2026-000001", "ERREUR", "MCP_INDISPONIBLE")]
 
+
 async def test_refus_avant_la_saga_ne_trace_rien(service, audit):
     # dossier d'un autre gestionnaire (404 BOLA) puis double clic (409)
     ...
     assert audit.evaluations == []
 
+
 def test_ligne_audit_evaluation_sans_donnee_personnelle(capture_journal):
     asyncio.run(AuditOtel().evaluation("AIF-2026-000001", "REVUE_HUMAINE", "llm_ko", 9876))
     ligne = json.loads(capture_journal.lignes[0])
     assert ligne["message"] == "audit.evaluation"
-    assert (ligne["statut_final"], ligne["cause"], ligne["duree_ms"]) == ("REVUE_HUMAINE", "llm_ko", 9876)
+    assert (ligne["statut_final"], ligne["cause"], ligne["duree_ms"]) == (
+        "REVUE_HUMAINE",
+        "llm_ko",
+        9876,
+    )
     assert set(ligne) <= {"message", *CHAMPS}
 ```
 
@@ -307,21 +334,34 @@ def test_chargement_des_garde_fous_journalise(capture_journal):
 - [ ] **Step 1: Failing test** (modèle : `tests/unit/test_d22.py`)
 
 ```python
-APPS = ["containerapp.yaml", "containerapp-cluster.yaml", "containerapp-rag.yaml",
-        "containerapp-mcp.yaml", "containerapp-underwriting.yaml"]
+APPS = [
+    "containerapp.yaml",
+    "containerapp-cluster.yaml",
+    "containerapp-rag.yaml",
+    "containerapp-mcp.yaml",
+    "containerapp-underwriting.yaml",
+]
+
 
 @pytest.mark.parametrize("fichier", APPS)
 def test_chaque_app_lit_la_chaine_app_insights_par_secret(fichier):
     modele = yaml.safe_load((RACINE / "infra" / fichier).read_text())
     for c in modele["properties"]["template"]["containers"]:
-        assert {"name": "APPLICATIONINSIGHTS_CONNECTION_STRING", "secretRef": "appinsights-connection"} in c["env"]
+        assert {
+            "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+            "secretRef": "appinsights-connection",
+        } in c["env"]
+
 
 def test_deploy_verifie_le_secret_avant_chaque_update():
     texte = (RACINE / ".github/workflows/deploy.yml").read_text()
     assert texte.count('index("appinsights-connection")') == 5
 
+
 def test_vigie_refuse_un_env_inconnu():
-    r = subprocess.run(["bash", str(RACINE / "infra/vigie.sh"), "recette"], capture_output=True, text=True)
+    r = subprocess.run(
+        ["bash", str(RACINE / "infra/vigie.sh"), "recette"], capture_output=True, text=True
+    )
     assert r.returncode != 0 and "staging|production" in r.stdout + r.stderr
 ```
 

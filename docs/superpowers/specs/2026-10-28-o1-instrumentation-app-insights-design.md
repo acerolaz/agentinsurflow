@@ -134,4 +134,5 @@ Tests : TU sur le choix de l'exportateur (4 cas du tableau), sur `audit.evaluati
 - Comment neutraliser les instrumentations automatiques du distro qui doubleraient l'existant.
 - L'emplacement exact de l'émission d'`audit.evaluation` pour couvrir tous les chemins.
 - Le taux d'échantillonnage (≈ 500 dossiers/jour : 100 % sans doute suffisant ; à justifier).
+  - Décision du 28/10 : échantillonnage à 100 % (C# `SamplingRatio = 1` / `TracesPerSecond = null`, Python `OTEL_TRACES_SAMPLER=parentbased_always_on`). Justification : le fournisseur de traces partagé ferait aussi perdre des spans à l'export OTLP vers le référentiel SQL (D-V2).
 - La mise à jour du commentaire périmé de `make up` dans le `Makefile`.

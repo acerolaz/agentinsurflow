@@ -16,6 +16,7 @@ for a in "$@"; do
       # portal 1.0.0b2 : create lit les seules propriétés (lenses et metadata à la racine)
       [[ "$args" != *"portal dashboard create"* ]] || jq -e 'has("lenses") and has("metadata")' "$a" >/dev/null ||
         { echo "faux az : Failed to parse 'lenses' from property." >&2; exit 2; }
+      cp "$a" "$FAUX_AZ_JOURNAL.input" # vigie.sh supprime son fichier temporaire en sortant
       ;;
   esac
   precedent=$a

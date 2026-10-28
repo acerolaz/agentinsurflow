@@ -63,8 +63,8 @@ def test_assemblage_sans_placeholder(tmp_path):
     appel = next(ligne for ligne in journal if "portal dashboard create" in ligne)
     assert "-n vigie-staging" in appel
     assert any("extension add -n portal" in ligne for ligne in journal)
-    chemin = re.search(r"--input-path (\S+)", appel).group(1)
-    texte = open(chemin).read()
+    assert re.search(r"--input-path \S+", appel)
+    texte = (tmp_path / "journal.input").read_text()
     json.loads(texte)
     for interdit in (
         "@kql:",

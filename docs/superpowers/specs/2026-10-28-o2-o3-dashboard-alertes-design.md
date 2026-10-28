@@ -39,7 +39,7 @@ Règle (D-V6, Acerola) : chaque seuil est **dérivé d'une mesure ou d'un budget
 | AL-3 | Cluster en `503 GARDE_FOUS_EN_CHARGEMENT` | **> 3 min** | Sonde de démarrage ≈ 3 min autorisées ; chargement ≈ 6 s en local (`docs/contrat-personnel.md` §4) | Journaux de la réplique ; redémarrage (`make recette ACTION=redemarrer` en staging) | 💡 |
 | AL-4 | `MCP_INDISPONIBLE` (502 `OUTIL_INDISPONIBLE`) | **≥ 1** en 5 min | 0 en nominal ; délai MCP 22 s (#146) | `/health/mcp` → journaux du serveur MCP → rollback | 💡 |
 | AL-5 = **A7** | Part des évaluations terminées en `REVUE_HUMAINE` | **> 30 %** sur 2 h glissantes, si **≥ 10** évaluations | SLO-5 (≤ 20 %), alerte A7 du dossier (L7.5) ; volume minimal 💡 | Cause dominante (garde-fou, `llm_ko`, `duree`) → section correspondante | 💡 |
-| AL-6 = **A6** | Coût IA moyen par dossier évalué | **> 0,15 €** sur 24 h glissantes, vérifié toutes les heures | SLO-6 ; coût = Σ jetons × prix (Global, D-V15) × taux USD → € | Agent et modèle les plus coûteux → `max_tokens` dans `agents.toml` | 💡 ; taux `🔴` |
+| AL-6 = **A6** | Coût IA moyen par dossier évalué, **en USD** | **> 0,15 $** sur 24 h glissantes, vérifié toutes les heures | SLO-6 (≤ 0,15 €) ; coût = Σ jetons × prix Global (D-V15), **sans conversion** (décision d'Acerola, 28/10). Tant que 1 $ ≤ 1 €, 0,15 $ ≤ 0,15 € : l'alerte part **au plus tard** au dépassement du SLO (seuil prudent) | Agent et modèle les plus coûteux → `max_tokens` dans `agents.toml` | 💡 |
 | AL-7 = **A10** | Taux d'évaluations refusées par un garde-fou (`cause` `garde_fou:*`) | **> 2×** sa moyenne sur 7 jours, sur 1 h, si **≥ 10** évaluations | Alerte A10 du dossier ; moyenne **calculée dans la requête** | Échantillon des causes → attaque ou faux positifs → `make garde-fous` | 💡 |
 | AL-8 = **A5** | 429 de Foundry vus par la gateway (dépendance `/api/llm`) | `🔴 À CONFIRMER` | Alerte A5 du dossier (L7.5) : reprendre sa formulation exacte ; sinon ligne de base 7 j | Quota / capacité du déploiement (5 750 k TPM pour gpt-4.1-mini) | `🔴` |
 | AL-9 = **A11** | 403 de la gateway après un déploiement | `🔴 À CONFIRMER` | Alerte A11 du dossier (L7.5) ; ligne de base 7 j des 403 hors déploiement | Rôles Entra / `make entra` ; rollback si régression | `🔴` |
@@ -47,7 +47,7 @@ Règle (D-V6, Acerola) : chaque seuil est **dérivé d'une mesure ou d'un budget
 
 Pour AL-8, AL-9 et SLO-4 : le constructeur **lit `dossier-conception-v1.2.pdf` L7.5** ; si le dossier donne une valeur, il la cite ; sinon la règle est créée **désactivée** et le seuil reste `🔴` (jamais inventé).
 
-**Paramètres** (en tête de `infra/vigie.sh`, surchargeables par `.env`) : prix unitaires par modèle (D-V15, valeurs Global), `TAUX_USD_EUR` (**`🔴`, sans valeur par défaut** : si absent, la règle AL-6 n'est pas créée et le script le dit), destinataire `ALERTE_EMAIL`.
+**Paramètres** (en tête de `infra/vigie.sh`, surchargeables par `.env`) : prix unitaires par modèle en USD par million de jetons (D-V15, valeurs Global), destinataire `ALERTE_EMAIL`. Aucune conversion de devise.
 
 ## 5. Décisions prises
 
@@ -73,7 +73,7 @@ Principe : **chaque tuile répond à une question écrite en français courant**
 | Combien de dossiers évalués ? | Nombre d'`audit.evaluation`, par heure | — |
 | Combien de temps prend une évaluation ? | p95 de `duree_ms` + courbe | ≤ 30 s (SLO-2) |
 | Quelle part part en revue humaine, et pourquoi ? | % `REVUE_HUMAINE` + répartition par cause | ≤ 20 % (SLO-5) ; alerte > 30 % |
-| Combien coûte un dossier ? | € moyen par dossier, par agent et modèle | ≤ 0,15 € (SLO-6) |
+| Combien coûte un dossier ? | $ moyen par dossier, par agent et modèle | alerte > 0,15 $ (SLO-6 : 0,15 €) |
 | Les garde-fous bloquent-ils plus que d'habitude ? | Taux de refus 1 h vs moyenne 7 j | alerte > 2× |
 | Combien d'évaluations sans décision ? | % erreurs | < 1 % (SLO-4) |
 | Le modèle de langage est-il disponible ? | Nombre de `llm_ko` et de 429 | 0 |

@@ -8,11 +8,11 @@ Chaque session part de **sa** spec (ci-dessous), la fait approuver si elle est e
 |---|---|---|---|---|
 | S1 | **O1** Instrumenter vers Application Insights (#54) | [`2026-10-28-o1-instrumentation-app-insights-design.md`](2026-10-28-o1-instrumentation-app-insights-design.md) | — | 15/11 (#54) |
 | S2 | **O2 + O3** Azure Dashboard, alertes, Action Group (`infra/vigie.sh` complet) | [`2026-10-28-o2-o3-dashboard-alertes-design.md`](2026-10-28-o2-o3-dashboard-alertes-design.md) | S1 en staging | 15/11 |
-| S3 | **O4** `docs/exploitation.md` (déployer · diagnostiquer · rollback, depuis le poste d'Acerola) | à écrire | S2 (actions liées aux alertes) | 15/11 |
-| S4 | **O8** Suppression de D26 : checkpointer HTTP par la gateway | à écrire | — (indépendant ; traces dans App Insights si S1 fusionnée) | 15/11 |
-| S5 | **O7** GLM Poisson freMTPL2 | à écrire | — | 15/11 |
-| S6 | **O5** Durcissement (écarts du contrat, D-V9 → D-V12) | à écrire | — | 15/11 |
-| S7 | **O6** Démo des 10 min (parcours · merge → livraison · alerte) | à écrire | S1 → S3 | répétition avant le 15/11 |
+| S3 | **O4** `docs/exploitation.md` (déployer · diagnostiquer · rollback, depuis le poste d'Acerola) | [`2026-10-28-o4-exploitation-design.md`](2026-10-28-o4-exploitation-design.md) | S2 (actions liées aux alertes) | 15/11 |
+| S4 | **O8** Suppression de D26 : checkpointer HTTP par la gateway | [`2026-10-28-o8-suppression-d26-design.md`](2026-10-28-o8-suppression-d26-design.md) | — (indépendant ; traces dans App Insights si S1 fusionnée) | 15/11 |
+| S5 | **O7** GLM Poisson freMTPL2 | [`2026-10-28-o7-glm-poisson-design.md`](2026-10-28-o7-glm-poisson-design.md) | — | 15/11 |
+| S6 | **O5** Durcissement (écarts du contrat, D-V9 → D-V12) | [`2026-10-28-o5-durcissement-design.md`](2026-10-28-o5-durcissement-design.md) | — | 15/11 |
+| S7 | **O6** Démo des 10 min (parcours · merge → livraison · alerte) | [`2026-10-28-o6-demo-10-min-design.md`](2026-10-28-o6-demo-10-min-design.md) | S1, S2 et S3 | répétition avant le 15/11 |
 
 O2 et O3 sont regroupés : même script `infra/vigie.sh`, mêmes requêtes KQL.
 

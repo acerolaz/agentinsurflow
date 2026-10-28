@@ -31,6 +31,7 @@ RAG_INGESTION=3f6c2a1e-8b4d-4c7a-9e21-5d0b7a6f1c02
 UW_SCOPE=7a1d9e40-2c3b-4f58-8a6e-1b9c0d2e3f03
 UW_GESTIONNAIRE=7a1d9e40-2c3b-4f58-8a6e-1b9c0d2e3f01
 UW_TELEMETRIE=7a1d9e40-2c3b-4f58-8a6e-1b9c0d2e3f02
+UW_POINTS_DE_REPRISE=7a1d9e40-2c3b-4f58-8a6e-1b9c0d2e3f04
 MCP_SCOPE=5b8e1c72-6d4a-4e39-b0f1-2a7c9d3e4f03
 MCP_GESTIONNAIRE=5b8e1c72-6d4a-4e39-b0f1-2a7c9d3e4f01
 CLUSTER_SCOPE=9c2d4e61-3a7b-4d85-a1f0-6e8b2c4d5b03
@@ -90,7 +91,7 @@ agents_inscrits=$(for a in "${AGENTS[@]}"; do az ad app list --display-name "age
 mcp=$(inscrire agentinsurflow-mcp "$MCP_SCOPE" "$CLI $agents_inscrits" "Gestionnaire=$MCP_GESTIONNAIRE")
 rag=$(inscrire agentinsurflow-rag "$RAG_SCOPE" "$CLI $mcp" "Gestionnaire=$RAG_GESTIONNAIRE" "Ingestion=$RAG_INGESTION")
 uw=$(inscrire agentinsurflow-underwriting "$UW_SCOPE" "$CLI $rag $mcp" \
-  "Gestionnaire=$UW_GESTIONNAIRE" "Telemetrie=$UW_TELEMETRIE")
+  "Gestionnaire=$UW_GESTIONNAIRE" "Telemetrie=$UW_TELEMETRIE" "PointsDeReprise=$UW_POINTS_DE_REPRISE")
 
 # attribuer <appId de l'API> <id du rôle> <objet du principal> <libellé> : seulement s'il manque
 attribuer() {
@@ -243,6 +244,8 @@ az rest --method PATCH --uri "$GRAPH/applications/$objet" --headers content-type
 # Traces (R19) : comme le serveur MCP (⑥), le cluster exporte par la gateway (/v1/traces) avec un jeton d'application
 # de son inscription : rôle Telemetrie d'underwriting-admin
 attribuer "$uw" "$UW_TELEMETRIE" "$(az ad sp show --id "$cluster" --query id -o tsv)" "cluster → Telemetrie (underwriting)"
+# Points de reprise (D106) : le cluster les lit et écrit par la gateway ; rôle PointsDeReprise d'underwriting-admin, à lui seul
+attribuer "$uw" "$UW_POINTS_DE_REPRISE" "$(az ad sp show --id "$cluster" --query id -o tsv)" "cluster → PointsDeReprise (underwriting)"
 # Identité managée PROPRE au cluster : elle sert d'assertion fédérée à l'application du cluster ET aux cinq agents
 UAMI_CLUSTER=uami-insurflow-cluster
 az identity show -n "$UAMI_CLUSTER" -g "$AZURE_RESOURCE_GROUP" -o none 2>/dev/null ||

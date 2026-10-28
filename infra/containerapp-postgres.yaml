@@ -23,4 +23,4 @@ properties:
           - { name: PG_DOSSIERS_PASSWORD, secretRef: pg-dossiers-password }
           - { name: PG_TRACES_WRITER_PASSWORD, secretRef: pg-traces-writer-password }
           - { name: PG_TRACES_READER_PASSWORD, secretRef: pg-traces-reader-password }
-          - { name: PG_AGENT_STATE_PASSWORD, secretRef: pg-agent-state-password }
+          - { name: PG_POINTS_REPRISE_PASSWORD, secretRef: pg-points-reprise-password }

@@ -9,7 +9,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et underwriting-admin/
 # (C#, leurs propres Makefile, appelés par gateway-<cible> et underwriting-<cible>).
-.PHONY: recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
+.PHONY: modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked --all-packages --all-groups
@@ -117,3 +117,6 @@ rollback:           ## une opération : make rollback [ENV=staging] [TAG=<sha>] 
 preuve:             ## make preuve RUN=<id> NOM=blocage-2026-10-20 → journal versionné
 	gh run view $(RUN) -R $(GITHUB_REPO) --log > eval/preuves/$(NOM).log
 	gh run view $(RUN) -R $(GITHUB_REPO) > eval/preuves/$(NOM).resume.txt
+
+modele:             ## GLM de fréquence : entraîne, évalue, écrit artefact + fiche (FREMTPL2_CACHE=… ; ARGS=--init-seuils la 1re fois)
+	PYTHONPATH=fonction-calcul uv run python -m entrainement $(ARGS)

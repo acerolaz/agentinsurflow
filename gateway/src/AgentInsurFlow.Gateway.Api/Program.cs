@@ -195,9 +195,10 @@ builder.Services.AddRateLimiter(o =>
 var otlp = builder.Configuration["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] ?? "http://localhost:8002/v1/traces";
 var audienceTelemetrie = builder.Configuration["Telemetrie:Audience"];
 IServiceProvider? fournisseur = null; // posé après Build : l'exporteur n'est créé qu'au démarrage de l'hôte
+void NomDeService(ResourceBuilder r) => r.AddService(
+    "agentinsurflow-gateway", serviceVersion: builder.Configuration["APP_VERSION"] ?? "dev");
 builder.Services.AddOpenTelemetry()
-    .ConfigureResource(r => r.AddService(
-        "agentinsurflow-gateway", serviceVersion: builder.Configuration["APP_VERSION"] ?? "dev"))
+    .ConfigureResource(NomDeService)
     .WithTracing(t => t
         .AddProcessor(new MasquageNumero.Processeur()) // en premier : avant tout exportateur, App Insights compris
         .AddAspNetCoreInstrumentation(o =>
@@ -226,7 +227,9 @@ if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_
     // 100 % des traces : l'échantillonneur par défaut (5/s) écarterait aussi des spans de l'export vers le référentiel SQL (D-V2)
     // journaux masqués avant l'export Azure Monitor (le processeur doit précéder UseAzureMonitor)
     builder.Services.AddOpenTelemetry().WithLogging(l => l.AddProcessor(new MasquageNumero.ProcesseurJournaux()));
-    builder.Services.AddOpenTelemetry().UseAzureMonitor(o => { o.SamplingRatio = 1; o.TracesPerSecond = null; });
+    builder.Services.AddOpenTelemetry().UseAzureMonitor(o => { o.SamplingRatio = 1; o.TracesPerSecond = null; })
+        // après UseAzureMonitor : son détecteur Container Apps poserait service.name = nom de l'app (la dernière ressource l'emporte)
+        .ConfigureResource(NomDeService);
     // UseAzureMonitor exporte aussi les journaux : « Request starting … /api/contrats/AIF-… » (Information) porte le numéro
     foreach (var categorie in new[] { "Microsoft", "System", "Yarp" })
     {

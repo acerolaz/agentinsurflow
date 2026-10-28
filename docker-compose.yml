@@ -105,6 +105,7 @@ services:
   # Function de calcul (barème + formule) : réseau interne seulement, aucun port publié
   calcul:
     build: { context: ., dockerfile: fonction-calcul/Dockerfile }
+    platform: linux/amd64 # l'image Functions n'existe qu'en amd64 (émulée sur Mac Apple Silicon)
     environment:
       APP_VERSION: dev
 

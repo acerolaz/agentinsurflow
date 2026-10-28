@@ -186,7 +186,7 @@ jobs:
         if: steps.diff.outputs.actif == 'true'
         run: |
           python3 - <<'PY'
-          import difflib, json, subprocess
+          import difflib, json, math, subprocess
           from pathlib import Path
           dossier = "fonction-calcul/agentinsurflow_calcul/modeles"
           commite = subprocess.run(["git", "ls-tree", "--name-only", "HEAD", f"{dossier}/"],
@@ -195,17 +195,28 @@ jobs:
           assert len(commite) == 1, f"un seul artefact commité attendu : {commite}"
           recent = max(Path(dossier).glob("*.json"), key=lambda p: p.stat().st_mtime)
           # commit, date d'entraînement et version (nommée d'après la date) changent à chaque exécution
-          # ponytail: 6 chiffres significatifs absorbent l'écart BLAS macOS/Linux ; tolérance par champ si elle ne suffit pas
+          # écart BLAS macOS (commité) / Linux (CI) mesuré le 28/10 : ≤ 6e-5 relatif ; 1e-3 l'absorbe,
+          # un changement de données ou de code déplace les coefficients bien au-delà
+          def proche(a, b):
+              if isinstance(a, dict) and isinstance(b, dict):
+                  return a.keys() == b.keys() and all(proche(a[k], b[k]) for k in a)
+              if isinstance(a, list) and isinstance(b, list):
+                  return len(a) == len(b) and all(map(proche, a, b))
+              if isinstance(a, float) or isinstance(b, float):
+                  return (all(isinstance(x, (int, float)) for x in (a, b))
+                          and math.isclose(a, b, rel_tol=1e-3, abs_tol=1e-6))
+              return a == b
           def charge(texte):
-              d = json.loads(texte, parse_float=lambda s: float(f"{float(s):.6g}"))
+              d = json.loads(texte)
               for cle in ("commit", "entraine_le", "version"):
                   d.pop(cle, None)
-              return json.dumps(d, sort_keys=True, indent=2).splitlines()
+              return d
           avant = charge(subprocess.run(["git", "show", f"HEAD:{commite[0]}"], capture_output=True,
                                         text=True, check=True).stdout)
           apres = charge(recent.read_text("utf-8"))
-          if avant != apres:
-              print("\n".join(difflib.unified_diff(avant, apres, "commité", "réentraîné", lineterm="")))
+          if not proche(avant, apres):
+              lignes = [json.dumps(d, sort_keys=True, indent=2).splitlines() for d in (avant, apres)]
+              print("\n".join(difflib.unified_diff(*lignes, "commité", "réentraîné", lineterm="")))
               raise SystemExit("réentraîné ≠ commité : commiter le nouvel artefact")
           print(f"✔ {recent.name} identique à {commite[0]}")
           PY

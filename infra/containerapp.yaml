@@ -13,6 +13,7 @@ properties:
         image: ${IMAGE_GATEWAY}
         resources: { cpu: 0.5, memory: 1Gi }
         env:
+          - { name: APPLICATIONINSIGHTS_CONNECTION_STRING, secretRef: appinsights-connection }
           - { name: Proxy__EnvoyDevant, value: "true" }
           - { name: Entra__TenantId, value: "${AZURE_TENANT_ID}" }
           - { name: Entra__Audiences__rag__0, value: api://agentinsurflow-rag }

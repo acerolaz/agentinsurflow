@@ -227,6 +227,12 @@ jobs:
           echo "✔ $PG_APP déployé (base vide), entrée TCP interne 5432, 8 secrets pg-*"
 
       # underwriting-admin avant la gateway : son FQDN interne est le cluster `underwriting` et la cible des traces de la gateway
+      - name: Secret appinsights-connection présent sur $UW_APP (lecture seule, porte bloquante)
+        run: |
+          az containerapp show -n "$UW_APP" -g "$RG" -o json |
+            jq -e '[.properties.configuration.secrets[]?.name] | index("appinsights-connection")' > /dev/null ||
+            { echo "::error::secret appinsights-connection absent de $UW_APP (lancer make vigie ENV=${{ inputs.environnement }})"; exit 1; }
+
       - name: Déployer underwriting-admin (modèle infra/containerapp-underwriting.yaml, Container App interne)
         id: uw
         env:
@@ -254,6 +260,12 @@ jobs:
               { echo "::error::secret $secret perdu par l'update de $UW_APP (relancer infra/postgres-annexe.sh)"; exit 1; }
           done
           echo "✔ $UW_APP déployé, entrée interne $fqdn, 4 secrets pg-* conservés"
+
+      - name: Secret appinsights-connection présent sur $MCP_APP (lecture seule, porte bloquante)
+        run: |
+          az containerapp show -n "$MCP_APP" -g "$RG" -o json |
+            jq -e '[.properties.configuration.secrets[]?.name] | index("appinsights-connection")' > /dev/null ||
+            { echo "::error::secret appinsights-connection absent de $MCP_APP (lancer make vigie ENV=${{ inputs.environnement }})"; exit 1; }
 
       - name: Déployer le serveur MCP (modèle infra/containerapp-mcp.yaml, Container App interne)
         id: mcp
@@ -293,6 +305,12 @@ jobs:
 
       # Cluster d'agents avant la gateway : son FQDN interne est le cluster `cluster` de la gateway. Après la base annexe :
       # il y ouvre ses points de reprise (compte agent_state) dès son démarrage.
+      - name: Secret appinsights-connection présent sur $CLUSTER_APP (lecture seule, porte bloquante)
+        run: |
+          az containerapp show -n "$CLUSTER_APP" -g "$RG" -o json |
+            jq -e '[.properties.configuration.secrets[]?.name] | index("appinsights-connection")' > /dev/null ||
+            { echo "::error::secret appinsights-connection absent de $CLUSTER_APP (lancer make vigie ENV=${{ inputs.environnement }})"; exit 1; }
+
       - name: Déployer le cluster d'agents (modèle infra/containerapp-cluster.yaml, Container App interne)
         id: cluster
         env:
@@ -330,6 +348,12 @@ jobs:
           jq -e '.properties.template.scale | (.minReplicas == 1) and (.maxReplicas == 1)' <<<"$cluster" > /dev/null ||
             { echo "::error::$CLUSTER_APP : une seule réplique exigée (verrou par dossier, R17)"; exit 1; }
           echo "✔ $CLUSTER_APP déployé, entrée interne $fqdn, identité managée propre, une réplique, secret checkpoint-dsn conservé"
+
+      - name: Secret appinsights-connection présent sur $APP (lecture seule, porte bloquante)
+        run: |
+          az containerapp show -n "$APP" -g "$RG" -o json |
+            jq -e '[.properties.configuration.secrets[]?.name] | index("appinsights-connection")' > /dev/null ||
+            { echo "::error::secret appinsights-connection absent de $APP (lancer make vigie ENV=${{ inputs.environnement }})"; exit 1; }
 
       - name: Déployer la gateway (modèle infra/containerapp.yaml, nouvelle révision ; elle seule dans la principale)
         id: deployer
@@ -381,6 +405,12 @@ jobs:
 
       # rag après la base annexe et la principale : il joue ses migrations (demarrer.sh) sur le postgres neuf du même déploiement.
       # Il parle à la gateway (LLM, dossiers, traces) seulement à la requête : la gateway n'a pas à le précéder.
+      - name: Secret appinsights-connection présent sur $RAG_APP (lecture seule, porte bloquante)
+        run: |
+          az containerapp show -n "$RAG_APP" -g "$RG" -o json |
+            jq -e '[.properties.configuration.secrets[]?.name] | index("appinsights-connection")' > /dev/null ||
+            { echo "::error::secret appinsights-connection absent de $RAG_APP (lancer make vigie ENV=${{ inputs.environnement }})"; exit 1; }
+
       - name: Déployer rag (modèle infra/containerapp-rag.yaml, Container App interne, identité managée propre)
         env:
           IMAGE_RAG: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-rag:${{ steps.image.outputs.tag }}

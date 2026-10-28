@@ -194,6 +194,17 @@ public sealed class PointsDeRepriseTests : IDisposable
     }
 
     [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Liste_avec_limite_non_positive_400_avec_code(int limite)
+    {
+        var (statut, corps) = await Appeler(HttpMethod.Get, $"/api/points-de-reprise/{Fil}/liste?limite={limite}", Cluster());
+
+        Assert.Equal(HttpStatusCode.BadRequest, statut);
+        Assert.Equal("CORPS_INVALIDE", corps.GetProperty("code").GetString());
+    }
+
+    [Theory]
     [InlineData("Gestionnaire")]
     [InlineData("Telemetrie")]
     public async Task Points_de_reprise_refuses_sans_role(string role)

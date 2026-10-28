@@ -56,8 +56,9 @@ builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.Authenticatio
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("Gestionnaire", p => p.RequireRole("Gestionnaire"))
     .AddPolicy("Telemetrie", p => p.RequireRole("Telemetrie"))
-    .AddPolicy("PointsDeReprise", p => p.RequireRole("PointsDeReprise")) // le cluster seul (D105)
-                                                                         // Règle S3-21 pour /v1/traces : source locale sans X-Forwarded-For, ou rôle Telemetrie
+    // Points de reprise du cluster seul (D105)
+    .AddPolicy("PointsDeReprise", p => p.RequireRole("PointsDeReprise"))
+    // Règle S3-21 pour /v1/traces : source locale sans X-Forwarded-For, ou rôle Telemetrie
     .AddPolicy("Otlp", p => p.AddRequirements(new SourceSansJetonOuTelemetrie()))
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 

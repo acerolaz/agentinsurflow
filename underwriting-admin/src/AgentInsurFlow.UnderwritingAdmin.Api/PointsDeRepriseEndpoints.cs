@@ -35,9 +35,11 @@ internal static class PointsDeRepriseEndpoints
 
         points.MapPut("/{thread_id}", async (IDepotPointsDeReprise depot, CancellationToken ct,
                 [FromRoute(Name = "thread_id")] string threadId, PointCorps corps) =>
-            corps.Vers(threadId) is not { } point
-                ? Corps400()
-                : await Ecrire(depot, point, ct))
+            {
+                if (corps.Vers(threadId) is not { } point) return Corps400();
+                await depot.EcrireAsync(point, ct);
+                return Results.NoContent();
+            })
             .WithName("EcrirePointDeReprise")
             .WithSummary("Upsert d'un point (dernier écrit gagnant)")
             .Produces(204)
@@ -45,10 +47,17 @@ internal static class PointsDeRepriseEndpoints
 
         points.MapPut("/{thread_id}/ecritures", async (IDepotPointsDeReprise depot, CancellationToken ct,
                 [FromRoute(Name = "thread_id")] string threadId, EcrituresCorps corps) =>
-            corps.CheckpointId is not { Length: > 0 } || corps.TaskId is null || corps.Ecritures is null
-                || corps.Ecritures.Any(e => e.Canal is null || e.Type is null || e.Valeur is null)
-                ? Corps400()
-                : await EcrireEcritures(depot, threadId, corps, ct))
+            {
+                if (corps.CheckpointId is not { Length: > 0 } || corps.TaskId is null || corps.Ecritures is null
+                    || corps.Ecritures.Any(e => e.Canal is null || e.Type is null || e.Valeur is null))
+                {
+                    return Corps400();
+                }
+                var taskPath = corps.TaskPath ?? "";
+                await depot.EcrireEcrituresAsync(threadId, corps.Ns ?? "", corps.CheckpointId, corps.TaskId, taskPath,
+                    [.. corps.Ecritures.Select(e => new EcritureEnAttente(corps.TaskId, e.Idx, e.Canal!, e.Type!, e.Valeur!, taskPath))], ct);
+                return Results.NoContent();
+            })
             .WithName("EcrireEcrituresDePointDeReprise")
             .WithSummary("Écritures en attente d'une tâche (idx < 0 : remplacées ; sinon écrites une seule fois)")
             .Produces(204)
@@ -64,19 +73,6 @@ internal static class PointsDeRepriseEndpoints
             .WithSummary("Supprime tous les points et écritures du fil")
             .Produces(204)
             .ProducesProblem(401).ProducesProblem(403);
-    }
-
-    private static async Task<IResult> Ecrire(IDepotPointsDeReprise depot, PointDeReprise point, CancellationToken ct)
-    {
-        await depot.EcrireAsync(point, ct);
-        return Results.NoContent();
-    }
-
-    private static async Task<IResult> EcrireEcritures(IDepotPointsDeReprise depot, string threadId, EcrituresCorps c, CancellationToken ct)
-    {
-        await depot.EcrireEcrituresAsync(threadId, c.Ns ?? "", c.CheckpointId!, c.TaskId!, c.TaskPath ?? "",
-            [.. c.Ecritures!.Select(e => new EcritureEnAttente(c.TaskId!, e.Idx, e.Canal!, e.Type!, e.Valeur!, c.TaskPath ?? ""))], ct);
-        return Results.NoContent();
     }
 
     private static IResult Corps400() => Problemes.Creer(400, "Corps invalide", "CORPS_INVALIDE");

@@ -31,6 +31,7 @@ fi
 
 echo "② Secret appinsights-connection sur les 5 Container Apps"
 chaine=$(az monitor app-insights component show -a "$appi" -g "$RG" --query connectionString -o tsv)
+[ -n "$chaine" ] || { echo "✘ chaîne de connexion vide pour $appi"; exit 1; }
 for var in "APP_$suffixe" "CLUSTER_APP_$suffixe" "RAG_APP_$suffixe" "MCP_APP_$suffixe" "UW_APP_$suffixe"; do
   az containerapp secret set -n "${!var}" -g "$RG" -o none --secrets "appinsights-connection=$chaine"
 done

@@ -1,15 +1,18 @@
 using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc.Testing;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Trace;
 using static AgentInsurFlow.Gateway.Api.Tests.JetonsDeTest;
 
 namespace AgentInsurFlow.Gateway.Api.Tests;
 
-/// <summary>Spans HTTP : numéro de contrat masqué (#65) et un seul span serveur par requête avec App Insights (#54).</summary>
-public sealed class TelemetrieTests
+/// <summary>Spans et journaux : numéro de contrat masqué (#65), un seul span serveur par requête avec App Insights (#54).</summary>
+public sealed class TelemetrieTests(Backends backends) : IClassFixture<Backends>
 {
+    private const string AppInsights = "InstrumentationKey=00000000-0000-0000-0000-000000000000";
+
     /// <summary>Collecte les spans terminés, donc après les enrichissements.</summary>
     private sealed class Collecteur(List<Activity> activites) : BaseProcessor<Activity>
     {
@@ -22,43 +25,70 @@ public sealed class TelemetrieTests
         }
     }
 
-    private static async Task<Activity[]> Requete(string? chaineAppInsights)
+    /// <summary>Collecte le texte de chaque enregistrement de journal exporté (message, corps, attributs).</summary>
+    private sealed class CollecteurJournaux(List<string> textes) : BaseProcessor<LogRecord>
     {
-        var activites = new List<Activity>();
-        using var usine = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        public override void OnEnd(LogRecord data)
         {
-            if (chaineAppInsights is not null)
+            var attributs = data.Attributes?.Select(a => $"{a.Key}={a.Value}") ?? [];
+            lock (textes)
             {
-                b.UseSetting("APPLICATIONINSIGHTS_CONNECTION_STRING", chaineAppInsights);
+                textes.Add(string.Join(' ', [data.FormattedMessage, data.Body, .. attributs]));
             }
-            b.AvecEntraDeTest().ConfigureServices(s =>
-                s.ConfigureOpenTelemetryTracerProvider(t => t.AddProcessor(new Collecteur(activites))));
-        });
-        using var client = usine.CreateClient();
-        // trace propre à la requête : les fournisseurs reçoivent aussi les spans des tests parallèles
-        var trace = ActivityTraceId.CreateRandom().ToString();
-        using var requete = new HttpRequestMessage(HttpMethod.Get, "/api/contrats/AIF-2026-000001");
-        requete.Headers.Add("traceparent", $"00-{trace}-0123456789abcdef-01");
-        using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
-        await Task.Delay(200, TestContext.Current.CancellationToken);
+        }
+    }
+
+    private static Activity[] SpansDe(List<Activity> activites, string trace)
+    {
         lock (activites)
         {
             return [.. activites.Where(a => a.TraceId.ToString() == trace)];
         }
     }
 
-    [Fact]
-    public void Masquer_remplace_le_numero() =>
-        Assert.Equal("/v1/souscriptions/{numero_contrat}/evaluation",
-            MasquageNumero.Masquer("/v1/souscriptions/AIF-2026-000001/evaluation"));
-
-    [Fact]
-    public async Task Span_serveur_sans_numero_de_contrat()
+    private async Task<(Activity[] Spans, string[] Journaux)> Executer(string? chaineAppInsights, string chemin)
     {
-        var activites = await Requete(null);
+        var activites = new List<Activity>();
+        var journaux = new List<string>();
+        using var usine = backends.Gateway(chaineAppInsights is null
+            ? []
+            : [("APPLICATIONINSIGHTS_CONNECTION_STRING", chaineAppInsights)])
+            .WithWebHostBuilder(b => b.ConfigureServices(s =>
+            {
+                // l'échantillonneur par défaut d'Azure Monitor (5 traces/s) écarte la première requête : tout échantillonner
+                s.Configure<AzureMonitorOptions>(o => { o.SamplingRatio = 1; o.TracesPerSecond = null; });
+                s.ConfigureOpenTelemetryTracerProvider(t => t.AddProcessor(new Collecteur(activites)));
+                s.AddOpenTelemetry().WithLogging(l => l.AddProcessor(new CollecteurJournaux(journaux)));
+            }));
+        using var client = usine.CreateClient();
+        // trace propre à la requête : les fournisseurs reçoivent aussi les spans des tests parallèles
+        var trace = ActivityTraceId.CreateRandom().ToString();
+        using var requete = Requete("GET", chemin, Creer(Audience("underwriting"), TousLesRoles));
+        requete.Headers.Add("traceparent", $"00-{trace}-0123456789abcdef-01");
+        using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
+        // le premier démarrage d'Azure Monitor du processus est lent : attendre le span (sauf /health, qui n'en produit pas)
+        for (var i = 0; i < 60 && chemin != "/health" && !SpansDe(activites, trace).Any(a => a.Kind == ActivityKind.Client); i++)
+        {
+            await Task.Delay(50, TestContext.Current.CancellationToken);
+        }
+        await Task.Delay(200, TestContext.Current.CancellationToken);
+        lock (activites)
+        lock (journaux)
+        {
+            return ([.. SpansDe(activites, trace)], [.. journaux]);
+        }
+    }
 
-        Assert.Contains(activites, a => a.Kind == ActivityKind.Server);
-        Assert.All(activites, a =>
+    [Theory]
+    [InlineData(null)]
+    [InlineData(AppInsights)]
+    public async Task Spans_sans_numero_de_contrat(string? chaineAppInsights)
+    {
+        var (spans, _) = await Executer(chaineAppInsights, "/api/contrats/AIF-2026-000001");
+
+        Assert.Contains(spans, a => a.Kind == ActivityKind.Server);
+        Assert.Contains(spans, a => a.Kind == ActivityKind.Client); // le renvoi YARP vers le backend
+        Assert.All(spans, a =>
         {
             Assert.DoesNotContain("AIF-", a.DisplayName);
             Assert.All(a.TagObjects, t => Assert.DoesNotContain("AIF-", t.Value?.ToString() ?? ""));
@@ -68,8 +98,25 @@ public sealed class TelemetrieTests
     [Fact]
     public async Task Avec_chaine_app_insights_un_seul_span_serveur_par_requete()
     {
-        var activites = await Requete("InstrumentationKey=00000000-0000-0000-0000-000000000000");
+        var (spans, _) = await Executer(AppInsights, "/api/contrats/AIF-2026-000001");
 
-        Assert.Single(activites, a => a.Kind == ActivityKind.Server);
+        // le backend WireMock tourne dans ce processus et trace aussi sa réception : seul le span fils du traceparent est la gateway
+        Assert.Single(spans, a => a.Kind == ActivityKind.Server && a.ParentSpanId.ToString() == "0123456789abcdef");
+    }
+
+    [Fact]
+    public async Task Avec_chaine_app_insights_le_filtre_health_tient()
+    {
+        var (spans, _) = await Executer(AppInsights, "/health");
+
+        Assert.DoesNotContain(spans, a => a.Kind == ActivityKind.Server);
+    }
+
+    [Fact]
+    public async Task Avec_chaine_app_insights_journaux_sans_numero_de_contrat()
+    {
+        var (_, journaux) = await Executer(AppInsights, "/api/contrats/AIF-2026-000001");
+
+        Assert.All(journaux, j => Assert.DoesNotContain("AIF-", j));
     }
 }

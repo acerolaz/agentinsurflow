@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using OpenTelemetry;
 
 namespace AgentInsurFlow.UnderwritingAdmin.Api;
 
@@ -9,7 +10,7 @@ namespace AgentInsurFlow.UnderwritingAdmin.Api;
 /// </summary>
 public static partial class MasquageNumero
 {
-    private static readonly string[] Etiquettes = ["url.path", "url.full", "url.query", "http.target"];
+    private static readonly string[] Etiquettes = ["url.path", "url.full", "url.query", "http.target", "http.url"];
 
     [GeneratedRegex(@"AIF-\d{4}-\d{6}")]
     private static partial Regex Numero();
@@ -20,11 +21,20 @@ public static partial class MasquageNumero
     {
         foreach (var etiquette in Etiquettes)
         {
-            if (activite.GetTagItem(etiquette) is string valeur && Numero().IsMatch(valeur))
+            if (activite.GetTagItem(etiquette) is string valeur)
             {
                 activite.SetTag(etiquette, Masquer(valeur));
             }
         }
         activite.DisplayName = Masquer(activite.DisplayName);
+    }
+
+    /// <summary>
+    /// Masque chaque span à sa fin (serveur, client, quelle que soit l'instrumentation), avant les exportateurs
+    /// enregistrés après lui : à ajouter en premier dans <c>WithTracing</c>, avant <c>UseAzureMonitor</c>.
+    /// </summary>
+    public sealed class Processeur : BaseProcessor<Activity>
+    {
+        public override void OnEnd(Activity data) => Appliquer(data);
     }
 }

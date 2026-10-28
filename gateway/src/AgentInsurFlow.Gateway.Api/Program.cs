@@ -198,19 +198,16 @@ builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService(
         "agentinsurflow-gateway", serviceVersion: builder.Configuration["APP_VERSION"] ?? "dev"))
     .WithTracing(t => t
+        .AddProcessor(new MasquageNumero.Processeur()) // en premier : avant tout exportateur, App Insights compris
         .AddAspNetCoreInstrumentation(o =>
         {
             o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health");
             // client.address (S3-26) : l'instrumentation ne le pose pas ; lu en fin de requête, donc après
             // UseForwardedHeaders : l'IP réelle derrière l'envoy, pas celle de l'envoy
-            o.EnrichWithHttpRequest = (activite, _) => MasquageNumero.Appliquer(activite);
             o.EnrichWithHttpResponse = (activite, reponse) =>
-            {
                 activite.SetTag("client.address", reponse.HttpContext.Connection.RemoteIpAddress?.ToString());
-                MasquageNumero.Appliquer(activite); // le nom du span reçoit la route en fin de requête
-            };
         })
-        .AddHttpClientInstrumentation(o => o.EnrichWithHttpRequestMessage = (activite, _) => MasquageNumero.Appliquer(activite))
+        .AddHttpClientInstrumentation()
         .AddOtlpExporter(o =>
         {
             o.Endpoint = new Uri(otlp);
@@ -226,6 +223,11 @@ builder.Services.AddOpenTelemetry()
 if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
 {
     builder.Services.AddOpenTelemetry().UseAzureMonitor();
+    // UseAzureMonitor exporte aussi les journaux : « Request starting … /api/contrats/AIF-… » (Information) porte le numéro
+    foreach (var categorie in new[] { "Microsoft", "System", "Yarp" })
+    {
+        builder.Logging.AddFilter<OpenTelemetry.Logs.OpenTelemetryLoggerProvider>(categorie, LogLevel.Warning);
+    }
 }
 
 var app = builder.Build();

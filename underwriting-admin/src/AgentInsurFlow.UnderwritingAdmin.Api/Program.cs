@@ -114,14 +114,13 @@ builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService(
         "agentinsurflow-underwriting", serviceVersion: builder.Configuration["APP_VERSION"] ?? "dev"))
     .WithTracing(t => t
+        .AddProcessor(new MasquageNumero.Processeur()) // en premier : avant tout exportateur, App Insights compris
         .AddAspNetCoreInstrumentation(o =>
         {
             o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health")
                 && !ctx.Request.Path.StartsWithSegments("/v1/traces"); // pas de boucle : l'export lui-même n'est pas tracé
-            o.EnrichWithHttpRequest = (activite, _) => MasquageNumero.Appliquer(activite);
-            o.EnrichWithHttpResponse = (activite, _) => MasquageNumero.Appliquer(activite); // nom du span = route, posé en fin de requête
         })
-        .AddHttpClientInstrumentation(o => o.EnrichWithHttpRequestMessage = (activite, _) => MasquageNumero.Appliquer(activite))
+        .AddHttpClientInstrumentation()
         .AddOtlpExporter(o =>
         {
             o.Endpoint = new Uri(otlp);
@@ -132,6 +131,11 @@ builder.Services.AddOpenTelemetry()
 if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
 {
     builder.Services.AddOpenTelemetry().UseAzureMonitor();
+    // UseAzureMonitor exporte aussi les journaux : « Request starting … /api/contrats/AIF-… » (Information) porte le numéro
+    foreach (var categorie in new[] { "Microsoft", "System" })
+    {
+        builder.Logging.AddFilter<OpenTelemetry.Logs.OpenTelemetryLoggerProvider>(categorie, LogLevel.Warning);
+    }
 }
 
 var app = builder.Build();

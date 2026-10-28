@@ -148,3 +148,12 @@ Recette des K en staging le 27/10 : K1 (acceptable et refus), K3, K4, K5, K7, K8
 - K6 : revérifier « Tchat corpus » au clavier après le déploiement de #147.
 - Rejouer K2 par requête sur les traces (cluster déployé : `GET /api/traces/{trace_id}`), puis en KQL avec #54.
 - Fusionner #145, #146 et #147 après la recette (#149 fusionnée, instance toujours prête du calcul appliquée le 28/10).
+
+## 6. Compétences C12 et C13 (sprint 5, GLM de fréquence, #155)
+
+*Hors des critères K du dossier : matière des compétences C12 et C13 du rapport de certification. Les lignes n'existaient pas dans ce fichier ; elles sont ajoutées ici. Statut : **en cours** tant que le job `modele` n'a pas déployé en staging (spec § 9).*
+
+| # | Compétence | Statut | Preuve | Écart |
+|---|---|---|---|---|
+| C12 | Tests automatisés du modèle : données, préparation, entraînement, évaluation | **en cours** | Commit `784aad8` : `fonction-calcul/tests/unit/test_modele_glm.py`, `fonction-calcul/entrainement/modele.py`, seuils dans `fonction-calcul/entrainement/seuils.toml`, artefact `fonction-calcul/modeles/glm-freq-20261028-v1.json` et fiche `fonction-calcul/modeles/glm-freq-20261028-v1.md` ; données figées `6473875` (`fonction-calcul/entrainement/donnees.toml`) ; route `26b6a70` | La fréquence est en comparaison seulement (ni décision, ni prime). Tuile de suivi : `infra/vigie/kql/tuiles/frequence-glm.kql` (à ajouter à `dashboard.json` après la fusion de #162) |
+| C13 | Livraison continue du modèle (données, tests, entraînement, évaluation, porte, empaquetage, déploiement) | **en cours** | Commits `9770a47` et `9bcba96` : job `modele` de `.github/workflows/ci-cd.yml`, `.github/workflows/deploy.yml`, test `tests/unit/test_ci_modele.py` | Le modèle n'est déployé que si la porte de qualité passe ; le déploiement en staging reste à jouer par Acerola |

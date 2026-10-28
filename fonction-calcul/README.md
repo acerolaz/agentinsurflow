@@ -76,6 +76,10 @@ Erreurs :
 
 Jamais de log du corps de la requête ni de la réponse (faits du dossier, montants).
 
+## Modèle de fréquence
+
+Fiche, métriques et données : `modeles/glm-freq-20261028-v1.md`. Suivi en ligne (appels, latence, fréquences prédites) : `infra/vigie/kql/tuiles/frequence-glm.kql`. Amendement du dossier : `docs/dossier/amendements-d42.md`.
+
 ## Versionnement
 
 Un changement de règle ou de grille = une nouvelle constante `VERSION_BAREME` / `VERSION_FORMULE`,

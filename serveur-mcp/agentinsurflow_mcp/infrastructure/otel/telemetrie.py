@@ -16,6 +16,8 @@ from typing import Any
 
 import requests
 from azure.core.exceptions import AzureError
+from azure.monitor.opentelemetry import configure_azure_monitor
+from azure.monitor.opentelemetry._constants import _ALL_SUPPORTED_INSTRUMENTED_LIBRARIES
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
@@ -32,6 +34,12 @@ POINT_OTLP = "http://localhost:8000/v1/traces"
 
 journal = logging.getLogger(__name__)
 tracer = trace.get_tracer("agentinsurflow")
+# Le distro active ses instrumentations par défaut : on les coupe toutes, ce service garde les
+# siennes ; httpx reste non instrumenté (son URL porterait le numéro de contrat).
+# Liste dérivée du distro (import privé accepté : version épinglée ==1.8.11), pour ne rien oublier.
+INSTRUMENTATIONS_DISTRO_COUPEES: dict[str, dict[str, bool]] = {
+    nom: {"enabled": False} for nom in _ALL_SUPPORTED_INSTRUMENTED_LIBRARIES
+}
 
 
 class ConfigTelemetrie(BaseSettings):
@@ -76,18 +84,29 @@ def creer_exportateur(point: str) -> OTLPSpanExporter:
 
 def configurer_telemetrie(version: str) -> None:
     """Une fois par processus (convention du SDK)."""
-    fournisseur = TracerProvider(
-        resource=Resource.create(
-            {
-                "service.name": SERVICE,
-                "service.version": version,
-                "deployment.environment": os.environ.get("APP_ENV", "local"),
-            }
-        )
+    ressource = Resource.create(
+        {
+            "service.name": SERVICE,
+            "service.version": version,
+            "deployment.environment": os.environ.get("APP_ENV", "local"),
+        }
     )
     point = os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", POINT_OTLP)
     # ponytail: une perte des spans (underwriting-admin en panne) ne bloque jamais une réponse
-    fournisseur.add_span_processor(BatchSpanProcessor(creer_exportateur(point)))
+    otlp = BatchSpanProcessor(creer_exportateur(point))
+    if os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
+        # le distro pose le fournisseur global ; la chaîne est lue par lui dans l'environnement.
+        # L'OTLP vers underwriting-admin reste, en processeur de spans supplémentaire (#54).
+        configure_azure_monitor(
+            resource=ressource,
+            span_processors=[otlp],
+            logger_name="insurflow.audit",
+            enable_live_metrics=True,
+            instrumentation_options=INSTRUMENTATIONS_DISTRO_COUPEES,
+        )
+        return
+    fournisseur = TracerProvider(resource=ressource)
+    fournisseur.add_span_processor(otlp)
     trace.set_tracer_provider(fournisseur)
 
 

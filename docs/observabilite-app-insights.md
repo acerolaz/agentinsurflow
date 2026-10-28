@@ -120,10 +120,10 @@ az monitor app-insights query --app appi-insurflow-staging -g svespuceRG \
 - **Quels services émettent ?** Cette requête liste les services présents sur 7 jours. Le cluster s'appelle `agentic-cluster` (`OTEL_SERVICE_NAME` de sa Container App) :
 
   ```kusto
-  union requests, traces, dependencies
+  union requests, traces, dependencies, performanceCounters
   | where timestamp > ago(7d)
-  | summarize n = count(), dernier = max(timestamp) by cloud_RoleName
+  | summarize n = count(), dernier = max(timestamp) by cloud_RoleName, itemType
   ```
 
-  Constat du 28/10 au soir en staging : gateway, rag, underwriting-admin, MCP et calcul présents ; **cluster absent** et aucune ligne `audit.*`. Soit aucune évaluation n'a tourné depuis S1, soit l'export du cluster est en défaut. Une évaluation de contrôle (§ 2) tranche : si le cluster reste absent ensuite, ouvrir un incident.
+  Sans évaluation, le cluster n'émet que ses compteurs de performance (`performanceCounters`) : il n'a ni requête, ni `audit.*`, ni span d'agent. Diagnostic du 29/10 (#176) : l'export du cluster fonctionne (ses compteurs de performance arrivent, table `performanceCounters`) ; aucune évaluation authentifiée n'avait tourné depuis S1 (seulement les `POST …/evaluation` sans jeton de la fumée CI, en 401). Une évaluation de contrôle (§ 2) le prouve : si le cluster reste absent ensuite, rouvrir #176.
 - **Service absent de la carte** : il n'a pas émis de trace dans l'intervalle, ou sa variable `APPLICATIONINSIGHTS_CONNECTION_STRING` manque. Voir [`exploitation.md`](exploitation.md) § 5.

@@ -3,6 +3,9 @@
 Niveau : TU (lecture des workflows YAML, aucune I/O réseau).
 """
 
+import json
+import math
+import textwrap
 from pathlib import Path
 
 import yaml
@@ -62,6 +65,25 @@ def test_artefact_compare_hors_commit_et_date():
     assert "make modele" in script
     assert "entraine_le" in script and "commit" in script
     assert "réentraîné ≠ commité : commiter le nouvel artefact" in script
+
+
+def _bruite(d, r):
+    if isinstance(d, dict):
+        return {k: _bruite(v, r) for k, v in d.items()}
+    if isinstance(d, list):
+        return [_bruite(v, r) for v in d]
+    return d * (1 + r) if isinstance(d, float) and d else d
+
+
+def test_artefact_tolere_le_bruit_blas_pas_un_autre_modele():
+    """Écart macOS/Linux mesuré le 28/10 : ≤ 6e-5 relatif ; un décalage de 1 % reste refusé."""
+    script = _scripts()
+    ns = {"math": math}
+    exec(textwrap.dedent(script[script.index("def proche") : script.index("def charge")]), ns)
+    artefact = next((RACINE / "fonction-calcul/agentinsurflow_calcul/modeles").glob("*.json"))
+    base = json.loads(artefact.read_text())
+    assert ns["proche"](base, _bruite(base, 6e-5))
+    assert not ns["proche"](base, _bruite(base, 1e-2))
 
 
 def test_fumee_frequence_fermee_sans_jeton():

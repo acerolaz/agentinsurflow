@@ -26,6 +26,7 @@ from typing import Any
 import requests
 from azure.core.exceptions import AzureError
 from azure.monitor.opentelemetry import configure_azure_monitor
+from azure.monitor.opentelemetry._constants import _ALL_SUPPORTED_INSTRUMENTED_LIBRARIES
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.propagate import inject
@@ -42,19 +43,9 @@ SERVICE = "agentic-cluster"
 _NUMERO = re.compile(r"/evaluations/[^/?]+")
 # Le distro active ses instrumentations par défaut : on les coupe toutes, le cluster garde les
 # siennes (FastAPIInstrumentor manuel avec anonymisation du numéro de contrat).
+# Liste dérivée du distro (import privé accepté : version épinglée ==1.8.11), pour ne rien oublier.
 INSTRUMENTATIONS_DISTRO_COUPEES: dict[str, dict[str, bool]] = {
-    nom: {"enabled": False}
-    for nom in (
-        "azure_sdk",
-        "django",
-        "fastapi",
-        "flask",
-        "httpx",
-        "psycopg2",
-        "requests",
-        "urllib",
-        "urllib3",
-    )
+    nom: {"enabled": False} for nom in _ALL_SUPPORTED_INSTRUMENTED_LIBRARIES
 }
 
 
@@ -100,11 +91,11 @@ def configurer_telemetrie(version: str) -> None:
         os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
         or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
     )
-    # ponytail: une perte de spans (collecteur en panne) ne bloque jamais une réponse
     if os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
         # le distro pose le fournisseur global ; la chaîne est lue par lui dans l'environnement
         configure_azure_monitor(
             resource=ressource,
+            # ponytail: une perte de spans (collecteur en panne) ne bloque jamais une réponse
             span_processors=[BatchSpanProcessor(creer_exportateur())] if otlp else [],
             logger_name="insurflow.audit",
             enable_live_metrics=True,
@@ -113,6 +104,7 @@ def configurer_telemetrie(version: str) -> None:
         return
     fournisseur = TracerProvider(resource=ressource)
     if otlp:
+        # ponytail: une perte de spans (collecteur en panne) ne bloque jamais une réponse
         fournisseur.add_span_processor(BatchSpanProcessor(creer_exportateur()))
     trace.set_tracer_provider(fournisseur)
 

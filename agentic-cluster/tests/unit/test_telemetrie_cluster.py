@@ -9,9 +9,10 @@ import logging
 from typing import Any
 
 import pytest
+from azure.monitor.opentelemetry._constants import _ALL_SUPPORTED_INSTRUMENTED_LIBRARIES
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from agentinsurflow_cluster.domain.models import Rapport
@@ -102,20 +103,18 @@ def test_le_numero_de_contrat_est_retire_des_attributs_http() -> None:
     assert set(span.attributs.values()) == {"/evaluations/{numero_contrat}/revue"}
 
 
-class _EspionAzure:
-    def __init__(self) -> None:
-        self.appels: list[dict[str, Any]] = []
-
-    def __call__(self, **kwargs: Any) -> None:
-        self.appels.append(kwargs)
+fournisseurs_poses: list[TracerProvider] = []
 
 
 @pytest.fixture
-def espion_azure(monkeypatch: pytest.MonkeyPatch) -> _EspionAzure:
-    espion = _EspionAzure()
-    monkeypatch.setattr(telemetrie, "configure_azure_monitor", espion, raising=False)
-    # le fournisseur global n'est jamais touché par ces tests
-    monkeypatch.setattr(telemetrie.trace, "set_tracer_provider", lambda _fournisseur: None)
+def appels_azure(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    appels: list[dict[str, Any]] = []
+    monkeypatch.setattr(
+        telemetrie, "configure_azure_monitor", lambda **kw: appels.append(kw), raising=False
+    )
+    # le fournisseur global n'est jamais touché ; le dernier posé est gardé pour inspection
+    fournisseurs_poses.clear()
+    monkeypatch.setattr(telemetrie.trace, "set_tracer_provider", fournisseurs_poses.append)
     for cle in (
         "APPLICATIONINSIGHTS_CONNECTION_STRING",
         "OTEL_EXPORTER_OTLP_ENDPOINT",
@@ -123,29 +122,35 @@ def espion_azure(monkeypatch: pytest.MonkeyPatch) -> _EspionAzure:
         "APP_ENV",
     ):
         monkeypatch.delenv(cle, raising=False)
-    return espion
+    return appels
 
 
 _CHAINE = "InstrumentationKey=00000000-0000-0000-0000-000000000000"
 
 
-def test_sans_rien_aucun_export(espion_azure: _EspionAzure) -> None:
+def test_sans_rien_aucun_export(appels_azure: list[dict[str, Any]]) -> None:
     configurer_telemetrie("t")
-    assert espion_azure.appels == []
+    assert appels_azure == []
 
 
 def test_otlp_seul_garde_le_comportement_actuel(
-    monkeypatch: pytest.MonkeyPatch, espion_azure: _EspionAzure
+    monkeypatch: pytest.MonkeyPatch, appels_azure: list[dict[str, Any]]
 ) -> None:
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://x/v1/traces")
     configurer_telemetrie("t")
-    assert espion_azure.appels == []
+    assert appels_azure == []
+    (fournisseur,) = fournisseurs_poses
+    (proc,) = fournisseur._active_span_processor._span_processors  # type: ignore[attr-defined]
+    assert isinstance(proc, BatchSpanProcessor)
+    assert isinstance(proc.span_exporter, OTLPSpanExporter)
 
 
-def test_app_insights_seul(monkeypatch: pytest.MonkeyPatch, espion_azure: _EspionAzure) -> None:
+def test_app_insights_seul(
+    monkeypatch: pytest.MonkeyPatch, appels_azure: list[dict[str, Any]]
+) -> None:
     monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", _CHAINE)
     configurer_telemetrie("t")
-    kw = espion_azure.appels[0]
+    kw = appels_azure[0]
     assert kw["span_processors"] == []
     assert kw["logger_name"] == "insurflow.audit"
     assert kw["enable_live_metrics"] is True
@@ -153,15 +158,15 @@ def test_app_insights_seul(monkeypatch: pytest.MonkeyPatch, espion_azure: _Espio
     assert kw["resource"].attributes["deployment.environment"] == "local"
 
 
-def test_double_export(monkeypatch: pytest.MonkeyPatch, espion_azure: _EspionAzure) -> None:
+def test_double_export(monkeypatch: pytest.MonkeyPatch, appels_azure: list[dict[str, Any]]) -> None:
     monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", _CHAINE)
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://x/v1/traces")
     configurer_telemetrie("t")
-    (proc,) = espion_azure.appels[0]["span_processors"]
+    (proc,) = appels_azure[0]["span_processors"]
     assert isinstance(proc.span_exporter, OTLPSpanExporter)
 
 
 def test_toutes_les_instrumentations_du_distro_sont_coupees() -> None:
-    attendues = {"httpx", "requests", "urllib3", "urllib", "fastapi"}
-    assert attendues <= INSTRUMENTATIONS_DISTRO_COUPEES.keys()
+    assert INSTRUMENTATIONS_DISTRO_COUPEES.keys() == set(_ALL_SUPPORTED_INSTRUMENTED_LIBRARIES)
+    assert {"httpx", "httpx2"} <= INSTRUMENTATIONS_DISTRO_COUPEES.keys()
     assert all(v == {"enabled": False} for v in INSTRUMENTATIONS_DISTRO_COUPEES.values())

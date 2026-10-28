@@ -88,3 +88,9 @@ class AuditPort(Protocol):
         ``signal_injection`` : score seul du modèle d'injection (jamais le texte) ;
         ``empreinte_observations`` : SHA-256 des observations évaluées (jamais le texte)."""
         ...
+
+    async def evaluation(
+        self, numero_contrat: str, statut_final: str, cause: str | None, duree_ms: int
+    ) -> None:
+        """Une ligne par évaluation entrée dans la Saga ; jamais de contenu."""
+        ...

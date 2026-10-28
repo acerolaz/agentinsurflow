@@ -5,17 +5,27 @@ Un fournisseur local (jamais le global) : aucune interférence avec les autres s
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
+import os
+from typing import Any
 
 import pytest
+from azure.monitor.opentelemetry._constants import _ALL_SUPPORTED_INSTRUMENTED_LIBRARIES
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from agentinsurflow_cluster.domain.models import Rapport
 from agentinsurflow_cluster.domain.reglages import ReglageAgent
-from agentinsurflow_cluster.infrastructure.otel import audit
-from agentinsurflow_cluster.infrastructure.otel.telemetrie import anonymiser_requete
+from agentinsurflow_cluster.infrastructure.otel import audit, telemetrie
+from agentinsurflow_cluster.infrastructure.otel.telemetrie import (
+    INSTRUMENTATIONS_DISTRO_COUPEES,
+    anonymiser_requete,
+    configurer_telemetrie,
+)
 
 
 @pytest.fixture
@@ -94,3 +104,101 @@ def test_le_numero_de_contrat_est_retire_des_attributs_http() -> None:
     anonymiser_requete(span, {"method": "POST", "path": "/evaluations/C-SECRET/revue"})  # type: ignore[arg-type]
     assert span.nom == "POST /evaluations/{numero_contrat}/revue"
     assert set(span.attributs.values()) == {"/evaluations/{numero_contrat}/revue"}
+
+
+fournisseurs_poses: list[TracerProvider] = []
+
+
+@pytest.fixture
+def appels_azure(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    appels: list[dict[str, Any]] = []
+    monkeypatch.setattr(
+        telemetrie, "configure_azure_monitor", lambda **kw: appels.append(kw), raising=False
+    )
+    # le fournisseur global n'est jamais touché ; le dernier posé est gardé pour inspection
+    fournisseurs_poses.clear()
+    monkeypatch.setattr(telemetrie.trace, "set_tracer_provider", fournisseurs_poses.append)
+    for cle in (
+        "APPLICATIONINSIGHTS_CONNECTION_STRING",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+        "APP_ENV",
+    ):
+        monkeypatch.delenv(cle, raising=False)
+    return appels
+
+
+_CHAINE = "InstrumentationKey=00000000-0000-0000-0000-000000000000"
+
+
+def test_sans_rien_aucun_export(appels_azure: list[dict[str, Any]]) -> None:
+    configurer_telemetrie("t")
+    assert appels_azure == []
+
+
+def test_otlp_seul_garde_le_comportement_actuel(
+    monkeypatch: pytest.MonkeyPatch, appels_azure: list[dict[str, Any]]
+) -> None:
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://x/v1/traces")
+    configurer_telemetrie("t")
+    assert appels_azure == []
+    (fournisseur,) = fournisseurs_poses
+    (proc,) = fournisseur._active_span_processor._span_processors  # type: ignore[attr-defined]
+    assert isinstance(proc, BatchSpanProcessor)
+    assert isinstance(proc.span_exporter, OTLPSpanExporter)
+
+
+def test_app_insights_seul(
+    monkeypatch: pytest.MonkeyPatch, appels_azure: list[dict[str, Any]]
+) -> None:
+    monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", _CHAINE)
+    monkeypatch.delenv("OTEL_TRACES_SAMPLER", raising=False)
+    configurer_telemetrie("t")
+    assert os.environ["OTEL_TRACES_SAMPLER"] == "parentbased_always_on"
+    kw = appels_azure[0]
+    assert kw["span_processors"] == []
+    assert kw["logger_name"] == "insurflow.audit"
+    assert kw["enable_live_metrics"] is True
+    assert kw["instrumentation_options"] == INSTRUMENTATIONS_DISTRO_COUPEES
+    assert kw["resource"].attributes["deployment.environment"] == "local"
+
+
+def test_double_export(monkeypatch: pytest.MonkeyPatch, appels_azure: list[dict[str, Any]]) -> None:
+    monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", _CHAINE)
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://x/v1/traces")
+    configurer_telemetrie("t")
+    (proc,) = appels_azure[0]["span_processors"]
+    assert isinstance(proc.span_exporter, OTLPSpanExporter)
+
+
+def test_toutes_les_instrumentations_du_distro_sont_coupees() -> None:
+    assert INSTRUMENTATIONS_DISTRO_COUPEES.keys() == set(_ALL_SUPPORTED_INSTRUMENTED_LIBRARIES)
+    assert {"httpx", "httpx2"} <= INSTRUMENTATIONS_DISTRO_COUPEES.keys()
+    assert all(v == {"enabled": False} for v in INSTRUMENTATIONS_DISTRO_COUPEES.values())
+
+
+def test_ligne_audit_evaluation_sans_donnee_personnelle(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(logging.getLogger("insurflow.audit"), "propagate", True)
+    with caplog.at_level(logging.INFO, logger="insurflow.audit"):
+        asyncio.run(
+            audit.AuditOtel().evaluation("AIF-2026-000001", "REVUE_HUMAINE", "llm_ko", 9876)
+        )
+    (enreg,) = [r for r in caplog.records if r.name == "insurflow.audit"]
+    ligne = json.loads(audit.FormatJson().format(enreg))
+    assert ligne["message"] == "audit.evaluation"
+    assert (ligne["numero_contrat"], ligne["statut_final"]) == ("AIF-2026-000001", "REVUE_HUMAINE")
+    assert (ligne["cause"], ligne["duree_ms"]) == ("llm_ko", 9876)
+    assert set(ligne) <= {"message", *audit.CHAMPS}
+
+
+def test_chargement_des_garde_fous_journalise(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(logging.getLogger("insurflow.audit"), "propagate", True)
+    with caplog.at_level(logging.INFO, logger="insurflow.audit"):
+        audit.journaliser_chargement_garde_fous(6123)
+    (enreg,) = [r for r in caplog.records if r.name == "insurflow.audit"]
+    ligne = json.loads(audit.FormatJson().format(enreg))
+    assert (ligne["message"], ligne["chargement_ms"]) == ("garde_fous.chargement", 6123)

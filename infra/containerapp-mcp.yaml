@@ -16,6 +16,7 @@ properties:
           - { type: Liveness, httpGet: { path: /health, port: 8003 }, initialDelaySeconds: 10, periodSeconds: 10 }
           - { type: Readiness, httpGet: { path: /health, port: 8003 }, initialDelaySeconds: 5, periodSeconds: 5 }
         env:
+          - { name: APPLICATIONINSIGHTS_CONNECTION_STRING, secretRef: appinsights-connection }
           # Aucun secret : OBO et jetons d'application par l'identité managée PROPRE du serveur MCP, jamais MCP_CLIENT_SECRET
           - { name: APP_ENV, value: "${APP_ENV}" }
           - { name: AZURE_TENANT_ID, value: "${AZURE_TENANT_ID}" }

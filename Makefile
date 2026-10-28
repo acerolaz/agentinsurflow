@@ -46,7 +46,7 @@ ingest:             ## make ingest [URL=<gateway>] [INSTANTANE=data/raw/…] [CO
 extraire:           ## extraction Légifrance seule → data/raw/ (identifiants PISTE du .env, bac à sable)
 	uv run python -m agentinsurflow_rag.cli.ingest --sans-envoi
 
-up:                 ## la solution en local : postgres + rag (:8001) + underwriting-admin (:8002) + gateway (:8000, Swagger unique)
+up:                 ## la solution en local : postgres + rag (:8001) + underwriting-admin (:8002) + serveur MCP + cluster d'agents + calcul + gateway (:8000, Swagger unique)
 	docker compose up -d --build --wait
 
 down:               ## arrête la solution et vide la base annexe
@@ -104,6 +104,9 @@ recette:            ## recette K5/K11 sur le cluster de staging : ACTION=redemar
 
 annexe:             ## G5 : image PostgreSQL annexe + secrets des Container Apps
 	bash infra/postgres-annexe.sh
+
+vigie:              ## make vigie ENV=staging|production : App Insights (#54), à la main
+	bash infra/vigie.sh $(ENV)
 
 proteger:           ## après le 1er push : main exige lint + test verts
 	gh api -X PUT repos/$(GITHUB_REPO)/branches/main/protection --input infra/protection-main.json

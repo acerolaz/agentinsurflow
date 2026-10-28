@@ -8,9 +8,11 @@ using AgentInsurFlow.UnderwritingAdmin.Api;
 using AgentInsurFlow.UnderwritingAdmin.Application;
 using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
 using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Traces;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.Identity.Web;
 using Microsoft.OpenApi;
 using OpenTelemetry.Exporter;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -113,14 +115,32 @@ builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService(
         "agentinsurflow-underwriting", serviceVersion: builder.Configuration["APP_VERSION"] ?? "dev"))
     .WithTracing(t => t
-        .AddAspNetCoreInstrumentation(o => o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health")
-            && !ctx.Request.Path.StartsWithSegments("/v1/traces")) // pas de boucle : l'export lui-même n'est pas tracé
+        .AddProcessor(new MasquageNumero.Processeur()) // en premier : avant tout exportateur, App Insights compris
+        .AddAspNetCoreInstrumentation(o =>
+        {
+            o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health")
+                && !ctx.Request.Path.StartsWithSegments("/v1/traces"); // pas de boucle : l'export lui-même n'est pas tracé
+        })
         .AddHttpClientInstrumentation()
         .AddOtlpExporter(o =>
         {
             o.Endpoint = new Uri(otlp);
             o.Protocol = OtlpExportProtocol.HttpProtobuf;
         }));
+
+// Export Azure Monitor (App Insights) en plus de l'OTLP, seulement si la chaîne de connexion est posée
+if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+{
+    // 100 % des traces : l'échantillonneur par défaut (5/s) écarterait aussi des spans de l'export vers le référentiel SQL (D-V2)
+    // journaux masqués avant l'export Azure Monitor (le processeur doit précéder UseAzureMonitor)
+    builder.Services.AddOpenTelemetry().WithLogging(l => l.AddProcessor(new MasquageNumero.ProcesseurJournaux()));
+    builder.Services.AddOpenTelemetry().UseAzureMonitor(o => { o.SamplingRatio = 1; o.TracesPerSecond = null; });
+    // UseAzureMonitor exporte aussi les journaux : « Request starting … /api/contrats/AIF-… » (Information) porte le numéro
+    foreach (var categorie in new[] { "Microsoft", "System" })
+    {
+        builder.Logging.AddFilter<OpenTelemetry.Logs.OpenTelemetryLoggerProvider>(categorie, LogLevel.Warning);
+    }
+}
 
 var app = builder.Build();
 

@@ -14,6 +14,19 @@
 La conformité OpenTelemetry repose sur le **protocole** OTLP/HTTP protobuf (tout SDK l'émet) et sur le
 **modèle de données** OTLP (les colonnes reprennent les champs de `Span`).
 
+## D-V2 amendée : double export en Azure (vigie S1)
+
+D-V2 disait : référentiel SQL des traces en local seulement. Cette décision est amendée (spec `docs/superpowers/specs/2026-10-28-o1-instrumentation-app-insights-design.md` §7, §8, §8 bis).
+
+- L'espace gestionnaire lit `GET /api/traces/{trace_id}` en staging. L'E2E de la CI aussi.
+- Le référentiel SQL reste donc alimenté en Azure.
+- Les cinq services (gateway, underwriting-admin, agentic-cluster, rag, serveur-mcp) exportent aussi vers Application Insights. Un service n'exporte que si `APPLICATIONINSIGHTS_CONNECTION_STRING` est posée.
+- Rôles : le SQL sert l'espace gestionnaire, l'E2E et le local (exigence C20 « au minimum en local »). Application Insights sert la vigie.
+- Sans la variable (local, compose, tests), le comportement est inchangé : export OTLP seulement.
+- L'échantillonnage est à 100 % partout (`parentbased_always_on` en Python, `SamplingRatio = 1` en C#). Le défaut des distros Azure Monitor (5 traces/s) ferait aussi perdre des spans à l'export OTLP vers le SQL, car le fournisseur de traces est partagé (spec §10, décision du 28/10).
+- La perte des traces SQL à chaque révision reste acceptée (déjà le cas).
+- RGPD (#65) : le numéro de contrat `AIF-AAAA-NNNNNN` est remplacé par `{numero_contrat}` dans les attributs d'URL et le nom des spans HTTP, avant tout exportateur. Le numéro reste autorisé dans les propriétés de `audit.*` (D-V15).
+
 ## Chemin d'un span
 
 ```mermaid
@@ -24,6 +37,8 @@ flowchart LR
     MCP(["🧩 serveur MCP · local"]) -- "OTLP · direct" --> RX
     CLI(["⌨️ CLI ingest"]) -- "via la gateway · rôle Telemetrie" --> RX
     RX --> CONV(["OtlpVersSpans<br/>protobuf → Span"]) --> TR[("🗄️ traces.span<br/>traces_writer")]
+    CL(["🤖 agentic-cluster"])
+    GW & RAG & UA & MCP & CL -. "si APPLICATIONINSIGHTS_CONNECTION_STRING (Azure)" .-> AI[("☁️ Application Insights<br/>vigie")]
     TR --> Q(["🔎 GET /api/traces/{trace_id}<br/>traces_reader · rôle Gestionnaire"])
 ```
 

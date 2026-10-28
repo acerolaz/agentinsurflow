@@ -17,6 +17,7 @@ properties:
           - { type: Liveness, httpGet: { path: /health, port: 8002 }, initialDelaySeconds: 10, periodSeconds: 10 }
           - { type: Readiness, httpGet: { path: /health, port: 8002 }, initialDelaySeconds: 5, periodSeconds: 5 }
         env:
+          - { name: APPLICATIONINSIGHTS_CONNECTION_STRING, secretRef: appinsights-connection }
           - { name: AzureAd__TenantId, value: "${AZURE_TENANT_ID}" }
           - { name: AzureAd__ClientId, value: "${UNDERWRITING_API_CLIENT_ID}" }
           # même liste que la gateway (Entra__Audiences__underwriting__0 et __1)

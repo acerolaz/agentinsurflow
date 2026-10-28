@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+from dataclasses import replace
 from typing import Any
 
+import pytest
 from fakes_cluster import (
     CONTRAT,
     REGLAGES,
@@ -13,6 +16,7 @@ from fakes_cluster import (
     FakeOutils,
     FakeRedaction,
 )
+from langgraph.checkpoint.memory import MemorySaver
 
 from agentinsurflow_cluster.application.agents import Dependances
 from agentinsurflow_cluster.application.evaluation import (
@@ -28,6 +32,11 @@ from agentinsurflow_cluster.application.serialisation import etat_depuis_dict, e
 from agentinsurflow_cluster.domain.models import EtatDossier
 from agentinsurflow_cluster.domain.plan import prochaine_etape
 from agentinsurflow_cluster.domain.ports import ErreurOutil
+from agentinsurflow_cluster.infrastructure.langgraph.graphe import (
+    DelaiDepasse,
+    EvaluationEnCours,
+    ServiceEvaluation,
+)
 
 JETON = "jeton-gestionnaire"
 
@@ -275,3 +284,52 @@ async def test_relire_observations_lit_le_contrat_sans_audit() -> None:
     assert observations == CONTRAT["observations"]
     assert [(a, o) for a, _, o in outils.appels] == [("saga", "get_contrat")]
     assert audit.traces == []
+
+
+# --- audit.evaluation : une ligne par évaluation entrée dans la Saga ---
+
+
+class _OutilsLents(FakeOutils):
+    async def appeler(self, agent: str, jeton: str, outil: str, arguments: dict[str, Any]) -> Any:
+        if outil == "get_contrat":
+            await asyncio.sleep(30)
+        return await super().appeler(agent, jeton, outil, arguments)
+
+
+def _service(audit: FakeAudit, outils: FakeOutils | None = None, **kw: Any) -> ServiceEvaluation:
+    return ServiceEvaluation(replace(_deps(outils=outils, audit=audit), **kw), MemorySaver())
+
+
+async def test_evaluation_nominale_trace_son_statut_final() -> None:
+    audit = FakeAudit()
+    r = await _service(audit).evaluer("C-1", JETON, "oid-a")
+    assert audit.evaluations == [("C-1", r.statut, r.etat.cause)]
+
+
+async def test_budget_depasse_sans_conclusion_trace_erreur() -> None:
+    audit = FakeAudit()
+    service = _service(audit, _OutilsLents(), budget_global_s=0.2, reserve_s=0.1)
+    with pytest.raises(DelaiDepasse):
+        await service.evaluer("C-1", JETON, "oid-a")
+    assert audit.evaluations == [("C-1", "ERREUR", "delai_depasse")]
+
+
+async def test_mcp_indisponible_trace_erreur_avec_le_code() -> None:
+    audit = FakeAudit()
+    service = _service(audit, FakeOutils(get_contrat=ErreurOutil("MCP_INDISPONIBLE")))
+    with pytest.raises(ErreurOutil):
+        await service.evaluer("C-1", JETON, "oid-a")
+    assert audit.evaluations == [("C-1", "ERREUR", "MCP_INDISPONIBLE")]
+
+
+async def test_refus_avant_la_saga_ne_trace_rien() -> None:
+    audit = FakeAudit()
+    service = _service(audit)
+    await service.evaluer("C-1", JETON, "oid-a")
+    audit.evaluations.clear()
+    with pytest.raises(ErreurOutil):  # autre gestionnaire : 404 BOLA
+        await service.evaluer("C-1", JETON, "oid-b")
+    async with service._verrou("C-1"):  # double clic : 409
+        with pytest.raises(EvaluationEnCours):
+            await service.evaluer("C-1", JETON, "oid-a")
+    assert audit.evaluations == []

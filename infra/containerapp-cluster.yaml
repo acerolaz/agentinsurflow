@@ -26,6 +26,7 @@ properties:
           - { type: Liveness, httpGet: { path: /health, port: 8004 }, periodSeconds: 15, failureThreshold: 4 }
           - { type: Readiness, httpGet: { path: /health, port: 8004 }, initialDelaySeconds: 30, periodSeconds: 10, failureThreshold: 6 }
         env:
+          - { name: APPLICATIONINSIGHTS_CONNECTION_STRING, secretRef: appinsights-connection }
           # Aucun secret client : OBO et jetons d'application par l'identité managée PROPRE du cluster (fédérée sur
           # l'application du cluster et sur chaque agent), jamais INSURFLOW_CLIENT_SECRET
           - { name: APP_ENV, value: "${APP_ENV}" }

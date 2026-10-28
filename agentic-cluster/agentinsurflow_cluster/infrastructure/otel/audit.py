@@ -16,13 +16,15 @@ from agentinsurflow_cluster.application.agents import empreinte
 from agentinsurflow_cluster.application.serialisation import vers_json
 from agentinsurflow_cluster.domain.models import Rapport
 from agentinsurflow_cluster.domain.reglages import ReglageAgent
+from agentinsurflow_cluster.infrastructure.otel.telemetrie import trace_id_courant
 
 journal = logging.getLogger("insurflow.audit")
 tracer = trace.get_tracer("agentinsurflow")
 CHAMPS = (
     "trace_id", "numero_contrat", "agent", "mode", "cause", "version_prompt", "garde_fous",
     "vue_sha256", "rapport_sha256", "duree_ms", "signal_injection", "observations_sha256",
-    "modele", "temperature", "max_tokens", "tokens_entree", "tokens_sortie",
+    "modele", "temperature", "max_tokens", "tokens_entree", "tokens_sortie", "statut_final",
+    "chargement_ms",
 )  # fmt: skip
 
 
@@ -118,3 +120,22 @@ class AuditOtel:
                 "tokens_sortie": rapport.tokens_sortie,
             },
         )
+
+    async def evaluation(
+        self, numero_contrat: str, statut_final: str, cause: str | None, duree_ms: int
+    ) -> None:
+        journal.info(
+            "audit.evaluation",
+            extra={
+                "trace_id": trace_id_courant(),
+                "numero_contrat": numero_contrat,
+                "statut_final": statut_final,
+                "cause": cause,
+                "duree_ms": duree_ms,
+            },
+        )
+
+
+def journaliser_chargement_garde_fous(chargement_ms: int) -> None:
+    """Durée de chargement des scanners au démarrage (modèles Hugging Face)."""
+    journal.info("garde_fous.chargement", extra={"chargement_ms": chargement_ms})

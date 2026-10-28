@@ -118,7 +118,7 @@ démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `d
 ├── tools/pyramide.py          # make pyramide : porte 70 / 20 / 10
 ├── tools/version.py           # release vX.Y.Z d'après les tags
 ├── data/raw/                  # instantanés Légifrance (code-assurances-<date>.json, manifeste + sha256)
-├── docker-compose.yml         # make up : postgres + rag (:8001) + underwriting-admin (:8002) + gateway (:8000)
+├── docker-compose.yml         # make up : postgres + rag (:8001) + underwriting-admin (:8002) + serveur MCP + cluster d'agents + calcul + gateway (:8000)
 ├── CLAUDE.md                  # contrat transverse du monorepo (non-négociables, pyramide, versions)
 ├── .github/workflows/
 │   ├── ci-cd.yml              # lint · test · gateway → [evals-pr] · build → staging → [evals] → release → production
@@ -164,7 +164,7 @@ Prérequis : [uv](https://docs.astral.sh/uv/) et Docker.
 ```bash
 cp .env.example .env      # remplir LLM_AUDIENCE, RAG_CLIENT_SECRET, AZURE_TENANT_ID, RAG_SEUIL, PG_*_PASSWORD…
 make install              # dépendances figées par uv.lock
-make up                   # postgres + rag (:8001) + underwriting-admin (:8002) + gateway (:8000) → http://localhost:8000/ : Swagger unique
+make up                   # postgres + rag (:8001) + underwriting-admin (:8002) + serveur MCP + cluster d'agents + calcul + gateway (:8000) → http://localhost:8000/ : Swagger unique
 make down                 # arrête tout et vide la base annexe
 make run                  # rag seul, sans Docker : http://localhost:8000 → Swagger de rag
 ```

@@ -95,7 +95,7 @@ La Function de calcul (Azure Functions) n'accepte que la gateway :
 Documentation des données : [`docs/donnees/`](docs/donnees/) — [sources](docs/donnees/sources.md),
 [pipeline](docs/donnees/pipeline.md), [modèle Merise](docs/donnees/modele.md), [SQL](docs/donnees/requetes-sql.md),
 [RGPD](docs/donnees/rgpd.md), [recherche](docs/donnees/recherche.md), [traces](docs/donnees/traces.md) (SQL pour l'espace gestionnaire et l'E2E, Application Insights pour la vigie : double export en Azure) ;
-OpenAPI : [`docs/openapi/`](docs/openapi/) (`make openapi`) ; démo : [`docs/demo-atelier-3.md`](docs/demo-atelier-3.md), [`docs/demo-atelier-4.md`](docs/demo-atelier-4.md) ; contrat personnel K1→K11 : [`docs/contrat-personnel.md`](docs/contrat-personnel.md).
+OpenAPI : [`docs/openapi/`](docs/openapi/) (`make openapi`) ; démo : [`docs/demo-atelier-3.md`](docs/demo-atelier-3.md), [`docs/demo-atelier-4.md`](docs/demo-atelier-4.md), [`docs/demo-sprint5.md`](docs/demo-sprint5.md) ; contrat personnel K1→K11 : [`docs/contrat-personnel.md`](docs/contrat-personnel.md).
 
 La base annexe repart **vide à chaque nouvelle révision** (déploiement ou rollback) : les migrations la recréent au
 démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `data/raw/` (rôle `Ingestion` de la CI).

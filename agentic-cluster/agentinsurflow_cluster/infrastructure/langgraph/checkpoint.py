@@ -1,4 +1,9 @@
-"""Point de reprise du graphe (R15) : PostgreSQL (schéma ``agent_state``) ou mémoire (tests)."""
+"""Point de reprise du graphe (R15) : par la gateway (underwriting-admin, D105) ou mémoire (local).
+
+Azure (``staging``, ``production``) : le saver HTTP est obligatoire, le démarrage échoue sans lui
+(jamais de repli silencieux vers la mémoire). Jeton : même condition que l'export OTLP
+(``creer_exportateur``), même audience (``TELEMETRIE_AUDIENCE`` = ``api://<underwriting>``).
+"""
 
 from __future__ import annotations
 
@@ -8,44 +13,38 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
+import httpx
 from langgraph.checkpoint.memory import MemorySaver
 
+from ..entra.config import ConfigCluster
+from ..entra.jetons import credential_application, source_assertion
+from .checkpoint_http import CheckpointerHttp
+
 journal = logging.getLogger(__name__)
-SCHEMA = "agent_state"
+ENVIRONNEMENTS_AZURE = ("staging", "production")
+# ponytail: délai d'un appel gateway ; à ajuster avec la mesure de la Task 5
+DELAI_S = 30
 
 
 @asynccontextmanager
-async def checkpointer(dsn: str | None = None) -> AsyncIterator[Any]:
-    """``AsyncPostgresSaver`` si ``INSURFLOW_CHECKPOINT_DSN`` est posé, sinon ``MemorySaver``."""
-    dsn = dsn if dsn is not None else os.environ.get("INSURFLOW_CHECKPOINT_DSN")
-    if not dsn:
-        journal.warning(
-            "INSURFLOW_CHECKPOINT_DSN absent : points de reprise en mémoire (perdus au redémarrage)"
-        )
-        yield MemorySaver()
-        return
-    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-    from psycopg.rows import dict_row
-    from psycopg_pool import AsyncConnectionPool
-
-    options = f"-c search_path={SCHEMA}"
-    async with AsyncConnectionPool(
-        dsn,
-        kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row,
-                "options": options},
-        open=False,
-        # connexion vérifiée avant d'être rendue : la base annexe change de révision au déploiement
-        # (connexions fermées côté serveur) ; sans cela, OperationalError puis 500 sur /evaluation
-        check=AsyncConnectionPool.check_connection,
-    ) as pool:  # fmt: skip
-        async with pool.connection() as connexion:
-            # Azure : schéma posé par infra/postgres/init.sh, compte sans droit de créer un schéma
-            # (CREATE SCHEMA IF NOT EXISTS vérifie ce droit même si le schéma existe)
-            cur = await connexion.execute(
-                "SELECT 1 FROM pg_namespace WHERE nspname = %s", (SCHEMA,)
+async def checkpointer(cfg: ConfigCluster | None = None) -> AsyncIterator[Any]:
+    cfg = cfg or ConfigCluster()
+    if cfg.telemetrie_audience and cfg.azure_tenant_id and cfg.insurflow_cluster_client_id:
+        assertion = source_assertion(cfg)
+        if assertion is not None:
+            credential = credential_application(
+                cfg.azure_tenant_id, cfg.insurflow_cluster_client_id, assertion
             )
-            if await cur.fetchone() is None:
-                await connexion.execute(f"CREATE SCHEMA {SCHEMA}")
-        saver = AsyncPostgresSaver(pool)  # type: ignore[arg-type]
-        await saver.setup()
-        yield saver
+            portee = f"{cfg.telemetrie_audience}/.default"
+            async with httpx.AsyncClient(base_url=cfg.gateway_url, timeout=DELAI_S) as client:
+                yield CheckpointerHttp(client, lambda: credential.get_token(portee).token)
+            return
+    env = os.environ.get("APP_ENV", "")
+    if env in ENVIRONNEMENTS_AZURE:
+        raise RuntimeError(
+            f"points de reprise : configuration HTTP absente en {env} (TELEMETRIE_AUDIENCE, "
+            "AZURE_TENANT_ID, INSURFLOW_CLUSTER_CLIENT_ID et une source d'assertion) ; "
+            "pas de repli vers la mémoire"
+        )
+    journal.warning("points de reprise en mémoire (perdus au redémarrage) : pas de jeton configuré")
+    yield MemorySaver()

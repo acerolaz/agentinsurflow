@@ -81,7 +81,7 @@ jobs:
         with: { global-json-file: global.json }
       - name: Mots de passe PostgreSQL éphémères (générés à chaque run, jamais stockés)
         run: |
-          for v in MIGRATEUR WRITER READER DOSSIERS TRACES_WRITER TRACES_READER AGENT_STATE POINTS_REPRISE POSTGRES; do
+          for v in MIGRATEUR WRITER READER DOSSIERS TRACES_WRITER TRACES_READER POINTS_REPRISE POSTGRES; do
             mdp=$(openssl rand -hex 16); echo "::add-mask::$mdp"
             echo "PG_${v}_PASSWORD=$mdp" >> "$GITHUB_ENV"
           done

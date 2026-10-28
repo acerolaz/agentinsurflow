@@ -1,7 +1,7 @@
 # Container App du cluster d'agents (#7, T12) : modèle versionné, substitué par deploy.yml (envsubst) puis
 # `az containerapp update --yaml`. Seul `template` est fourni : l'entrée INTERNE (port 8004, posée par
 # infra/bootstrap.sh), le registre, l'identité managée PROPRE uami-insurflow-cluster (infra/entra.sh ⑧) et le
-# secret checkpoint-dsn (infra/postgres-annexe.sh) restent tels quels.
+# restent tels quels.
 # Joignable seulement par la gateway (https://<app>.internal.<domaine de l'environnement>) ; « n'accepte que la
 # gateway » (D105) = entrée interne + revalidation du jeton du gestionnaire relayé par la gateway (R18), pas azp.
 # Il joint le MCP et le LLM par la gateway seulement (D22) : GATEWAY_URL, jamais une adresse interne.
@@ -47,8 +47,6 @@ properties:
           - { name: INSURFLOW_AGENT_ACTUAIRE_CLIENT_ID, value: "${INSURFLOW_AGENT_ACTUAIRE_CLIENT_ID}" }
           - { name: INSURFLOW_BUDGET_S, value: "25" }
           - { name: INSURFLOW_RESERVE_S, value: "2" }
-          # points de reprise : DSN du compte agent_state (schéma agent_state seul, base dossiers), secret de l'app
-          - { name: INSURFLOW_CHECKPOINT_DSN, secretRef: checkpoint-dsn }
           # Traces (R19), comme le serveur MCP : par la gateway (/v1/traces), jeton d'application de l'inscription du
           # cluster, rôle Telemetrie d'underwriting-admin (infra/entra.sh ⑧)
           - { name: TELEMETRIE_AUDIENCE, value: "api://${UNDERWRITING_API_CLIENT_ID}" }

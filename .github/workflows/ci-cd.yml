@@ -195,8 +195,9 @@ jobs:
           assert len(commite) == 1, f"un seul artefact commité attendu : {commite}"
           recent = max(Path(dossier).glob("*.json"), key=lambda p: p.stat().st_mtime)
           # commit, date d'entraînement et version (nommée d'après la date) changent à chaque exécution
+          # ponytail: 6 chiffres significatifs absorbent l'écart BLAS macOS/Linux ; tolérance par champ si elle ne suffit pas
           def charge(texte):
-              d = json.loads(texte)
+              d = json.loads(texte, parse_float=lambda s: float(f"{float(s):.6g}"))
               for cle in ("commit", "entraine_le", "version"):
                   d.pop(cle, None)
               return json.dumps(d, sort_keys=True, indent=2).splitlines()

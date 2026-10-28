@@ -37,7 +37,8 @@ flowchart LR
     MCP(["🧩 serveur MCP · local"]) -- "OTLP · direct" --> RX
     CLI(["⌨️ CLI ingest"]) -- "via la gateway · rôle Telemetrie" --> RX
     RX --> CONV(["OtlpVersSpans<br/>protobuf → Span"]) --> TR[("🗄️ traces.span<br/>traces_writer")]
-    GW & RAG & UA & MCP -. "si APPLICATIONINSIGHTS_CONNECTION_STRING (Azure)" .-> AI[("☁️ Application Insights<br/>vigie")]
+    CL(["🤖 agentic-cluster"])
+    GW & RAG & UA & MCP & CL -. "si APPLICATIONINSIGHTS_CONNECTION_STRING (Azure)" .-> AI[("☁️ Application Insights<br/>vigie")]
     TR --> Q(["🔎 GET /api/traces/{trace_id}<br/>traces_reader · rôle Gestionnaire"])
 ```
 

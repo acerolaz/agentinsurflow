@@ -66,6 +66,7 @@ LIGNES = {  # id: (kql, frequence, fenetre, operateur, seuil, gravite) — spec 
     "AL-9": ("al-9-gateway-403.kql", "1h", "1h", ">=", "env:SEUIL_AL9", "2"),
 }
 
+
 def test_catalogue_fidele_a_la_spec(): ...  # chaque ligne de alertes.tsv == LIGNES[id] + ancre == id.lower()
 def test_chaque_requete_existe_et_produit_valeur(): ...  # fichier présent, contient "valeur"
 def test_filtre_par_ressource(): ...  # "$APPI_ID" dans tout al-*.kql et tuiles/*.kql sauf al-3 ; "$CLUSTER_APP" dans al-3
@@ -101,12 +102,12 @@ def test_cout_sans_prix_en_dur(): ...  # "$PRIX_KQL" dans al-6 et cout-par-agent
 - [ ] **Step 1 : tests (ils doivent échouer).** `faux_az.sh` journalise ses arguments, un appel par ligne, dans `$FAUX_AZ_JOURNAL`. Pour les `show … --query …`, il répond une valeur factice (`/subscriptions/x/…`, `chaine-factice`, `gw.exemple`). Les tests lancent `bash infra/vigie.sh staging` avec `AZ=tests/unit/faux_az.sh` et les variables minimales du `.env`, passées dans `env=` de `subprocess.run`.
 
 ```python
-def test_sans_alerte_email_le_script_s_arrete(): ...      # returncode != 0, "ALERTE_EMAIL" dans la sortie
-def test_une_regle_par_ligne_du_catalogue(): ...          # avec PRIX et SEUIL_AL8/9 posés : 9 "scheduled-query create", noms al-1-staging … al-9-staging
-def test_sans_prix_ni_seuils_trois_regles_sautees(): ... # 6 règles créées ; sortie cite AL-6, AL-8, AL-9 « non créée »
-def test_description_cite_alerte_env_et_ancre(): ...     # chaque create : --description contient "AL-n", "staging", "docs/exploitation.md#al-n"
-def test_noms_stables_entre_deux_lancements(): ...       # journal du 1er lancement == journal du 2e
-def test_chaine_jamais_affichee(): ...                    # "chaine-factice" absent de stdout+stderr
+def test_sans_alerte_email_le_script_s_arrete(): ...  # returncode != 0, "ALERTE_EMAIL" dans la sortie
+def test_une_regle_par_ligne_du_catalogue(): ...  # avec PRIX et SEUIL_AL8/9 posés : 9 "scheduled-query create", noms al-1-staging … al-9-staging
+def test_sans_prix_ni_seuils_trois_regles_sautees(): ...  # 6 règles créées ; sortie cite AL-6, AL-8, AL-9 « non créée »
+def test_description_cite_alerte_env_et_ancre(): ...  # chaque create : --description contient "AL-n", "staging", "docs/exploitation.md#al-n"
+def test_noms_stables_entre_deux_lancements(): ...  # journal du 1er lancement == journal du 2e
+def test_chaine_jamais_affichee(): ...  # "chaine-factice" absent de stdout+stderr
 ```
 
 - [ ] **Step 2 : lancer, constater l'échec.**
@@ -146,15 +147,24 @@ L'**objectif** est écrit dans le titre ou le sous-titre de la tuile (par exempl
 - [ ] **Step 1 : tests (ils doivent échouer).**
 
 ```python
-QUESTIONS = ["Comment lire ce tableau", "Le service répond-il ?", "Combien de dossiers évalués ?",
-             "Combien de temps prend une évaluation ?", "Quelle part part en revue humaine, et pourquoi ?",
-             "Combien coûte un dossier ?", "Les garde-fous bloquent-ils plus que d'habitude ?",
-             "Combien d'évaluations sans décision ?", "Le modèle de langage est-il disponible ?", "Alertes en cours"]
+QUESTIONS = [
+    "Comment lire ce tableau",
+    "Le service répond-il ?",
+    "Combien de dossiers évalués ?",
+    "Combien de temps prend une évaluation ?",
+    "Quelle part part en revue humaine, et pourquoi ?",
+    "Combien coûte un dossier ?",
+    "Les garde-fous bloquent-ils plus que d'habitude ?",
+    "Combien d'évaluations sans décision ?",
+    "Le modèle de langage est-il disponible ?",
+    "Alertes en cours",
+]
 
-def test_une_tuile_par_question(): ...          # chaque question apparaît dans un titre de tuile du modèle
-def test_objectif_ecrit_sur_les_tuiles(): ...    # "30 s", "20 %", "0,15", "1 %", "100 %" présents dans les titres ou sous-titres
-def test_requetes_viennent_des_fichiers(): ...   # chaque "@kql:x" référence un fichier existant de infra/vigie/kql
-def test_assemblage_sans_placeholder(): ...      # vigie.sh avec faux az : le JSON passé à "portal dashboard create" est valide et ne contient ni "@kql:" ni "$APPI_ID"
+
+def test_une_tuile_par_question(): ...  # chaque question apparaît dans un titre de tuile du modèle
+def test_objectif_ecrit_sur_les_tuiles(): ...  # "30 s", "20 %", "0,15", "1 %", "100 %" présents dans les titres ou sous-titres
+def test_requetes_viennent_des_fichiers(): ...  # chaque "@kql:x" référence un fichier existant de infra/vigie/kql
+def test_assemblage_sans_placeholder(): ...  # vigie.sh avec faux az : le JSON passé à "portal dashboard create" est valide et ne contient ni "@kql:" ni "$APPI_ID"
 ```
 
 - [ ] **Step 2 : lancer, constater l'échec.**

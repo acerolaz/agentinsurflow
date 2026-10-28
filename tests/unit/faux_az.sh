@@ -12,6 +12,11 @@ for a in "$@"; do
     --kind)
       [ "$a" != standard ] || { echo "faux az : --kind standard invalide (--web-test-kind)" >&2; exit 2; }
       ;;
+    --input-path)
+      # portal 1.0.0b2 : create lit les seules propriétés (lenses et metadata à la racine)
+      [[ "$args" != *"portal dashboard create"* ]] || jq -e 'has("lenses") and has("metadata")' "$a" >/dev/null ||
+        { echo "faux az : Failed to parse 'lenses' from property." >&2; exit 2; }
+      ;;
   esac
   precedent=$a
 done

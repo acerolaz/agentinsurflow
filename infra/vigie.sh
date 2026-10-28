@@ -123,7 +123,10 @@ done
 jq --arg w "$WORKSPACE_ID" --arg e "$env" --arg l "$AZURE_LOCATION" \
   'walk(if type == "string" then gsub("\\$WORKSPACE_ID"; $w) | gsub("\\$ENV"; $e) | gsub("\\$LOCATION"; $l) else . end)' \
   "$tableau" >"$tableau.new" && mv "$tableau.new" "$tableau"
-az portal dashboard create -n "vigie-$env" -g "$RG" -l "$AZURE_LOCATION" --input-path "$tableau" -o none
+# create (PUT, relançable) ne lit que les propriétés ; import garderait le fichier entier mais perdrait les tags
+jq '.properties' "$tableau" >"$tableau.new" && mv "$tableau.new" "$tableau"
+az portal dashboard create -n "vigie-$env" -g "$RG" -l "$AZURE_LOCATION" --tags "hidden-title=vigie-$env" \
+  --input-path "$tableau" -o none
 
 echo "⑧ ✔ $appi branché sur les 5 apps et la Function ($env). Chaîne de connexion non affichée."
 echo "   Les anciens composants acerolaz-calcul-$env sont conservés (à retirer à la main une fois la vigie validée)."

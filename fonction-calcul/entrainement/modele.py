@@ -181,9 +181,9 @@ la fréquence n'entre jamais dans la décision, la prime ni le rapport de l'Actu
   `VehPower` (= `puissance_fiscale_cv`, bornée à [{vp["min"]}, {vp["max"]}], modalités >= 12 regroupées,
   indicatrices, référence {REF_VEH_POWER}), `Region` (département → ancienne région,
   22 indicatrices, référence {REF_REGION}).
-- **Exclues** : `DrivAge`, `VehAge`, `VehBrand`, `VehGas`, `Area`, `Density`. Le modèle est
-  volontairement limité aux trois variables que le profil de l'API porte déjà, pour rester
-  comparable au barème ; les autres ne sont pas dans le contrat d'entrée.
+- **Exclues** : `DrivAge`, `VehAge`, `VehBrand`, `VehGas`, `Area`, `Density`. Elles n'ont pas
+  d'équivalent dans un dossier AgentInsurFlow (par exemple, `anciennete_permis_mois` n'est pas
+  un âge) : limite assumée, l'objet est la chaîne C12/C13, pas la précision du produit.
 
 ## Exposition
 `PoissonRegressor` sur `y = ClaimNb / Exposure` avec `sample_weight = Exposure` est **équivalent

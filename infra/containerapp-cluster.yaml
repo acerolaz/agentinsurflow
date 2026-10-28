@@ -1,6 +1,6 @@
 # Container App du cluster d'agents (#7, T12) : modèle versionné, substitué par deploy.yml (envsubst) puis
 # `az containerapp update --yaml`. Seul `template` est fourni : l'entrée INTERNE (port 8004, posée par
-# infra/bootstrap.sh), le registre, l'identité managée PROPRE uami-insurflow-cluster (infra/entra.sh ⑧) et le
+# infra/bootstrap.sh), le registre, l'identité managée PROPRE uami-insurflow-cluster (infra/entra.sh ⑧)
 # restent tels quels.
 # Joignable seulement par la gateway (https://<app>.internal.<domaine de l'environnement>) ; « n'accepte que la
 # gateway » (D105) = entrée interne + revalidation du jeton du gestionnaire relayé par la gateway (R18), pas azp.

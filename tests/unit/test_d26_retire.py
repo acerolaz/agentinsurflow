@@ -4,11 +4,14 @@ import re
 import subprocess
 from pathlib import Path
 
+import yaml
+
 RACINE = Path(__file__).resolve().parents[2]
 MOTIFS = (
     "INSURFLOW_CHECKPOINT_DSN",
     "checkpoint-dsn",
     "agent_state",
+    "agent-state",
     "AGENT_STATE",
     "langgraph-checkpoint-postgres",
 )
@@ -53,3 +56,9 @@ def test_role_points_de_reprise_attribue_au_seul_cluster():
     ]
     assert len(lignes) == 1
     assert '--id "$cluster"' in lignes[0]
+
+
+def test_compose_donne_le_mot_de_passe_points_reprise_a_underwriting_admin():
+    compose = yaml.safe_load((RACINE / "docker-compose.yml").read_text())
+    env = compose["services"]["underwriting-admin"]["environment"]
+    assert "PG_POINTS_REPRISE_PASSWORD" in env

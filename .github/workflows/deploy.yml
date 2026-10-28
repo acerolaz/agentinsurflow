@@ -259,7 +259,7 @@ jobs:
             jq -e --arg s "$secret" '[.properties.configuration.secrets[]?.name] | index($s)' <<<"$uw" > /dev/null ||
               { echo "::error::secret $secret perdu par l'update de $UW_APP (relancer infra/postgres-annexe.sh)"; exit 1; }
           done
-          echo "✔ $UW_APP déployé, entrée interne $fqdn, 5 secrets pg-* conservés"
+          echo "✔ $UW_APP déployé, entrée interne $fqdn, secrets pg-* conservés"
 
       - name: Secret appinsights-connection présent sur $MCP_APP (lecture seule, porte bloquante)
         run: |

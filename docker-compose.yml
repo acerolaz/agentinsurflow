@@ -122,6 +122,7 @@ services:
       PG_DOSSIERS_PASSWORD: ${PG_DOSSIERS_PASSWORD}
       # base traces : écriture (traces_writer) et relecture (traces_reader) ; migrations par migrateur
       PG_TRACES_WRITER_PASSWORD: ${PG_TRACES_WRITER_PASSWORD}
+      PG_POINTS_REPRISE_PASSWORD: ${PG_POINTS_REPRISE_PASSWORD}
       PG_TRACES_READER_PASSWORD: ${PG_TRACES_READER_PASSWORD}
       # règle S3-21 : sans jeton, la loopback et le réseau interne du compose (sans X-Forwarded-For) ; Azure : loopback seule
       Otlp__SourcesSansJeton: 127.0.0.1/32,::1/128,172.29.250.0/24

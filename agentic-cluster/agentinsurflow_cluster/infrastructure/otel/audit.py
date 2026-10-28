@@ -24,6 +24,7 @@ CHAMPS = (
     "trace_id", "numero_contrat", "agent", "mode", "cause", "version_prompt", "garde_fous",
     "vue_sha256", "rapport_sha256", "duree_ms", "signal_injection", "observations_sha256",
     "modele", "temperature", "max_tokens", "tokens_entree", "tokens_sortie", "statut_final",
+    "chargement_ms",
 )  # fmt: skip
 
 
@@ -133,3 +134,8 @@ class AuditOtel:
                 "duree_ms": duree_ms,
             },
         )
+
+
+def journaliser_chargement_garde_fous(chargement_ms: int) -> None:
+    """Durée de chargement des scanners au démarrage (modèles Hugging Face)."""
+    journal.info("garde_fous.chargement", extra={"chargement_ms": chargement_ms})

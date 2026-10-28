@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from importlib.metadata import version
@@ -27,7 +28,11 @@ from ..infrastructure.llm.fabrique import RedactionLangChain, version_prompt
 from ..infrastructure.llm.modele import modele_chat
 from ..infrastructure.llm.reglages import charger_reglages
 from ..infrastructure.mcp.client import ClientMcpGateway
-from ..infrastructure.otel.audit import AuditOtel, configurer_journal_audit
+from ..infrastructure.otel.audit import (
+    AuditOtel,
+    configurer_journal_audit,
+    journaliser_chargement_garde_fous,
+)
 from ..infrastructure.otel.telemetrie import (
     anonymiser_requete,
     configurer_telemetrie,
@@ -54,7 +59,9 @@ async def _assembler(
     """Adapters réels ; les scanners (modèles Hugging Face) se chargent dans un thread."""
     jetons = JetonsAgents(cfg)
     client = ClientMcpGateway(cfg.gateway_url, jetons, traceparent_courant)
+    debut = time.perf_counter()
     garde = await asyncio.to_thread(ScannersLlmGuard)
+    journaliser_chargement_garde_fous(int((time.perf_counter() - debut) * 1000))
     deps = Dependances(
         outils=client,
         redaction=RedactionLangChain(

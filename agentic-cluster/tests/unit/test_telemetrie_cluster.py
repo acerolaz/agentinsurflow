@@ -188,3 +188,14 @@ def test_ligne_audit_evaluation_sans_donnee_personnelle(
     assert (ligne["numero_contrat"], ligne["statut_final"]) == ("AIF-2026-000001", "REVUE_HUMAINE")
     assert (ligne["cause"], ligne["duree_ms"]) == ("llm_ko", 9876)
     assert set(ligne) <= {"message", *audit.CHAMPS}
+
+
+def test_chargement_des_garde_fous_journalise(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(logging.getLogger("insurflow.audit"), "propagate", True)
+    with caplog.at_level(logging.INFO, logger="insurflow.audit"):
+        audit.journaliser_chargement_garde_fous(6123)
+    (enreg,) = [r for r in caplog.records if r.name == "insurflow.audit"]
+    ligne = json.loads(audit.FormatJson().format(enreg))
+    assert (ligne["message"], ligne["chargement_ms"]) == ("garde_fous.chargement", 6123)

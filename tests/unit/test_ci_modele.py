@@ -35,7 +35,8 @@ def test_staging_attend_la_porte_du_modele():
     staging = CI["jobs"]["staging"]
     assert "modele" in staging["needs"]
     cond = staging["if"]
-    # passé ou sauté = autorisé ; échoué, annulé ou expiré = bloquant ; un build non réussi bloque toujours
+    # passé ou sauté = autorisé ; échoué, annulé ou expiré = bloquant ;
+    # un build non réussi bloque toujours
     assert "(needs.modele.result == 'success' || needs.modele.result == 'skipped')" in cond
     assert "needs.build.result == 'success'" in cond
     assert "!cancelled()" in cond

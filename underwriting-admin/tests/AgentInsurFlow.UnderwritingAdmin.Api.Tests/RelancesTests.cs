@@ -145,9 +145,8 @@ public sealed class RelancesTests : IDisposable
     public async Task Span_porte_le_rang_et_les_pieces_jamais_le_texte()
     {
         await Poster("AIF-A1", GestionnaireA, "Texte confidentiel de la relance", "releve_information", "permis");
-        _usine.Services.GetRequiredService<TracerProvider>().ForceFlush();
 
-        var span = Assert.Single(_activites.ToArray(), a => a.GetTagItem("relance.rang") is not null);
+        var span = Assert.Single(await SpansAttendus(a => a.GetTagItem("relance.rang") is not null));
         Assert.Equal(1, span.GetTagItem("relance.rang"));
         Assert.Equal(3, span.GetTagItem("relance.max"));
         Assert.Equal("releve_information,permis", span.GetTagItem("relance.pieces"));
@@ -159,12 +158,30 @@ public sealed class RelancesTests : IDisposable
     {
         _depot.Decide = true;
         await Poster("AIF-A1", GestionnaireA, "Texte confidentiel de la relance", "permis");
-        _usine.Services.GetRequiredService<TracerProvider>().ForceFlush();
 
-        var span = Assert.Single(_activites.ToArray(), a => a.GetTagItem("relance.refus") is not null);
+        var span = Assert.Single(await SpansAttendus(a => a.GetTagItem("relance.refus") is not null));
         Assert.Equal("DOSSIER_DECIDE", span.GetTagItem("relance.refus"));
         Assert.Null(span.GetTagItem("relance.rang"));
         Assert.DoesNotContain(span.TagObjects, t => t.Value?.ToString()?.Contains("confidentiel", StringComparison.Ordinal) == true);
+    }
+
+    /// <summary>
+    /// Le span serveur se termine (et s'exporte) après l'envoi de la réponse, parfois après le retour du client :
+    /// on l'attend, au plus 3 s (#160).
+    /// </summary>
+    private async Task<Activity[]> SpansAttendus(Func<Activity, bool> filtre)
+    {
+        Activity[] trouves = [];
+        for (var i = 0; i < 60 && trouves.Length == 0; i++)
+        {
+            _usine.Services.GetRequiredService<TracerProvider>().ForceFlush();
+            trouves = [.. _activites.ToArray().Where(filtre)];
+            if (trouves.Length == 0)
+            {
+                await Task.Delay(50, TestContext.Current.CancellationToken);
+            }
+        }
+        return trouves;
     }
 
     private async Task<(HttpStatusCode Statut, string? Code)> ClasserSansSuite(string numero, string oid)

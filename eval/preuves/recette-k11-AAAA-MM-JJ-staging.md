@@ -21,12 +21,7 @@ Résultat : ⬜ (reprise à l'étape suivante, sans rejouer Pièces ni l'Analyst
 
 ## Allers-retours par évaluation
 
-Référence mesurée à la Task 5, **sur le faux underwriting-admin** (`test_reprise_apres_interrupt_par_http`), avec un état de test **réduit** (pas un point réel PostgreSQL) :
-
-| Scénario | GET | PUT de point | PUT d'écritures | PUT maximal |
-|---|---|---|---|---|
-| Évaluation | 4 | 8 | 8 | 3 564 o |
-| Reprise | 3 | 2 | 3 | 3 996 o |
+Référence (faux underwriting-admin, état de test réduit) : [`amendements-d106.md` § Mesures](../../docs/dossier/amendements-d106.md#mesures-task-5).
 
 Relevé staging (App Insights, dépendances, ou référentiel des traces) :
 

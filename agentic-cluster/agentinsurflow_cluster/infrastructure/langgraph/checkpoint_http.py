@@ -1,4 +1,4 @@
-"""Points de reprise LangGraph stockés par la gateway dans underwriting-admin (D105).
+"""Points de reprise LangGraph stockés par la gateway dans underwriting-admin (D106).
 
 Même sémantique qu'``AsyncPostgresSaver`` : ``aput`` renvoie la config avec le ``checkpoint_id``,
 ``aput_writes`` indexe les canaux spéciaux par ``WRITES_IDX_MAP`` (sinon par position), ``alist``

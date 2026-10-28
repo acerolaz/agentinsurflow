@@ -4,7 +4,7 @@ using static AgentInsurFlow.Gateway.Api.Tests.JetonsDeTest;
 
 namespace AgentInsurFlow.Gateway.Api.Tests;
 
-/// <summary>TI de <c>/api/points-de-reprise/**</c> (D105) : relayé à underwriting-admin pour le seul cluster.</summary>
+/// <summary>TI de <c>/api/points-de-reprise/**</c> (D106) : relayé à underwriting-admin pour le seul cluster.</summary>
 public sealed class PointsDeRepriseTests(Backends backends) : IClassFixture<Backends>
 {
     private const string Chemin = "/api/points-de-reprise/AIF-2026-0001/ecritures";

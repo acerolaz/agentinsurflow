@@ -1,4 +1,4 @@
-"""Point de reprise du graphe (R15) : par la gateway (underwriting-admin, D105) ou mémoire (local).
+"""Point de reprise du graphe (R15) : par la gateway (underwriting-admin, D106) ou mémoire (local).
 
 Azure (``staging``, ``production``) : le saver HTTP est obligatoire, le démarrage échoue sans lui
 (jamais de repli silencieux vers la mémoire). Jeton : même condition que l'export OTLP

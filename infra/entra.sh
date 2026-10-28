@@ -244,7 +244,7 @@ az rest --method PATCH --uri "$GRAPH/applications/$objet" --headers content-type
 # Traces (R19) : comme le serveur MCP (⑥), le cluster exporte par la gateway (/v1/traces) avec un jeton d'application
 # de son inscription : rôle Telemetrie d'underwriting-admin
 attribuer "$uw" "$UW_TELEMETRIE" "$(az ad sp show --id "$cluster" --query id -o tsv)" "cluster → Telemetrie (underwriting)"
-# Points de reprise (D105) : le cluster les lit et écrit par la gateway ; rôle PointsDeReprise d'underwriting-admin, à lui seul
+# Points de reprise (D106) : le cluster les lit et écrit par la gateway ; rôle PointsDeReprise d'underwriting-admin, à lui seul
 attribuer "$uw" "$UW_POINTS_DE_REPRISE" "$(az ad sp show --id "$cluster" --query id -o tsv)" "cluster → PointsDeReprise (underwriting)"
 # Identité managée PROPRE au cluster : elle sert d'assertion fédérée à l'application du cluster ET aux cinq agents
 UAMI_CLUSTER=uami-insurflow-cluster

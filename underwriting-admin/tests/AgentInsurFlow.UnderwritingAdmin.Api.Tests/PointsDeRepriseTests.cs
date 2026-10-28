@@ -13,7 +13,7 @@ using OpenTelemetry.Trace;
 
 namespace AgentInsurFlow.UnderwritingAdmin.Api.Tests;
 
-/// <summary>TI : API des points de reprise du cluster (D105), jetons réels, dépôt simulé en mémoire.</summary>
+/// <summary>TI : API des points de reprise du cluster (D106), jetons réels, dépôt simulé en mémoire.</summary>
 public sealed class PointsDeRepriseTests : IDisposable
 {
     private const string Fil = "AIF-2026-000001";

@@ -30,7 +30,7 @@ Jeton **Entra ID** (Bearer) validé à l'entrée : signature (clés publiées pa
 | `POST`/`GET /api/ingestions[/{id}]` | `rag-ingestion` | `Ingestion` | `agentinsurflow-rag` |
 | `/api/contrats/{**reste}` (portefeuille, dossier, pièces, état, fiche du lead, contrat, relances, sans suite), `GET /api/traces/{trace_id}` | `underwriting-gestionnaire` | `Gestionnaire` | `agentinsurflow-underwriting` |
 | `POST /v1/traces` | `underwriting-telemetrie` | `Telemetrie` | `agentinsurflow-underwriting` |
-| `/api/points-de-reprise/{**reste}` (points de reprise du graphe du cluster, D105) | `underwriting-points-de-reprise` | `PointsDeReprise`, et `azp` = `Entra:ClusterClientId` (`INSURFLOW_CLUSTER_CLIENT_ID`) | `agentinsurflow-underwriting` |
+| `/api/points-de-reprise/{**reste}` (points de reprise du graphe du cluster, D106) | `underwriting-points-de-reprise` | `PointsDeReprise`, et `azp` = `Entra:ClusterClientId` (`INSURFLOW_CLUSTER_CLIENT_ID`) | `agentinsurflow-underwriting` |
 | `/`, `/openapi/v1.json`, `GET /rag/openapi.json`, `GET /underwriting/openapi/v1.json`, `/health*` | `anonymous` | — | — |
 
 Les routes de documentation n'ouvrent **que** le document OpenAPI de chaque service : tout autre chemin sous `/rag/` ou `/underwriting/` tombe dans le refus par défaut (sinon `/rag/api/reponses` atteindrait `rag` sans jeton ni limite de débit). Le « Try it out » de la page Swagger appelle les routes REST publiques (`/api/…`), donc avec leur politique.

@@ -3,7 +3,7 @@
 #   vecteurs  (rag)                : migrateur (propriétaire), writer, reader ; extension vector
 #   dossiers  (underwriting-admin) : migrateur (propriétaire), dossiers
 #   traces    (underwriting-admin) : migrateur (propriétaire), traces_writer, traces_reader
-#   dossiers  (points de reprise, D105) : points_reprise, SELECT/INSERT/UPDATE/DELETE sur les seules tables du schéma
+#   dossiers  (points de reprise, D106) : points_reprise, SELECT/INSERT/UPDATE/DELETE sur les seules tables du schéma
 #                                        points_reprise (créé ici, tables par la migration EF de migrateur)
 # Les droits sur les tables sont posés par les migrations (Alembic, EF Core), pas ici.
 # PG_BASES_TEST=1 crée aussi vecteurs_test, dossiers_test et traces_test.

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AgentInsurFlow.UnderwritingAdmin.Api;
 
 /// <summary>
-/// Points de reprise LangGraph du cluster (D105) : stockage opaque, réservé au rôle <c>PointsDeReprise</c>.
+/// Points de reprise LangGraph du cluster (D106) : stockage opaque, réservé au rôle <c>PointsDeReprise</c>.
 /// Le corps n'est jamais tracé ni journalisé ; le fil (<c>thread_id</c>) est un numéro de contrat, masqué dans les spans.
 /// </summary>
 internal static class PointsDeRepriseEndpoints

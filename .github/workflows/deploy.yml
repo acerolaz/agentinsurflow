@@ -304,7 +304,7 @@ jobs:
           echo "✔ $MCP_APP déployé, entrée interne $fqdn, identité managée propre posée"
 
       # Cluster d'agents avant la gateway : son FQDN interne est le cluster `cluster` de la gateway. Il n'ouvre plus PostgreSQL :
-      # ses points de reprise passent par la gateway puis underwriting-admin (D105).
+      # ses points de reprise passent par la gateway puis underwriting-admin (D106).
       - name: Secret appinsights-connection présent sur $CLUSTER_APP (lecture seule, porte bloquante)
         run: |
           az containerapp show -n "$CLUSTER_APP" -g "$RG" -o json |

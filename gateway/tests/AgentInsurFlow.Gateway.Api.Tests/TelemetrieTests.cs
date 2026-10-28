@@ -67,8 +67,12 @@ public sealed class TelemetrieTests(Backends backends) : IClassFixture<Backends>
         using var requete = Requete("GET", chemin, Creer(Audience("underwriting"), TousLesRoles));
         requete.Headers.Add("traceparent", $"00-{trace}-0123456789abcdef-01");
         using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
-        // le premier démarrage d'Azure Monitor du processus est lent : attendre le span (sauf /health, qui n'en produit pas)
-        for (var i = 0; i < 60 && chemin != "/health" && !SpansDe(activites, trace).Any(a => a.Kind == ActivityKind.Client); i++)
+        // le premier démarrage d'Azure Monitor du processus est lent : attendre les spans (sauf /health, qui n'en produit pas) ;
+        // le span serveur de la gateway se termine après l'envoi de la réponse, parfois après le retour de SendAsync
+        bool Complets() => SpansDe(activites, trace) is var s
+            && s.Any(a => a.Kind == ActivityKind.Client)
+            && s.Any(a => a.Kind == ActivityKind.Server && a.ParentSpanId.ToString() == "0123456789abcdef");
+        for (var i = 0; i < 60 && chemin != "/health" && !Complets(); i++)
         {
             await Task.Delay(50, TestContext.Current.CancellationToken);
         }

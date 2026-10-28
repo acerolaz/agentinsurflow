@@ -72,9 +72,9 @@ public sealed class DepotPointsDeRepriseEf(ConnexionsPointsDeReprise connexions)
             points = points.Take(max);
         }
         var lignes = await points.ToListAsync(ct);
-        // Les écritures du fil en une requête (un fil reste petit : quelques points par évaluation).
+        var ids = lignes.ConvertAll(l => l.CheckpointId);
         var ecritures = (await db.Ecritures.AsNoTracking()
-            .Where(x => x.ThreadId == threadId)
+            .Where(x => x.ThreadId == threadId && ids.Contains(x.CheckpointId))
             .OrderBy(x => x.TaskId).ThenBy(x => x.Idx)
             .ToListAsync(ct)).ToLookup(x => (x.CheckpointNs, x.CheckpointId));
         return lignes.ConvertAll(l => VersPoint(l, ecritures[(l.CheckpointNs, l.CheckpointId)]));
@@ -104,26 +104,16 @@ public sealed class DepotPointsDeRepriseEf(ConnexionsPointsDeReprise connexions)
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         foreach (var e in ecritures)
         {
-            // Écritures spéciales (idx < 0, WRITES_IDX_MAP) : dernier écrit gagnant ; les autres ne s'écrivent qu'une fois.
-            if (e.Idx < 0)
-            {
-                await db.Database.ExecuteSqlAsync($"""
-                    INSERT INTO points_reprise.ecriture
-                        (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, canal, type, valeur, task_path)
-                    VALUES ({threadId}, {ns}, {checkpointId}, {taskId}, {e.Idx}, {e.Canal}, {e.Type}, {e.Valeur}, {taskPath})
-                    ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id, task_id, idx) DO UPDATE SET
-                        canal = EXCLUDED.canal, type = EXCLUDED.type, valeur = EXCLUDED.valeur, task_path = EXCLUDED.task_path
-                    """, ct);
-            }
-            else
-            {
-                await db.Database.ExecuteSqlAsync($"""
-                    INSERT INTO points_reprise.ecriture
-                        (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, canal, type, valeur, task_path)
-                    VALUES ({threadId}, {ns}, {checkpointId}, {taskId}, {e.Idx}, {e.Canal}, {e.Type}, {e.Valeur}, {taskPath})
-                    ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id, task_id, idx) DO NOTHING
-                    """, ct);
-            }
+            // Écritures spéciales (idx < 0, WRITES_IDX_MAP) : dernier écrit gagnant ; les autres ne s'écrivent qu'une fois
+            // (WHERE faux : la ligne existante n'est pas modifiée).
+            await db.Database.ExecuteSqlAsync($"""
+                INSERT INTO points_reprise.ecriture
+                    (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, canal, type, valeur, task_path)
+                VALUES ({threadId}, {ns}, {checkpointId}, {taskId}, {e.Idx}, {e.Canal}, {e.Type}, {e.Valeur}, {taskPath})
+                ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id, task_id, idx) DO UPDATE SET
+                    canal = EXCLUDED.canal, type = EXCLUDED.type, valeur = EXCLUDED.valeur, task_path = EXCLUDED.task_path
+                WHERE points_reprise.ecriture.idx < 0
+                """, ct);
         }
         await transaction.CommitAsync(ct);
     }

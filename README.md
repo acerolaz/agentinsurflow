@@ -64,8 +64,9 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 > l'espace gestionnaire `/app/` (#134), les relances et `SANS_SUITE` (#136), `make recette` (#137, #149), `make entra`
 > qui garde les agents pré-autorisés sur le MCP (#138), le contrat imprimé et la fiche du lead (#139), les tokens par
 > étape (#140), les pictogrammes (#142), la visionneuse du contrat (#145), les délais de l'évaluation (#146) et les liens
-> de l'en-tête au clavier (#147). **Limite connue** : le cluster d'agents n'émet pas encore vers Application Insights
-> (aucune ligne `agentic-cluster` en staging ni en production au 29/10, #176). **Bases éphémères** : chaque
+> de l'en-tête au clavier (#147). Le cluster exporte vers Application Insights (compteurs et métriques
+> `agentic-cluster` présents) mais aucune évaluation authentifiée ne l'a atteint depuis le 28/10 : ses spans et
+> `audit.*` restent à prouver par une évaluation réelle (#176). **Bases éphémères** : chaque
 > déploiement remet les dossiers de staging et de production au seed ([`docs/rollback.md`](docs/rollback.md)).
 > Historique (v0.6.0, du 22/10 au 26/10) : le cluster d'agents (#92, production depuis le 24/10 par #116),
 > le job `test` limité aux TU (#93), le cache Docker inline depuis l'ACR (#95), l'audience `api://agentinsurflow-cluster` (#96),
@@ -328,7 +329,7 @@ ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le L
 | Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.6.23` |
 | Modèles | `Kimi-K2.5` (rag), `gpt-4.1-mini` (cluster, `agents.toml`) et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971`, **sans clé** (`disableLocalAuth`) : appelée par la gateway seule (`/api/llm`) | ✅ |
 | Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag`, `-underwriting`, `-mcp`, `-calcul`, `-llm` ; `agentinsurflow-gateway-local` (secret dans le `.env` local seulement) ; rôle `PointsDeReprise` (principal du cluster seul, D106) | ✅ |
-| Vigie (`make vigie`) | `appi-insurflow-{staging,production}` sur le Log Analytics `workspace-svespucepZG6` ; groupe d'actions `ag-insurflow-<env>` (e-mail), alertes AL-1 → AL-9 (`infra/vigie/alertes.tsv`), test de disponibilité `web-sante-<env>`, tableau de bord `vigie-<env>` | ✅ (cluster muet, #176) |
+| Vigie (`make vigie`) | `appi-insurflow-{staging,production}` sur le Log Analytics `workspace-svespucepZG6` ; groupe d'actions `ag-insurflow-<env>` (e-mail), alertes AL-1 → AL-9 (`infra/vigie/alertes.tsv`), test de disponibilité `web-sante-<env>`, tableau de bord `vigie-<env>` | ✅ |
 | Identités managées | gateway `uami-insurflow-rag` (nom historique), rag `uami-insurflow-rag-app`, serveur MCP `uami-insurflow-mcp` ; underwriting-admin sans identité Azure | ✅ |
 | Rôles | CI : Contributor, AcrPush, AcrPull ; « Cognitive Services OpenAI User » sur Foundry : gateway et `gateway-local` **seulement** (`make llm` retire les autres) | ✅ attribués |
 

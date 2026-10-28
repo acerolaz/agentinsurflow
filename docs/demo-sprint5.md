@@ -9,7 +9,7 @@
 - Date de la démo (atelier n° 5) : `🔴 À CONFIRMER`.
 - Gestionnaire de la démo (A) et seed `SEED_GESTIONNAIRE_A` qui en découle : `🔴 À CONFIRMER`. Le formateur était A pour la démo du 30/10. Les dossiers `AIF-2026-000001` à `000003` appartiennent à A ; ne pas toucher à `000007` à `000009` (CI).
 - Durée réelle de chaque séquence : `🔴 À CONFIRMER` par les deux répétitions ([gabarit](../eval/preuves/repetition-demo-sprint5-AAAA-MM-JJ.md)).
-- Nom des onglets App Insights et du tableau de bord de production : `vigie-production` et `vigie-staging` sont les noms créés par `infra/vigie.sh` (ligne 129). Les deux existent dans `svespuceRG` (vérifié le 29/10 par `az portal dashboard list`), avec les groupes d'actions `ag-insurflow-staging` et `ag-insurflow-production`. **Attention** : au 29/10, le cluster d'agents n'émet pas vers Application Insights (#176) ; la trace montrée part de la gateway et ne contient pas les spans du cluster.
+- Nom des onglets App Insights et du tableau de bord de production : `vigie-production` et `vigie-staging` sont les noms créés par `infra/vigie.sh` (ligne 129). Les deux existent dans `svespuceRG` (vérifié le 29/10 par `az portal dashboard list`), avec les groupes d'actions `ag-insurflow-staging` et `ag-insurflow-production`. **Avant la démo** : aucune évaluation authentifiée n'a atteint le cluster depuis son export vers Application Insights (28/10) ; en lancer une en production depuis `/app/` et vérifier ses spans dans Transaction Diagnostics (#176).
 
 ## Avant (T − 65 min → T − 0)
 

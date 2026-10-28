@@ -51,7 +51,7 @@ Aujourd'hui, seuls les traces OTLP → référentiel SQL d'`underwriting-admin` 
 | D-V3 | Ordre : local → staging → production (celui de `ci-cd.yml`). |
 | D-V4 | Scripts `az` + `sh` dans `infra/`, cible `make`, lancés à la main. S1 crée `infra/vigie.sh` avec **la seule étape « App Insights »** ; S2 l'étend. |
 | D-V14 | Les 5 services. |
-| D-V15 | Coût : jetons × prix unitaire **paramétrable**. Déploiements Foundry vérifiés en **GlobalStandard** → valeurs initiales Global, en USD par million de jetons : gpt-4.1-mini **0,70 / 2,80**, Kimi-K2.5 **0,60 / 3,00**. Taux USD → € : `🔴` (paramètre). Le calcul du coût est fait **en KQL** par S2 ; S1 garantit seulement que `modele`, `tokens_entree`, `tokens_sortie` sont requêtables. |
+| D-V15 | Coût : jetons × prix unitaire **paramétrable**. Déploiements Foundry vérifiés en **GlobalStandard** → valeurs initiales Global, en USD par million de jetons : gpt-4.1-mini **0,70 / 2,80** *(corrigé le 29/10 : **0,40 / 1,60**, compteurs `gpt 4.1 mini Inp/Outp glbl` de l'API des prix Azure ; 0,70 / 2,80 est le tarif `4.1 mini pp … Gl` des modèles fine-tunés)*, Kimi-K2.5 **0,60 / 3,00**. Taux USD → € : `🔴` (paramètre). Le calcul du coût est fait **en KQL** par S2 ; S1 garantit seulement que `modele`, `tokens_entree`, `tokens_sortie` sont requêtables. |
 | 28/10 Q3 | Jetons de la gateway : **attributs de span** (`gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `gen_ai.response.model`), lus en KQL. D-V8 devient : Σ journalière des attributs de la gateway (route `/api/llm`) cohérente avec Σ `tokens_entree + tokens_sortie` d'`audit.agent` (l'écart = rag) → preuve dans `eval/preuves/`. |
 | 28/10 Q4 | `audit.agent` exporté par l'export OTel des journaux vers `AppTraces` ; le JSON sur stdout reste. |
 

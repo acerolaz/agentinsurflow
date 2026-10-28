@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from typing import Any
 
 import pytest
@@ -151,7 +152,10 @@ def test_app_insights_seul(
     monkeypatch: pytest.MonkeyPatch, appels_azure: list[dict[str, Any]]
 ) -> None:
     monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", _CHAINE)
+    monkeypatch.setenv("OTEL_TRACES_SAMPLER", "")  # isole : restauré à la fin du test
+    monkeypatch.delenv("OTEL_TRACES_SAMPLER")
     configurer_telemetrie("t")
+    assert os.environ["OTEL_TRACES_SAMPLER"] == "parentbased_always_on"
     kw = appels_azure[0]
     assert kw["span_processors"] == []
     assert kw["logger_name"] == "insurflow.audit"

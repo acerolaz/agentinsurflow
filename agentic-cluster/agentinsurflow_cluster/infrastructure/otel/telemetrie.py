@@ -81,6 +81,9 @@ def creer_exportateur() -> OTLPSpanExporter:
 def configurer_telemetrie(version: str) -> None:
     """Une fois par processus (convention du SDK)."""
     os.environ.setdefault("OTEL_SERVICE_NAME", SERVICE)
+    os.environ.setdefault(
+        "OTEL_TRACES_SAMPLER", "parentbased_always_on"
+    )  # 100 % des traces (référentiel SQL complet, D-V2)
     ressource = Resource.create(
         {
             "service.version": version,

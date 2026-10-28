@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
@@ -55,8 +54,6 @@ public sealed class TelemetrieTests(Backends backends) : IClassFixture<Backends>
             : [("APPLICATIONINSIGHTS_CONNECTION_STRING", chaineAppInsights)])
             .WithWebHostBuilder(b => b.ConfigureServices(s =>
             {
-                // l'échantillonneur par défaut d'Azure Monitor (5 traces/s) écarte la première requête : tout échantillonner
-                s.Configure<AzureMonitorOptions>(o => { o.SamplingRatio = 1; o.TracesPerSecond = null; });
                 s.ConfigureOpenTelemetryTracerProvider(t => t.AddProcessor(new Collecteur(activites)));
                 s.AddOpenTelemetry().WithLogging(l => l.AddProcessor(new CollecteurJournaux(journaux)));
             }));

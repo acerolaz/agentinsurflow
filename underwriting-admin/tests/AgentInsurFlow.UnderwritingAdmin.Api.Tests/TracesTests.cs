@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Azure.Monitor.OpenTelemetry.AspNetCore;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Proto.Collector.Trace.V1;
@@ -304,8 +303,6 @@ public sealed class TracesTests : IDisposable
             }
             b.ConfigureTestServices(s =>
             {
-                // l'échantillonneur par défaut d'Azure Monitor (5 traces/s) écarte la première requête : tout échantillonner
-                s.Configure<AzureMonitorOptions>(o => { o.SamplingRatio = 1; o.TracesPerSecond = null; });
                 s.ConfigureOpenTelemetryTracerProvider(t => t.AddInMemoryExporter(activites));
                 s.AddOpenTelemetry().WithLogging(l => l.AddProcessor(new CollecteurJournaux(journaux)));
             });

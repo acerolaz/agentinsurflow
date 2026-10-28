@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import pytest
@@ -52,7 +53,10 @@ def test_app_insights_garde_l_otlp_en_processeur_supplementaire(
     monkeypatch: pytest.MonkeyPatch, appels_azure: list[dict[str, Any]]
 ) -> None:
     monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", _CHAINE)
+    monkeypatch.setenv("OTEL_TRACES_SAMPLER", "")  # isole : restauré à la fin du test
+    monkeypatch.delenv("OTEL_TRACES_SAMPLER")
     configurer_telemetrie("t")
+    assert os.environ["OTEL_TRACES_SAMPLER"] == "parentbased_always_on"
     kw = appels_azure[0]
     (proc,) = kw["span_processors"]
     assert isinstance(proc.span_exporter, OTLPSpanExporter)

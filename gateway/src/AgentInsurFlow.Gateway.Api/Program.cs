@@ -222,7 +222,8 @@ builder.Services.AddOpenTelemetry()
 // Export Azure Monitor (App Insights) en plus de l'OTLP, seulement si la chaîne de connexion est posée
 if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
 {
-    builder.Services.AddOpenTelemetry().UseAzureMonitor();
+    // 100 % des traces : l'échantillonneur par défaut (5/s) écarterait aussi des spans de l'export vers le référentiel SQL (D-V2)
+    builder.Services.AddOpenTelemetry().UseAzureMonitor(o => { o.SamplingRatio = 1; o.TracesPerSecond = null; });
     // UseAzureMonitor exporte aussi les journaux : « Request starting … /api/contrats/AIF-… » (Information) porte le numéro
     foreach (var categorie in new[] { "Microsoft", "System", "Yarp" })
     {

@@ -6,16 +6,22 @@ Un fournisseur local (jamais le global) : aucune interférence avec les autres s
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import pytest
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from agentinsurflow_cluster.domain.models import Rapport
 from agentinsurflow_cluster.domain.reglages import ReglageAgent
-from agentinsurflow_cluster.infrastructure.otel import audit
-from agentinsurflow_cluster.infrastructure.otel.telemetrie import anonymiser_requete
+from agentinsurflow_cluster.infrastructure.otel import audit, telemetrie
+from agentinsurflow_cluster.infrastructure.otel.telemetrie import (
+    INSTRUMENTATIONS_DISTRO_COUPEES,
+    anonymiser_requete,
+    configurer_telemetrie,
+)
 
 
 @pytest.fixture
@@ -94,3 +100,68 @@ def test_le_numero_de_contrat_est_retire_des_attributs_http() -> None:
     anonymiser_requete(span, {"method": "POST", "path": "/evaluations/C-SECRET/revue"})  # type: ignore[arg-type]
     assert span.nom == "POST /evaluations/{numero_contrat}/revue"
     assert set(span.attributs.values()) == {"/evaluations/{numero_contrat}/revue"}
+
+
+class _EspionAzure:
+    def __init__(self) -> None:
+        self.appels: list[dict[str, Any]] = []
+
+    def __call__(self, **kwargs: Any) -> None:
+        self.appels.append(kwargs)
+
+
+@pytest.fixture
+def espion_azure(monkeypatch: pytest.MonkeyPatch) -> _EspionAzure:
+    espion = _EspionAzure()
+    monkeypatch.setattr(telemetrie, "configure_azure_monitor", espion, raising=False)
+    # le fournisseur global n'est jamais touché par ces tests
+    monkeypatch.setattr(telemetrie.trace, "set_tracer_provider", lambda _fournisseur: None)
+    for cle in (
+        "APPLICATIONINSIGHTS_CONNECTION_STRING",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+        "APP_ENV",
+    ):
+        monkeypatch.delenv(cle, raising=False)
+    return espion
+
+
+_CHAINE = "InstrumentationKey=00000000-0000-0000-0000-000000000000"
+
+
+def test_sans_rien_aucun_export(espion_azure: _EspionAzure) -> None:
+    configurer_telemetrie("t")
+    assert espion_azure.appels == []
+
+
+def test_otlp_seul_garde_le_comportement_actuel(
+    monkeypatch: pytest.MonkeyPatch, espion_azure: _EspionAzure
+) -> None:
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://x/v1/traces")
+    configurer_telemetrie("t")
+    assert espion_azure.appels == []
+
+
+def test_app_insights_seul(monkeypatch: pytest.MonkeyPatch, espion_azure: _EspionAzure) -> None:
+    monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", _CHAINE)
+    configurer_telemetrie("t")
+    kw = espion_azure.appels[0]
+    assert kw["span_processors"] == []
+    assert kw["logger_name"] == "insurflow.audit"
+    assert kw["enable_live_metrics"] is True
+    assert kw["instrumentation_options"] == INSTRUMENTATIONS_DISTRO_COUPEES
+    assert kw["resource"].attributes["deployment.environment"] == "local"
+
+
+def test_double_export(monkeypatch: pytest.MonkeyPatch, espion_azure: _EspionAzure) -> None:
+    monkeypatch.setenv("APPLICATIONINSIGHTS_CONNECTION_STRING", _CHAINE)
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://x/v1/traces")
+    configurer_telemetrie("t")
+    (proc,) = espion_azure.appels[0]["span_processors"]
+    assert isinstance(proc.span_exporter, OTLPSpanExporter)
+
+
+def test_toutes_les_instrumentations_du_distro_sont_coupees() -> None:
+    attendues = {"httpx", "requests", "urllib3", "urllib", "fastapi"}
+    assert attendues <= INSTRUMENTATIONS_DISTRO_COUPEES.keys()
+    assert all(v == {"enabled": False} for v in INSTRUMENTATIONS_DISTRO_COUPEES.values())

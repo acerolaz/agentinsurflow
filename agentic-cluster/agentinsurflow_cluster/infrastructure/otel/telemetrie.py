@@ -1,8 +1,12 @@
 """Traces OpenTelemetry du cluster (R14) : exportateur OTLP configuré par l'environnement.
 
 ``OTEL_SERVICE_NAME`` (``agentic-cluster``), ``OTEL_EXPORTER_OTLP_*`` et ``OTEL_SDK_DISABLED`` sont
-lus par le SDK. Sans point de terminaison, les spans restent locaux (aucun export). Application
-Insights viendra avec le ticket #54.
+lus par le SDK. Quatre cas, selon ``APPLICATIONINSIGHTS_CONNECTION_STRING`` (AI) et un point OTLP :
+
+- ni l'un ni l'autre : les spans restent locaux (aucun export) ;
+- OTLP seul : ``TracerProvider`` + ``BatchSpanProcessor(OTLPSpanExporter)`` ;
+- AI seul : ``configure_azure_monitor`` (traces, métriques, logs ``insurflow.audit``, live) ;
+- les deux : AI, plus l'export OTLP en processeur de spans supplémentaire (#54).
 
 Azure (``TELEMETRIE_AUDIENCE`` posée) : comme le serveur MCP, export par la gateway (``/v1/traces``)
 avec un jeton d'application de l'inscription du cluster (assertion fédérée de l'identité managée),
@@ -21,6 +25,7 @@ from typing import Any
 
 import requests
 from azure.core.exceptions import AzureError
+from azure.monitor.opentelemetry import configure_azure_monitor
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.propagate import inject
@@ -35,6 +40,22 @@ from ..entra.jetons import credential_application, source_assertion
 journal = logging.getLogger(__name__)
 SERVICE = "agentic-cluster"
 _NUMERO = re.compile(r"/evaluations/[^/?]+")
+# Le distro active ses instrumentations par défaut : on les coupe toutes, le cluster garde les
+# siennes (FastAPIInstrumentor manuel avec anonymisation du numéro de contrat).
+INSTRUMENTATIONS_DISTRO_COUPEES: dict[str, dict[str, bool]] = {
+    nom: {"enabled": False}
+    for nom in (
+        "azure_sdk",
+        "django",
+        "fastapi",
+        "flask",
+        "httpx",
+        "psycopg2",
+        "requests",
+        "urllib",
+        "urllib3",
+    )
+}
 
 
 def session_authentifiee(credential: Any, audience: str) -> requests.Session:
@@ -69,18 +90,29 @@ def creer_exportateur() -> OTLPSpanExporter:
 def configurer_telemetrie(version: str) -> None:
     """Une fois par processus (convention du SDK)."""
     os.environ.setdefault("OTEL_SERVICE_NAME", SERVICE)
-    fournisseur = TracerProvider(
-        resource=Resource.create(
-            {
-                "service.version": version,
-                "deployment.environment": os.environ.get("APP_ENV", "local"),
-            }
-        )
+    ressource = Resource.create(
+        {
+            "service.version": version,
+            "deployment.environment": os.environ.get("APP_ENV", "local"),
+        }
     )
-    if os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") or os.environ.get(
-        "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"
-    ):
-        # ponytail: une perte de spans (collecteur en panne) ne bloque jamais une réponse
+    otlp = bool(
+        os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+        or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+    )
+    # ponytail: une perte de spans (collecteur en panne) ne bloque jamais une réponse
+    if os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
+        # le distro pose le fournisseur global ; la chaîne est lue par lui dans l'environnement
+        configure_azure_monitor(
+            resource=ressource,
+            span_processors=[BatchSpanProcessor(creer_exportateur())] if otlp else [],
+            logger_name="insurflow.audit",
+            enable_live_metrics=True,
+            instrumentation_options=INSTRUMENTATIONS_DISTRO_COUPEES,
+        )
+        return
+    fournisseur = TracerProvider(resource=ressource)
+    if otlp:
         fournisseur.add_span_processor(BatchSpanProcessor(creer_exportateur()))
     trace.set_tracer_provider(fournisseur)
 

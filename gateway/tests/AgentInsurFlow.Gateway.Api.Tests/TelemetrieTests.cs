@@ -73,10 +73,10 @@ public sealed class TelemetrieTests(Backends backends) : IClassFixture<Backends>
             await Task.Delay(50, TestContext.Current.CancellationToken);
         }
         lock (activites)
-        lock (journaux)
-        {
-            return ([.. SpansDe(activites, trace)], [.. journaux]);
-        }
+            lock (journaux)
+            {
+                return ([.. SpansDe(activites, trace)], [.. journaux]);
+            }
     }
 
     [Theory]

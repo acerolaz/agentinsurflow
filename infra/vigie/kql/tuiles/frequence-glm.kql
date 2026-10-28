@@ -1,0 +1,17 @@
+// Tuile : GLM de fréquence (#155). Descriptif, sans seuil ni alerte.
+// Appels et latence p95 : requêtes de la Function (AppRequests, fonction « frequence »).
+// Distribution des fréquences prédites : journal « glm.frequence version=<v> frequence=<f> » (AppTraces).
+let appels = AppRequests
+    | where _ResourceId =~ "$APPI_ID"
+    | where Name =~ "frequence"
+    | summarize appels = count(), latence_p95_ms = percentile(DurationMs, 95)
+    | extend cle = 1;
+let frequences = AppTraces
+    | where _ResourceId =~ "$APPI_ID"
+    | where Message startswith "glm.frequence "
+    | extend frequence = todouble(extract(@"frequence=([0-9.]+)", 1, Message))
+    | summarize freq_p50 = percentile(frequence, 50), freq_p95 = percentile(frequence, 95), freq_max = max(frequence)
+    | extend cle = 1;
+appels
+| join kind=fullouter frequences on cle
+| project appels, latence_p95_ms, freq_p50, freq_p95, freq_max

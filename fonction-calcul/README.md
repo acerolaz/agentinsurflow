@@ -56,7 +56,15 @@ Aucun coefficient par défaut : une donnée absente (`null`) ou hors grille est 
   en chaînes ; `anciennete_permis_mois`, `puissance_fiscale_cv` entiers ; ou `null`). Réponse :
   `version_formule`, `prime_ht`, `montant_taxes`, `prime_ttc_annuelle`, `prime_mensuelle`,
   `coefficients` ; montants et coefficients en chaînes.
-- `GET /api/sante` : `{"version": $APP_VERSION ou "dev", "bareme": …, "formule": …}`.
+- `POST /api/frequence` : `crm` (chaîne décimale), `puissance_fiscale_cv` (entier), `departement`
+  (chaîne), chacun pouvant valoir `null`. Réponse : `version_modele`, `frequence_annuelle`,
+  `variables` (`BonusMalus`, `VehPower`, `Region`). **Comparaison seulement** : la fréquence du GLM
+  Poisson (`modeles/`) n'entre ni dans la décision, ni dans la prime, ni dans le rapport. Par la
+  gateway : `POST /api/calcul/frequence`, politique `calcul-mcp` (jeton du MCP). `crm` et puissance
+  hors des bornes d'entraînement sont bornés (jamais extrapolés) ; un champ `null` ou un DOM
+  (971-976, sans région freMTPL2) renvoie 422. Le journal ne porte que
+  `glm.frequence version=<v> frequence=<f>`, aucune donnée du profil.
+- `GET /api/sante` : `{"version": $APP_VERSION ou "dev", "bareme": …, "formule": …, "modele_frequence": …}`.
 
 Erreurs :
 
@@ -64,8 +72,13 @@ Erreurs :
 |---|---|---|
 | 400 | `{"code": "REQUETE_INVALIDE"}` | corps non JSON ou pas un objet, clé manquante ou en trop, mauvais type, `crm` non décimal |
 | 422 | `{"code": "DONNEE_HORS_BAREME", "champ": "<nom>"}` | donnée `null` ou hors grille ; seul le nom du champ est renvoyé |
+| 422 | `{"code": "DONNEE_HORS_MODELE", "champ": "<nom>"}` | `/api/frequence` : champ `null` ou département sans région (DOM) |
 
 Jamais de log du corps de la requête ni de la réponse (faits du dossier, montants).
+
+## Modèle de fréquence
+
+Fiche, métriques et données : `modeles/glm-freq-20261028-v1.md`. Suivi en ligne (appels, latence, fréquences prédites) : `infra/vigie/kql/tuiles/frequence-glm.kql`. Amendement du dossier : `docs/dossier/amendements-d42.md`.
 
 ## Versionnement
 

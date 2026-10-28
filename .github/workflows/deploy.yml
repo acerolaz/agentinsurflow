@@ -468,6 +468,8 @@ jobs:
           [ "$code" = 401 ] || { echo "::error::POST /api/reponses sans jeton : $code ≠ 401"; exit 1; }
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/calcul/evaluer" -H 'content-type: application/json' -d '{}')
           [ "$code" = 401 ] || { echo "::error::POST /api/calcul/evaluer sans jeton : $code ≠ 401"; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/calcul/frequence" -H 'content-type: application/json' -d '{}')
+          [ "$code" = 401 ] || { echo "::error::POST /api/calcul/frequence sans jeton : $code ≠ 401"; exit 1; }
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/llm/v1/chat/completions" -H 'content-type: application/json' -d '{}')
           [ "$code" = 401 ] || { echo "::error::POST /api/llm/v1/chat/completions sans jeton : $code ≠ 401"; exit 1; }
           # Le LLM avec jeton (rôle LLM de rag) est vérifié par le job evals (staging), via /api/reponses

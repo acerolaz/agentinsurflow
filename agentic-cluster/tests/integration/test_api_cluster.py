@@ -635,7 +635,9 @@ async def test_audit_agent_un_enregistrement_par_agent_sans_donnee_personnelle(
     with caplog.at_level(logging.INFO, logger="insurflow.audit"):
         async with client(banc) as c:
             await c.post("/evaluations/C-1")
-    registres = [r for r in caplog.records if r.name == "insurflow.audit"]
+    toutes = [r for r in caplog.records if r.name == "insurflow.audit"]
+    registres = [r for r in toutes if r.getMessage() == "audit.agent"]
+    assert toutes[-1].getMessage() == "audit.evaluation"  # une seule ligne de plus, en dernier
     assert [r.agent for r in registres] == [  # type: ignore[attr-defined]
         "saga", "pieces", "analyste", "redacteur", "actuaire"
     ]  # fmt: skip

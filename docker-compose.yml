@@ -152,6 +152,7 @@ services:
       Entra__McpClientId: ${MCP_API_CLIENT_ID:-}  # azp des jetons OBO du MCP (vide : PUT …/etat refusé)
       Entra__Audiences__cluster__0: ${CLUSTER_API_AUDIENCES:-api://agentinsurflow-cluster}
       Entra__Audiences__cluster__1: ${INSURFLOW_CLUSTER_CLIENT_ID:-}
+      Entra__ClusterClientId: ${INSURFLOW_CLUSTER_CLIENT_ID:-}  # azp des jetons du cluster (vide : /api/points-de-reprise refusé)
       Entra__Audiences__calcul__0: ${CALCUL_API_AUDIENCES:-api://agentinsurflow-calcul}
       Entra__Audiences__calcul__1: ${CALCUL_API_CLIENT_ID:-}
       Entra__Audiences__llm__0: ${LLM_API_AUDIENCES:-api://agentinsurflow-llm}

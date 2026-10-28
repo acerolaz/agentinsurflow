@@ -105,6 +105,8 @@ var audiencesLlm = Audiences("llm");
 var audiencesCluster = Audiences("cluster");
 // Client id du serveur MCP (azp de ses jetons OBO) : seul appelant de PUT /api/contrats/{n}/etat. Vide : route fermée.
 var clientMcp = builder.Configuration["Entra:McpClientId"];
+// Client id du cluster d'agents (azp de ses jetons) : seul appelant de /api/points-de-reprise/** (D105). Vide : route fermée.
+var clientCluster = builder.Configuration["Entra:ClusterClientId"];
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -140,6 +142,8 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("llm-appelant", p => p.RequireRole("LLM").RequireClaim("aud", audiencesLlm)) // jeton de l'appelant, remplacé par celui de la gateway
     .AddPolicy("underwriting-etat-mcp", p => p.RequireRole("Gestionnaire").RequireClaim("aud", audiencesUnderwriting) // mémoire du dossier (D100) : écrite par le MCP, pas par un client direct
         .RequireAssertion(ctx => !string.IsNullOrEmpty(clientMcp) && ctx.User.FindFirst("azp")?.Value == clientMcp))
+    .AddPolicy("underwriting-points-de-reprise", p => p.RequireRole("PointsDeReprise").RequireClaim("aud", audiencesUnderwriting) // points de reprise du graphe (D105) : cluster seul
+        .RequireAssertion(ctx => !string.IsNullOrEmpty(clientCluster) && ctx.User.FindFirst("azp")?.Value == clientCluster))
     .AddPolicy("underwriting-telemetrie", p => p.RequireRole("Telemetrie").RequireClaim("aud", audiencesUnderwriting))
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 

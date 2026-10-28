@@ -24,6 +24,7 @@ internal static class JetonsDeTest
     public const string AudienceLlm = "api://agentinsurflow-llm";
     public const string AudienceCluster = "api://agentinsurflow-cluster";
     public const string ClientMcp = "00000000-0000-0000-0000-00000000mcp1"; // azp des jetons OBO du serveur MCP
+    public const string ClientCluster = "00000000-0000-0000-0000-0000000clus1"; // azp des jetons du cluster d'agents
     public static readonly string[] TousLesRoles = ["Gestionnaire", "Ingestion", "Telemetrie"];
 
     public static readonly string EmetteurV2 = $"https://login.microsoftonline.com/{Tenant}/v2.0";
@@ -64,6 +65,7 @@ internal static class JetonsDeTest
         .UseSetting("Entra:Audiences:llm:0", AudienceLlm)
         .UseSetting("Entra:Audiences:cluster:0", AudienceCluster)
         .UseSetting("Entra:McpClientId", ClientMcp)
+        .UseSetting("Entra:ClusterClientId", ClientCluster)
         .ConfigureTestServices(s => s.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
         {
             var metadonnees = new OpenIdConnectConfiguration { Issuer = EmetteurV2 };

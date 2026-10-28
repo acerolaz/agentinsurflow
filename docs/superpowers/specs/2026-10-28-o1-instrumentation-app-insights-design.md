@@ -91,7 +91,8 @@ D-V2 disait « référentiel SQL des traces en local seulement ». Or l'espace g
 - *Mon choix* : `vigie.sh` crée `appi-insurflow-staging` et `appi-insurflow-production` sur `workspace-svespucepZG6`, puis pose leur chaîne de connexion dans le réglage `APPLICATIONINSIGHTS_CONNECTION_STRING` de `acerolaz-calcul-<env>` (`az functionapp config appsettings set`). Les anciens composants ne sont **pas supprimés** (historique) ; leur suppression éventuelle revient à Acerola.
 
 **Périmètre par service** (*mon choix*) :
-- underwriting-admin reçoit **seulement** la chaîne App Insights. Il n'exporte pas en OTLP, puisqu'il est le récepteur du référentiel SQL, et il ne se trace pas lui-même sur `/v1/traces` (test existant).
+- underwriting-admin reçoit la chaîne App Insights **et garde** son export OTLP vers son propre `/v1/traces` en localhost (existant, `Program.cs`) ; la route `/v1/traces` elle-même n'est jamais tracée (test existant). *(Corrigé au plan : cette ligne disait à tort « sans OTLP ».)*
+- Gateway et underwriting-admin : le numéro de contrat (`AIF-AAAA-NNNNNN`) est masqué dans les attributs d'URL et le nom des spans HTTP, entrants et sortants. Cela clôt #65 : l'anti-objectif du §4 l'exige dès que ces spans partent vers App Insights.
 - La gateway fait le double export : `UseAzureMonitor()` plus l'`AddOtlpExporter` existant, avec son jeton d'application.
 
 **`audit.evaluation`** :

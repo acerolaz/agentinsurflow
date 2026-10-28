@@ -91,9 +91,9 @@ button[aria-pressed="true"] { border-color: var(--accent); }
 
 .marque { font-weight: 700; margin-right: 12px; }
 
-[role="tablist"] { display: flex; gap: 4px; flex: 1; }
+[role="tablist"], .entete nav { display: flex; gap: 4px; flex: 1; }
 
-[role="tab"] {
+[role="tab"], .entete nav a {
   padding: 8px 14px;
   border-radius: 6px 6px 0 0;
   text-decoration: none;
@@ -101,7 +101,7 @@ button[aria-pressed="true"] { border-color: var(--accent); }
   border-bottom: 3px solid transparent;
 }
 
-[role="tab"][aria-selected="true"] {
+[role="tab"][aria-selected="true"], .entete nav a[aria-current="page"] {
   color: var(--texte);
   border-bottom-color: var(--accent);
   font-weight: 600;

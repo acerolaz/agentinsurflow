@@ -94,7 +94,7 @@ La Function de calcul (Azure Functions) n'accepte que la gateway :
 
 Documentation des données : [`docs/donnees/`](docs/donnees/) — [sources](docs/donnees/sources.md),
 [pipeline](docs/donnees/pipeline.md), [modèle Merise](docs/donnees/modele.md), [SQL](docs/donnees/requetes-sql.md),
-[RGPD](docs/donnees/rgpd.md), [recherche](docs/donnees/recherche.md), [traces](docs/donnees/traces.md) ;
+[RGPD](docs/donnees/rgpd.md), [recherche](docs/donnees/recherche.md), [traces](docs/donnees/traces.md) (SQL pour l'espace gestionnaire et l'E2E, Application Insights pour la vigie : double export en Azure) ;
 OpenAPI : [`docs/openapi/`](docs/openapi/) (`make openapi`) ; démo : [`docs/demo-atelier-3.md`](docs/demo-atelier-3.md), [`docs/demo-atelier-4.md`](docs/demo-atelier-4.md) ; contrat personnel K1→K11 : [`docs/contrat-personnel.md`](docs/contrat-personnel.md).
 
 La base annexe repart **vide à chaque nouvelle révision** (déploiement ou rollback) : les migrations la recréent au
@@ -278,6 +278,7 @@ Installation, à faire une seule fois (écritures Azure et Entra : lancées à l
    **secrets des Container Apps** (chacune ceux dont elle se sert).
    `make llm` (après `make entra`) inscrit `agentinsurflow-llm` et `agentinsurflow-gateway-local`, désactive les clés de Foundry et réserve l'accès à la gateway.
 4. `make domaine DOMAINE=…` lie le domaine personnalisé à la production (certificat managé), puis poser `PROD_URL`.
+   `make vigie ENV=staging|production` (à lancer à la main, il écrit dans Azure) crée `appi-insurflow-<env>` sur le Log Analytics `workspace-svespucepZG6` (variable `LOG_ANALYTICS_WORKSPACE` du `.env`). Il pose le secret `appinsights-connection` sur les cinq Container Apps et la chaîne de connexion dans le réglage de la Function `acerolaz-calcul-<env>`. Sans ce secret, `deploy.yml` refuse le déploiement.
 5. Reporter à la main les variables dans GitHub en suivant [docs/secrets.md](docs/secrets.md).
 6. `git push`, puis `make proteger` : `main` n'accepte plus que des commits dont `lint`, `test`, `gateway` et
    `evals-pr` sont verts (un `evals-pr` sauté compte comme vert).

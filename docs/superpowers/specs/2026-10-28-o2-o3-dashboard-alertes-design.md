@@ -40,12 +40,12 @@ Règle (D-V6, Acerola) : chaque seuil est **dérivé d'une mesure ou d'un budget
 | AL-4 | `MCP_INDISPONIBLE` (502 `OUTIL_INDISPONIBLE`) | **≥ 1** en 5 min | 0 en nominal ; délai MCP 22 s (#146) | `/health/mcp` → journaux du serveur MCP → rollback | 💡 |
 | AL-5 = **A7** | Part des évaluations terminées en `REVUE_HUMAINE` | **> 30 %** sur 2 h glissantes, si **≥ 10** évaluations | SLO-5 (≤ 20 %), alerte A7 du dossier (L7.5) ; volume minimal 💡 | Cause dominante (garde-fou, `llm_ko`, `duree`) → section correspondante | 💡 |
 | AL-6 = **A6** | Coût IA moyen par dossier évalué, **en USD** | **> 0,15 $** sur 24 h glissantes, vérifié toutes les heures | SLO-6 (≤ 0,15 €) ; coût = Σ jetons × prix Global (D-V15), **sans conversion** (décision d'Acerola, 28/10). Tant que 1 $ ≤ 1 €, 0,15 $ ≤ 0,15 € : l'alerte part **au plus tard** au dépassement du SLO (seuil prudent) | Agent et modèle les plus coûteux → `max_tokens` dans `agents.toml` | 💡 |
-| AL-7 = **A10** | Taux d'évaluations refusées par un garde-fou (`cause` `garde_fou:*`) | **> 2×** sa moyenne sur 7 jours, sur 1 h, si **≥ 10** évaluations | Alerte A10 du dossier ; moyenne **calculée dans la requête** | Échantillon des causes → attaque ou faux positifs → `make garde-fous` | 💡 |
+| AL-7 = **A10** | Taux d'évaluations refusées par un garde-fou (`cause` `garde_fou:*`) | **> 2×** le taux du reste d'une fenêtre de 48 h (47 h, l'ARM limite la fenêtre à 48 h), sur 1 h, si **≥ 10** évaluations | Alerte A10 du dossier ; référence **calculée dans la requête** | Échantillon des causes → attaque ou faux positifs → `make garde-fous` | 💡 |
 | AL-8 = **A5** | 429 de Foundry vus par la gateway (dépendance `/api/llm`) | `🔴 À CONFIRMER` | Alerte A5 du dossier (L7.5) : reprendre sa formulation exacte ; sinon ligne de base 7 j | Quota / capacité du déploiement (5 750 k TPM pour gpt-4.1-mini) | `🔴` |
 | AL-9 = **A11** | 403 de la gateway après un déploiement | `🔴 À CONFIRMER` | Alerte A11 du dossier (L7.5) ; ligne de base 7 j des 403 hors déploiement | Rôles Entra / `make entra` ; rollback si régression | `🔴` |
 | — | **SLO-4** évaluations sans décision (`audit.evaluation.statut_final` en erreur) | **< 1 %** affiché ; alerte `🔴` | SLO-4 du dossier (L7.5) | — | tuile seule |
 
-Pour AL-8, AL-9 et SLO-4 : le constructeur **lit `dossier-conception-v1.2.pdf` L7.5** ; si le dossier donne une valeur, il la cite ; sinon la règle est créée **désactivée** et le seuil reste `🔴` (jamais inventé).
+Pour AL-8, AL-9 et SLO-4 : le dossier de conception v1.2, L7.5 (p. 33), dit seulement « A5 : 429 Azure OpenAI », « A11 : 403 gateway après déploiement » et le SLO-4 sans valeur chiffrée. Le seuil reste donc `🔴` (jamais inventé), et AL-8 et AL-9 ne sont pas créées tant que `SEUIL_AL8` et `SEUIL_AL9` ne sont pas posés dans `.env`.
 
 **Paramètres** (en tête de `infra/vigie.sh`, surchargeables par `.env`) : prix unitaires par modèle en USD par million de jetons (D-V15, valeurs Global), destinataire `ALERTE_EMAIL`. Aucune conversion de devise.
 
@@ -58,6 +58,7 @@ Pour AL-8, AL-9 et SLO-4 : le constructeur **lit `dossier-conception-v1.2.pdf` L
 | Format versionnable : script `az` + `sh` + cible `make`, lancé à la main (D-V4) | Acerola |
 | Dérive à montrer en direct : `make recette ACTION=llm-off` **en staging** → AL-2 | Acerola (28/10) |
 | **Les alertes existent dans les deux environnements**, mêmes seuils. AL-2 n'exclut donc pas la recette en staging : c'est justement elle qui sert à la démo. En production, une recette n'est jamais jouée (`recette.sh` vise staging par défaut). | *mon choix* |
+| AL-8 et AL-9 **ne sont pas créées** sans `SEUIL_AL8` et `SEUIL_AL9`, au lieu de « créée désactivée » : une règle désactivée exigerait quand même un seuil. AL-6 n'est pas créée sans `PRIX_USD_MILLION`. | *mon choix* |
 | Règles de requête planifiée évaluées **toutes les 5 min** (AL-2, AL-3, AL-4), 15 min (AL-1), 1 h (AL-5 → AL-9) ; résolution automatique activée | *mon choix* (délai panne → e-mail ≈ 5 à 10 min, compatible avec une démo de 10 min si la panne est lancée au début) |
 | Un tableau de bord **par environnement** (staging, production) | *mon choix* |
 | Un **test de disponibilité standard** d'App Insights sur `GET /health` de la gateway (tuile « Le service répond-il ? ») | *mon choix* |

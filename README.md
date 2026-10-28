@@ -37,29 +37,35 @@ Un merge sur `main` relance `lint`, `test` et `gateway` avant `build`. Les evals
 p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané du corpus ou la version du LLM changent
 (voir *Évaluer l'agent*). Le job `evals-pr` (avant merge) est **désactivé jusqu'à U5** : voir le tableau des jobs.
 
-## État au 28/10 (release v0.6.17)
+## État au 29/10 (release v0.6.23)
 
 | Projet | Langage | Rôle | État |
 |---|---|---|---|
 | [`gateway/`](gateway/README.md) | C# · YARP · .NET 10 | **Seule entrée publique** : routage, jeton Entra + rôle par route, limitation de débit, Swagger unique ; échange de jeton vers la Function de calcul (`/api/calcul`) et Foundry (`/api/llm`, tokens mesurés) | ✅ déployée (staging, production), seule dans la Container App principale ; domaine personnalisé en production |
 | [`rag/`](rag/README.md) | Python · hexagonal | Corpus Légifrance (ingestion, dédup, versions), recherche hybride, agent à 3 verrous, attribution Etalab 2.0 | ✅ déployé ; Code des assurances (instantané du 20/10, 119 articles lus, 107 insérés, [preuves](eval/preuves/)) réingéré à chaque déploiement |
-| [`underwriting-admin/`](underwriting-admin/README.md) | C# · Clean Architecture · .NET 10 | Dossiers (vue minimisée, BOLA) et référentiel SQL des traces OpenTelemetry (`/v1/traces`, `/api/traces/{trace_id}`) ; relances et classement sans suite (#136) ; contrat imprimé et fiche du lead (exceptions à la minimisation, #139) | ✅ déployé dans sa Container App (entrée interne) ; écritures brouillon/statut pour le serveur MCP (#66) ; OBO pré-autorisé (#47) |
+| [`underwriting-admin/`](underwriting-admin/README.md) | C# · Clean Architecture · .NET 10 | Dossiers (vue minimisée, BOLA) et référentiel SQL des traces OpenTelemetry (`/v1/traces`, `/api/traces/{trace_id}`) ; relances et classement sans suite (#136) ; contrat imprimé et fiche du lead (exceptions à la minimisation, #139) ; stockage opaque des points de reprise du cluster (schéma `points_reprise`, D106, #167) | ✅ déployé dans sa Container App (entrée interne) ; écritures brouillon/statut pour le serveur MCP (#66) ; OBO pré-autorisé (#47) |
 | [`serveur-mcp/`](serveur-mcp/README.md) | Python · hexagonal | Outils MCP du cluster d'agents (`search_rag`, `get_contrat`, `evaluer_risque`, `calculer_prime`, `enregistrer_brouillon`, `update_statut_dossier`), matrice `azp` × outil | ✅ déployé dans sa Container App (entrée interne, identité propre), v0.6.0 (#15, #66) |
-| [`agentic-cluster/`](agentic-cluster/README.md) | Python · hexagonal · LangGraph | Cluster d'agents (la Saga, automate déterministe sans LLM, puis Pièces, Analyste, Rédacteur, Actuaire) : évalue un dossier, écrit un brouillon, attend la revue du gestionnaire ; garde-fous LLM Guard ; joint MCP et LLM par la gateway | ✅ déployé (staging, production) dans sa Container App (entrée interne, `infra/containerapp-cluster.yaml`) depuis le 24/10 (#116) ; réglage par agent dans `agents.toml` (#117) ; recette des K jouée en staging depuis l'espace gestionnaire (27/10, [preuves](eval/preuves/recette-k-2026-10-27-staging.md)) ; état du contrat : [`docs/contrat-personnel.md`](docs/contrat-personnel.md) |
-| [`fonction-calcul/`](fonction-calcul/README.md) | Python · Azure Functions | Risque (`bareme-2026.10-v1`) et prime (`formule-2026.10-v1`) déterministes ; n'accepte que la gateway | ✅ déployée (Flex Consumption, staging et production), v0.6.0 (#64, #74) ; une instance toujours prête depuis le 28/10 (`infra/calcul.sh` ①b, #146) : plus de démarrage à froid |
+| [`agentic-cluster/`](agentic-cluster/README.md) | Python · hexagonal · LangGraph | Cluster d'agents (la Saga, automate déterministe sans LLM, puis Pièces, Analyste, Rédacteur, Actuaire) : évalue un dossier, écrit un brouillon, attend la revue du gestionnaire ; garde-fous LLM Guard ; joint MCP et LLM par la gateway | ✅ déployé (staging, production) dans sa Container App (entrée interne, `infra/containerapp-cluster.yaml`) depuis le 24/10 (#116) ; réglage par agent dans `agents.toml` (#117) ; recette des K jouée en staging depuis l'espace gestionnaire (27/10, [preuves](eval/preuves/recette-k-2026-10-27-staging.md)) ; état du contrat : [`docs/contrat-personnel.md`](docs/contrat-personnel.md) ; points de reprise par la gateway, plus d'accès PostgreSQL (D106, #167) |
+| [`fonction-calcul/`](fonction-calcul/README.md) | Python · Azure Functions | Risque (`bareme-2026.10-v1`) et prime (`formule-2026.10-v1`) déterministes ; n'accepte que la gateway | ✅ déployée (Flex Consumption, staging et production), v0.6.0 (#64, #74) ; une instance toujours prête depuis le 28/10 (`infra/calcul.sh` ①b, #146) : plus de démarrage à froid ; fréquence du GLM Poisson freMTPL2 en comparaison (`/api/frequence`, porte de qualité en CI, #168) |
 | [`e2e/`](e2e/README.md) | Python · pytest | Parcours bout en bout par la gateway (compose ou staging) | ✅ ; job `e2e-staging` bloquant avant la release |
 
 > **Pyramide au 20/10** : ≈ 52 % TU / 46 % TI / 2 % E2E, hors seuils ; le job `pyramide` est **informatif** en CI
 > (décision d'Acerola) jusqu'à une tâche dédiée aux tests unitaires.
 
-> **Production et staging** : release **`v0.6.17`** au SHA `c619d0f` (#142), déployée le 27/10 ; la version de la
-> solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. Depuis le 26/10 : l'espace
-> gestionnaire `/app/` (#134), les relances et `SANS_SUITE` (#136), `make recette` (#137), `make entra` qui garde les
-> agents pré-autorisés sur le MCP (#138), le contrat imprimé sur le modèle d'Acerola et la fiche du lead (#139), les
-> tokens par étape (#140) et les pictogrammes (#142). **Sur `main`, pas encore livrés** (issus de la recette des K du
-> 27/10) : les délais de l'évaluation (calcul à 20 s, appels MCP du cluster bornés à 22 s, Actuaire à 4 s, #146), la
-> visionneuse du contrat (#145), les liens de l'en-tête atteignables au clavier (#147), `make recette` qui attend la
-> nouvelle révision (#149) et le rapport de preuves (#148). **Bases éphémères** : chaque
+> **Production et staging** : release **`v0.6.23`** au SHA `66750bd` (#174), déployée le 28/10 ; la version de la
+> solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. **Sprint 5 « la vigie »** (#151 → #157),
+> livré en un seul déploiement (#171) : export **Application Insights** en plus de l'OTLP sur les cinq services et la
+> Function, numéro de contrat masqué dans les spans HTTP (#158, #161, #65) ; tableau de bord `vigie-<env>` et alertes
+> AL-1 → AL-9 (#162) ; [`docs/exploitation.md`](docs/exploitation.md) : déployer, surveiller, diagnostiquer, revenir en
+> arrière (#163) ; points de reprise de la Saga par la gateway, suppression de D26 (D106, #167) ; GLM Poisson de fréquence
+> à côté du barème (#168) ; bilan du contrat personnel, amendement P45 et grille de retours (#170) ; scénario de la démo
+> des 10 minutes ([`docs/demo-sprint5.md`](docs/demo-sprint5.md), #173). Déploiement : Container Apps lancées ensemble
+> après la base annexe (#172), reconnexion Azure avant l'ingestion du corpus (#164, #174). Avant, depuis le 26/10 :
+> l'espace gestionnaire `/app/` (#134), les relances et `SANS_SUITE` (#136), `make recette` (#137, #149), `make entra`
+> qui garde les agents pré-autorisés sur le MCP (#138), le contrat imprimé et la fiche du lead (#139), les tokens par
+> étape (#140), les pictogrammes (#142), la visionneuse du contrat (#145), les délais de l'évaluation (#146) et les liens
+> de l'en-tête au clavier (#147). **Limite connue** : le cluster d'agents n'émet pas encore vers Application Insights
+> (aucune ligne `agentic-cluster` en staging ni en production au 29/10, #176). **Bases éphémères** : chaque
 > déploiement remet les dossiers de staging et de production au seed ([`docs/rollback.md`](docs/rollback.md)).
 > Historique (v0.6.0, du 22/10 au 26/10) : le cluster d'agents (#92, production depuis le 24/10 par #116),
 > le job `test` limité aux TU (#93), le cache Docker inline depuis l'ACR (#95), l'audience `api://agentinsurflow-cluster` (#96),
@@ -95,7 +101,8 @@ La Function de calcul (Azure Functions) n'accepte que la gateway :
 Documentation des données : [`docs/donnees/`](docs/donnees/) — [sources](docs/donnees/sources.md),
 [pipeline](docs/donnees/pipeline.md), [modèle Merise](docs/donnees/modele.md), [SQL](docs/donnees/requetes-sql.md),
 [RGPD](docs/donnees/rgpd.md), [recherche](docs/donnees/recherche.md), [traces](docs/donnees/traces.md) (SQL pour l'espace gestionnaire et l'E2E, Application Insights pour la vigie : double export en Azure) ;
-OpenAPI : [`docs/openapi/`](docs/openapi/) (`make openapi`) ; démo : [`docs/demo-atelier-3.md`](docs/demo-atelier-3.md), [`docs/demo-atelier-4.md`](docs/demo-atelier-4.md), [`docs/demo-sprint5.md`](docs/demo-sprint5.md) ; contrat personnel K1→K11 : [`docs/contrat-personnel.md`](docs/contrat-personnel.md).
+OpenAPI : [`docs/openapi/`](docs/openapi/) (`make openapi`) ; démo : [`docs/demo-atelier-3.md`](docs/demo-atelier-3.md), [`docs/demo-atelier-4.md`](docs/demo-atelier-4.md), [`docs/demo-sprint5.md`](docs/demo-sprint5.md) ; contrat personnel K1→K11 : [`docs/contrat-personnel.md`](docs/contrat-personnel.md) ;
+exploitation : [`docs/exploitation.md`](docs/exploitation.md) ; amendements du dossier : [`docs/dossier/amendements.md`](docs/dossier/amendements.md) ; retours des ateliers : [`docs/grille-retours.md`](docs/grille-retours.md).
 
 La base annexe repart **vide à chaque nouvelle révision** (déploiement ou rollback) : les migrations la recréent au
 démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `data/raw/` (rôle `Ingestion` de la CI).
@@ -274,7 +281,7 @@ Installation, à faire une seule fois (écritures Azure et Entra : lancées à l
    exige *Owner* ou *User Access Administrator*.
 2. `make entra` inscrit les API `agentinsurflow-rag` (rôles `Gestionnaire`, `Ingestion`) et
    `agentinsurflow-underwriting` (`Gestionnaire`, `Telemetrie`), et attribue les rôles (toi, la CI, un 2ᵉ gestionnaire).
-3. `make annexe` construit l'image PostgreSQL annexe (`agentinsurflow-postgres:1`) et pose les mots de passe en
+3. `make annexe` construit l'image PostgreSQL annexe (`agentinsurflow-postgres:3`) et pose les mots de passe en
    **secrets des Container Apps** (chacune ceux dont elle se sert).
    `make llm` (après `make entra`) inscrit `agentinsurflow-llm` et `agentinsurflow-gateway-local`, désactive les clés de Foundry et réserve l'accès à la gateway.
 4. `make domaine DOMAINE=…` lie le domaine personnalisé à la production (certificat managé), puis poser `PROD_URL`.
@@ -313,14 +320,15 @@ ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le L
 | Ressource | Nom | État |
 |---|---|---|
 | Groupe de ressources | `svespuceRG` (créé en `francecentral` ; ressources en `swedencentral`) | ✅ |
-| Registre d'images | `acerolazacr` : `agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`, `agentinsurflow-mcp` (tag = SHA), `agentinsurflow-postgres:1` | ✅ |
+| Registre d'images | `acerolazacr` : `agentinsurflow-gateway`, `agentinsurflow-rag`, `agentinsurflow-underwriting`, `agentinsurflow-mcp`, `agentinsurflow-cluster` (tag = SHA), `agentinsurflow-postgres:3` | ✅ |
 | Environnement Container Apps | `cae-insurflow` (profils de charge, sans VNet : l'entrée TCP interne de PostgreSQL n'en exige pas) | ✅ |
 | Container App staging | `insurflow-staging` (principale = gateway seule) → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ reçoit chaque merge |
 | Container Apps par service | `insurflow-{uw,mcp,rag,pg}-{staging,production}` et `ai-cluster-{staging,production}` : entrée interne (PostgreSQL en TCP 5432, base éphémère) | ✅ |
 | Function de calcul | `acerolaz-calcul-{staging,production}` (Flex Consumption, Python 3.12), stockage `acerolazcalcul` ; Easy Auth : la gateway seule | ✅ |
-| Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.6.0` |
+| Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.6.23` |
 | Modèles | `Kimi-K2.5` (rag), `gpt-4.1-mini` (cluster, `agents.toml`) et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971`, **sans clé** (`disableLocalAuth`) : appelée par la gateway seule (`/api/llm`) | ✅ |
-| Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag`, `-underwriting`, `-mcp`, `-calcul`, `-llm` ; `agentinsurflow-gateway-local` (secret dans le `.env` local seulement) | ✅ |
+| Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag`, `-underwriting`, `-mcp`, `-calcul`, `-llm` ; `agentinsurflow-gateway-local` (secret dans le `.env` local seulement) ; rôle `PointsDeReprise` (principal du cluster seul, D106) | ✅ |
+| Vigie (`make vigie`) | `appi-insurflow-{staging,production}` sur le Log Analytics `workspace-svespucepZG6` ; groupe d'actions `ag-insurflow-<env>` (e-mail), alertes AL-1 → AL-9 (`infra/vigie/alertes.tsv`), test de disponibilité `web-sante-<env>`, tableau de bord `vigie-<env>` | ✅ (cluster muet, #176) |
 | Identités managées | gateway `uami-insurflow-rag` (nom historique), rag `uami-insurflow-rag-app`, serveur MCP `uami-insurflow-mcp` ; underwriting-admin sans identité Azure | ✅ |
 | Rôles | CI : Contributor, AcrPush, AcrPull ; « Cognitive Services OpenAI User » sur Foundry : gateway et `gateway-local` **seulement** (`make llm` retire les autres) | ✅ attribués |
 

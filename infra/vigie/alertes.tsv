@@ -5,6 +5,6 @@ AL-3	al-3-garde-fous-chargement.kql	5m	5m	>	180	1	al-3
 AL-4	al-4-mcp-indisponible.kql	5m	5m	>=	1	1	al-4
 AL-5	al-5-revue-humaine.kql	1h	2h	>	30	2	al-5
 AL-6	al-6-cout-dossier.kql	1h	1d	>	0.15	2	al-6
-AL-7	al-7-refus-garde-fous.kql	1h	1h	>	2	2	al-7
+AL-7	al-7-refus-garde-fous.kql	1h	2d	>	2	2	al-7
 AL-8	al-8-foundry-429.kql	1h	1h	>=	env:SEUIL_AL8	2	al-8
 AL-9	al-9-gateway-403.kql	1h	1h	>=	env:SEUIL_AL9	2	al-9

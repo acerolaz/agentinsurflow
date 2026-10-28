@@ -14,7 +14,7 @@ LIGNES = {  # id: (kql, frequence, fenetre, operateur, seuil, gravite) — spec 
     "AL-4": ("al-4-mcp-indisponible.kql", "5m", "5m", ">=", "1", "1"),
     "AL-5": ("al-5-revue-humaine.kql", "1h", "2h", ">", "30", "2"),
     "AL-6": ("al-6-cout-dossier.kql", "1h", "1d", ">", "0.15", "2"),
-    "AL-7": ("al-7-refus-garde-fous.kql", "1h", "1h", ">", "2", "2"),
+    "AL-7": ("al-7-refus-garde-fous.kql", "1h", "2d", ">", "2", "2"),
     "AL-8": ("al-8-foundry-429.kql", "1h", "1h", ">=", "env:SEUIL_AL8", "2"),
     "AL-9": ("al-9-gateway-403.kql", "1h", "1h", ">=", "env:SEUIL_AL9", "2"),
 }
@@ -62,7 +62,7 @@ def test_filtre_par_ressource():
 def test_volume_minimal_al5_al7():
     for nom in ("al-5-revue-humaine.kql", "al-7-refus-garde-fous.kql"):
         texte = lire(nom)
-        assert "iff(" in texte and "10" in texte and "real(null)" in texte
+        assert re.search(r"iff\(n\w* < 10", texte) and "real(null)" in texte
 
 
 def test_cout_sans_prix_en_dur():

@@ -10,5 +10,5 @@ AppTraces
 | where Message == "audit.agent"
 | extend modele = tostring(Properties.modele), tin = toint(Properties.tokens_entree), tout = toint(Properties.tokens_sortie)
 | join kind=inner prix on modele
-| summarize cout = sum(tin * entree / 1000000 + tout * sortie / 1000000)
+| summarize cout = sum((tin * entree + tout * sortie) / 1000000)
 | project valeur = iff(dossiers == 0, real(null), cout / dossiers)

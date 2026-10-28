@@ -1,8 +1,7 @@
-// AL-7 : taux de refus des garde-fous sur 1 h divisé par le taux sur 7 j, nul sous 10 évaluations dans l'heure. Source : audit.evaluation (AppTraces).
+// AL-7 : taux de refus des garde-fous sur 1 h divisé par le taux de référence (reste de la fenêtre de 2 j, heure courante exclue, plancher d'un refus), nul sous 10 évaluations dans l'heure. Source : audit.evaluation (AppTraces).
 AppTraces
 | where _ResourceId =~ "$APPI_ID"
 | where Message == "audit.evaluation"
-| where TimeGenerated > ago(7d)
 | extend refus = tostring(Properties.cause) startswith "garde_fou:", recent = TimeGenerated > ago(1h)
-| summarize n1 = countif(recent), g1 = countif(recent and refus), n7 = count(), g7 = countif(refus)
-| project valeur = iff(n1 < 10 or g7 == 0, real(null), (todouble(g1) / n1) / (todouble(g7) / n7))
+| summarize n1 = countif(recent), g1 = countif(recent and refus), nfen = count(), gfen = countif(refus)
+| project valeur = iff(n1 < 10 or nfen <= n1, real(null), (todouble(g1) / n1) / (max_of(todouble(gfen - g1), 1.0) / (nfen - n1)))

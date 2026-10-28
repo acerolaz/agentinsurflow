@@ -1,5 +1,7 @@
-// AL-8 : nombre de réponses 429 de Foundry vues par la gateway. Source : AppDependencies.
+// AL-8 : nombre de réponses 429 de Foundry vues par la gateway. Source : AppDependencies. Cible Foundry à confirmer en staging (Task 5).
 AppDependencies
 | where _ResourceId =~ "$APPI_ID"
+| where AppRoleName == "agentinsurflow-gateway"
+| where Target has "openai.azure.com" or Target has "services.ai.azure.com"
 | where ResultCode == "429"
 | summarize valeur = count()

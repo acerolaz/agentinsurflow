@@ -1,5 +1,6 @@
 """Vigie (#54) : chaîne App Insights par secret, exigé au déploiement, `make vigie`."""
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -136,7 +137,9 @@ def test_requetes_sans_marqueur_et_prix_substitues(tmp_path):
 def test_noms_stables_entre_deux_lancements(tmp_path):
     _, un = _vigie(tmp_path, "j1", **COMPLET)
     _, deux = _vigie(tmp_path, "j2", **COMPLET)
-    assert un == deux and un
+    # le fichier mktemp du tableau de bord change à chaque lancement : on l'écarte
+    stable = lambda lignes: [re.sub(r"--input-path \S+", "--input-path X", li) for li in lignes]  # noqa: E731
+    assert stable(un) == stable(deux) and un
 
 
 def test_chaine_jamais_affichee(tmp_path):

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Vigie (#54) : Application Insights par environnement, branché sur les 5 Container Apps et la Function,
-# puis Action Group e-mail, règles d'alerte AL-1 → AL-9 (infra/vigie/alertes.tsv) et test de disponibilité (S2).
+# puis Action Group e-mail, règles d'alerte AL-1 → AL-9 (infra/vigie/alertes.tsv) test de disponibilité et tableau de bord (S2).
 # `make vigie ENV=staging|production` (lit le .env via le Makefile). Idempotent : tout est un PUT ARM.
 # Lancé À LA MAIN par Acerola, jamais par un agent ni la CI : écritures Azure.
 # ALERTE_EMAIL est exigé dès le départ, y compris pour les seules étapes App Insights (S1).
@@ -108,6 +108,23 @@ az monitor app-insights web-test create -n "web-sante-$env" -g "$RG" -l "$AZURE_
   --locations Id=emea-fr-pra-edge --locations Id=emea-nl-ams-azr --locations Id=emea-gb-db3-azr \
   --tags "hidden-link:$APPI_ID=Resource" -o none
 
-echo "⑦ ✔ $appi branché sur les 5 apps et la Function ($env). Chaîne de connexion non affichée."
+echo "⑦ Tableau de bord vigie-$env"
+az extension add -n portal -y -o none
+# Modèle : chaque "@kql:<fichier>" devient le texte du .kql (identifiants substitués), puis $WORKSPACE_ID, $ENV, $LOCATION.
+tableau=$(mktemp "${TMPDIR:-/tmp}/vigie-tableau.XXXXXX")
+cp "$dossier/dashboard.json" "$tableau"
+for ref in $(jq -r '.. | strings | select(startswith("@kql:"))' "$tableau" | sort -u); do
+  q=$(<"$dossier/kql/${ref#@kql:}")
+  q=${q//'$APPI_ID'/$APPI_ID}
+  q=${q//'$CLUSTER_APP'/$CLUSTER_APP}
+  q=${q//'$PRIX_KQL'/$PRIX_KQL}
+  jq --arg ref "$ref" --arg q "$q" 'walk(if . == $ref then $q else . end)' "$tableau" >"$tableau.new" && mv "$tableau.new" "$tableau"
+done
+jq --arg w "$WORKSPACE_ID" --arg e "$env" --arg l "$AZURE_LOCATION" \
+  'walk(if type == "string" then gsub("\\$WORKSPACE_ID"; $w) | gsub("\\$ENV"; $e) | gsub("\\$LOCATION"; $l) else . end)' \
+  "$tableau" >"$tableau.new" && mv "$tableau.new" "$tableau"
+az portal dashboard create -n "vigie-$env" -g "$RG" -l "$AZURE_LOCATION" --input-path "$tableau" -o none
+
+echo "⑧ ✔ $appi branché sur les 5 apps et la Function ($env). Chaîne de connexion non affichée."
 echo "   Les anciens composants acerolaz-calcul-$env sont conservés (à retirer à la main une fois la vigie validée)."
 echo "   Le prochain déploiement exige le secret appinsights-connection sur chaque app."

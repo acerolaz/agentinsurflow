@@ -42,12 +42,13 @@ def test_chaque_requete_existe_et_produit_valeur():
         assert re.search(r"\bvaleur\b", lire(nom)), id_
 
 
-def test_les_quatre_tuiles_existent():
+def test_les_cinq_tuiles_existent():
     assert {t.name for t in TUILES} == {
         "evaluations-par-heure.kql",
         "revue-par-cause.kql",
         "cout-par-agent.kql",
         "sans-decision.kql",
+        "disponibilite.kql",
     }
 
 

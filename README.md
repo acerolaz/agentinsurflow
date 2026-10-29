@@ -35,7 +35,7 @@ flowchart LR
 
 Un merge sur `main` relance `lint`, `test` et `gateway` avant `build`. Les evals (portes : réussite ≥ 80 % et latence
 p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané du corpus ou la version du LLM changent
-(voir *Évaluer l'agent*). Le job `evals-pr` (avant merge) est **désactivé jusqu'à U5** : voir le tableau des jobs.
+(voir *Évaluer l'agent*). Le job `evals-pr` (avant merge) rejoue les jeux de la PR contre staging : voir [`docs/ci-evals.md`](docs/ci-evals.md).
 
 ## État au 29/10 (release v0.6.23)
 
@@ -251,7 +251,7 @@ le réévalue, même s'il ne touche pas ces fichiers. Sans aucun tag `manifeste-
 
 | Job | Quand | Contre quoi | Jeton |
 |---|---|---|---|
-| `evals-pr` | PR | API lancée dans le runner | ⏸️ **désactivé jusqu'à U5** : depuis R6, `/api/reponses` exige un jeton Entra, PostgreSQL et `RAG_SEUIL`, que ce job n'a pas encore. Sauté, il satisfait la protection de `main` |
+| `evals-pr` | PR (déclencheurs modifiés, libellé `evals`) ou `workflow_dispatch` depuis `main` | **staging** (code de `main`) avec les jeux d'évaluation de la PR | Entra par **OIDC**, rôle `Gestionnaire` de la CI ; résumé commenté sur la PR ([`docs/ci-evals.md`](docs/ci-evals.md)). Sauté, il satisfait la protection de `main` |
 | `evals` | merge, avant la production | **staging** déployé, corpus réingéré par `deploy.yml` ; cas à `numero_contrat` écartés jusqu'à underwriting-admin (U2, `--sans-dossiers`) | Entra par **OIDC** (`api://agentinsurflow-rag/.default`) : l'identité de la CI porte le rôle `Gestionnaire` (`make entra`) |
 
 Installation, déclenchement, limites et démonstration de `evals-pr` : [`docs/ci-evals.md`](docs/ci-evals.md).

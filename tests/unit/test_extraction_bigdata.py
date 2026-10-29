@@ -5,7 +5,6 @@ La CI n'installe pas le groupe ``bigdata`` : sans pyspark ni Java, tout le modul
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 from collections.abc import Iterator
 from pathlib import Path
@@ -98,19 +97,10 @@ def test_jointure_ignore_les_sinistres_sans_contrat(spark: SparkSession, tmp_pat
     assert lignes["100-149"]["contrats_sinistres"] == 1
 
 
-def test_main_sans_java(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
-) -> None:
-    monkeypatch.setattr(shutil, "which", lambda _nom: None)
-    monkeypatch.delenv("JAVA_HOME", raising=False)
-    assert eb.main(["--cache", str(tmp_path), "--sortie", str(tmp_path)]) == 1
-    assert "Java 17 requis" in capsys.readouterr().err
-
-
 def test_main_java_factice(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
-    """Pré-contrôle trompé (stub java) : l'échec du démarrage Spark reste un message clair."""
+    """Java absent ou factice : l'échec du démarrage Spark reste un message clair."""
     from pyspark.errors import PySparkRuntimeError
 
     def echoue(_self: object) -> None:
@@ -120,4 +110,21 @@ def test_main_java_factice(
     assert eb.main(["--cache", str(tmp_path), "--sortie", str(tmp_path)]) == 1
     erreur = capsys.readouterr().err
     assert "Java 17 requis" in erreur
+    assert "Traceback" not in erreur
+
+
+def test_main_erreur_spark_apres_demarrage(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    from pyspark.errors import AnalysisException
+
+    def echoue(*_args: object) -> None:
+        raise AnalysisException("colonne introuvable")
+
+    monkeypatch.setattr(eb, "telecharger", lambda *_a: tmp_path)
+    monkeypatch.setattr(eb, "vers_parquet", lambda *_a: None)
+    monkeypatch.setattr(eb, "executer", echoue)
+    assert eb.main(["--cache", str(tmp_path), "--sortie", str(tmp_path)]) == 1
+    erreur = capsys.readouterr().err
+    assert "extraction interrompue" in erreur
     assert "Traceback" not in erreur

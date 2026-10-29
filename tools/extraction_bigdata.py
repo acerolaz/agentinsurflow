@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import shutil
 import sys
 from collections.abc import Sequence
 from datetime import date as Date
@@ -36,6 +35,7 @@ from agentinsurflow_rag.cli.ingest import sauvegarder_instantane
 if TYPE_CHECKING:
     from pyspark.sql import SparkSession
 
+MSG_JAVA = "Java 17 requis : brew install openjdk@17"
 PERIMETRE = "freMTPL2freq×freMTPL2sev (OpenML 41214, 41215)"
 
 # Bornes de préparation partagées avec le GLM (entrainement.donnees) ; hors bornes = exclu.
@@ -52,7 +52,7 @@ REQUETES: dict[str, str] = {
                SUM(ClaimNb) AS sinistres,
                SUM(ClaimNb) / SUM(Exposure) AS frequence
         FROM freq
-        WHERE {_FILTRE.replace("freq.", "")}
+        WHERE {_FILTRE}
         GROUP BY Region
         ORDER BY Region
     """,
@@ -72,7 +72,7 @@ REQUETES: dict[str, str] = {
         JOIN couts ON freq.IDpol = couts.IDpol
         WHERE {_FILTRE}
         GROUP BY tranche_bm
-        ORDER BY tranche_bm
+        ORDER BY MIN(freq.BonusMalus)
     """,
 }
 
@@ -83,18 +83,16 @@ class ErreurBigData(Exception):
 
 def session_spark() -> SparkSession:
     """Session Spark locale ; ``ErreurBigData`` claire si Java est introuvable."""
-    if not shutil.which("java") and not os.environ.get("JAVA_HOME"):
-        raise ErreurBigData("Java 17 requis : brew install openjdk@17")
     from py4j.protocol import Py4JError
     from pyspark.errors import PySparkRuntimeError
     from pyspark.sql import SparkSession
 
-    try:  # le pré-contrôle ne voit pas un stub /usr/bin/java ni un JAVA_HOME inexistant
+    try:  # couvre Java absent, stub /usr/bin/java ou JAVA_HOME inexistant
         return (
             SparkSession.builder.master("local[*]").appName("agentinsurflow-bigdata").getOrCreate()
         )
     except (PySparkRuntimeError, Py4JError) as erreur:
-        raise ErreurBigData("Java 17 requis : brew install openjdk@17") from erreur
+        raise ErreurBigData(MSG_JAVA) from erreur
 
 
 def vers_parquet(spark: SparkSession, arff: Path, parquet: Path) -> None:
@@ -115,7 +113,7 @@ def executer(spark: SparkSession, parquet_freq: Path, parquet_sev: Path) -> list
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parseur = argparse.ArgumentParser(description=__doc__.split("\n")[0] if __doc__ else "")
+    parseur = argparse.ArgumentParser(description=__doc__)
     parseur.add_argument(
         "--cache",
         type=Path,
@@ -127,6 +125,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--expliquer", action="store_true", help="affiche le plan de chaque requête"
     )
     args = parseur.parse_args(argv)
+    from py4j.protocol import Py4JError
+    from pyspark.errors import PySparkException
+
     spark = None
     try:
         spark = session_spark()  # Java vérifié avant tout téléchargement
@@ -147,7 +148,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             prefixe="fremtpl2-agregats",
             perimetre=PERIMETRE,
         )
-    except (ErreurBigData, ValueError, OSError) as erreur:
+    except (ErreurBigData, ValueError, OSError, PySparkException, Py4JError) as erreur:
         print(f"✘ extraction interrompue : {erreur}", file=sys.stderr)
         return 1
     finally:

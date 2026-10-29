@@ -4,7 +4,7 @@
   "environnement": "local",
   "perimetre": "freMTPL2freq×freMTPL2sev (OpenML 41214, 41215)",
   "articles": 25,
-  "sha256": "b31b33543915b0955e412e81282036b3d9956a25867495478ab493ffa00b09cc"
+  "sha256": "e79e6a81ba0ba344f6e941330f28d9a1e036a99224f58bde3228bcaf8b54f26e"
  },
  "articles": [
   {
@@ -185,6 +185,12 @@
   },
   {
    "requete": "cout_moyen_par_bonus_malus",
+   "tranche_bm": "50-99",
+   "contrats_sinistres": 22559,
+   "cout_moyen": 1976.7294411320474
+  },
+  {
+   "requete": "cout_moyen_par_bonus_malus",
    "tranche_bm": "100-149",
    "contrats_sinistres": 2294,
    "cout_moyen": 5004.295373015853
@@ -194,12 +200,6 @@
    "tranche_bm": "150-230",
    "contrats_sinistres": 40,
    "cout_moyen": 2456.970555555555
-  },
-  {
-   "requete": "cout_moyen_par_bonus_malus",
-   "tranche_bm": "50-99",
-   "contrats_sinistres": 22559,
-   "cout_moyen": 1976.7294411320474
   }
  ]
 }

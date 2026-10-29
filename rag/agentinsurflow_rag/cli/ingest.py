@@ -269,6 +269,9 @@ def _instantane(
         if args.instantane or args.source:
             raise ErreurEnvoi("--jeu est exclusif avec --instantane et --source")
         entrees, sha, jour = lire_jeu(args.jeu)
+        for c in COLLECTIONS:
+            if not any(e["collection"] == c for e in entrees):
+                raise ErreurEnvoi(f"jeu sans entrée pour {c}")
         return (
             {
                 c: [
@@ -340,7 +343,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             rapports = {
                 c: envoyer(client, args.url, jeton, articles, sha, jour, tracer, c)
                 for c, articles in groupes.items()
-                if articles
             }
         args.preuves.mkdir(parents=True, exist_ok=True)
         for collection, rapport in rapports.items():

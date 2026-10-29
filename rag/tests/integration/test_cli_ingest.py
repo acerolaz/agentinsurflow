@@ -312,3 +312,29 @@ def test_procedures_par_source_refusees(
     assert code == 1
     assert "make agreger" in capsys.readouterr().err
     assert appels == []
+
+
+def test_jeu_sans_une_collection_refuse(
+    tmp_path: Path, appels: list[httpx.Request], capsys: pytest.CaptureFixture[str]
+) -> None:
+    chemin = _jeu(tmp_path / "jeu.json")
+    contenu = json.loads(chemin.read_text())
+    contenu["entrees"] = contenu["entrees"][:2]
+    contenu["manifeste"]["sha256"] = sha_articles(contenu["entrees"])
+    chemin.write_text(json.dumps(contenu), encoding="utf-8")
+    assert ingest.main(["--jeu", str(chemin), "--preuves", str(tmp_path)]) == 1
+    assert "jeu sans entrée pour procedures_internes" in capsys.readouterr().err
+    assert appels == []
+
+
+def test_instantane_vide_ecrit_une_preuve_a_zero(
+    tmp_path: Path, appels: list[httpx.Request]
+) -> None:
+    chemin = sauvegarder_instantane([], tmp_path, "local", "2026-10-19")
+    code = ingest.main(
+        ["--instantane", str(chemin), "--preuves", str(tmp_path / "p"), "--date", "2026-10-19"]
+    )
+    assert code == 0
+    assert (
+        json.loads((tmp_path / "p" / "ingestion-2026-10-19-local.json").read_text())["inseres"] == 0
+    )

@@ -100,6 +100,19 @@ def lire_instantane(chemin: Path) -> tuple[list[dict[str, Any]], str, Date]:
     return articles, sha, Date.fromisoformat(contenu["manifeste"]["date"])
 
 
+def lire_en_tete(fichier: Path) -> tuple[dict[str, str], str]:
+    """En-tête ``cle: valeur`` entre deux ``---`` et corps (sans blancs de bord) d'un Markdown."""
+    lignes = fichier.read_text(encoding="utf-8").split("\n")
+    if lignes[0].strip() != "---" or "---" not in lignes[1:]:
+        raise ErreurEnvoi(f"{fichier.name} : en-tête « --- » absent")
+    fin = lignes.index("---", 1)
+    en_tete = dict(
+        (cle.strip(), valeur.strip())
+        for cle, _, valeur in (ligne.partition(":") for ligne in lignes[1:fin])
+    )
+    return en_tete, "\n".join(lignes[fin + 1 :]).strip()
+
+
 def lire_markdown(dossier: Path, collection: str) -> list[dict[str, Any]]:
     """Un article par ``*.md`` du dossier, trié par nom ; le corps part tel quel (texte brut)."""
     fichiers = sorted(dossier.glob("*.md"))
@@ -107,14 +120,7 @@ def lire_markdown(dossier: Path, collection: str) -> list[dict[str, Any]]:
         raise ErreurEnvoi(f"aucun fichier .md dans {dossier}")
     articles = []
     for fichier in fichiers:
-        lignes = fichier.read_text(encoding="utf-8").split("\n")
-        if lignes[0].strip() != "---" or "---" not in lignes[1:]:
-            raise ErreurEnvoi(f"{fichier.name} : en-tête « --- » absent")
-        fin = lignes.index("---", 1)
-        en_tete = dict(
-            (cle.strip(), valeur.strip())
-            for cle, _, valeur in (ligne.partition(":") for ligne in lignes[1:fin])
-        )
+        en_tete, corps = lire_en_tete(fichier)
         obligatoires = EN_TETE_OBLIGATOIRE + (("regle_id",) if collection == COLLECTIONS[2] else ())
         manquants = [c for c in obligatoires if not en_tete.get(c)]
         if manquants:
@@ -124,7 +130,7 @@ def lire_markdown(dossier: Path, collection: str) -> list[dict[str, Any]]:
                 **{c: en_tete[c] for c in EN_TETE_OBLIGATOIRE},
                 "regle_id": en_tete.get("regle_id") or None,
                 "etat": "VIGUEUR",
-                "texte_html": "\n".join(lignes[fin + 1 :]).strip(),
+                "texte_html": corps,
                 "url_source": f"{URL_DEPOT}/{collection}/{fichier.name}",
             }
         )

@@ -88,6 +88,15 @@ def test_ecart_consigne_dans_le_manifeste(tmp_path: Path) -> None:
     ]
 
 
+def test_bareme_altere_refuse(tmp_path: Path) -> None:
+    contenu = json.loads(dernier("bareme").read_text(encoding="utf-8"))
+    contenu["regles"][0]["motif"] = "motif modifié après coup"  # sha du manifeste inchangé
+    bareme = tmp_path / "bareme-altere.json"
+    bareme.write_text(json.dumps(contenu), encoding="utf-8")
+    with pytest.raises(ErreurEnvoi, match="altéré"):
+        agreger(dernier("code-assurances"), bareme, NOTICES, PROCEDURES)
+
+
 def test_sources_reelles_volumes_et_identite(tmp_path: Path) -> None:
     jeu = agreger(dernier("code-assurances"), dernier("bareme"), NOTICES, PROCEDURES)
     assert jeu["manifeste"]["par_source"] == {"legifrance": 119, "redige": 4, "bareme": 6}

@@ -109,6 +109,7 @@ est le commit de fusion que GitHub construit (tête de la PR fusionnée dans `ma
 | `latence_p95_s` | latence p95 en secondes ; porte bloquante au-dessus de 30 s par défaut |
 | `manifeste` | ce qui a été évalué : commit, modèle, prompts, golden set, questions, corpus, portes |
 | `resultats[].echecs` | par cas, causes d'échec : `mode_llm`, `statut`, `articles`, `non_vide`, `longueur` |
+| `resultats[].rejeu` | présent si le cas a été rejoué une fois (`429`, `http 0` ou `latence` > porte) : raison et latence de la première tentative ; la porte juge la réponse rejouée (#192). Le résumé de PR liste les cas rejoués |
 
 ## Limites
 

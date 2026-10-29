@@ -16,10 +16,9 @@ flowchart LR
     G -- "✔" --> M
     I -- "✔" --> M
     M --> B(["📦 build<br/>images rag + underwriting + gateway → ACR :sha"]) --> S(["🚀 staging"]) --> FS{{"🛡️ fumée"}}
-    FS -- "✔" --> E2E{{"🛡️ e2e-staging<br/>E2E_STRICT"}}
     FS -- "✔" --> EV{{"🛡️ evals<br/>si déclencheur"}}
-    EV -- "✔ ou sautées" --> R(["🏷️ release<br/>tag vX.Y.Z"])
-    E2E -- "✔" --> R
+    EV -- "✔ ou sautées" --> E2E{{"🛡️ e2e-staging<br/>E2E_STRICT"}}
+    E2E -- "✔" --> R(["🏷️ release<br/>tag vX.Y.Z"])
     R --> P(["🌐 production"]) --> FP{{"🛡️ fumée"}}
     T -- "✘" --> X(["⛔ chaîne arrêtée<br/>merge refusé"])
     P -. "make rollback (1 opération)" .-> RB(["↩️ images précédentes"])
@@ -35,14 +34,15 @@ flowchart LR
 
 Un merge sur `main` relance `lint`, `test` et `gateway` avant `build`. Les evals (portes : réussite ≥ 80 % et latence
 p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané du corpus ou la version du LLM changent
-(voir *Évaluer l'agent*). Le job `evals-pr` (avant merge) rejoue les jeux de la PR contre staging : voir [`docs/ci-evals.md`](docs/ci-evals.md).
+(voir *Évaluer l'agent*). `e2e-staging` passe **après** les evals (sautées ou non) : même identité de CI, donc même
+quota `/api/reponses` à la gateway (#188). Le job `evals-pr` (avant merge) rejoue les jeux de la PR contre staging : voir [`docs/ci-evals.md`](docs/ci-evals.md).
 
-## État au 29/10 (release v0.6.23)
+## État au 29/10 (release v0.6.26)
 
 | Projet | Langage | Rôle | État |
 |---|---|---|---|
 | [`gateway/`](gateway/README.md) | C# · YARP · .NET 10 | **Seule entrée publique** : routage, jeton Entra + rôle par route, limitation de débit, Swagger unique ; échange de jeton vers la Function de calcul (`/api/calcul`) et Foundry (`/api/llm`, tokens mesurés) | ✅ déployée (staging, production), seule dans la Container App principale ; domaine personnalisé en production |
-| [`rag/`](rag/README.md) | Python · hexagonal | Corpus Légifrance (ingestion, dédup, versions), recherche hybride, agent à 3 verrous, attribution Etalab 2.0 | ✅ déployé ; Code des assurances (instantané du 20/10, 119 articles lus, 107 insérés, [preuves](eval/preuves/)) réingéré à chaque déploiement |
+| [`rag/`](rag/README.md) | Python · hexagonal | Corpus Légifrance (ingestion, dédup, versions), recherche hybride, agent à 3 verrous, attribution Etalab 2.0 | ✅ déployé ; jeu agrégé `data/aggregated/corpus-2026-10-27.json` (Code des assurances : 119 articles lus, 107 insérés, 12 abrogés rejetés ; 4 notices produits ; 6 procédures internes citant le barème) réingéré à chaque déploiement (#52, #99, [preuves](eval/preuves/)) ; `make ingest` refuse un instantané hors périmètre (#189) |
 | [`underwriting-admin/`](underwriting-admin/README.md) | C# · Clean Architecture · .NET 10 | Dossiers (vue minimisée, BOLA) et référentiel SQL des traces OpenTelemetry (`/v1/traces`, `/api/traces/{trace_id}`) ; relances et classement sans suite (#136) ; contrat imprimé et fiche du lead (exceptions à la minimisation, #139) ; stockage opaque des points de reprise du cluster (schéma `points_reprise`, D106, #167) | ✅ déployé dans sa Container App (entrée interne) ; écritures brouillon/statut pour le serveur MCP (#66) ; OBO pré-autorisé (#47) |
 | [`serveur-mcp/`](serveur-mcp/README.md) | Python · hexagonal | Outils MCP du cluster d'agents (`search_rag`, `get_contrat`, `evaluer_risque`, `calculer_prime`, `enregistrer_brouillon`, `update_statut_dossier`), matrice `azp` × outil | ✅ déployé dans sa Container App (entrée interne, identité propre), v0.6.0 (#15, #66) |
 | [`agentic-cluster/`](agentic-cluster/README.md) | Python · hexagonal · LangGraph | Cluster d'agents (la Saga, automate déterministe sans LLM, puis Pièces, Analyste, Rédacteur, Actuaire) : évalue un dossier, écrit un brouillon, attend la revue du gestionnaire ; garde-fous LLM Guard ; joint MCP et LLM par la gateway | ✅ déployé (staging, production) dans sa Container App (entrée interne, `infra/containerapp-cluster.yaml`) depuis le 24/10 (#116) ; réglage par agent dans `agents.toml` (#117) ; recette des K jouée en staging depuis l'espace gestionnaire (27/10, [preuves](eval/preuves/recette-k-2026-10-27-staging.md)) ; état du contrat : [`docs/contrat-personnel.md`](docs/contrat-personnel.md) ; points de reprise par la gateway, plus d'accès PostgreSQL (D106, #167) |
@@ -52,8 +52,12 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 > **Pyramide au 29/10** : 75 % TU / 24 % TI / 2 % E2E (cible 70 / 20 / 10) ; le job `pyramide` est **bloquant**
 > en CI depuis #48.
 
-> **Production et staging** : release **`v0.6.23`** au SHA `66750bd` (#174), déployée le 28/10 ; la version de la
-> solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. **Sprint 5 « la vigie »** (#151 → #157),
+> **Production et staging** : release **`v0.6.26`** au SHA `d56a01e` (#193), déployée le 29/10 ; la version de la
+> solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. **Livraison du 29/10** (v0.6.25,
+> PR groupée #185, puis #188 → #193) : pyramide bloquante (#48), `evals-pr` réactivé contre staging (#55), barème
+> citable et jeu agrégé unique (#99, #52), scraping des notices `/notices/` et extraction big data PySpark (#45, #51),
+> base annexe recréée à chaque run et alerte AL-10 (#186), `e2e-staging` après les evals (#188), refus d'un instantané
+> hors périmètre (#189) et rejeu unique d'une réponse lente avant la porte p95 (#192). **Sprint 5 « la vigie »** (#151 → #157),
 > livré en un seul déploiement (#171) : export **Application Insights** en plus de l'OTLP sur les cinq services et la
 > Function, numéro de contrat masqué dans les spans HTTP (#158, #161, #65) ; tableau de bord `vigie-<env>` et alertes
 > AL-1 → AL-10 (#162) ; [`docs/exploitation.md`](docs/exploitation.md) : déployer, surveiller, diagnostiquer, revenir en
@@ -65,7 +69,7 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 > qui garde les agents pré-autorisés sur le MCP (#138), le contrat imprimé et la fiche du lead (#139), les tokens par
 > étape (#140), les pictogrammes (#142), la visionneuse du contrat (#145), les délais de l'évaluation (#146) et les liens
 > de l'en-tête au clavier (#147). Le cluster exporte vers Application Insights (compteurs et métriques
-> `agentic-cluster` présents) mais aucune évaluation authentifiée ne l'a atteint depuis le 28/10 : ses spans et
+> `agentic-cluster` présents) mais aucune évaluation authentifiée ne l'a atteint depuis le 28/10 (encore vrai le 29/10 en v0.6.26) : ses spans et
 > `audit.*` restent à prouver par une évaluation réelle (#176). **Bases éphémères** : chaque
 > déploiement remet les dossiers de staging et de production au seed ([`docs/rollback.md`](docs/rollback.md)).
 > Historique (v0.6.0, du 22/10 au 26/10) : le cluster d'agents (#92, production depuis le 24/10 par #116),

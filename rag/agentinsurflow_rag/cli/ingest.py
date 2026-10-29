@@ -315,7 +315,12 @@ def _articles(args: argparse.Namespace) -> tuple[list[dict[str, Any]], str, Date
         articles, sha, jour = lire_instantane(args.instantane)
         manifeste = json.loads(args.instantane.read_text(encoding="utf-8"))["manifeste"]
         perimetre = manifeste["perimetre"]
-        # périmètre hors COLLECTIONS (motif Légifrance) = textes réglementaires
+        # motif Légifrance courant = textes réglementaires ; seul le dernier compte (#189)
+        if perimetre != PERIMETRE.pattern and perimetre not in COLLECTIONS:
+            raise ErreurEnvoi(
+                f"instantané hors périmètre ({perimetre}) : ni une collection, "
+                "ni le motif Légifrance courant (make extraire)"
+            )
         cible = perimetre if perimetre in COLLECTIONS else COLLECTIONS[0]
         if cible != args.collection:
             raise ErreurEnvoi(f"instantané de {cible}, pas de {args.collection}")
@@ -382,6 +387,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             print(f"✔ {collection} : {rapport['inseres']} insérés, {rapport['inchanges']} "
                   f"inchangés, {len(rapport['rejets'])} rejets → {preuve}")  # fmt: skip
+        if any(r["rejets"] and not (r["inseres"] or r["inchanges"]) for r in rapports.values()):
+            print("✘ tous les articles rejetés : rien d'inséré ni d'inchangé", file=sys.stderr)
+            return 1
         return 0
     except (ErreurPiste, ErreurEnvoi, OSError, KeyError, ValueError) as exc:
         print(f"✘ {exc}", file=sys.stderr)

@@ -379,15 +379,46 @@ def test_instantane_notices_refuse_dans_une_autre_collection(
 def test_instantane_legifrance_refuse_dans_une_collection_de_notices(
     tmp_path: Path, appels: list[httpx.Request], capsys: pytest.CaptureFixture[str]
 ) -> None:
-    chemin = sauvegarder_instantane(
-        CORPUS, tmp_path, "local", "2026-10-29", perimetre="LEGIARTI0000.*"
-    )
+    chemin = sauvegarder_instantane(CORPUS, tmp_path, "local", "2026-10-29")
     code = ingest.main(
         ["--instantane", str(chemin), "--collection", "notices_produits", "--url", "http://gw"]
     )
     assert code == 1
     assert "textes_reglementaires" in capsys.readouterr().err
     assert appels == []
+
+
+@pytest.mark.parametrize(
+    "perimetre", ["freMTPL2freq×freMTPL2sev (OpenML 41214, 41215)", "^(?:L121-\\d+)$"]
+)
+def test_instantane_hors_perimetre_refuse_sans_envoi(
+    tmp_path: Path, appels: list[httpx.Request], capsys: pytest.CaptureFixture[str], perimetre: str
+) -> None:
+    chemin = sauvegarder_instantane(CORPUS, tmp_path, "local", "2026-10-29", perimetre=perimetre)
+    assert ingest.main(["--instantane", str(chemin), "--url", "http://gw"]) == 1
+    assert "hors périmètre" in capsys.readouterr().err
+    assert appels == []
+
+
+def test_tout_rejete_code_de_sortie_1(
+    tmp_path: Path, appels: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def rejeter(requete: httpx.Request) -> httpx.Response:
+        lot = json.loads(requete.content)["articles"]
+        return httpx.Response(
+            201, json={**_rapport(lot, 1), "inseres": 0, "rejets": [{"motif": "x"}] * len(lot)}
+        )
+
+    monkeypatch.setattr(
+        ingest, "nouveau_client", lambda: httpx.Client(transport=httpx.MockTransport(rejeter))
+    )
+    chemin = sauvegarder_instantane(CORPUS, tmp_path, "local", "2026-10-19")
+    code = ingest.main(
+        ["--instantane", str(chemin), "--url", "http://gw", "--preuves", str(tmp_path / "p"),
+         "--date", "2026-10-19"]
+    )  # fmt: skip
+    assert code == 1
+    assert (tmp_path / "p" / "ingestion-2026-10-19-local.json").exists()  # preuve écrite quand même
 
 
 def test_source_et_instantane_exclusifs(

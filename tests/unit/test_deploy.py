@@ -52,3 +52,17 @@ def test_apps_lancees_sans_attendre_puis_attendues_ensemble():
     ):
         assert _indice(e, app) < attente, app
     assert attente < _indice(e, "Identité managée conservée") < _indice(e, "Fumée par la gateway")
+
+
+def test_chaque_run_cree_une_revision_de_la_base_et_de_ses_clients():
+    # #186 : redéployer le même SHA doit recréer la base vide, rejouer les migrations et réingérer
+    # le corpus ; un modèle identique ne crée aucune révision, d'où une valeur propre au run
+    for fichier in ("postgres", "rag", "underwriting"):
+        modele = yaml.safe_load((RACINE / f"infra/containerapp-{fichier}.yaml").read_text())
+        env = modele["properties"]["template"]["containers"][0]["env"]
+        assert {"name": "DEPLOIEMENT", "value": "${DEPLOIEMENT}"} in env, fichier
+    e = _etapes()
+    for debut in ("Lancer la base annexe", "Déployer underwriting-admin", "Déployer rag"):
+        etape = e[_indice(e, debut)]
+        assert etape["env"]["DEPLOIEMENT"] == "${{ github.run_id }}-${{ github.run_attempt }}"
+        assert "$DEPLOIEMENT" in etape["run"], debut

@@ -56,7 +56,7 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 > solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. **Sprint 5 « la vigie »** (#151 → #157),
 > livré en un seul déploiement (#171) : export **Application Insights** en plus de l'OTLP sur les cinq services et la
 > Function, numéro de contrat masqué dans les spans HTTP (#158, #161, #65) ; tableau de bord `vigie-<env>` et alertes
-> AL-1 → AL-9 (#162) ; [`docs/exploitation.md`](docs/exploitation.md) : déployer, surveiller, diagnostiquer, revenir en
+> AL-1 → AL-10 (#162) ; [`docs/exploitation.md`](docs/exploitation.md) : déployer, surveiller, diagnostiquer, revenir en
 > arrière (#163) ; points de reprise de la Saga par la gateway, suppression de D26 (D106, #167) ; GLM Poisson de fréquence
 > à côté du barème (#168) ; bilan du contrat personnel, amendement P45 et grille de retours (#170) ; scénario de la démo
 > des 10 minutes ([`docs/demo-sprint5.md`](docs/demo-sprint5.md), #173). Déploiement : Container Apps lancées ensemble
@@ -331,7 +331,7 @@ ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le L
 | Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.6.23` |
 | Modèles | `Kimi-K2.5` (rag), `gpt-4.1-mini` (cluster, `agents.toml`) et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971`, **sans clé** (`disableLocalAuth`) : appelée par la gateway seule (`/api/llm`) | ✅ |
 | Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag`, `-underwriting`, `-mcp`, `-calcul`, `-llm` ; `agentinsurflow-gateway-local` (secret dans le `.env` local seulement) ; rôle `PointsDeReprise` (principal du cluster seul, D106) | ✅ |
-| Vigie (`make vigie`) | `appi-insurflow-{staging,production}` sur le Log Analytics `workspace-svespucepZG6` ; groupe d'actions `ag-insurflow-<env>` (e-mail), alertes AL-1 → AL-9 (`infra/vigie/alertes.tsv`), test de disponibilité `web-sante-<env>`, tableau de bord `vigie-<env>` | ✅ |
+| Vigie (`make vigie`) | `appi-insurflow-{staging,production}` sur le Log Analytics `workspace-svespucepZG6` ; groupe d'actions `ag-insurflow-<env>` (e-mail), alertes AL-1 → AL-10 (`infra/vigie/alertes.tsv`), test de disponibilité `web-sante-<env>`, tableau de bord `vigie-<env>` | ✅ |
 | Identités managées | gateway `uami-insurflow-rag` (nom historique), rag `uami-insurflow-rag-app`, serveur MCP `uami-insurflow-mcp` ; underwriting-admin sans identité Azure | ✅ |
 | Rôles | CI : Contributor, AcrPush, AcrPull ; « Cognitive Services OpenAI User » sur Foundry : gateway et `gateway-local` **seulement** (`make llm` retire les autres) | ✅ attribués |
 

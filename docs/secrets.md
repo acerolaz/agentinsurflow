@@ -25,7 +25,7 @@ Apps** (`pg-*-password`), posés à la main par `make annexe` (`infra/postgres-a
 
 | Clé du `.env` | Où dans GitHub | Nom côté GitHub | Usage dans le YAML |
 |---|---|---|---|
-| `AZURE_CLIENT_ID` | Variable de repo | `AZURE_CLIENT_ID` | `azure/login` (OIDC) : `ci-cd.yml` › build et evals (et evals-pr, désactivé), `deploy.yml` |
+| `AZURE_CLIENT_ID` | Variable de repo | `AZURE_CLIENT_ID` | `azure/login` (OIDC) : `ci-cd.yml` › build, evals et evals-pr, `deploy.yml` |
 | `AZURE_TENANT_ID` | Variable de repo | `AZURE_TENANT_ID` | idem |
 | `AZURE_SUBSCRIPTION_ID` | Variable de repo | `AZURE_SUBSCRIPTION_ID` | idem |
 | `AZURE_RESOURCE_GROUP` | Variable de repo | `AZURE_RESOURCE_GROUP` | `deploy.yml` : `RG` |
@@ -40,7 +40,7 @@ Apps** (`pg-*-password`), posés à la main par `make annexe` (`infra/postgres-a
 | (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_URL` | `deploy.yml` : fumée de la Function ; → `infra/containerapp.yaml` (cluster `calcul` de la gateway). Le serveur MCP n'appelle plus la Function : `CALCUL_URL` = `<gateway>/api/calcul` |
 | (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_AUDIENCE` | `deploy.yml` → gateway (`Entra__Audiences__calcul__0`, portée `Calcul__Portee` = `<audience>/.default`) et serveur MCP (`CALCUL_AUDIENCE`) ; `api://<appId agentinsurflow-calcul>` |
 | (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_API_CLIENT_ID` | `deploy.yml` (liste `envsubst`) → `infra/containerapp.yaml` (`Entra__Audiences__calcul__1`, GUID de l'application : `aud` des jetons v2) |
-| `AZURE_OPENAI_ENDPOINT` | Variable de **repo** | `AZURE_OPENAI_ENDPOINT` | **La gateway** : `https://<FQDN de la gateway>/api/llm` (jamais Foundry). `deploy.yml` ne la lit plus (il pose `${GATEWAY_URL}/api/llm` dans `infra/containerapp-rag.yaml`) ; seul `ci-cd.yml` › `evals-pr` (désactivé) l'utiliserait |
+| `AZURE_OPENAI_ENDPOINT` | Variable de **repo** | `AZURE_OPENAI_ENDPOINT` | **La gateway** : `https://<FQDN de la gateway>/api/llm` (jamais Foundry). `deploy.yml` ne la lit plus (il pose `${GATEWAY_URL}/api/llm` dans `infra/containerapp-rag.yaml`) ; aucun workflow ne la lit plus (`evals-pr` évalue l'API de staging, `STAGING_URL`) |
 | `LLM_AUDIENCE` | Variable de **repo** | `LLM_AUDIENCE` | `deploy.yml` (liste `envsubst`) → gateway (`Entra__Audiences__llm__0`) et rag (audience du jeton d'application) ; `api://<appId agentinsurflow-llm>`, affiché par `make llm` |
 | `LLM_API_CLIENT_ID` | Variable de **repo** | `LLM_API_CLIENT_ID` | `deploy.yml` → gateway (`Entra__Audiences__llm__1`, GUID : `aud` des jetons v2) ; affiché par `make llm` |
 | `FOUNDRY_ENDPOINT` | Variable de **repo** | `FOUNDRY_ENDPOINT` | `deploy.yml` → gateway : cluster `llm` (`https://<ressource>.openai.azure.com`, sans `/openai`) ; lu aussi, en lecture seule, pour vérifier que les modèles de `agentic-cluster/agents.toml` existent ; affiché par `make llm` |
@@ -57,6 +57,7 @@ Apps** (`pg-*-password`), posés à la main par `make annexe` (`infra/postgres-a
 | `LOG_ANALYTICS_WORKSPACE` | — (non reporté) | — | Lu par `make vigie` seulement : Log Analytics (`workspace-svespucepZG6`) qui reçoit `appi-insurflow-<env>` |
 | `appinsights-connection` 🔒 | — (**jamais dans GitHub**) | — | Secret des cinq Container Apps (gateway, underwriting-admin, cluster, rag, serveur MCP). **Posé** par `make vigie ENV=…` (`infra/vigie.sh`, à la main). **Lu** par chaque app via `secretRef` dans la variable `APPLICATIONINSIGHTS_CONNECTION_STRING` ; `deploy.yml` bloque le déploiement si le secret manque sur l'une des cinq (lecture seule). La Function reçoit la même chaîne en réglage d'application, pas en secret de Container App. La valeur ne s'affiche jamais |
 | `E2E_CONTRAT_PROPRE` | Variable de **repo** | `E2E_CONTRAT_PROPRE` | `ci-cd.yml` › E2E : contrat du gestionnaire de la CI (témoin positif BOLA) |
+| — | Variable de **repo** | `STAGING_URL` | `ci-cd.yml` › `evals-pr` : URL publique de la gateway de staging, contre laquelle tournent les évals de la PR (#55) ; absente → le job échoue en la nommant |
 | — | Variable de l'env. `production` | `PROD_URL` | `deploy.yml` : URL publique de la production (domaine personnalisé, `make domaine`) ; la fumée vérifie aussi son certificat |
 | `AZURE_OPENAI_DEPLOYMENT` | — (**pas dans GitHub**) | — | **rag seulement** : épinglé dans `rag/llm.env`, versionné et copié dans l'image ; le changer déclenche les evals. Le cluster n'a pas cette variable : ses modèles (`modele` par agent) sont dans `agentic-cluster/agents.toml`, copié dans l'image, vérifié par `deploy.yml` sur Foundry (`FOUNDRY_ENDPOINT`) avant tout déploiement |
 | `MCP_CLIENT_SECRET` 🔒 | — (**jamais dans GitHub**) | — | Local seulement (OBO du serveur MCP) ; en Azure, identité managée fédérée |
@@ -90,7 +91,7 @@ La CI s'authentifie par **OIDC** : GitHub émet un jeton à courte durée de vie
 | `ref-refs-heads-main` | `repo:acerolaz@186313822/agentinsurflow@1420380073:ref:refs/heads/main` | `build` ; `evals` : jeton pour `api://agentinsurflow-rag` (rôle `Gestionnaire` de la CI, `make entra`) |
 | `environment-staging` | `…:environment:staging` | déploiement staging |
 | `environment-production` | `…:environment:production` | déploiement production, rollback |
-| `pull_request` | `…:pull_request` | `evals-pr` (⏸️ désactivé jusqu'à U5) : s'il est réactivé, il passera par la gateway (plus d'accès direct à Foundry) |
+| `pull_request` | `…:pull_request` | `evals-pr` (réactivé, #55) : jeton pour `api://agentinsurflow-rag`, évals contre la gateway de staging (`STAGING_URL`), jamais Foundry en direct |
 
 Le préfixe du sujet dépend du repo : `make infra` le lit sur GitHub
 (`gh api repos/<repo>/actions/oidc/customization/sub`). `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` et

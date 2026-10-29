@@ -129,4 +129,4 @@ ORDER BY start_time_unix_nano;
 ## Limites
 
 - Base annexe éphémère : les traces sont **vidées à chaque déploiement** (pas encore durables, Flexible plus tard).
-- Durée de conservation et fréquence de purge : 🔴 à décider (voir [`rgpd.md`](rgpd.md)).
+- Durée de conservation et fréquence de purge : **30 jours** dans Application Insights (rétention de l'espace Log Analytics) ; base annexe vidée à chaque déploiement (voir [`rgpd.md`](rgpd.md), registre et procédures de tri).

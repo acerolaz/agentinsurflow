@@ -108,7 +108,7 @@ contrat d'un autre gestionnaire, le même plan ne renvoie aucune ligne (même 40
 
 ### Recherche vectorielle, plein texte, référence exacte — 🔴 à mesurer
 
-À faire sur la base locale **ingérée** (`make ingest … INSTANTANE=data/raw/code-assurances-2026-10-20.json`,
+À faire sur la base locale **ingérée** (`make agreger` puis `make ingest … JEU=data/aggregated/corpus-2026-10-27.json`,
 qui exige l'accès Azure OpenAI pour les embeddings), avant et après index :
 
 ```sql

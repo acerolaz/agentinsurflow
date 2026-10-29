@@ -519,5 +519,5 @@ jobs:
           make install
           make agreger
           # régénéré = versionné : sinon le jeu ingéré ne serait pas celui du dépôt
-          git status --porcelain data/aggregated | grep . && { echo "::error::jeu agrégé non à jour : make bareme && make agreger"; exit 1; } || true
+          test -z "$(git status --porcelain data/aggregated)" || { echo "::error::jeu agrégé non à jour : make bareme && make agreger"; exit 1; }
           make ingest URL="$URL" JEU="$(ls data/aggregated/corpus-*.json | sort | tail -1)"

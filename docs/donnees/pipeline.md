@@ -35,7 +35,7 @@
 ```bash
 make extraire                                               # ①-③ : Légifrance → data/raw/ (identifiants PISTE du .env)
 make ingest URL=http://localhost:8000                       # ①-⑩ : extraction + envoi
-make ingest URL=http://localhost:8000 INSTANTANE=data/raw/code-assurances-2026-10-20.json   # ④-⑩ : rejeu
+make ingest URL=http://localhost:8000 INSTANTANE=data/raw/code-assurances-2026-10-27.json   # ④-⑩ : rejeu
 ```
 
 En CI, le déploiement réagrège puis réingère le jeu à chaque déploiement (la base annexe repart vide), avec un jeton

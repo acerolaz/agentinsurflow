@@ -6,7 +6,7 @@ import operator
 from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from agentinsurflow_calcul.domain.models import (
     DonneeHorsBareme,
@@ -21,7 +21,7 @@ VERSION_BAREME = "bareme-2026.10-v1"
 DATE_BAREME = "2026-10-26"
 
 Operateur = Literal[">=", ">", "<"]
-_OPERATEURS: dict[str, Callable[[Decimal, Decimal], bool]] = {
+_OPERATEURS: dict[Operateur, Callable[[Any, Any], bool]] = {
     ">=": operator.ge,
     ">": operator.gt,
     "<": operator.lt,
@@ -113,15 +113,7 @@ def evaluer(faits: FaitsRisque) -> ResultatRisque:
     if faits.puissance_fiscale_cv is None:
         raise DonneeHorsBareme("puissance_fiscale_cv")
 
-    valeurs: dict[str, Decimal] = {
-        "suspensions": Decimal(faits.suspensions),
-        "resiliations": Decimal(faits.resiliations),
-        "crm": crm,
-        "nb_sinistres_responsables_trois_ans": Decimal(faits.nb_sinistres_responsables_trois_ans),
-        "nb_sinistres_trois_ans": Decimal(faits.nb_sinistres_trois_ans),
-        "anciennete_permis_mois": Decimal(faits.anciennete_permis_mois),
-        "puissance_fiscale_cv": Decimal(faits.puissance_fiscale_cv),
-    }
+    valeurs: dict[str, Any] = {**vars(faits), "crm": crm}
     declenchees = tuple(
         RegleDeclenchee(r.regle_id, r.motif)
         for r in REGLES

@@ -1,0 +1,205 @@
+{
+ "manifeste": {
+  "date": "2026-10-29",
+  "environnement": "local",
+  "perimetre": "freMTPL2freq×freMTPL2sev (OpenML 41214, 41215)",
+  "articles": 25,
+  "sha256": "b31b33543915b0955e412e81282036b3d9956a25867495478ab493ffa00b09cc"
+ },
+ "articles": [
+  {
+   "requete": "frequence_par_region",
+   "Region": "R11",
+   "contrats": 69680,
+   "exposition": 30087.131954487482,
+   "sinistres": 3969,
+   "frequence": 0.1319168608694198
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R21",
+   "contrats": 3020,
+   "exposition": 1198.3415090949932,
+   "sinistres": 160,
+   "frequence": 0.1335178651374887
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R22",
+   "contrats": 7985,
+   "exposition": 3563.8402208249117,
+   "sinistres": 439,
+   "frequence": 0.12318172892116526
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R23",
+   "contrats": 8772,
+   "exposition": 3164.8821813009804,
+   "sinistres": 302,
+   "frequence": 0.0954221935288149
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R24",
+   "contrats": 160529,
+   "exposition": 102634.44338573271,
+   "sinistres": 9203,
+   "frequence": 0.08966775379111488
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R25",
+   "contrats": 10873,
+   "exposition": 6632.651142301072,
+   "sinistres": 632,
+   "frequence": 0.09528618141383804
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R26",
+   "contrats": 10470,
+   "exposition": 5000.988609177337,
+   "sinistres": 509,
+   "frequence": 0.10177987589612418
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R31",
+   "contrats": 27181,
+   "exposition": 11384.074269032057,
+   "sinistres": 1172,
+   "frequence": 0.10295083924286894
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R41",
+   "contrats": 12987,
+   "exposition": 8109.487972153603,
+   "sinistres": 611,
+   "frequence": 0.07534384440769314
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R42",
+   "contrats": 2192,
+   "exposition": 1200.635823040647,
+   "sinistres": 133,
+   "frequence": 0.11077463911011202
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R43",
+   "contrats": 1323,
+   "exposition": 560.772946328318,
+   "sinistres": 57,
+   "frequence": 0.10164541705017985
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R52",
+   "contrats": 38729,
+   "exposition": 21908.321164757697,
+   "sinistres": 2010,
+   "frequence": 0.09174596195135842
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R53",
+   "contrats": 42109,
+   "exposition": 27739.79367467608,
+   "sinistres": 2702,
+   "frequence": 0.09740519456230425
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R54",
+   "contrats": 19035,
+   "exposition": 11152.00871547269,
+   "sinistres": 968,
+   "frequence": 0.08680050605205883
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R72",
+   "contrats": 31274,
+   "exposition": 14261.1666921176,
+   "sinistres": 1346,
+   "frequence": 0.09438217987760833
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R73",
+   "contrats": 17061,
+   "exposition": 6934.428554532514,
+   "sinistres": 683,
+   "frequence": 0.09849405681071936
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R74",
+   "contrats": 4566,
+   "exposition": 2394.734542256158,
+   "sinistres": 259,
+   "frequence": 0.10815395002236348
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R82",
+   "contrats": 84592,
+   "exposition": 45172.58728572454,
+   "sinistres": 5025,
+   "frequence": 0.11124003077831238
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R83",
+   "contrats": 5279,
+   "exposition": 2314.2742286099274,
+   "sinistres": 189,
+   "frequence": 0.08166707197596162
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R91",
+   "contrats": 35597,
+   "exposition": 14502.624176959302,
+   "sinistres": 1534,
+   "frequence": 0.10577396071788897
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R93",
+   "contrats": 79019,
+   "exposition": 35452.9810150448,
+   "sinistres": 3898,
+   "frequence": 0.10994844124238375
+  },
+  {
+   "requete": "frequence_par_region",
+   "Region": "R94",
+   "contrats": 4516,
+   "exposition": 1765.9353993562374,
+   "sinistres": 247,
+   "frequence": 0.13986921610498468
+  },
+  {
+   "requete": "cout_moyen_par_bonus_malus",
+   "tranche_bm": "100-149",
+   "contrats_sinistres": 2294,
+   "cout_moyen": 5004.295373015853
+  },
+  {
+   "requete": "cout_moyen_par_bonus_malus",
+   "tranche_bm": "150-230",
+   "contrats_sinistres": 40,
+   "cout_moyen": 2456.970555555555
+  },
+  {
+   "requete": "cout_moyen_par_bonus_malus",
+   "tranche_bm": "50-99",
+   "contrats_sinistres": 22559,
+   "cout_moyen": 1976.7294411320474
+  }
+ ]
+}

@@ -79,13 +79,11 @@ strict = true
 mypy_path = "fonction-calcul"  # tools/ importe entrainement (fonction-calcul/entrainement)
 
 [[tool.mypy.overrides]]
-module = ["llm_guard.*"]  # LLM Guard n'est pas typé (pas de py.typed)
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["pyspark.*", "py4j.*"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["pandas.*", "sklearn.*"]  # importés par entrainement (GLM), sans stubs ni py.typed
+module = [
+    "llm_guard.*",  # LLM Guard n'est pas typé (pas de py.typed)
+    "pyspark.*",  # groupe bigdata : pas de stubs
+    "py4j.*",  # idem (passerelle Java de pyspark)
+    "pandas.*",  # importés par entrainement (GLM), sans stubs ni py.typed
+    "sklearn.*",
+]
 ignore_missing_imports = true

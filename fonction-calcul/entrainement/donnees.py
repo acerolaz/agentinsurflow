@@ -16,9 +16,7 @@ from sklearn.model_selection import train_test_split
 _TOML = tomllib.loads((Path(__file__).parent / "donnees.toml").read_text("utf-8"))
 _SOURCE: dict[str, Any] = _TOML["source"]
 SOURCE_SEV: dict[str, Any] = _TOML["source_sev"]
-URL: str = _SOURCE["url"]
 NOM_FICHIER: str = _SOURCE["fichier"]
-SHA256: str = _SOURCE["sha256"]
 LIGNES: int = _SOURCE["lignes"]
 
 COLONNES = ["ClaimNb", "Exposure", "BonusMalus", "VehPower", "Region"]

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Vigie (#54) : Application Insights par environnement, branché sur les 5 Container Apps et la Function,
-# puis Action Group e-mail, règles d'alerte AL-1 → AL-9 (infra/vigie/alertes.tsv) test de disponibilité et tableau de bord (S2).
+# puis Action Group e-mail, règles d'alerte AL-1 → AL-10 (infra/vigie/alertes.tsv) test de disponibilité et tableau de bord (S2).
 # `make vigie ENV=staging|production` (lit le .env via le Makefile). Idempotent : tout est un PUT ARM.
 # Lancé À LA MAIN par Acerola, jamais par un agent ni la CI : écritures Azure.
 # ALERTE_EMAIL est exigé dès le départ, y compris pour les seules étapes App Insights (S1).
@@ -54,7 +54,7 @@ echo "④ Action Group ag-insurflow-$env (e-mail)"
 AG_ID=$(az monitor action-group create -n "ag-insurflow-$env" -g "$RG" --short-name insurflow \
   --action email vigie "$ALERTE_EMAIL" --query id -o tsv)
 
-echo "⑤ Règles d'alerte AL-1 → AL-9"
+echo "⑤ Règles d'alerte AL-1 → AL-10"
 CLUSTER_APP_VAR="CLUSTER_APP_$suffixe"
 CLUSTER_APP=${!CLUSTER_APP_VAR}
 # PRIX_USD_MILLION="m=entrée/sortie;…" → lignes datatable `"m",entrée,sortie,` (vide si non posé)

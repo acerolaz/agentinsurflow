@@ -17,6 +17,8 @@ properties:
           - { type: Liveness, httpGet: { path: /health, port: 8001 }, initialDelaySeconds: 30, periodSeconds: 10 }
           - { type: Readiness, httpGet: { path: /health, port: 8001 }, initialDelaySeconds: 10, periodSeconds: 5 }
         env:
+          # change à chaque run : nouvelle révision, donc migrations rejouées sur la base neuve (#186)
+          - { name: DEPLOIEMENT, value: "${DEPLOIEMENT}" }
           - { name: APPLICATIONINSIGHTS_CONNECTION_STRING, secretRef: appinsights-connection }
           # Aucune clé : le LLM et les dossiers passent par la gateway avec un jeton d'application de l'identité managée PROPRE de rag
           - { name: APP_ENV, value: "${APP_ENV}" }

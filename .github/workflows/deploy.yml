@@ -170,15 +170,16 @@ jobs:
 
       # Ordre : base annexe → (underwriting-admin, serveur MCP, cluster d'agents, gateway, rag ensemble). La base annexe d'abord :
       # ses clients (underwriting-admin, rag) attendent PostgreSQL à leur démarrage pour jouer leurs migrations. Chaque déploiement
-      # crée une nouvelle révision (DEPLOIEMENT = SHA) : base vide, comme avant la séparation ; les clients repartent sur une base
-      # fraîche. Lancée sans attendre : la Function se déploie pendant qu'elle démarre.
+      # crée une nouvelle révision (DEPLOIEMENT = run et tentative, pas le SHA : redéployer le même SHA doit aussi recréer la base,
+      # #186) : base vide, comme avant la séparation ; les clients repartent sur une base fraîche (DEPLOIEMENT aussi chez eux,
+      # pour rejouer leurs migrations). Lancée sans attendre : la Function se déploie pendant qu'elle démarre.
       - name: Lancer la base annexe (modèle infra/containerapp-postgres.yaml, TCP interne 5432)
         env:
           IMAGE_POSTGRES: ${{ vars.ACR_NAME }}.azurecr.io/agentinsurflow-postgres:3 # tag fixe, construit à la main (infra/postgres-annexe.sh)
-          TAG: ${{ steps.image.outputs.tag }}
+          DEPLOIEMENT: ${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
-          envsubst '$IMAGE_POSTGRES $TAG' < infra/containerapp-postgres.yaml > "$RUNNER_TEMP/containerapp-postgres.yaml"
+          envsubst '$IMAGE_POSTGRES $DEPLOIEMENT' < infra/containerapp-postgres.yaml > "$RUNNER_TEMP/containerapp-postgres.yaml"
           az containerapp update -n "$PG_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-postgres.yaml" --no-wait -o none
 
       - name: Déployer la Function de calcul
@@ -250,9 +251,10 @@ jobs:
           SEED_GESTIONNAIRE_A: ${{ vars.SEED_GESTIONNAIRE_A }}
           SEED_GESTIONNAIRE_B: ${{ vars.SEED_GESTIONNAIRE_B }}
           SEED_GESTIONNAIRE_C: ${{ vars.SEED_GESTIONNAIRE_C }} # facultative : sans elle, pas de dossier pour C
+          DEPLOIEMENT: ${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
-          envsubst '$IMAGE_UNDERWRITING $PG_HOST $AZURE_TENANT_ID $UNDERWRITING_API_CLIENT_ID $SEED_GESTIONNAIRE_A $SEED_GESTIONNAIRE_B $SEED_GESTIONNAIRE_C' \
+          envsubst '$DEPLOIEMENT $IMAGE_UNDERWRITING $PG_HOST $AZURE_TENANT_ID $UNDERWRITING_API_CLIENT_ID $SEED_GESTIONNAIRE_A $SEED_GESTIONNAIRE_B $SEED_GESTIONNAIRE_C' \
             < infra/containerapp-underwriting.yaml > "$RUNNER_TEMP/containerapp-underwriting.yaml"
           az containerapp update -n "$UW_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-underwriting.yaml" --no-wait -o none
           fqdn=$(az containerapp show -n "$UW_APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
@@ -414,13 +416,14 @@ jobs:
           RAG_SEUIL: ${{ vars.RAG_SEUIL }}
           LLM_AUDIENCE: ${{ vars.LLM_AUDIENCE }}
           AZURE_UAMI_RAG_CLIENT_ID: ${{ vars.AZURE_UAMI_RAG_CLIENT_ID }}
+          DEPLOIEMENT: ${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           GATEWAY_URL="https://$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)"
           # PG_HOST : le nom de la Container App postgres, résolu dans l'environnement (TCP interne 5432)
           PG_HOST="$PG_APP"
           export GATEWAY_URL PG_HOST
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
-          envsubst '$IMAGE_RAG $APP_ENV $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $RAG_SEUIL $LLM_AUDIENCE $AZURE_UAMI_RAG_CLIENT_ID $GATEWAY_URL $PG_HOST' \
+          envsubst '$DEPLOIEMENT $IMAGE_RAG $APP_ENV $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $RAG_SEUIL $LLM_AUDIENCE $AZURE_UAMI_RAG_CLIENT_ID $GATEWAY_URL $PG_HOST' \
             < infra/containerapp-rag.yaml > "$RUNNER_TEMP/containerapp-rag.yaml"
           az containerapp update -n "$RAG_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-rag.yaml" --no-wait -o none
           rag=$(az containerapp show -n "$RAG_APP" -g "$RG" -o json)

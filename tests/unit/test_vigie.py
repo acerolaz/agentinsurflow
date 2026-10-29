@@ -40,7 +40,7 @@ def test_vigie_refuse_un_env_inconnu():
     assert r.returncode != 0 and "staging|production" in r.stdout + r.stderr
 
 
-# --- S2 : Action Group, règles AL-1 → AL-9, test de disponibilité (faux az) ---
+# --- S2 : Action Group, règles AL-1 → AL-10, test de disponibilité (faux az) ---
 
 FAUX_AZ = RACINE / "tests/unit/faux_az.sh"
 ENV_MIN = {
@@ -95,8 +95,8 @@ def test_une_regle_par_ligne_du_catalogue(tmp_path):
     r, lignes = _vigie(tmp_path, **COMPLET)
     assert r.returncode == 0, r.stdout + r.stderr
     regles = _regles(lignes)
-    assert len(regles) == 9
-    for n in range(1, 10):
+    assert len(regles) == 10
+    for n in range(1, 11):
         assert any(f"-n al-{n}-staging " in li for li in regles)
     assert any("action-group create" in li and "ag-insurflow-staging" in li for li in lignes)
     assert any(
@@ -108,7 +108,7 @@ def test_une_regle_par_ligne_du_catalogue(tmp_path):
 def test_sans_prix_ni_seuils_trois_regles_sautees(tmp_path):
     r, lignes = _vigie(tmp_path)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert len(_regles(lignes)) == 6
+    assert len(_regles(lignes)) == 7
     sortie = r.stdout + r.stderr
     for n in (6, 8, 9):
         assert f"AL-{n} non créée" in sortie
@@ -116,7 +116,7 @@ def test_sans_prix_ni_seuils_trois_regles_sautees(tmp_path):
 
 def test_description_cite_alerte_env_et_ancre(tmp_path):
     _, lignes = _vigie(tmp_path, **COMPLET)
-    for n in range(1, 10):
+    for n in range(1, 11):
         li = next(li for li in _regles(lignes) if f"-n al-{n}-staging " in li)
         desc = li.split("--description ", 1)[1]
         assert f"AL-{n}" in desc and "staging" in desc

@@ -6,6 +6,7 @@ TI légers, gardés peu nombreux.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -62,6 +63,24 @@ def test_instantane_altere_echoue(tmp_path: Path, capsys: pytest.CaptureFixture[
     (tmp_path / "code-assurances-2026-10-27.json").write_text(json.dumps(contenu))
     assert main(["--instantanes", str(tmp_path)]) == 1
     assert "altéré" in capsys.readouterr().out
+
+
+def test_fichier_absent_signale_sans_trace(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main(["--golden", str(tmp_path / "absent.jsonl")]) == 1
+    assert "✘" in capsys.readouterr().out
+
+
+def test_manifeste_mal_forme_signale_sans_trace(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    articles: list[dict[str, str]] = []
+    sha = hashlib.sha256(b"[]").hexdigest()  # JSON canonique de la liste vide
+    contenu = {"manifeste": {"date": "2026-10-27", "sha256": sha}, "articles": articles}
+    (tmp_path / "code-assurances-2026-10-27.json").write_text(json.dumps(contenu))
+    assert main(["--instantanes", str(tmp_path)]) == 1
+    assert "✘" in capsys.readouterr().out
 
 
 def test_depot_actuel_conforme() -> None:

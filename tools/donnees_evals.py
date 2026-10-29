@@ -83,29 +83,6 @@ def dernier_instantane(dossier: Path) -> Path:
     return sorted(dossier.glob("code-assurances-*.json"))[-1]
 
 
-def _cas_valides(lignes: list[str]) -> list[dict[str, Any]]:
-    """Les cas décodables ; les autres sont déjà signalés par ``controler_cas``."""
-    cas = []
-    for ligne in lignes:
-        try:
-            c = json.loads(ligne) if ligne.strip() else None
-        except json.JSONDecodeError:
-            continue
-        if isinstance(c, dict) and isinstance(c.get("attendu", {}), dict):
-            cas.append(c)
-    return cas
-
-
-def _articles_attendus_valides(cas: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Écarte les listes d'articles mal typées (déjà signalées par le schéma)."""
-    return [
-        c
-        for c in cas
-        if isinstance(c.get("attendu", {}).get("articles", []), list)
-        and all(isinstance(a, str) for a in c.get("attendu", {}).get("articles", []))
-    ]
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Teste les données d'évaluation (hors ligne).")
     parser.add_argument("--golden", type=Path, default=Path("eval/golden.jsonl"))
@@ -116,30 +93,38 @@ def main(argv: list[str] | None = None) -> int:
     erreurs: list[str] = []
     cas: list[dict[str, Any]] = []
     for fichier in (args.golden, args.questions):
-        octets = fichier.read_bytes()
+        try:
+            octets = fichier.read_bytes()
+            lignes = octets.decode("utf-8").split("\n")
+        except (OSError, UnicodeDecodeError) as e:
+            erreurs.append(f"{fichier} : illisible ({e})")
+            continue
         print(f"{hashlib.sha256(octets).hexdigest()}  {fichier}")
-        lignes = octets.decode("utf-8").split("\n")
-        erreurs += controler_cas(lignes, str(fichier))
-        cas += _articles_attendus_valides(_cas_valides(lignes))
+        erreurs_fichier = controler_cas(lignes, str(fichier))
+        erreurs += erreurs_fichier
+        if not erreurs_fichier:  # sinon le schéma est déjà signalé : pas de cas à confronter
+            cas += [json.loads(ligne) for ligne in lignes if ligne.strip()]
 
     try:
         instantane = dernier_instantane(args.instantanes)
-        articles, sha, _ = lire_instantane(instantane)
-        manifeste = json.loads(instantane.read_text(encoding="utf-8"))["manifeste"]
-        print(f"{sha}  {instantane}")
-        if len(articles) != manifeste["articles"]:
-            erreurs.append(
-                f"{instantane} : {len(articles)} articles ≠ {manifeste['articles']} du manifeste"
-            )
-        connus = {_article(a["article"]) for a in articles}
-        erreurs += articles_manquants(cas, connus)
     except IndexError:
         erreurs.append(f"{args.instantanes} : aucun instantané code-assurances-*.json")
-    except ErreurEnvoi as e:
-        erreurs.append(f"{instantane} : {e}")
+    else:
+        try:
+            articles, sha, _ = lire_instantane(instantane)
+            manifeste = json.loads(instantane.read_text(encoding="utf-8"))["manifeste"]
+            print(f"{sha}  {instantane}")
+            attendus = manifeste["articles"]
+            if len(articles) != attendus:
+                erreurs.append(f"{instantane} : {len(articles)} articles ≠ {attendus} du manifeste")
+            erreurs += articles_manquants(cas, {_article(a["article"]) for a in articles})
+        except ErreurEnvoi as e:
+            erreurs.append(f"{instantane} : {e}")
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            erreurs.append(f"{instantane} : instantané illisible ou mal formé ({e!r})")
 
-    for e in erreurs:
-        print(f"✘ {e}")
+    for erreur in erreurs:
+        print(f"✘ {erreur}")
     return 1 if erreurs else 0
 
 

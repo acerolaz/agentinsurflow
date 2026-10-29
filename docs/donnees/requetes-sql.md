@@ -158,13 +158,12 @@ ORDER BY Region
   - filtres poussés à la lecture Parquet.
 
 ```text
-PushedFilters: [IsNotNull(Exposure), IsNotNull(BonusMalus), GreaterThan(Exposure,0.0),
-                LessThanOrEqual(Exposure,1.0), GreaterThanOrEqual(BonusMalus,50), LessThanOrEqual(BonusMalus,230)]
+PushedFilters: [IsNotNull(Exposure), IsNotNull(BonusMalus), GreaterThan(Exposure,0.0), LessThanOrEqual(Exposure,1.0), GreaterThanOrEqual(BonusMalus,50), LessThanOrEqual(BonusMalus,230)]
 ReadSchema: struct<ClaimNb:int,Exposure:double,BonusMalus:int,Region:string>
 ```
 
-Plan : `Scan parquet → Filter → Project → HashAggregate (partiel) → Exchange → HashAggregate → Sort` : l'agrégation
-partielle avant l'`Exchange` (brassage) réduit ce qui circule entre partitions.
+Résumé (hors extrait) : le plan enchaîne `Scan parquet`, `Filter`, `Project`, `HashAggregate` partiel, `Exchange`,
+`HashAggregate`, `Sort` ; l'agrégation partielle avant l'`Exchange` (brassage) réduit ce qui circule entre partitions.
 
 ### 6.2 Coût moyen par tranche de bonus-malus (`cout_moyen_par_bonus_malus`)
 
@@ -202,13 +201,39 @@ ORDER BY tranche_bm
   - agrégation de `sev` avant la jointure (réduit le volume diffusé).
 
 ```text
-BroadcastHashJoin Inner BuildRight (10)
-:- Scan parquet (1)   PushedFilters: [IsNotNull(Exposure), IsNotNull(BonusMalus), GreaterThan(Exposure,0.0),
-                        LessThanOrEqual(Exposure,1.0), GreaterThanOrEqual(BonusMalus,50),
-                        LessThanOrEqual(BonusMalus,230), IsNotNull(IDpol)]
-                      ReadSchema: struct<IDpol:double,Exposure:double,BonusMalus:int>
-+- BroadcastExchange (9)
-   +- HashAggregate (8) ← Scan parquet (4)   ReadSchema: struct<IDpol:int,ClaimAmount:double>
+== Physical Plan ==
+AdaptiveSparkPlan (20)
++- Sort (19)
+   +- Exchange (18)
+      +- HashAggregate (17)
+         +- Exchange (16)
+            +- HashAggregate (15)
+               +- HashAggregate (14)
+                  +- Exchange (13)
+                     +- HashAggregate (12)
+                        +- Project (11)
+                           +- BroadcastHashJoin Inner BuildRight (10)
+                              :- Project (3)
+                              :  +- Filter (2)
+                              :     +- Scan parquet  (1)
+                              +- BroadcastExchange (9)
+                                 +- HashAggregate (8)
+                                    +- Exchange (7)
+                                       +- HashAggregate (6)
+                                          +- Filter (5)
+                                             +- Scan parquet  (4)
+...
+PushedFilters: [IsNotNull(Exposure), IsNotNull(BonusMalus), GreaterThan(Exposure,0.0), LessThanOrEqual(Exposure,1.0), GreaterThanOrEqual(BonusMalus,50), LessThanOrEqual(BonusMalus,230), IsNotNull(IDpol)]
+ReadSchema: struct<IDpol:double,Exposure:double,BonusMalus:int>
+...
+PushedFilters: [IsNotNull(IDpol)]
+ReadSchema: struct<IDpol:int,ClaimAmount:double>
+...
+(10) BroadcastHashJoin
+Left keys [1]: [knownfloatingpointnormalized(normalizenanandzero(IDpol#78))]
+Right keys [1]: [knownfloatingpointnormalized(normalizenanandzero(cast(IDpol#90 as double)))]
+Join type: Inner
+Join condition: None
 ```
 
 Limites constatées : (a) `ORDER BY tranche_bm` trie du texte, donc l'ordre est `100-149`, `150-230`, `50-99` ;

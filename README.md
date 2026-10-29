@@ -35,7 +35,7 @@ flowchart LR
 
 Un merge sur `main` relance `lint`, `test` et `gateway` avant `build`. Les evals (portes : réussite ≥ 80 % et latence
 p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané du corpus ou la version du LLM changent
-(voir *Évaluer l'agent*). Le job `evals-pr` (avant merge) est **désactivé jusqu'à U5** : voir le tableau des jobs.
+(voir *Évaluer l'agent*). Le job `evals-pr` (avant merge) rejoue les jeux de la PR contre staging : voir [`docs/ci-evals.md`](docs/ci-evals.md).
 
 ## État au 29/10 (release v0.6.23)
 
@@ -49,14 +49,14 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 | [`fonction-calcul/`](fonction-calcul/README.md) | Python · Azure Functions | Risque (`bareme-2026.10-v1`) et prime (`formule-2026.10-v1`) déterministes ; n'accepte que la gateway | ✅ déployée (Flex Consumption, staging et production), v0.6.0 (#64, #74) ; une instance toujours prête depuis le 28/10 (`infra/calcul.sh` ①b, #146) : plus de démarrage à froid ; fréquence du GLM Poisson freMTPL2 en comparaison (`/api/frequence`, porte de qualité en CI, #168) |
 | [`e2e/`](e2e/README.md) | Python · pytest | Parcours bout en bout par la gateway (compose ou staging) | ✅ ; job `e2e-staging` bloquant avant la release |
 
-> **Pyramide au 20/10** : ≈ 52 % TU / 46 % TI / 2 % E2E, hors seuils ; le job `pyramide` est **informatif** en CI
-> (décision d'Acerola) jusqu'à une tâche dédiée aux tests unitaires.
+> **Pyramide au 29/10** : 75 % TU / 24 % TI / 2 % E2E (cible 70 / 20 / 10) ; le job `pyramide` est **bloquant**
+> en CI depuis #48.
 
 > **Production et staging** : release **`v0.6.23`** au SHA `66750bd` (#174), déployée le 28/10 ; la version de la
 > solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. **Sprint 5 « la vigie »** (#151 → #157),
 > livré en un seul déploiement (#171) : export **Application Insights** en plus de l'OTLP sur les cinq services et la
 > Function, numéro de contrat masqué dans les spans HTTP (#158, #161, #65) ; tableau de bord `vigie-<env>` et alertes
-> AL-1 → AL-9 (#162) ; [`docs/exploitation.md`](docs/exploitation.md) : déployer, surveiller, diagnostiquer, revenir en
+> AL-1 → AL-10 (#162) ; [`docs/exploitation.md`](docs/exploitation.md) : déployer, surveiller, diagnostiquer, revenir en
 > arrière (#163) ; points de reprise de la Saga par la gateway, suppression de D26 (D106, #167) ; GLM Poisson de fréquence
 > à côté du barème (#168) ; bilan du contrat personnel, amendement P45 et grille de retours (#170) ; scénario de la démo
 > des 10 minutes ([`docs/demo-sprint5.md`](docs/demo-sprint5.md), #173). Déploiement : Container Apps lancées ensemble
@@ -251,8 +251,10 @@ le réévalue, même s'il ne touche pas ces fichiers. Sans aucun tag `manifeste-
 
 | Job | Quand | Contre quoi | Jeton |
 |---|---|---|---|
-| `evals-pr` | PR | API lancée dans le runner | ⏸️ **désactivé jusqu'à U5** : depuis R6, `/api/reponses` exige un jeton Entra, PostgreSQL et `RAG_SEUIL`, que ce job n'a pas encore. Sauté, il satisfait la protection de `main` |
+| `evals-pr` | PR (déclencheurs modifiés, libellé `evals`) ou `workflow_dispatch` depuis `main` | **staging** (code de `main`) avec les jeux d'évaluation de la PR | Entra par **OIDC**, rôle `Gestionnaire` de la CI ; résumé commenté sur la PR ([`docs/ci-evals.md`](docs/ci-evals.md)). Sauté, il satisfait la protection de `main` |
 | `evals` | merge, avant la production | **staging** déployé, corpus réingéré par `deploy.yml` ; cas à `numero_contrat` écartés jusqu'à underwriting-admin (U2, `--sans-dossiers`) | Entra par **OIDC** (`api://agentinsurflow-rag/.default`) : l'identité de la CI porte le rôle `Gestionnaire` (`make entra`) |
+
+Installation, déclenchement, limites et démonstration de `evals-pr` : [`docs/ci-evals.md`](docs/ci-evals.md).
 
 **Artefact de chaque passage** : `evals-staging-<sha>` (onglet *Summary* du run). Le rapport JSON s'ouvre sur un
 **manifeste** qui dit ce qui a été évalué :
@@ -329,7 +331,7 @@ ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le L
 | Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.6.23` |
 | Modèles | `Kimi-K2.5` (rag), `gpt-4.1-mini` (cluster, `agents.toml`) et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971`, **sans clé** (`disableLocalAuth`) : appelée par la gateway seule (`/api/llm`) | ✅ |
 | Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag`, `-underwriting`, `-mcp`, `-calcul`, `-llm` ; `agentinsurflow-gateway-local` (secret dans le `.env` local seulement) ; rôle `PointsDeReprise` (principal du cluster seul, D106) | ✅ |
-| Vigie (`make vigie`) | `appi-insurflow-{staging,production}` sur le Log Analytics `workspace-svespucepZG6` ; groupe d'actions `ag-insurflow-<env>` (e-mail), alertes AL-1 → AL-9 (`infra/vigie/alertes.tsv`), test de disponibilité `web-sante-<env>`, tableau de bord `vigie-<env>` | ✅ |
+| Vigie (`make vigie`) | `appi-insurflow-{staging,production}` sur le Log Analytics `workspace-svespucepZG6` ; groupe d'actions `ag-insurflow-<env>` (e-mail), alertes AL-1 → AL-10 (`infra/vigie/alertes.tsv`), test de disponibilité `web-sante-<env>`, tableau de bord `vigie-<env>` | ✅ |
 | Identités managées | gateway `uami-insurflow-rag` (nom historique), rag `uami-insurflow-rag-app`, serveur MCP `uami-insurflow-mcp` ; underwriting-admin sans identité Azure | ✅ |
 | Rôles | CI : Contributor, AcrPush, AcrPull ; « Cognitive Services OpenAI User » sur Foundry : gateway et `gateway-local` **seulement** (`make llm` retire les autres) | ✅ attribués |
 

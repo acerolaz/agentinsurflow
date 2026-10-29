@@ -110,7 +110,7 @@ az monitor app-insights query --app appi-insurflow-staging -g svespuceRG \
 ## 7. Tableau de bord et alertes
 
 - **Tableau de bord** : portail Azure › **Tableaux de bord** (*Dashboard*), puis `vigie-staging` ou `vigie-production`. Une tuile par question : disponibilité, évaluations par heure, p95, revue humaine par cause, coût par agent, évaluations sans décision. La lecture de chaque tuile est dans [`exploitation.md`](exploitation.md) § 4.
-- **Alertes** : dans la ressource Application Insights › **Surveillance › Alertes**, on voit les règles AL-1 à AL-9 et celles qui sont déclenchées. Chaque alerte envoie un e-mail par le groupe d'actions `ag-insurflow-<env>`. La fiche de chaque alerte est dans [`exploitation.md`](exploitation.md) § 6.
+- **Alertes** : dans la ressource Application Insights › **Surveillance › Alertes**, on voit les règles AL-1 à AL-10 et celles qui sont déclenchées. Chaque alerte envoie un e-mail par le groupe d'actions `ag-insurflow-<env>`. La fiche de chaque alerte est dans [`exploitation.md`](exploitation.md) § 6.
 
 ## 8. Si rien n'apparaît
 

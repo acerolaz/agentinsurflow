@@ -224,6 +224,52 @@ def calibrer(url: str, cas: list[dict[str, Any]], jeton: str | None) -> None:
         print("✘ aucun seuil ne sépare les questions couvertes des hors corpus (verrous ② ③)")
 
 
+LIMITE = (
+    "Jeux d'évaluation de cette PR rejoués contre staging (code de `main`). "
+    "Un prompt modifié ici n'est évalué qu'après merge, par le job `evals`."
+)
+
+
+def _court(bloc: dict[str, Any] | None, cle: str) -> str:
+    """12 premiers caractères d'un sha256 du manifeste (bloc absent : questions, corpus)."""
+    return ((bloc or {}).get(cle) or "—")[:12]
+
+
+def resumer(rapport: dict[str, Any], portes_ok: tuple[bool, bool]) -> str:
+    """Résumé Markdown du rapport, posté en commentaire de PR (ni jeton ni réponses)."""
+    m = rapport["manifeste"]
+    seuil, p95_max = m["portes"]["seuil"], m["portes"]["latence_p95_max_s"]
+    ratés = [r for r in rapport["resultats"] if r["echecs"]]
+    lignes = [
+        f"### Évaluations — {'✔ porte passée' if all(portes_ok) else '✘ porte échouée'}",
+        "",
+        f"- {'✔' if portes_ok[0] else '✘'} réussite {rapport['taux']:.0%} (seuil {seuil:.0%})",
+        f"- {'✔' if portes_ok[1] else '✘'} latence p95 {rapport['latence_p95_s']} s"
+        f" (max {p95_max} s)",
+        "",
+    ]
+    if ratés:
+        lignes += ["| cas | contrôles ratés | http |", "|---|---|---|"]
+        lignes += [f"| {r['id']} | {', '.join(r['echecs'])} | {r['http']} |" for r in ratés]
+    else:
+        lignes.append("Tous les cas passent (aucun cas raté).")
+    if rapport["ecartes"]:
+        lignes += ["", f"Cas écartés : {', '.join(rapport['ecartes'])}."]
+    lignes += [
+        "",
+        f"- Cible : {m['cible']} · commit `{m['commit']}`",
+        f"- sha256 : golden `{_court(m['golden'], 'sha256')}`, "
+        f"questions `{_court(m['questions'], 'sha256')}`, "
+        f"corpus `{_court(m['corpus'], 'instantane_sha256')}`",
+        f"- Modèle épinglé `{m['modele']['deploiement']}`, observé "
+        f"`{', '.join(m['modele']['observe']) or '—'}`",
+        f"- Run : {m['run'] or '—'}",
+        "",
+        f"> {LIMITE}",
+    ]
+    return "\n".join(lignes) + "\n"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://localhost:8000")
@@ -237,6 +283,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--prompts", type=Path, default=Path("rag/agentinsurflow_rag/prompts"))
     parser.add_argument("--llm-env", type=Path, default=Path("rag/llm.env"))
     parser.add_argument("--rapport", type=Path)
+    parser.add_argument("--resume", type=Path, help="résumé Markdown (commentaire de PR)")
     # ponytail: tant qu'underwriting-admin n'existe pas (U2), un cas à numero_contrat répond 503 ;
     # retirer l'option de la CI quand U2 est déployé
     parser.add_argument(
@@ -294,6 +341,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.rapport:
         args.rapport.write_text(sortie, encoding="utf-8")
     qualite, rapidite = taux >= args.seuil, latence_p95 <= args.latence_p95_max
+    if args.resume:
+        args.resume.write_text(resumer(rapport, (qualite, rapidite)), encoding="utf-8")
     print(f"{'✔' if qualite else '✘'} réussite {taux:.0%} (seuil {args.seuil:.0%})")
     print(f"{'✔' if rapidite else '✘'} latence p95 {latence_p95} s (max {args.latence_p95_max} s)")
     return 0 if qualite and rapidite else 1

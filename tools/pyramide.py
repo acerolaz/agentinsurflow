@@ -1,6 +1,8 @@
 """Porte de la pyramide de tests (S3-22) : 70 % TU, 20 % TI, 10 % E2E, en nombre de tests.
 
-Compte ``rag``, ``underwriting-admin`` et ``e2e/`` ; la gateway (forme diamant) est comptée à part.
+Compte ``rag``, ``serveur-mcp``, ``agentic-cluster``, ``fonction-calcul``, ``underwriting-admin``
+et ``e2e/`` ; ``tests/`` (racine : doc et outils) n'est pas un service et n'est pas compté ;
+la gateway (forme diamant) est comptée à part.
 Échoue si TU < 65 %, TI > 25 %, E2E > 15 %, ou si un niveau est vide.
 
 Usage : ``python tools/pyramide.py`` (depuis la racine du monorepo).
@@ -14,9 +16,21 @@ from pathlib import Path
 
 # niveau → (dossiers pytest, motifs des projets de tests C# sous underwriting-admin/tests)
 NIVEAUX: dict[str, tuple[list[str], list[str]]] = {
-    "TU": (["rag/tests/unit", "serveur-mcp/tests/unit"], ["*.Domain.Tests", "*.Application.Tests"]),
+    "TU": (
+        [
+            "rag/tests/unit",
+            "serveur-mcp/tests/unit",
+            "agentic-cluster/tests/unit",
+            "fonction-calcul/tests/unit",
+        ],
+        ["*.Domain.Tests", "*.Application.Tests"],
+    ),
     "TI": (
-        ["rag/tests/integration", "serveur-mcp/tests/integration"],
+        [
+            "rag/tests/integration",
+            "serveur-mcp/tests/integration",
+            "agentic-cluster/tests/integration",
+        ],
         ["*.Infrastructure.Tests", "*.Api.Tests"],
     ),
     "E2E": (["e2e"], []),

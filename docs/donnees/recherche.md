@@ -69,4 +69,4 @@ et registre de suivi de l'implémentation.*
 | `PRIME` | Une prime par contrat (montant, périodicité, date d'effet) | P18, tranché par Acerola |
 | Seed | Gestionnaires lus dans `SEED_GESTIONNAIRE_A/B` | Aucun `oid` réel commité |
 | Version | Release **v0.5.0** | Décision d'Acerola |
-| Pyramide | Porte **informative** en CI (≈ 52 % TU / 46 % TI / 2 % E2E au 20/10) | Décision d'Acerola, en attendant une tâche dédiée aux TU |
+| Pyramide | Porte **informative** en CI (≈ 52 % TU / 46 % TI / 2 % E2E au 20/10), **bloquante** depuis #48 (75 / 24 / 2 au 29/10) | Décision d'Acerola ; #48 compte `agentic-cluster` et `fonction-calcul`, oubliés jusque-là |

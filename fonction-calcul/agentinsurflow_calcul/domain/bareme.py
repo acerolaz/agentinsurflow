@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import operator
+from collections.abc import Callable
+from dataclasses import dataclass
 from decimal import Decimal
+from typing import Any, Literal
 
 from agentinsurflow_calcul.domain.models import (
     DonneeHorsBareme,
@@ -14,7 +18,83 @@ from agentinsurflow_calcul.domain.models import (
 
 VERSION_BAREME = "bareme-2026.10-v1"
 
-_SEUIL_CRM = Decimal("1.25")
+DATE_BAREME = "2026-10-26"
+
+Operateur = Literal[">=", ">", "<"]
+_OPERATEURS: dict[Operateur, Callable[[Any, Any], bool]] = {
+    ">=": operator.ge,
+    ">": operator.gt,
+    "<": operator.lt,
+}
+
+
+@dataclass(frozen=True)
+class Condition:
+    """Un test ``champ <opérateur> seuil`` sur un fait du dossier."""
+
+    champ: str
+    operateur: Operateur
+    seuil: Decimal
+
+
+@dataclass(frozen=True)
+class Regle:
+    """Une règle du barème : déclenchée quand toutes ses conditions sont vraies."""
+
+    regle_id: str
+    libelle: str
+    conditions: tuple[Condition, ...]
+    motif: str
+    effet: Literal["REFUSE"]
+
+
+REGLES: tuple[Regle, ...] = (
+    Regle(
+        "R01_SUSPENSION",
+        "Suspension de permis",
+        (Condition("suspensions", ">=", Decimal(1)),),
+        "Le relevé d'information mentionne une suspension de permis.",
+        "REFUSE",
+    ),
+    Regle(
+        "R02_RESILIATIONS",
+        "Résiliations antérieures",
+        (Condition("resiliations", ">=", Decimal(2)),),
+        "Le relevé d'information mentionne au moins deux résiliations.",
+        "REFUSE",
+    ),
+    Regle(
+        "R03_CRM",
+        "Coefficient bonus-malus élevé",
+        (Condition("crm", ">", Decimal("1.25")),),
+        "Le coefficient bonus-malus dépasse 1,25.",
+        "REFUSE",
+    ),
+    Regle(
+        "R04_SINISTRES_RESPONSABLES",
+        "Sinistres responsables répétés",
+        (Condition("nb_sinistres_responsables_trois_ans", ">", Decimal(2)),),
+        "Plus de deux sinistres responsables dans les 36 mois avant la date d'effet.",
+        "REFUSE",
+    ),
+    Regle(
+        "R05_SINISTRES_TOTAL",
+        "Fréquence de sinistres élevée",
+        (Condition("nb_sinistres_trois_ans", ">", Decimal(4)),),
+        "Plus de quatre sinistres dans les 36 mois avant la date d'effet.",
+        "REFUSE",
+    ),
+    Regle(
+        "R06_JEUNE_PERMIS_PUISSANCE",
+        "Jeune permis et véhicule puissant",
+        (
+            Condition("anciennete_permis_mois", "<", Decimal(36)),
+            Condition("puissance_fiscale_cv", ">", Decimal(7)),
+        ),
+        "Permis de moins de 3 ans et véhicule de plus de 7 CV.",
+        "REFUSE",
+    ),
+)
 
 
 def evaluer(faits: FaitsRisque) -> ResultatRisque:
@@ -33,35 +113,12 @@ def evaluer(faits: FaitsRisque) -> ResultatRisque:
     if faits.puissance_fiscale_cv is None:
         raise DonneeHorsBareme("puissance_fiscale_cv")
 
-    regles = [
-        (
-            faits.suspensions >= 1,
-            "R01_SUSPENSION",
-            "Le relevé d'information mentionne une suspension de permis.",
-        ),
-        (
-            faits.resiliations >= 2,
-            "R02_RESILIATIONS",
-            "Le relevé d'information mentionne au moins deux résiliations.",
-        ),
-        (crm > _SEUIL_CRM, "R03_CRM", "Le coefficient bonus-malus dépasse 1,25."),
-        (
-            faits.nb_sinistres_responsables_trois_ans > 2,
-            "R04_SINISTRES_RESPONSABLES",
-            "Plus de deux sinistres responsables dans les 36 mois avant la date d'effet.",
-        ),
-        (
-            faits.nb_sinistres_trois_ans > 4,
-            "R05_SINISTRES_TOTAL",
-            "Plus de quatre sinistres dans les 36 mois avant la date d'effet.",
-        ),
-        (
-            faits.anciennete_permis_mois < 36 and faits.puissance_fiscale_cv > 7,
-            "R06_JEUNE_PERMIS_PUISSANCE",
-            "Permis de moins de 3 ans et véhicule de plus de 7 CV.",
-        ),
-    ]
-    declenchees = tuple(RegleDeclenchee(i, m) for ok, i, m in regles if ok)
+    valeurs: dict[str, Any] = {**vars(faits), "crm": crm}
+    declenchees = tuple(
+        RegleDeclenchee(r.regle_id, r.motif)
+        for r in REGLES
+        if all(_OPERATEURS[c.operateur](valeurs[c.champ], c.seuil) for c in r.conditions)
+    )
     refus = bool(declenchees)
     return ResultatRisque(
         version_bareme=VERSION_BAREME,

@@ -2,6 +2,8 @@
 
     make ingest [URL=https://<gateway>] [INSTANTANE=data/raw/code-assurances-<date>.json]
     make ingest [URL=…] COLLECTION=notices_produits SOURCE=rag/corpus/notices_produits
+    make ingest [URL=…] JEU=data/aggregated/corpus-<date>.json   (jeu de ``make agreger``)
+    make ingest URL=… INSTANTANE=data/raw/notices-<date>.json COLLECTION=notices_produits
 
 ① jeton PISTE (``.env`` local) ; ② plan du code, filtre du périmètre, ``getArticle`` séquentiel ;
 ③ instantané écrit dans un fichier temporaire puis renommé (jamais partiel), avec son manifeste ;
@@ -9,6 +11,8 @@
 ``--instantane`` rejoue un fichier et saute ① à ③ (CI, staging, production : pas de PISTE).
 Les traces de la CLI partent aussi par la gateway (``/v1/traces``, rôle ``Telemetrie``) ;
 leur échec ne fait jamais échouer l'ingestion.
+``--instantane`` d'un instantané de notices (``data/raw/notices-<date>.json``) exige
+``--collection notices_produits`` ; ``--source`` et ``--instantane`` s'excluent.
 ``--collection`` + ``--source`` : documents rédigés pour le projet (Markdown du dépôt, en-tête
 ``cle: valeur`` entre deux ``---``), sans PISTE ni instantané.
 """
@@ -71,15 +75,20 @@ def sha_articles(articles: Sequence[Any]) -> str:
 
 
 def sauvegarder_instantane(
-    articles: list[dict[str, Any]], dossier: Path, environnement: str, date: str
+    articles: list[dict[str, Any]],
+    dossier: Path,
+    environnement: str,
+    date: str,
+    prefixe: str = "code-assurances",
+    perimetre: str = PERIMETRE.pattern,
 ) -> Path:
     dossier.mkdir(parents=True, exist_ok=True)
-    chemin = dossier / f"code-assurances-{date}.json"
+    chemin = dossier / f"{prefixe}-{date}.json"
     contenu = {
         "manifeste": {
             "date": date,
             "environnement": environnement,
-            "perimetre": PERIMETRE.pattern,
+            "perimetre": perimetre,
             "articles": len(articles),
             "sha256": sha_articles(articles),
         },
@@ -100,6 +109,29 @@ def lire_instantane(chemin: Path) -> tuple[list[dict[str, Any]], str, Date]:
     return articles, sha, Date.fromisoformat(contenu["manifeste"]["date"])
 
 
+def lire_jeu(chemin: Path) -> tuple[list[dict[str, Any]], str, Date]:
+    """Jeu agrégé de ``make agreger`` : entrées, sha256 du manifeste (vérifié) et sa date."""
+    contenu = json.loads(chemin.read_text(encoding="utf-8"))
+    entrees: list[dict[str, Any]] = contenu["entrees"]
+    sha = sha_articles(entrees)
+    if sha != contenu["manifeste"]["sha256"]:
+        raise ErreurEnvoi(f"jeu altéré : sha256 {sha} ≠ manifeste")
+    return entrees, sha, Date.fromisoformat(contenu["manifeste"]["date"])
+
+
+def lire_en_tete(fichier: Path) -> tuple[dict[str, str], str]:
+    """En-tête ``cle: valeur`` entre deux ``---`` et corps (sans blancs de bord) d'un Markdown."""
+    lignes = fichier.read_text(encoding="utf-8").split("\n")
+    if lignes[0].strip() != "---" or "---" not in lignes[1:]:
+        raise ErreurEnvoi(f"{fichier.name} : en-tête « --- » absent")
+    fin = lignes.index("---", 1)
+    en_tete = dict(
+        (cle.strip(), valeur.strip())
+        for cle, _, valeur in (ligne.partition(":") for ligne in lignes[1:fin])
+    )
+    return en_tete, "\n".join(lignes[fin + 1 :]).strip()
+
+
 def lire_markdown(dossier: Path, collection: str) -> list[dict[str, Any]]:
     """Un article par ``*.md`` du dossier, trié par nom ; le corps part tel quel (texte brut)."""
     fichiers = sorted(dossier.glob("*.md"))
@@ -107,14 +139,7 @@ def lire_markdown(dossier: Path, collection: str) -> list[dict[str, Any]]:
         raise ErreurEnvoi(f"aucun fichier .md dans {dossier}")
     articles = []
     for fichier in fichiers:
-        lignes = fichier.read_text(encoding="utf-8").split("\n")
-        if lignes[0].strip() != "---" or "---" not in lignes[1:]:
-            raise ErreurEnvoi(f"{fichier.name} : en-tête « --- » absent")
-        fin = lignes.index("---", 1)
-        en_tete = dict(
-            (cle.strip(), valeur.strip())
-            for cle, _, valeur in (ligne.partition(":") for ligne in lignes[1:fin])
-        )
+        en_tete, corps = lire_en_tete(fichier)
         obligatoires = EN_TETE_OBLIGATOIRE + (("regle_id",) if collection == COLLECTIONS[2] else ())
         manquants = [c for c in obligatoires if not en_tete.get(c)]
         if manquants:
@@ -124,7 +149,7 @@ def lire_markdown(dossier: Path, collection: str) -> list[dict[str, Any]]:
                 **{c: en_tete[c] for c in EN_TETE_OBLIGATOIRE},
                 "regle_id": en_tete.get("regle_id") or None,
                 "etat": "VIGUEUR",
-                "texte_html": "\n".join(lignes[fin + 1 :]).strip(),
+                "texte_html": corps,
                 "url_source": f"{URL_DEPOT}/{collection}/{fichier.name}",
             }
         )
@@ -231,6 +256,7 @@ def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
     )
     parser.add_argument("--url", default="http://localhost:8000", help="gateway (ou rag en direct)")
     parser.add_argument("--instantane", type=Path, help="rejouer un instantané (saute PISTE)")
+    parser.add_argument("--jeu", type=Path, help="jeu agrégé (make agreger), toutes collections")
     parser.add_argument("--collection", choices=COLLECTIONS, default=COLLECTIONS[0])
     parser.add_argument("--source", type=Path, help="dossier de Markdown (documents rédigés)")
     parser.add_argument("--date", default=Date.today().isoformat())
@@ -243,14 +269,56 @@ def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _instantane(args: argparse.Namespace) -> tuple[list[dict[str, Any]], str, Date, str]:
-    if (args.source is None) != (args.collection == COLLECTIONS[0]):
+def _instantane(
+    args: argparse.Namespace,
+) -> tuple[dict[str, list[dict[str, Any]]], str, Date, str]:
+    """Articles à envoyer, par collection, avec leur sha256, leur date et le mode."""
+    if args.jeu:
+        if args.instantane or args.source:
+            raise ErreurEnvoi("--jeu est exclusif avec --instantane et --source")
+        entrees, sha, jour = lire_jeu(args.jeu)
+        for c in COLLECTIONS:
+            if not any(e["collection"] == c for e in entrees):
+                raise ErreurEnvoi(f"jeu sans entrée pour {c}")
+        return (
+            {
+                c: [
+                    {k: v for k, v in e.items() if k not in ("collection", "source")}
+                    for e in entrees
+                    if e["collection"] == c
+                ]
+                for c in COLLECTIONS
+            },
+            sha,
+            jour,
+            "jeu",
+        )
+    if args.source and args.collection == COLLECTIONS[2]:
+        raise ErreurEnvoi(
+            "les procédures internes sont générées : make agreger puis make ingest JEU=…"
+        )
+    articles, sha, jour, mode = _articles(args)
+    return {args.collection: articles}, sha, jour, mode
+
+
+def _articles(args: argparse.Namespace) -> tuple[list[dict[str, Any]], str, Date, str]:
+    if args.source and args.instantane:
+        raise ErreurEnvoi("--source et --instantane s'excluent")
+    if args.source and args.collection == COLLECTIONS[0]:
+        raise ErreurEnvoi("--source va avec --collection notices_produits ou procedures_internes")
+    if not (args.source or args.instantane) and args.collection != COLLECTIONS[0]:
         raise ErreurEnvoi("--source va avec --collection notices_produits ou procedures_internes")
     if args.source:
         articles = lire_markdown(args.source, args.collection)
         return articles, sha_articles(articles), Date.fromisoformat(args.date), "markdown"
     if args.instantane:
         articles, sha, jour = lire_instantane(args.instantane)
+        manifeste = json.loads(args.instantane.read_text(encoding="utf-8"))["manifeste"]
+        perimetre = manifeste["perimetre"]
+        # périmètre hors COLLECTIONS (motif Légifrance) = textes réglementaires
+        cible = perimetre if perimetre in COLLECTIONS else COLLECTIONS[0]
+        if cible != args.collection:
+            raise ErreurEnvoi(f"instantané de {cible}, pas de {args.collection}")
         return articles, sha, jour, "instantane"
     try:
         cfg = ConfigLegifrance()  # type: ignore[call-arg]
@@ -270,7 +338,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     fournisseur: TracerProvider | None = None
     try:
         Date.fromisoformat(args.date)  # tôt : avant PISTE, et pour le nom de la preuve
-        articles, sha, jour, mode = _instantane(args)
+        groupes, sha, jour, mode = _instantane(args)
         if args.sans_envoi:
             return 0
         jeton = jeton_api("agentinsurflow-rag", "INGESTION_JETON")
@@ -286,29 +354,34 @@ def main(argv: Sequence[str] | None = None) -> int:
             span.set_attributes(
                 {
                     "ingest.instantane_sha256": sha,
-                    "ingest.articles": len(articles),
+                    "ingest.articles": sum(map(len, groupes.values())),
                     "ingest.mode": mode,
                 }
             )
-            rapport = envoyer(client, args.url, jeton, articles, sha, jour, tracer, args.collection)
+            rapports = {
+                c: envoyer(client, args.url, jeton, articles, sha, jour, tracer, c)
+                for c, articles in groupes.items()
+            }
         args.preuves.mkdir(parents=True, exist_ok=True)
-        prefixe = "" if args.collection == COLLECTIONS[0] else f"{args.collection}-"
-        preuve = args.preuves / f"ingestion-{prefixe}{args.date}-{args.environnement}.json"
-        preuve.write_text(
-            json.dumps(
-                {
-                    "instantane_sha256": sha,
-                    "instantane_date": jour.isoformat(),
-                    "mode": mode,
-                    **rapport,
-                },
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
-        print(f"✔ {rapport['inseres']} insérés, {rapport['inchanges']} inchangés, "
-              f"{len(rapport['rejets'])} rejets → {preuve}")  # fmt: skip
+        for collection, rapport in rapports.items():
+            prefixe = "" if collection == COLLECTIONS[0] else f"{collection}-"
+            date = jour.isoformat() if mode == "jeu" else args.date  # le jeu porte sa date
+            preuve = args.preuves / f"ingestion-{prefixe}{date}-{args.environnement}.json"
+            preuve.write_text(
+                json.dumps(
+                    {
+                        "instantane_sha256": sha,
+                        "instantane_date": jour.isoformat(),
+                        "mode": mode,
+                        **rapport,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            print(f"✔ {collection} : {rapport['inseres']} insérés, {rapport['inchanges']} "
+                  f"inchangés, {len(rapport['rejets'])} rejets → {preuve}")  # fmt: skip
         return 0
     except (ErreurPiste, ErreurEnvoi, OSError, KeyError, ValueError) as exc:
         print(f"✘ {exc}", file=sys.stderr)

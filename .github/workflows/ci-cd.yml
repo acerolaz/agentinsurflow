@@ -1,7 +1,9 @@
 # Chaîne du socle (CI/CD/Evals)
 #   PR    : lint → test → [evals-pr]                       (portes exigées par la protection de main)
+#           evals-pr évalue staging si les jeux ont changé, si la PR porte le libellé « evals »,
+#           ou à la main (workflow_dispatch) ; il commente le résumé sur la PR.
 #   merge : lint → test → build → staging (+ fumée) → [evals] + e2e-staging → release → production (+ fumée)
-#   integration (compose + TI) et pyramide tournent en parallèle ; pyramide est informative (voir le job).
+#   integration (compose + TI) et pyramide tournent en parallèle ; toutes deux sont exigées par la protection de main.
 # [evals…] ne tournent QUE si le prompt, le golden dataset ou la version du LLM ont changé depuis le
 # dernier manifeste validé (job changements) ; sinon ils sont sautés et la chaîne continue.
 # Versions, gravées dans l'image et lues sur /health : SHA du commit ; release vX.Y.Z (tag posé
@@ -10,6 +12,10 @@ name: ci-cd
 
 on:
   pull_request:
+    # ponytail: un autre libellé relance aussi la chaîne de PR (annulée par cancel-in-progress) ;
+    # filtrer par job si ça gêne.
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch: {} # evals-pr à la main (OIDC fédéré pour main seulement : lancer depuis main)
   push:
     branches: [main]
 
@@ -96,12 +102,8 @@ jobs:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
 
   pyramide:
-    # ponytail: INFORMATIVE (décision d'Acerola) tant que la tâche dédiée aux TU d'underwriting-admin n'est pas
-    # livrée : la pyramide est encore hors seuils. À rendre bloquante ensuite : retirer continue-on-error
-    # et ajouter « pyramide » aux contextes de infra/protection-main.json.
     needs: lint
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -232,36 +234,60 @@ jobs:
           if-no-files-found: warn
 
   evals-pr:
+    # Évalue l'API de STAGING (rag ne peut pas obtenir de jeton LLM sur un runner) avec les jeux de la PR.
+    # Lancé si les déclencheurs d'évaluation ont changé, si la PR porte le libellé « evals », ou à la main.
     needs: [test, changements]
-    # ponytail: désactivé jusqu'à U5. Depuis R6, /api/reponses exige un jeton Entra (rôle
-    # Gestionnaire), PostgreSQL et RAG_SEUIL : ce job n'a encore ni identité de CI (A4) ni base
-    # annexe. Un job sauté satisfait la protection de main ; les evals de staging restent bloquantes.
-    if: false && github.event_name == 'pull_request' && needs.changements.outputs.evals == 'true'
+    if: >-
+      (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
+      && (needs.changements.outputs.evals == 'true' || github.event_name == 'workflow_dispatch'
+      || contains(github.event.pull_request.labels.*.name, 'evals'))
     runs-on: ubuntu-latest
-    permissions: { contents: read, id-token: write }
+    permissions: { contents: read, id-token: write, pull-requests: write }
     env:
-      AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+      STAGING_URL: ${{ vars.STAGING_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with: { version: "0.11.13", enable-cache: true }
-      - uses: azure/login@v2 # OIDC, sans clé : le LLM s'appelle par la gateway (/api/llm) avec un jeton d'application
+      - run: make install
+      - run: make donnees-evals # jeux d'évaluation cohérents, hors ligne, avant toute connexion
+      - uses: azure/login@v2 # OIDC : le jeton d'évaluation est demandé à Entra, aucun secret
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          allow-no-subscriptions: true # seul un rôle sur la ressource Foundry est nécessaire
-      - run: make install
-      - name: Golden set contre l'API de la PR, LLM réel (porte bloquante avant merge)
+          allow-no-subscriptions: true
+      - name: URL de staging connue ?
         run: |
-          (cd rag && uv run uvicorn agentinsurflow_rag.api:app --port 8000) & # llm.env lu dans rag/
-          for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:8000/health > /dev/null && break; sleep 1; done
-          uv run python tools/evals.py --url http://127.0.0.1:8000 --rapport evals-pr.json
+          [ -n "$STAGING_URL" ] || { echo "::error::variable STAGING_URL absente (gh variable set STAGING_URL)"; exit 1; }
+      - name: Golden set + jeu de démo de la PR contre staging (porte bloquante)
+        run: |
+          EVALS_JETON=$(az account get-access-token --scope "api://agentinsurflow-rag/.default" \
+            --query accessToken -o tsv)
+          echo "::add-mask::$EVALS_JETON"
+          export EVALS_JETON
+          python3 tools/evals.py --url "$STAGING_URL" --questions eval/questions-demo.jsonl \
+            --sans-dossiers --rapport evals-pr.json --resume evals-pr.md
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: evals-pr-${{ github.event.pull_request.head.sha }}
-          path: evals-pr.json
-          if-no-files-found: error
+          name: evals-pr-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            evals-pr.json
+            evals-pr.md
+          if-no-files-found: warn
+      - name: Résumé du run et commentaire sur la PR
+        if: ${{ !cancelled() }} # un run annulé (nouveau libellé) ne doit pas écrire « rapport absent »
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -f evals-pr.md ] || echo "✘ rapport absent : voir le run $RUN" > evals-pr.md
+          cat evals-pr.md >> "$GITHUB_STEP_SUMMARY"
+          # un seul commentaire du bot par PR, édité à chaque passage
+          if [ -n "$PR" ]; then
+            gh pr comment "$PR" --body-file evals-pr.md --edit-last --create-if-none
+          fi
 
   build:
     needs: [test, integration, changements]

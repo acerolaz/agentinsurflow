@@ -35,7 +35,7 @@ avec le rôle `Gestionnaire`. Questions : `eval/questions-demo.jsonl`.*
 
 ## 4. Pipeline rejouable — 4 min
 
-1. En direct : `make ingest URL=$PROD_URL INSTANTANE=data/raw/code-assurances-2026-10-20.json` → rapport
+1. En direct : `make ingest URL=$PROD_URL INSTANTANE=data/raw/code-assurances-2026-10-27.json` → rapport
    « 0 inséré, N inchangés ».
 2. Montrer le dernier run de déploiement GitHub Actions (réingestion à chaque déploiement) et
    [`docs/donnees/pipeline.md`](donnees/pipeline.md).

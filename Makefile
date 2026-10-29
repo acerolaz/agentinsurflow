@@ -9,10 +9,10 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et underwriting-admin/
 # (C#, leurs propres Makefile, appelés par gateway-<cible> et underwriting-<cible>).
-.PHONY: modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
+.PHONY: agreger bareme scraper bigdata modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval donnees-evals calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
-	uv sync --locked --all-packages --all-groups
+	uv sync --locked --all-packages --all-groups --no-group bigdata  # pyspark (sdist ~450 Mo) : seulement par make bigdata
 
 fmt:
 	uv run ruff format .
@@ -40,8 +40,11 @@ test-e2e:           ## make test-e2e URL=<gateway> : la solution qui tourne (com
 migrate:            ## migrations Alembic de la base vecteurs (compte migrateur, PG_* du .env)
 	cd rag && uv run alembic -n vecteurs upgrade head
 
-ingest:             ## make ingest [URL=<gateway>] [INSTANTANE=data/raw/…] [COLLECTION=… SOURCE=rag/corpus/…] : Légifrance, rejeu ou Markdown → /api/ingestions
-	uv run python -m agentinsurflow_rag.cli.ingest --url $(URL) $(if $(INSTANTANE),--instantane $(INSTANTANE)) $(if $(SOURCE),--collection $(COLLECTION) --source $(SOURCE))
+agreger:            ## Légifrance + barème + documents rédigés → data/aggregated/corpus-<date>.json
+	uv run python -m agentinsurflow_rag.cli.agreger
+
+ingest:             ## make ingest [URL=<gateway>] [INSTANTANE=data/raw/…] [COLLECTION=… SOURCE=rag/corpus/…] [JEU=data/aggregated/…] : Légifrance, rejeu, Markdown ou jeu agrégé → /api/ingestions
+	uv run python -m agentinsurflow_rag.cli.ingest --url $(URL) $(if $(INSTANTANE),--instantane $(INSTANTANE)) $(if $(JEU),--jeu $(JEU)) $(if $(COLLECTION),--collection $(COLLECTION)) $(if $(SOURCE),--source $(SOURCE))
 
 extraire:           ## extraction Légifrance seule → data/raw/ (identifiants PISTE du .env, bac à sable)
 	uv run python -m agentinsurflow_rag.cli.ingest --sans-envoi
@@ -52,7 +55,7 @@ up:                 ## la solution en local : postgres + rag (:8001) + underwrit
 down:               ## arrête la solution et vide la base annexe
 	docker compose down -v
 
-pyramide:           ## porte S3-22 : TU >= 65 %, TI <= 25 %, E2E <= 15 % (rag + underwriting-admin + e2e)
+pyramide:           ## porte S3-22 : TU >= 65 %, TI <= 25 %, E2E <= 15 % (projets Python + underwriting-admin + e2e)
 	uv run python tools/pyramide.py
 
 openapi:            ## docs/openapi/{rag,underwriting-admin}.json, générés depuis le code (sans démarrer la solution)
@@ -68,6 +71,15 @@ underwriting-%:     ## cibles de underwriting-admin/Makefile : make underwriting
 
 eval:               ## porte 3 : make eval [URL=…] — golden set + jeu de démo (jeton : EVALS_JETON)
 	uv run python tools/evals.py --url $(URL) --questions eval/questions-demo.jsonl
+
+donnees-evals:      ## schéma des jeux d'évaluation, articles attendus, sha256 de l'instantané (hors ligne)
+	uv run python -m tools.donnees_evals
+
+scraper:            ## make scraper URL=<gateway> — notices produits publiques → data/raw/notices-<date>.json
+	uv run python tools/scraping_notices.py --url $(URL)
+
+bigdata:           ## make bigdata [ARGS=--expliquer] — freMTPL2 en PySpark/Spark SQL → data/raw/fremtpl2-agregats-<date>.json (Java 17)
+	JAVA_HOME=$${JAVA_HOME:-$$(brew --prefix openjdk@17 2>/dev/null)} PYTHONPATH=fonction-calcul uv run --group bigdata python tools/extraction_bigdata.py $(ARGS)
 
 calibrer:           ## make calibrer URL=… — cosinus max par question, intervalle pour RAG_SEUIL
 	uv run python tools/evals.py --calibrer --url $(URL) --questions eval/questions-demo.jsonl
@@ -117,6 +129,9 @@ rollback:           ## une opération : make rollback [ENV=staging] [TAG=<sha>] 
 preuve:             ## make preuve RUN=<id> NOM=blocage-2026-10-20 → journal versionné
 	gh run view $(RUN) -R $(GITHUB_REPO) --log > eval/preuves/$(NOM).log
 	gh run view $(RUN) -R $(GITHUB_REPO) > eval/preuves/$(NOM).resume.txt
+
+bareme:             ## instantané du barème → data/raw/bareme-<version>.json
+	PYTHONPATH=fonction-calcul uv run python -m agentinsurflow_calcul.instantane
 
 modele:             ## GLM de fréquence : entraîne, évalue, écrit artefact + fiche (FREMTPL2_CACHE=… ; ARGS=--init-seuils la 1re fois)
 	PYTHONPATH=fonction-calcul uv run python -m entrainement $(ARGS)

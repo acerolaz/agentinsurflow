@@ -35,11 +35,22 @@
 ```bash
 make extraire                                               # ①-③ : Légifrance → data/raw/ (identifiants PISTE du .env)
 make ingest URL=http://localhost:8000                       # ①-⑩ : extraction + envoi
-make ingest URL=http://localhost:8000 INSTANTANE=data/raw/code-assurances-2026-10-20.json   # ④-⑩ : rejeu
+make ingest URL=http://localhost:8000 INSTANTANE=data/raw/code-assurances-2026-10-27.json   # ④-⑩ : rejeu
 ```
 
-En CI, le déploiement réingère l'instantané à chaque déploiement (la base annexe repart vide), avec un jeton
-OIDC de la CI.
+## Deux autres chaînes (#45, #51)
+
+**Notices scrapées** : gateway `/notices/` → `make scraper URL=…` (lit `robots.txt`, User-Agent `AgentInsurFlow-scraping/1.0`,
+1 s entre requêtes) → `data/raw/notices-<date>.json` + manifeste → `make ingest URL=… INSTANTANE=data/raw/notices-<date>.json COLLECTION=notices_produits`
+(étapes ④-⑩ ci-dessus). Le déploiement ingère encore les notices depuis le Markdown ; il passera à l'instantané scrapé
+une fois celui-ci produit en production (#45, PR 2).
+
+**freMTPL2 (big data)** : `make bigdata` → ARFF OpenML (SHA-256 vérifiées) → Parquet → 2 requêtes Spark SQL →
+`data/raw/fremtpl2-agregats-<date>.json` (25 lignes), disponible pour l'agrégation #52. Requêtes :
+[`requetes-sql.md`](requetes-sql.md) §6.
+
+En CI, le déploiement réagrège puis réingère le jeu à chaque déploiement (la base annexe repart vide), avec un jeton
+OIDC de la CI (voir « Agrégation (#52) »).
 
 ## Gestion des erreurs
 
@@ -50,3 +61,72 @@ OIDC de la CI.
 | Article partiel ou invalide | Rejeté avec sa raison, compté dans le rapport, le lot continue |
 | Échec d'un lot (base, embeddings) | Transaction annulée pour ce lot, code de sortie non nul |
 | Jeton absent ou sans rôle `Ingestion` | 401 / 403 à la gateway, ProblemDetails `NON_AUTHENTIFIE` / `ACCES_REFUSE` |
+| Jeu agrégé altéré, collection manquante ou barème altéré | Refus avant tout envoi, code de sortie non nul |
+
+## Agrégation (#52)
+
+*Code : `rag/agentinsurflow_rag/cli/agreger.py` (CLI), `rag/agentinsurflow_rag/domain/procedures.py` (procédures
+générées), `fonction-calcul/agentinsurflow_calcul/domain/bareme.py` (table `REGLES`) et `instantane.py` (instantané).*
+
+Un **jeu unique** réunit les trois collections avant l'envoi : ce qui est ingéré est exactement ce qui est versionné.
+
+### Spécifications techniques
+
+| Rubrique | Contenu |
+|---|---|
+| Entrées | Instantané Légifrance (`data/raw/code-assurances-*.json`), instantané du barème (`data/raw/bareme-*.json`), notices (`rag/corpus/notices_produits/`), parties rédigées des procédures (`rag/corpus/procedures_internes/`) |
+| Sortie | `data/aggregated/corpus-<date Légifrance>.json`, octet pour octet identique à chaque relance (aucune date du jour) |
+| Schéma d'une entrée | `doc_id`, `version`, `article`, `date_debut` (ISO), `etat` (majuscules), `texte_html`, `url_source`, `regle_id`, `collection`, `source` |
+| Manifeste | `date`, `entrees`, `par_collection`, `par_source`, `sources` (sha256 de l'instantané Légifrance et du barème), `ecarts` (`doc_id`, `source`, `raison`), `sha256` du jeu |
+| Dépendances | Aucune nouvelle (stdlib et code existant) ; fonctionne sans réseau ni identifiants |
+| Volumétrie actuelle | 129 entrées : 119 `legifrance`, 4 `redige`, 6 `bareme` ; 0 écart |
+
+### Règles par source
+
+| Source | Origine | Collection |
+|---|---|---|
+| `legifrance` | Instantané du Code des assurances | `textes_reglementaires` |
+| `redige` | Notices produits rédigées | `notices_produits` |
+| `bareme` | Une procédure par règle : en-tête, titre et section « Règle » **générés** depuis `REGLES`, section « Pièces à vérifier » rédigée (marqueur `{version_bareme}` remplacé) | `procedures_internes` |
+
+La version du barème (`bareme-2026.10-v1`) est citable dans chaque procédure, et le texte de la règle ne peut pas
+diverger du code qui l'applique (garde-fou GF5).
+
+### Choix de nettoyage et d'homogénéisation
+
+| Choix | Règle |
+|---|---|
+| Entrée corrompue = écartée avec sa raison (`ecarts`) | Partielle (champ manquant, état absent), texte vide, texte de moins de 20 caractères, date invalide |
+| Abrogés | **Gardés** dans le jeu (état `ABROGE`) ; le serveur les filtre à l'ingestion |
+| Doublons | Détectés sur (`doc_id`, `version`) : `A211-1-3` existe en deux versions, c'est légitime ; un même couple deux fois fait échouer l'agrégation |
+| Dates | ISO `AAAA-MM-JJ` |
+| Numéros | Normalisés (`L. 211-1` → `L211-1`) |
+| État | En majuscules |
+| HTML et Markdown | Gardés tels quels : le serveur les convertit par `html_vers_texte` |
+| Intégrité | Le sha256 du barème est vérifié avant lecture ; un instantané altéré arrête l'agrégation |
+
+Le nettoyage réutilise `nettoyer` du serveur (état forcé à `VIGUEUR` pour ne pas écarter les abrogés, état d'origine rétabli).
+
+### Commandes et enchaînement
+
+```bash
+make bareme                                       # table REGLES → data/raw/bareme-2026.10-v1.json
+make agreger                                      # instantanés + rédigés → data/aggregated/corpus-<date>.json
+make ingest URL=http://localhost:8000 JEU=data/aggregated/corpus-2026-10-27.json
+```
+
+```text
+REGLES (bareme.py) → make bareme → instantané du barème ─┐
+Légifrance → make extraire → instantané ─────────────────┼→ make agreger → jeu agrégé → make ingest JEU=…
+notices + parties rédigées des procédures ───────────────┘
+```
+
+`make ingest JEU=…` vérifie le sha256 du jeu, refuse un jeu où manque une collection, envoie chaque collection par
+lots de 50 et écrit un fichier de preuve par collection (mode `jeu`). `--source` est refusé pour
+`procedures_internes` : passer par `make agreger` puis `make ingest JEU=…`. Au déploiement, `make agreger` est rejoué
+et le job échoue si `data/aggregated/` diffère du dépôt (à relancer : `make bareme && make agreger`, puis versionner).
+
+### Modèle de données
+
+Le **modèle Merise est inchangé** : `regle_id` est déjà stocké (migration `0003_regle_id`), l'agrégation ne crée ni
+table ni colonne.

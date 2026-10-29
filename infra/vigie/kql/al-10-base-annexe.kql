@@ -1,0 +1,6 @@
+// AL-10 : nombre d'erreurs SQL de rag (503 BASE_INDISPONIBLE : base annexe vidée ou injoignable). Source : AppExceptions.
+AppExceptions
+| where _ResourceId =~ "$APPI_ID"
+| where AppRoleName == "agentinsurflow-rag"
+| where ExceptionType startswith "sqlalchemy.exc."
+| summarize valeur = count()

@@ -26,11 +26,13 @@
 
 | Traitement | Finalité | Données | Base légale | Destinataires | Conservation |
 |---|---|---|---|---|---|
-| Consultation des dossiers par l'agent | Aide à la souscription | Vue minimisée du contrat | Exécution du contrat | Gestionnaire du contrat | 🔴 à décider |
-| Édition du contrat accepté | Conditions particulières remises à l'assuré | Identité, adresse, téléphone, e-mail, permis, véhicule, garanties (`vue_contrat_accepte`, `vue_garanties_contrat_accepte`) | Exécution du contrat | Gestionnaire du contrat | 🔴 à décider |
-| Fiche du lead (détail du dossier) | Contacter le souscripteur pendant l'instruction | Civilité, identité, adresse, mobile, e-mail, véhicule (`vue_fiche_souscripteur`) | Mesures précontractuelles | Gestionnaire du contrat | 🔴 à décider |
+| Consultation des dossiers par l'agent | Aide à la souscription | Vue minimisée du contrat | Exécution du contrat | Gestionnaire du contrat | Aucune copie hors du dossier : suit la durée du dossier (lignes suivantes) |
+| Édition du contrat accepté | Conditions particulières remises à l'assuré | Identité, adresse, téléphone, e-mail, permis, véhicule, garanties (`vue_contrat_accepte`, `vue_garanties_contrat_accepte`) | Exécution du contrat | Gestionnaire du contrat | Durée du contrat + 2 ans (prescription biennale, art. L114-1 du Code des assurances) |
+| Fiche du lead (détail du dossier) | Contacter le souscripteur pendant l'instruction | Civilité, identité, adresse, mobile, e-mail, véhicule (`vue_fiche_souscripteur`) | Mesures précontractuelles | Gestionnaire du contrat | Dossier non abouti (`REFUSE`, `SANS_SUITE`) : 3 ans après le dernier contact (CNIL, prospects) ; dossier accepté : celle du contrat |
+| Mémoire du dossier (cluster d'agents) | Reprise et audit de l'évaluation (K11) | Statut, rapports des agents, sections d'état, tours de pilotage (`etat_dossier`, `rapport_agent`, `section_etat`, `tour_pilotage`) ; construits sur la vue minimisée, aucune identité (K2) | Mesures précontractuelles | Gestionnaire du contrat | Celle du dossier |
+| Relances des pièces manquantes | Obtenir les pièces du dossier (K8, trois au plus) | Texte du courriel (peut nommer le souscripteur), pièces demandées, `oid` du gestionnaire (`relance`) ; jamais tracé (la trace porte le rang et la pièce) | Mesures précontractuelles | Gestionnaire du contrat | Celle du dossier |
 | Corpus réglementaire | Réponses citées | Textes de loi (pas de donnée personnelle) | — | Gestionnaires | Tant qu'en vigueur ; versions obsolètes marquées |
-| Traces techniques | Exploitation, preuve de l'ancrage | `trace_id`, routes, statuts, sha256 de la question, `client.address` (IP) | Intérêt légitime | Gestionnaires (puis DSI) | 🔴 à décider ; base vidée à chaque déploiement au S3 |
+| Traces techniques | Exploitation, preuve de l'ancrage | `trace_id`, routes, statuts, sha256 de la question, `client.address` (IP) | Intérêt légitime | Gestionnaires (puis DSI) | 30 jours dans Application Insights (rétention de l'espace Log Analytics, lue le 29/10) ; base `traces` annexe vidée à chaque déploiement |
 | Journal des ingestions | Preuve et rejouabilité | Rapports (comptes, raisons de rejet) | Intérêt légitime | Équipe | Versionné dans `eval/preuves/` |
 
 ## Procédures de tri
@@ -38,9 +40,10 @@
 | Procédure | Quoi | Automatique ? | Fréquence |
 |---|---|---|---|
 | Vidage de la base annexe | Toutes les bases (vecteurs, dossiers, traces) | Oui (base éphémère) | À chaque déploiement |
-| Réextraction Légifrance | Nouvelles versions ; anciennes marquées `obsolete` | Non (`make extraire`) | 🔴 à décider |
-| Purge des spans | Spans plus anciens que N jours | Non au S3 | 🔴 à décider |
+| Réextraction Légifrance | Nouvelles versions ; anciennes marquées `obsolete` | Non (`make extraire`) ; Function mensuelle prévue (#68) | Mensuelle |
+| Purge des spans | Spans plus anciens que 30 jours | Oui (rétention Log Analytics) | Continue |
+| Purge des dossiers échus | Dossiers non aboutis de plus de 3 ans, contrats échus depuis plus de 2 ans, avec leur mémoire et leurs relances (suppression en cascade) | Non (requête SQL relue par le DPO) | Annuelle |
 | Questions de l'agent | Non conservées hors traces techniques (sha256 seulement) | — | — |
 
-**Hors périmètre** : la purge RGPD automatisée ; les procédures sont rédigées, les durées restent à décider
-par Acerola (point ouvert de la spec).
+**Durées** proposées le 29/10 (#53), à valider par Acerola. Les données du MVP sont fictives (seed) : aucune
+purge réelle n'a encore lieu de s'appliquer. **Hors périmètre** : l'automatisation de la purge des dossiers échus.

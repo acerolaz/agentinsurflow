@@ -1,4 +1,4 @@
-"""Vigie S2 : requêtes KQL versionnées et catalogue des alertes AL-1 → AL-9."""
+"""Vigie S2 : requêtes KQL versionnées et catalogue des alertes AL-1 → AL-10."""
 
 import re
 from pathlib import Path
@@ -17,6 +17,7 @@ LIGNES = {  # id: (kql, frequence, fenetre, operateur, seuil, gravite) — spec 
     "AL-7": ("al-7-refus-garde-fous.kql", "1h", "48h", ">", "2", "2"),
     "AL-8": ("al-8-foundry-429.kql", "1h", "1h", ">=", "env:SEUIL_AL8", "2"),
     "AL-9": ("al-9-gateway-403.kql", "1h", "1h", ">=", "env:SEUIL_AL9", "2"),
+    "AL-10": ("al-10-base-annexe.kql", "5m", "5m", ">=", "1", "1"),  # #186
 }
 ALERTES = sorted(KQL.glob("al-*.kql"))
 TUILES = sorted((KQL / "tuiles").glob("*.kql"))

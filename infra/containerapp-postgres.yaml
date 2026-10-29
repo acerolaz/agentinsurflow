@@ -2,9 +2,10 @@
 # `az containerapp update --yaml`. Seul `template` est fourni : l'entrée TCP INTERNE (5432, exposedPort 5432, posée
 # par infra/bootstrap.sh), le registre et les secrets pg-* (infra/postgres-annexe.sh) restent tels quels.
 # Joignable par les autres Container Apps du même environnement, à l'adresse = le nom de l'app (PG_HOST).
-# Base ÉPHÉMÈRE, comme avant : aucun volume ; DEPLOIEMENT change à chaque déploiement, donc chaque déploiement
-# crée une nouvelle révision et une base vide (rag et underwriting-admin rejouent leurs migrations, puis le corpus
-# est réingéré). Une réplique, jamais de montée en charge : un second postgres serait une seconde base vide.
+# Base ÉPHÉMÈRE, comme avant : aucun volume ; DEPLOIEMENT change à chaque run de deploy.yml (même SHA compris, #186),
+# donc chaque déploiement crée une nouvelle révision et une base vide (rag et underwriting-admin rejouent leurs
+# migrations, puis le corpus est réingéré). Une replanification Azure vide aussi la base (AL-10) : redéployer répare.
+# Une réplique, jamais de montée en charge : un second postgres serait une seconde base vide.
 properties:
   template:
     scale:
@@ -15,7 +16,7 @@ properties:
         image: ${IMAGE_POSTGRES}
         resources: { cpu: 0.5, memory: 1Gi }
         env:
-          - { name: DEPLOIEMENT, value: "${TAG}" }
+          - { name: DEPLOIEMENT, value: "${DEPLOIEMENT}" }
           - { name: POSTGRES_PASSWORD, secretRef: pg-postgres-password }
           - { name: PG_MIGRATEUR_PASSWORD, secretRef: pg-migrateur-password }
           - { name: PG_WRITER_PASSWORD, secretRef: pg-writer-password }

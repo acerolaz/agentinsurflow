@@ -50,7 +50,7 @@ Puis redéployer (fusion sur `main` ou `deploy.yml` lancé à la main) : la base
 | `app.js` | Routeur sur le fragment (`#/dossiers`, `#/dossiers/AIF-…`, `#/tchat`), en-tête à onglets, portefeuille, tchat |
 | `dossier.js` | Vue d'un dossier (#104) |
 | `auth.js` | MSAL en redirection (code + PKCE, client public) ; le choix A/B ne fait que préremplir `loginHint` |
-| `api.js` | Appels à la gateway avec le jeton du service ; un 401 est réessayé une fois avec un jeton renouvelé |
+| `api.js` | Appels à la gateway avec le jeton du service ; un 401 est réessayé une fois avec un jeton renouvelé, une coupure réseau rend le statut 0 (testés par `make espace-test` : `gateway/tests/espace/api.test.mjs`, #195) |
 | `dom.js`, `logique.js` | Rendu sans `innerHTML` ; logique pure testée par `make espace-test` |
 | `vendor/` | `msal-browser` versionné (version et SHA-384 dans `vendor/README.md`) |
 

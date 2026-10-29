@@ -37,7 +37,7 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 (voir *Évaluer l'agent*). `e2e-staging` passe **après** les evals (sautées ou non) : même identité de CI, donc même
 quota `/api/reponses` à la gateway (#188). Le job `evals-pr` (avant merge) rejoue les jeux de la PR contre staging : voir [`docs/ci-evals.md`](docs/ci-evals.md).
 
-## État au 29/10 (release v0.6.26)
+## État au 29/10 (release v0.6.28)
 
 | Projet | Langage | Rôle | État |
 |---|---|---|---|
@@ -52,8 +52,9 @@ quota `/api/reponses` à la gateway (#188). Le job `evals-pr` (avant merge) rejo
 > **Pyramide au 29/10** : 75 % TU / 24 % TI / 2 % E2E (cible 70 / 20 / 10) ; le job `pyramide` est **bloquant**
 > en CI depuis #48.
 
-> **Production et staging** : release **`v0.6.26`** au SHA `d56a01e` (#193), déployée le 29/10 ; la version de la
-> solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. **Livraison du 29/10** (v0.6.25,
+> **Production et staging** : release **`v0.6.28`** au SHA `4e8a5e6` (#195), déployée le 29/10 ; la version de la
+> solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. Depuis v0.6.26 (`d56a01e`, #193) :
+> synchronisation de la doc (v0.6.27, #194) et test du rejeu d'un 401 par l'espace gestionnaire (v0.6.28, #195). **Livraison du 29/10** (v0.6.25,
 > PR groupée #185, puis #188 → #193) : pyramide bloquante (#48), `evals-pr` réactivé contre staging (#55), barème
 > citable et jeu agrégé unique (#99, #52), scraping des notices `/notices/` et extraction big data PySpark (#45, #51),
 > base annexe recréée à chaque run et alerte AL-10 (#186), `e2e-staging` après les evals (#188), refus d'un instantané
@@ -335,7 +336,7 @@ ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le L
 | Container App staging | `insurflow-staging` (principale = gateway seule) → `https://insurflow-staging.redstone-0f3be5e1.swedencentral.azurecontainerapps.io` | ✅ reçoit chaque merge |
 | Container Apps par service | `insurflow-{uw,mcp,rag,pg}-{staging,production}` et `ai-cluster-{staging,production}` : entrée interne (PostgreSQL en TCP 5432, base éphémère) | ✅ |
 | Function de calcul | `acerolaz-calcul-{staging,production}` (Flex Consumption, Python 3.12), stockage `acerolazcalcul` ; Easy Auth : la gateway seule | ✅ |
-| Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.6.23` |
+| Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.6.28` |
 | Modèles | `Kimi-K2.5` (rag), `gpt-4.1-mini` (cluster, `agents.toml`) et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971`, **sans clé** (`disableLocalAuth`) : appelée par la gateway seule (`/api/llm`) | ✅ |
 | Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag`, `-underwriting`, `-mcp`, `-calcul`, `-llm` ; `agentinsurflow-gateway-local` (secret dans le `.env` local seulement) ; rôle `PointsDeReprise` (principal du cluster seul, D106) | ✅ |
 | Vigie (`make vigie`) | `appi-insurflow-{staging,production}` sur le Log Analytics `workspace-svespucepZG6` ; groupe d'actions `ag-insurflow-<env>` (e-mail), alertes AL-1 → AL-10 (`infra/vigie/alertes.tsv`), test de disponibilité `web-sante-<env>`, tableau de bord `vigie-<env>` | ✅ |

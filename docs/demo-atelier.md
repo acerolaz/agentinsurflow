@@ -1,8 +1,8 @@
 # Script de démo : atelier croisé n°2 (2 min + 20 min)
 
 > 🗄️ **Document du sprint 2** (atelier croisé n°2), conservé tel quel : il décrit le socle d'alors (une seule app,
-> `POST /api/agent`, `evals-pr` actif). L'état actuel (gateway + rag, `POST /api/reponses`, `evals-pr` désactivé
-> jusqu'à U5) est dans le [README](../README.md).
+> `POST /api/agent`, `evals-pr` actif). L'état actuel (gateway + rag, `POST /api/reponses`, `evals-pr`
+> réactivé contre staging, #55) est dans le [README](../README.md).
 
 On note **du démontré, jamais du déclaré** (source : grille-atelier-2-socle-chaine.pdf). Chaque minute
 montre un critère de la grille sur l'environnement déployé.

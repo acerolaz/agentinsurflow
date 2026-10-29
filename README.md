@@ -172,7 +172,8 @@ démarrage, puis `deploy.yml` réingère le dernier instantané versionné de `d
 
 ## Lancer (en local)
 
-Prérequis : [uv](https://docs.astral.sh/uv/) et Docker.
+Prérequis : [uv](https://docs.astral.sh/uv/) et Docker ; SDK .NET 10 (`global.json`) pour `make openapi` et les
+tests C# hors Docker.
 
 ```bash
 cp .env.example .env      # remplir LLM_AUDIENCE, RAG_CLIENT_SECRET, AZURE_TENANT_ID, RAG_SEUIL, PG_*_PASSWORD…
@@ -190,7 +191,10 @@ jeton, rôle (`Gestionnaire`, `Ingestion`) et limite de débit.
 
 ```bash
 make extraire                                    # Légifrance (bac à sable PISTE) → data/raw/code-assurances-<date>.json
-make ingest INSTANTANE=data/raw/code-assurances-<date>.json   # rejeu d'un instantané → POST /api/ingestions
+make bareme                                      # instantané du barème → data/raw/bareme-<version>.json
+make agreger                                     # Légifrance + barème + documents rédigés → data/aggregated/corpus-<date>.json (#52)
+make ingest JEU=data/aggregated/corpus-<date>.json   # jeu agrégé unique → POST /api/ingestions
+make ingest INSTANTANE=data/raw/code-assurances-<date>.json   # ou rejeu d'un seul instantané Légifrance
 make calibrer URL=http://localhost:8000          # intervalle où choisir RAG_SEUIL (porte de pertinence)
 ```
 

@@ -2,7 +2,7 @@
 #   PR    : lint → test → [evals-pr]                       (portes exigées par la protection de main)
 #           evals-pr évalue staging si les jeux ont changé, si la PR porte le libellé « evals »,
 #           ou à la main (workflow_dispatch) ; il commente le résumé sur la PR.
-#   merge : lint → test → build → staging (+ fumée) → [evals] + e2e-staging → release → production (+ fumée)
+#   merge : lint → test → build → staging (+ fumée) → [evals] → e2e-staging → release → production (+ fumée)
 #   integration (compose + TI) et pyramide tournent en parallèle ; toutes deux sont exigées par la protection de main.
 # [evals…] ne tournent QUE si le prompt, le golden dataset ou la version du LLM ont changé depuis le
 # dernier manifeste validé (job changements) ; sinon ils sont sautés et la chaîne continue.
@@ -375,7 +375,9 @@ jobs:
 
   e2e-staging:
     # Parcours bout en bout via la gateway de staging ; manque d'environnement = échec (E2E_STRICT)
-    needs: staging
+    # Après evals (sautées ou non) : même identité de CI, donc même quota /api/reponses (10/min) à la gateway
+    needs: [staging, evals]
+    if: ${{ !cancelled() && needs.staging.result == 'success' }}
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
     steps:

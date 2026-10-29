@@ -60,7 +60,7 @@ def test_seule_la_gateway_est_exposee(url, local, client):
 
 
 def test_ingestion_rejouee_zero_insere(url, jeton_ingestion, manque):
-    instantane = max((RACINE / "data/raw").glob("*.json"), default=None)
+    instantane = max((RACINE / "data/raw").glob("code-assurances-*.json"), default=None)
     if instantane is None:
         manque("aucun instantané dans data/raw/ à rejouer")
     env = {**os.environ, "INGESTION_JETON": jeton_ingestion}

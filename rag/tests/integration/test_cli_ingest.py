@@ -338,6 +338,8 @@ def test_instantane_vide_ecrit_une_preuve_a_zero(
     assert (
         json.loads((tmp_path / "p" / "ingestion-2026-10-19-local.json").read_text())["inseres"] == 0
     )
+
+
 def _instantane_notices(tmp_path: Path) -> Path:
     return sauvegarder_instantane(
         CORPUS, tmp_path, "local", "2026-10-29", prefixe="notices", perimetre="notices_produits"

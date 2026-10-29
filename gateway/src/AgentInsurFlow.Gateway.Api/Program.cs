@@ -263,6 +263,21 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = f => f.Context.Response.Headers.ContentSecurityPolicy = CspEspace,
 });
 
+// Notices produits (#45) : pages HTML statiques publiques sous /notices/, que le scraper collecte ; lecture seule.
+const string CspNotices = "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+var fichiersNotices = new PhysicalFileProvider(Path.Combine(app.Environment.WebRootPath, "notices"));
+app.UseDefaultFiles(new DefaultFilesOptions { RequestPath = "/notices", FileProvider = fichiersNotices });
+app.UseStaticFiles(new StaticFileOptions
+{
+    RequestPath = "/notices",
+    FileProvider = fichiersNotices,
+    OnPrepareResponse = f => f.Context.Response.Headers.ContentSecurityPolicy = CspNotices,
+});
+app.MapGet("/robots.txt", () => Results.Text("User-agent: *\nAllow: /notices/\nDisallow: /\n", "text/plain"))
+    .AllowAnonymous()
+    .DisableRateLimiting()
+    .ExcludeFromDescription();
+
 // Page Swagger unique, à la racine : les 4 documents OpenAPI de la solution (S3-24).
 // Connexion Entra en PKCE avec un seul client public (l'application agentinsurflow-rag).
 // Placée avant l'authentification : la page est publique, les appels qu'elle fait portent le jeton.

@@ -27,7 +27,7 @@ lint:               ## porte 1 : style + typage
 test: espace-test   ## TU, sans Docker (rag + serveur-mcp, tests/unit + outillage de la racine)
 	uv run pytest tests rag/tests/unit serveur-mcp/tests/unit fonction-calcul/tests/unit agentic-cluster/tests/unit --no-cov
 
-espace-test:        ## logique pure de la page de l'espace gestionnaire (node --test, Node >= 22)
+espace-test:        ## logique pure et appels (api.js) de la page de l'espace gestionnaire (node --test, Node >= 22)
 	node --test "gateway/tests/espace/*.test.mjs"
 
 test-integration:   ## porte 2 : TU + TI (PostgreSQL du compose), couverture >= 80 %

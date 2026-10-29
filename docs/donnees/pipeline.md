@@ -38,6 +38,17 @@ make ingest URL=http://localhost:8000                       # ①-⑩ : extracti
 make ingest URL=http://localhost:8000 INSTANTANE=data/raw/code-assurances-2026-10-20.json   # ④-⑩ : rejeu
 ```
 
+## Deux autres chaînes (#45, #51)
+
+**Notices scrapées** : gateway `/notices/` → `make scraper URL=…` (lit `robots.txt`, User-Agent `AgentInsurFlow-scraping/1.0`,
+1 s entre requêtes) → `data/raw/notices-<date>.json` + manifeste → `make ingest URL=… INSTANTANE=data/raw/notices-<date>.json COLLECTION=notices_produits`
+(étapes ④-⑩ ci-dessus). Le déploiement ingère encore les notices depuis le Markdown ; il passera à l'instantané scrapé
+une fois celui-ci produit en production (#45, PR 2).
+
+**freMTPL2 (big data)** : `make bigdata` → ARFF OpenML (SHA-256 vérifiées) → Parquet → 2 requêtes Spark SQL →
+`data/raw/fremtpl2-agregats-<date>.json` (25 lignes), disponible pour l'agrégation #52. Requêtes :
+[`requetes-sql.md`](requetes-sql.md) §6.
+
 En CI, le déploiement réingère l'instantané à chaque déploiement (la base annexe repart vide), avec un jeton
 OIDC de la CI.
 

@@ -93,5 +93,10 @@ docker compose build calcul && docker compose up -d calcul   # image locale, auc
 docker compose exec serveur-mcp python -c "import httpx; print(httpx.get('http://calcul:80/api/sante').json())"
 ```
 
+**Mac Apple Silicon (ARM)** : l'image de base `mcr.microsoft.com/azure-functions/python` n'existe qu'en
+`linux/amd64`. Le service `calcul` de `docker-compose.yml` impose donc `platform: linux/amd64`, émulé par
+Docker Desktop (plus lent, aucune autre différence). L'image déployée dans Azure est la même (amd64).
+Vérifié le 29/10 sur un Mac M4 : `make up` démarre `calcul`, et `/health/calcul` répond par la gateway (#132).
+
 `requirements.txt` est exporté de `uv.lock` (`make lint` échoue s'il n'est pas à jour) :
 `uv export --package agentinsurflow-calcul --no-emit-workspace --no-dev --no-hashes > fonction-calcul/requirements.txt`.

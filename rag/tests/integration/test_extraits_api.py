@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from agentinsurflow_rag.api import app
 from agentinsurflow_rag.api.dependances import ConfigRag, charger_rag, connexion_reader
-from agentinsurflow_rag.cli.ingest import lire_markdown
+from agentinsurflow_rag.cli.ingest import lire_jeu
 from agentinsurflow_rag.infrastructure.postgres import corpus as pg_corpus
 from agentinsurflow_rag.infrastructure.postgres.connexions import ConfigBD, creer_moteurs
 from conftest import config_bd, entetes
@@ -272,11 +272,17 @@ async def test_meme_version_regle_id_change_conflit(api: httpx.AsyncClient) -> N
 async def test_corpus_redige_du_depot_ingere_et_retrouve(
     api: httpx.AsyncClient, question: str, collection: str, doc_id: str, regle_id: str | None
 ) -> None:
-    # les vrais fichiers de rag/corpus, par la CLI (lecture) puis la vraie route (écriture) ;
+    # le jeu agrégé versionné (#52), par la CLI (lecture) puis la vraie route (écriture) ;
     # seuil à 0 : les embeddings factices ne disent rien de la porte sur une notice entière
     app.dependency_overrides[charger_rag] = lambda: ConfigRag(_env_file=None, rag_seuil=0.0)  # type: ignore[call-arg]
+    entrees, _, _ = lire_jeu(sorted((RACINE.parent / "data/aggregated").glob("corpus-*.json"))[-1])
     for nom in ("notices_produits", "procedures_internes"):
-        await _ingerer(api, nom, *lire_markdown(RACINE / "corpus" / nom, nom))
+        articles = [
+            {k: v for k, v in e.items() if k not in ("collection", "source")}
+            for e in entrees
+            if e["collection"] == nom
+        ]
+        await _ingerer(api, nom, *articles)
     # GF5/GF6 cherchent la source parmi tous les extraits renvoyés, pas seulement le premier
     cites = [r["citation"] for r in (await _extraits(api, question))["resultats"]]
     assert (collection, doc_id, regle_id) in [

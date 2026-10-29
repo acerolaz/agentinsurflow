@@ -12,7 +12,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 .PHONY: agreger bareme scraper bigdata modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval donnees-evals calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
-	uv sync --locked --all-packages --all-groups
+	uv sync --locked --all-packages --all-groups --no-group bigdata  # pyspark (sdist ~450 Mo) : seulement par make bigdata
 
 fmt:
 	uv run ruff format .

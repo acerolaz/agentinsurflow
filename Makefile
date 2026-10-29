@@ -52,7 +52,7 @@ up:                 ## la solution en local : postgres + rag (:8001) + underwrit
 down:               ## arrête la solution et vide la base annexe
 	docker compose down -v
 
-pyramide:           ## porte S3-22 : TU >= 65 %, TI <= 25 %, E2E <= 15 % (rag + underwriting-admin + e2e)
+pyramide:           ## porte S3-22 : TU >= 65 %, TI <= 25 %, E2E <= 15 % (projets Python + underwriting-admin + e2e)
 	uv run python tools/pyramide.py
 
 openapi:            ## docs/openapi/{rag,underwriting-admin}.json, générés depuis le code (sans démarrer la solution)

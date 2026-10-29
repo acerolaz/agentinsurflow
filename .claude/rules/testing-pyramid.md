@@ -2,17 +2,17 @@
 
 *Reprise de la règle `testing-pyramid` de Sorabel (niveaux, critères, outillage), **plus** les proportions décidées au sprint 3 (S3-22) et leur porte.*
 
-**Portée** : `rag` (Python), `underwriting-admin` (C#) et `e2e/`. La **gateway** est comptée à part (forme diamant, voir plus bas).
+**Portée** : `rag`, `serveur-mcp`, `agentic-cluster`, `fonction-calcul` (Python), `underwriting-admin` (C#) et `e2e/`. Un nouveau dossier `*/tests/unit` ou `*/tests/integration` non déclaré dans `tools/pyramide.py` fait échouer `tests/unit/test_pyramide.py`. `tests/` (racine : doc et outils) n'est pas un service et n'est pas compté. La **gateway** est comptée à part (forme diamant, voir plus bas).
 
 ## Les niveaux et leur part
 
-| Niveau | Part visée | Critère d'appartenance | Python (`rag`) | C# (`underwriting-admin`) | Cible |
+| Niveau | Part visée | Critère d'appartenance | Python (`rag`, `serveur-mcp`, `agentic-cluster`, `fonction-calcul`) | C# (`underwriting-admin`) | Cible |
 |---|---|---|---|---|---|
 | **TU** — unitaire | **70 %** | Aucune I/O, aucun framework, aucun conteneur. Domaine et cas d'usage, **ports simulés** seulement. Millisecondes. | `rag/tests/unit` (`pytest`, `tests/fakes.py`) | `*.Domain.Tests`, `*.Application.Tests` (xUnit) | `make test` |
 | **TI** — intégration | **20 %** | Un adapter face à sa vraie dépendance ou à un double fidèle (PostgreSQL du compose, `httpx.MockTransport`, WireMock.Net), **ou** l'API complète en mémoire (contrat HTTP : routes, codes, ProblemDetails). | `rag/tests/integration` (`TestClient`, `httpx.AsyncClient`) | `*.Infrastructure.Tests`, `*.Api.Tests` (`WebApplicationFactory`) | `make test`, `make test-integration` |
 | **E2E** | **10 %** | La solution qui tourne (compose ou staging), **via la gateway**, avec ses vraies dépendances. Lent, exclu du cycle rapide. | `e2e/` (pytest, `E2E_URL`) | — | `make test-e2e URL=…` |
 
-- **Porte** : `make pyramide` (`tools/pyramide.py`) compte les tests de chaque niveau et **échoue si TU < 65 %, TI > 25 %, E2E > 15 %, ou si un niveau est vide**. Elle tourne en CI (job `pyramide`) mais reste **informative** (`continue-on-error`, décision d'Acerola) tant que les seuils ne sont pas atteints (≈ 52 % TU / 46 % TI / 2 % E2E au 20/10) ; elle deviendra bloquante après une tâche dédiée aux TU.
+- **Porte** : `make pyramide` (`tools/pyramide.py`) compte les tests de chaque niveau et **échoue si TU < 65 %, TI > 25 %, E2E > 15 %, ou si un niveau est vide**. Elle tourne en CI (job `pyramide`) et est **bloquante** (contexte exigé par `infra/protection-main.json`) depuis #48 : 75 % TU / 24 % TI / 2 % E2E au 29/10. La marge en TI est faible (≈ 15 TI de plus font échouer la porte) : un nouveau TI se compense par des TU de domaine, pas par un relâchement du seuil.
 - **Couverture ≥ 80 %** de lignes, par projet, mesurée sur TU + TI. Aucun quota par niveau.
 
 ### TU ou TI ?

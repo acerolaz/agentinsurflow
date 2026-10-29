@@ -1,7 +1,7 @@
 # Chaîne du socle (CI/CD/Evals)
 #   PR    : lint → test → [evals-pr]                       (portes exigées par la protection de main)
 #   merge : lint → test → build → staging (+ fumée) → [evals] + e2e-staging → release → production (+ fumée)
-#   integration (compose + TI) et pyramide tournent en parallèle ; pyramide est informative (voir le job).
+#   integration (compose + TI) et pyramide tournent en parallèle ; toutes deux sont exigées par la protection de main.
 # [evals…] ne tournent QUE si le prompt, le golden dataset ou la version du LLM ont changé depuis le
 # dernier manifeste validé (job changements) ; sinon ils sont sautés et la chaîne continue.
 # Versions, gravées dans l'image et lues sur /health : SHA du commit ; release vX.Y.Z (tag posé
@@ -96,12 +96,8 @@ jobs:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
 
   pyramide:
-    # ponytail: INFORMATIVE (décision d'Acerola) tant que la tâche dédiée aux TU d'underwriting-admin n'est pas
-    # livrée : la pyramide est encore hors seuils. À rendre bloquante ensuite : retirer continue-on-error
-    # et ajouter « pyramide » aux contextes de infra/protection-main.json.
     needs: lint
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

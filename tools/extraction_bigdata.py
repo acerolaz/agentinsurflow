@@ -85,9 +85,16 @@ def session_spark() -> SparkSession:
     """Session Spark locale ; ``ErreurBigData`` claire si Java est introuvable."""
     if not shutil.which("java") and not os.environ.get("JAVA_HOME"):
         raise ErreurBigData("Java 17 requis : brew install openjdk@17")
+    from py4j.protocol import Py4JError
+    from pyspark.errors import PySparkRuntimeError
     from pyspark.sql import SparkSession
 
-    return SparkSession.builder.master("local[*]").appName("agentinsurflow-bigdata").getOrCreate()
+    try:  # le pré-contrôle ne voit pas un stub /usr/bin/java ni un JAVA_HOME inexistant
+        return (
+            SparkSession.builder.master("local[*]").appName("agentinsurflow-bigdata").getOrCreate()
+        )
+    except (PySparkRuntimeError, Py4JError) as erreur:
+        raise ErreurBigData("Java 17 requis : brew install openjdk@17") from erreur
 
 
 def vers_parquet(spark: SparkSession, arff: Path, parquet: Path) -> None:

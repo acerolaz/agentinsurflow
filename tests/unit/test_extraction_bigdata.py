@@ -22,9 +22,6 @@ def _java_present() -> bool:
         return False
 
 
-if not _java_present():
-    pytest.skip("Java 17 introuvable (brew install openjdk@17)", allow_module_level=True)
-
 from pyspark.sql import SparkSession  # noqa: E402
 
 from tools import extraction_bigdata as eb  # noqa: E402
@@ -41,6 +38,8 @@ ENTETE_SEV = (
 
 @pytest.fixture(scope="module")
 def spark() -> Iterator[SparkSession]:
+    if not _java_present():
+        pytest.skip("Java 17 introuvable (brew install openjdk@17)")
     session = eb.session_spark()
     yield session
     session.stop()
@@ -106,3 +105,19 @@ def test_main_sans_java(
     monkeypatch.delenv("JAVA_HOME", raising=False)
     assert eb.main(["--cache", str(tmp_path), "--sortie", str(tmp_path)]) == 1
     assert "Java 17 requis" in capsys.readouterr().err
+
+
+def test_main_java_factice(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """Pré-contrôle trompé (stub java) : l'échec du démarrage Spark reste un message clair."""
+    from pyspark.errors import PySparkRuntimeError
+
+    def echoue(_self: object) -> None:
+        raise PySparkRuntimeError(errorClass="JAVA_GATEWAY_EXITED", messageParameters={})
+
+    monkeypatch.setattr(SparkSession.Builder, "getOrCreate", echoue)
+    assert eb.main(["--cache", str(tmp_path), "--sortie", str(tmp_path)]) == 1
+    erreur = capsys.readouterr().err
+    assert "Java 17 requis" in erreur
+    assert "Traceback" not in erreur

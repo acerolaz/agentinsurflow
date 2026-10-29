@@ -64,10 +64,15 @@ Valeurs (libellés = titres actuels des procédures) :
 from agentinsurflow_calcul.domain.bareme import REGLES, Condition
 # FaitsRisque, evaluer et faits() sont déjà importés / définis en tête de test_bareme.py
 
+
 def test_table_regles_ordre_et_seuils():
     assert [r.regle_id for r in REGLES] == [
-        "R01_SUSPENSION", "R02_RESILIATIONS", "R03_CRM",
-        "R04_SINISTRES_RESPONSABLES", "R05_SINISTRES_TOTAL", "R06_JEUNE_PERMIS_PUISSANCE",
+        "R01_SUSPENSION",
+        "R02_RESILIATIONS",
+        "R03_CRM",
+        "R04_SINISTRES_RESPONSABLES",
+        "R05_SINISTRES_TOTAL",
+        "R06_JEUNE_PERMIS_PUISSANCE",
     ]
     assert REGLES[2].conditions == (Condition("crm", ">", Decimal("1.25")),)
     assert REGLES[5].conditions == (
@@ -76,13 +81,19 @@ def test_table_regles_ordre_et_seuils():
     )
     assert {r.effet for r in REGLES} == {"REFUSE"}
 
+
 def test_chaque_champ_de_condition_existe_dans_les_faits():
     champs = {f.name for f in dataclasses.fields(FaitsRisque)}
     assert {c.champ for r in REGLES for c in r.conditions} <= champs
 
+
 def test_motif_rendu_est_celui_de_la_table():
     r = evaluer(faits(suspensions=1))
-    assert r.regles[0].motif == REGLES[0].motif == "Le relevé d'information mentionne une suspension de permis."
+    assert (
+        r.regles[0].motif
+        == REGLES[0].motif
+        == "Le relevé d'information mentionne une suspension de permis."
+    )
 ```
 
 - [ ] **Step 2: Run** `uv run pytest fonction-calcul/tests/unit/test_bareme.py --no-cov -q` → FAIL (`ImportError: REGLES`).
@@ -115,17 +126,22 @@ def test_motif_rendu_est_celui_de_la_table():
 RACINE = Path(__file__).resolve().parents[3]
 VERSIONNE = RACINE / "data/raw" / f"{VERSION_BAREME}.json"
 
+
 def test_instantane_versionne_existe_pour_la_version_du_code():
     assert VERSIONNE.exists(), "lancer « make bareme » et versionner le fichier"
 
+
 def test_regenere_identique_au_versionne(tmp_path):
     assert ecrire(tmp_path).read_bytes() == VERSIONNE.read_bytes()
+
 
 def test_manifeste_et_seuils_en_texte():
     contenu = serialiser()
     assert contenu["manifeste"]["regles"] == 6
     assert contenu["manifeste"]["date_debut"] == "2026-10-26"
-    assert contenu["regles"][2]["conditions"] == [{"champ": "crm", "operateur": ">", "seuil": "1.25"}]
+    assert contenu["regles"][2]["conditions"] == [
+        {"champ": "crm", "operateur": ">", "seuil": "1.25"}
+    ]
 ```
 
 - [ ] **Step 2: Run** `uv run pytest fonction-calcul/tests/unit/test_instantane_bareme.py --no-cov -q` → FAIL (module absent).
@@ -168,26 +184,51 @@ Effet : {effet} (barème {version_bareme}).
 - [ ] **Step 1: Write the failing tests**
 
 ```python
-BAREME = {"manifeste": {"version_bareme": "bareme-test", "date_debut": "2026-10-26"},
-          "regles": [{"regle_id": "R03_CRM", "libelle": "CRM élevé", "motif": "Le CRM dépasse 1,25.",
-                      "effet": "REFUSE", "conditions": [{"champ": "crm", "operateur": ">", "seuil": "1.25"}]}]}
+BAREME = {
+    "manifeste": {"version_bareme": "bareme-test", "date_debut": "2026-10-26"},
+    "regles": [
+        {
+            "regle_id": "R03_CRM",
+            "libelle": "CRM élevé",
+            "motif": "Le CRM dépasse 1,25.",
+            "effet": "REFUSE",
+            "conditions": [{"champ": "crm", "operateur": ">", "seuil": "1.25"}],
+        }
+    ],
+}
+
 
 def test_generer_champs_et_texte():
     [doc] = generer(BAREME, {"R03_CRM": "## Décision\nBarème {version_bareme}."}, "https://x")
     assert (doc["doc_id"], doc["version"], doc["article"], doc["date_debut"], doc["regle_id"]) == (
-        "PI-R03_CRM", "PI-R03_CRM-bareme-test", "PI-R03-CRM", "2026-10-26", "R03_CRM")
+        "PI-R03_CRM",
+        "PI-R03_CRM-bareme-test",
+        "PI-R03-CRM",
+        "2026-10-26",
+        "R03_CRM",
+    )
     assert "Condition : `crm` plus de 1,25." in doc["texte_html"]
     assert "Motif retenu par le barème : « Le CRM dépasse 1,25. »" in doc["texte_html"]
     assert doc["texte_html"].endswith("## Décision\nBarème bareme-test.")
 
+
 def test_condition_composee():
-    assert condition_lisible([{"champ": "a", "operateur": "<", "seuil": "36"},
-                              {"champ": "b", "operateur": ">", "seuil": "7"}]) == "`a` moins de 36 et `b` plus de 7"
+    assert (
+        condition_lisible(
+            [
+                {"champ": "a", "operateur": "<", "seuil": "36"},
+                {"champ": "b", "operateur": ">", "seuil": "7"},
+            ]
+        )
+        == "`a` moins de 36 et `b` plus de 7"
+    )
+
 
 @pytest.mark.parametrize("rediges", [{}, {"R03_CRM": "x", "R99_X": "y"}, {"R03_CRM": "{inconnu}"}])
 def test_incoherence_leve_une_erreur_qui_nomme_la_regle(rediges):
     with pytest.raises(ErreurProcedures, match="R03_CRM|R99_X"):
         generer(BAREME, rediges, "https://x")
+
 
 def test_corpus_reel_un_document_par_regle_id():
     # data/raw/bareme-*.json (dernier) + rag/corpus/procedures_internes via lire_en_tete
@@ -228,28 +269,42 @@ def test_corpus_reel_un_document_par_regle_id():
 def test_abroge_conserve_etat_d_origine():
     assert normaliser(brut(etat=" abroge "))["etat"] == "ABROGE"
 
+
 def test_abroge_a_date_malformee_ecarte():
     assert normaliser(brut(etat="ABROGE", date_debut="31/12/2003")) == "date_invalide"
 
-@pytest.mark.parametrize("champ,raison", [("texte_html", "partiel:texte_html"), ("etat", "partiel:etat")])
+
+@pytest.mark.parametrize(
+    "champ,raison", [("texte_html", "partiel:texte_html"), ("etat", "partiel:etat")]
+)
 def test_partiel_ecarte(champ, raison):
     assert normaliser(brut(**{champ: ""})) == raison
+
 
 def test_formats_homogeneises():
     e = normaliser(brut(article=" l 211-1 ", date_debut="2026-10-26T00:00:00"))
     assert (e["article"], e["date_debut"]) == (normaliser_numero(" l 211-1 "), "2026-10-26")
     assert e["texte_html"] == brut()["texte_html"]  # HTML d'origine, pas le texte converti
 
-def test_doc_id_en_double_refuse(tmp_path): ...  # deux notices de même doc_id → ErreurEnvoi match le doc_id
 
-def test_ecart_consigne_dans_le_manifeste(tmp_path): ...  # instantané avec un article vide → absent des entrées, présent dans ecarts
+def test_doc_id_en_double_refuse(
+    tmp_path,
+): ...  # deux notices de même doc_id → ErreurEnvoi match le doc_id
+
+
+def test_ecart_consigne_dans_le_manifeste(
+    tmp_path,
+): ...  # instantané avec un article vide → absent des entrées, présent dans ecarts
+
 
 def test_sources_reelles_volumes_et_identite():
     jeu = agreger(dernier("code-assurances"), dernier("bareme"), NOTICES, PROCEDURES)
     assert jeu["manifeste"]["par_source"] == {"legifrance": 119, "redige": 4, "bareme": 6}
     assert jeu["manifeste"]["ecarts"] == []
     assert sum(e["etat"] == "ABROGE" for e in jeu["entrees"]) >= 11
-    assert ecrire_jeu(jeu, tmp_path).read_bytes() == VERSIONNE.read_bytes()  # data/aggregated/corpus-2026-10-27.json
+    assert (
+        ecrire_jeu(jeu, tmp_path).read_bytes() == VERSIONNE.read_bytes()
+    )  # data/aggregated/corpus-2026-10-27.json
 ```
 
 (`brut(**surcharges)` = un article Légifrance valide modifié champ par champ, comme `_brut` de `test_corpus.py`.)

@@ -236,6 +236,8 @@ Chaque cas passe des contrôles déterministes, et la latence est mesurée :
 | **latence p95** | ≤ 30 s (dossier-conception-v1.md, D11) |
 
 Porte : taux de réussite ≥ **80 %** (seuil de départ, `🔴 à calibrer`) **et** latence p95 ≤ 30 s.
+Un cas en 429, hors délai client (`http 0`) ou au-dessus de 30 s est **rejoué une fois** : la porte juge la
+réponse rejouée, et une lenteur qui se répète la fait toujours échouer (#192).
 
 **Déclenchement** : les evals ne tournent que si un fichier susceptible de changer leur résultat a changé
 **depuis le dernier manifeste validé** (tag `manifeste-X.Y.Z-build.N`, job `changements`) ; sinon elles sont
@@ -269,7 +271,8 @@ Installation, déclenchement, limites et démonstration de `evals-pr` : [`docs/c
 | `corpus` | Dernier instantané ingéré et nombre de chunks (`/health`) |
 | `portes` | Seuil de réussite et latence p95 maximale appliqués |
 
-Viennent ensuite le taux, la latence p95 et le détail de chaque cas (contrôles ratés, latence, réponse).
+Viennent ensuite le taux, la latence p95 et le détail de chaque cas (contrôles ratés, latence, réponse,
+et `rejeu` : raison et latence de la première tentative, quand le cas a été rejoué).
 Exemple du sprint 2 : `eval/preuves/evals-local-2026-10-15.json`.
 
 > 🔁 **Analogie .NET** : une suite xUnit de non-régression, sauf qu'on mesure un **taux de réussite** au lieu

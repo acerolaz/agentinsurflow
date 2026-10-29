@@ -5,7 +5,9 @@ dépendance (le job « changements » de la CI l'importe tel quel).
 Boîte noire : seuls ``POST /api/reponses``, ``GET /api/extraits`` et ``/health`` sont appelés,
 avec le jeton de ``EVALS_JETON`` (rôle ``Gestionnaire``) ; aucun secret Azure n'est nécessaire.
 Chaque cas passe ses contrôles déterministes (``verifier`` : contrat RAG ``statut``, ``articles``,
-``http`` ; réponse non vide, trois phrases au plus) et sa latence est mesurée. Le rapport JSON
+``http`` ; réponse non vide, trois phrases au plus) et sa latence est mesurée. Un 429, un délai
+client dépassé ou une réponse au-dessus de la porte de latence est rejoué une fois, et la porte juge
+la réponse rejouée (#192) ; le rejeu reste tracé (``rejeu``) dans le rapport. Le rapport JSON
 s'ouvre sur un ``manifeste`` (commit, modèle, prompts, golden dataset, questions, corpus, portes) :
 il dit ce qui a été évalué. Code de sortie 1 si le taux de réussite est sous le seuil ou si la
 latence p95 dépasse son maximum : porte bloquante.
@@ -317,14 +319,8 @@ def main(argv: list[str] | None = None) -> int:
             except (OSError, ValueError) as exc:  # réseau, délai client, JSON illisible
                 http, reponse = 0, {"erreur": repr(exc)}
             latence = round(time.perf_counter() - debut, 2)  # attente exclue
-            raison = (
-                "429"
-                if http == 429
-                else "http 0"
-                if http == 0
-                else "latence"
-                if latence > args.latence_p95_max
-                else None
+            raison = {429: "429", 0: "http 0"}.get(http) or (
+                "latence" if latence > args.latence_p95_max else None
             )
             if raison is None or essai:
                 break

@@ -284,6 +284,20 @@ def test_instantane_notices_refuse_dans_une_autre_collection(
     assert appels == []
 
 
+def test_instantane_legifrance_refuse_dans_une_collection_de_notices(
+    tmp_path: Path, appels: list[httpx.Request], capsys: pytest.CaptureFixture[str]
+) -> None:
+    chemin = sauvegarder_instantane(
+        CORPUS, tmp_path, "local", "2026-10-29", perimetre="LEGIARTI0000.*"
+    )
+    code = ingest.main(
+        ["--instantane", str(chemin), "--collection", "notices_produits", "--url", "http://gw"]
+    )
+    assert code == 1
+    assert "textes_reglementaires" in capsys.readouterr().err
+    assert appels == []
+
+
 def test_source_et_instantane_exclusifs(
     tmp_path: Path, appels: list[httpx.Request], capsys: pytest.CaptureFixture[str]
 ) -> None:

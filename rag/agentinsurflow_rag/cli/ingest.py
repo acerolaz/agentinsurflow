@@ -265,8 +265,10 @@ def _instantane(args: argparse.Namespace) -> tuple[list[dict[str, Any]], str, Da
         articles, sha, jour = lire_instantane(args.instantane)
         manifeste = json.loads(args.instantane.read_text(encoding="utf-8"))["manifeste"]
         perimetre = manifeste["perimetre"]
-        if perimetre in COLLECTIONS and perimetre != args.collection:
-            raise ErreurEnvoi(f"instantané de {perimetre}, pas de {args.collection}")
+        # périmètre hors COLLECTIONS (motif Légifrance) = textes réglementaires
+        cible = perimetre if perimetre in COLLECTIONS else COLLECTIONS[0]
+        if cible != args.collection:
+            raise ErreurEnvoi(f"instantané de {cible}, pas de {args.collection}")
         return articles, sha, jour, "instantane"
     try:
         cfg = ConfigLegifrance()  # type: ignore[call-arg]

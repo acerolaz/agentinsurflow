@@ -3,6 +3,7 @@
     make ingest [URL=https://<gateway>] [INSTANTANE=data/raw/code-assurances-<date>.json]
     make ingest [URL=…] COLLECTION=notices_produits SOURCE=rag/corpus/notices_produits
     make ingest [URL=…] JEU=data/aggregated/corpus-<date>.json   (jeu de ``make agreger``)
+    make ingest URL=… INSTANTANE=data/raw/notices-<date>.json COLLECTION=notices_produits
 
 ① jeton PISTE (``.env`` local) ; ② plan du code, filtre du périmètre, ``getArticle`` séquentiel ;
 ③ instantané écrit dans un fichier temporaire puis renommé (jamais partiel), avec son manifeste ;
@@ -10,6 +11,8 @@
 ``--instantane`` rejoue un fichier et saute ① à ③ (CI, staging, production : pas de PISTE).
 Les traces de la CLI partent aussi par la gateway (``/v1/traces``, rôle ``Telemetrie``) ;
 leur échec ne fait jamais échouer l'ingestion.
+``--instantane`` d'un instantané de notices (``data/raw/notices-<date>.json``) exige
+``--collection notices_produits`` ; ``--source`` et ``--instantane`` s'excluent.
 ``--collection`` + ``--source`` : documents rédigés pour le projet (Markdown du dépôt, en-tête
 ``cle: valeur`` entre deux ``---``), sans PISTE ni instantané.
 """
@@ -72,15 +75,20 @@ def sha_articles(articles: Sequence[Any]) -> str:
 
 
 def sauvegarder_instantane(
-    articles: list[dict[str, Any]], dossier: Path, environnement: str, date: str
+    articles: list[dict[str, Any]],
+    dossier: Path,
+    environnement: str,
+    date: str,
+    prefixe: str = "code-assurances",
+    perimetre: str = PERIMETRE.pattern,
 ) -> Path:
     dossier.mkdir(parents=True, exist_ok=True)
-    chemin = dossier / f"code-assurances-{date}.json"
+    chemin = dossier / f"{prefixe}-{date}.json"
     contenu = {
         "manifeste": {
             "date": date,
             "environnement": environnement,
-            "perimetre": PERIMETRE.pattern,
+            "perimetre": perimetre,
             "articles": len(articles),
             "sha256": sha_articles(articles),
         },
@@ -294,13 +302,23 @@ def _instantane(
 
 
 def _articles(args: argparse.Namespace) -> tuple[list[dict[str, Any]], str, Date, str]:
-    if (args.source is None) != (args.collection == COLLECTIONS[0]):
+    if args.source and args.instantane:
+        raise ErreurEnvoi("--source et --instantane s'excluent")
+    if args.source and args.collection == COLLECTIONS[0]:
+        raise ErreurEnvoi("--source va avec --collection notices_produits ou procedures_internes")
+    if not (args.source or args.instantane) and args.collection != COLLECTIONS[0]:
         raise ErreurEnvoi("--source va avec --collection notices_produits ou procedures_internes")
     if args.source:
         articles = lire_markdown(args.source, args.collection)
         return articles, sha_articles(articles), Date.fromisoformat(args.date), "markdown"
     if args.instantane:
         articles, sha, jour = lire_instantane(args.instantane)
+        manifeste = json.loads(args.instantane.read_text(encoding="utf-8"))["manifeste"]
+        perimetre = manifeste["perimetre"]
+        # périmètre hors COLLECTIONS (motif Légifrance) = textes réglementaires
+        cible = perimetre if perimetre in COLLECTIONS else COLLECTIONS[0]
+        if cible != args.collection:
+            raise ErreurEnvoi(f"instantané de {cible}, pas de {args.collection}")
         return articles, sha, jour, "instantane"
     try:
         cfg = ConfigLegifrance()  # type: ignore[call-arg]

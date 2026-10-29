@@ -119,3 +119,126 @@ EXPLAIN ANALYZE <requête de la §1>;
 ```
 
 Les plans « avant / après » seront collés ici, avec le rappel du HNSW mesuré contre le scan exact.
+
+## 6. Spark SQL (big data) — freMTPL2
+
+*Source : `tools/extraction_bigdata.py` (`make bigdata`, Java 17, groupe uv `bigdata`). Les bornes de filtre
+viennent de `fonction-calcul/entrainement/donnees.py` pour la borne haute d'exposition (`EXPOSURE_MAX = 1.0`) et le bonus-malus (`BONUS_MALUS_MIN, BONUS_MALUS_MAX = 50, 230`), les mêmes que celles de la préparation du GLM ; `Exposure > 0` est ajouté par `_FILTRE` dans `tools/extraction_bigdata.py`. Une ligne hors bornes est exclue des agrégats.*
+
+**Chaîne.** Les ARFF freMTPL2freq (OpenML 41214) et freMTPL2sev (41215) sont téléchargés dans le cache
+(`FREMTPL2_CACHE`, `/tmp/fremtpl2-cache` par défaut, SHA-256 vérifié), puis convertis en **Parquet** (`freq.parquet`,
+`sev.parquet`) et exposés comme vues `freq` et `sev`. La conversion est refaite à chaque exécution
+(`mode("overwrite")`) : seul le téléchargement est mis en cache. Parquet est un format **colonnaire** : Spark ne lit
+que les colonnes utiles (élagage) et peut pousser les filtres jusqu'à la lecture.
+
+L'instantané `data/raw/fremtpl2-agregats-<date>.json` ne contient que des **agrégats** (aucune ligne de contrat),
+au format des autres collectes (manifeste `date`, `environnement`, `perimetre`, `articles`, `sha256`). Mesuré le
+29/10/2026 : **25 lignes** (22 régions + 3 tranches de bonus-malus).
+
+### 6.1 Fréquence de sinistres par région (`frequence_par_region`)
+
+*Objectif de collecte* : fréquence de sinistres (sinistres / exposition) par région, base de la tarification.
+
+```sql
+SELECT Region, COUNT(*) AS contrats, SUM(Exposure) AS exposition,
+       SUM(ClaimNb) AS sinistres, SUM(ClaimNb) / SUM(Exposure) AS frequence
+FROM freq
+WHERE Exposure > 0 AND Exposure <= 1 AND BonusMalus BETWEEN 50 AND 230
+GROUP BY Region
+ORDER BY Region
+```
+
+- **Sélection** : `Region`, plus quatre agrégats (nombre de contrats, exposition, sinistres, fréquence).
+- **Filtres** : exposition dans ]0 ; 1] (une exposition est une fraction d'année), bonus-malus dans [50 ; 230]
+  (bornes du coefficient retenues dans `donnees.py`).
+- **Condition / regroupement** : `GROUP BY Region` ; pas de jointure.
+- **Optimisations**, relevées dans `make bigdata ARGS=--expliquer` :
+  - élagage de colonnes : seules 4 colonnes sur les 12 du fichier sont lues ;
+  - filtres poussés à la lecture Parquet.
+
+```text
+...
+PushedFilters: [IsNotNull(Exposure), IsNotNull(BonusMalus), GreaterThan(Exposure,0.0), LessThanOrEqual(Exposure,1.0), GreaterThanOrEqual(BonusMalus,50), LessThanOrEqual(BonusMalus,230)]
+ReadSchema: struct<ClaimNb:int,Exposure:double,BonusMalus:int,Region:string>
+```
+
+Résumé (hors extrait) : le plan enchaîne `Scan parquet`, `Filter`, `Project`, `HashAggregate` partiel, `Exchange`,
+`HashAggregate`, `Sort` ; l'agrégation partielle avant l'`Exchange` (brassage) réduit ce qui circule entre partitions.
+
+### 6.2 Coût moyen par tranche de bonus-malus (`cout_moyen_par_bonus_malus`)
+
+*Objectif de collecte* : coût moyen d'un sinistre selon la tranche de bonus-malus (50-99, 100-149, 150-230),
+pour les contrats ayant au moins un sinistre.
+
+```sql
+WITH couts AS (
+    SELECT IDpol, SUM(ClaimAmount) AS montant, COUNT(*) AS nb
+    FROM sev GROUP BY IDpol
+)
+SELECT /*+ BROADCAST(couts) */
+       CASE WHEN freq.BonusMalus < 100 THEN '50-99'
+            WHEN freq.BonusMalus < 150 THEN '100-149'
+            ELSE '150-230' END AS tranche_bm,
+       COUNT(DISTINCT freq.IDpol) AS contrats_sinistres,
+       SUM(couts.montant) / SUM(couts.nb) AS cout_moyen
+FROM freq
+JOIN couts ON freq.IDpol = couts.IDpol
+WHERE freq.Exposure > 0 AND freq.Exposure <= 1 AND freq.BonusMalus BETWEEN 50 AND 230
+GROUP BY tranche_bm
+ORDER BY MIN(freq.BonusMalus)
+```
+
+- **Sélection** : tranche (`CASE` sur `BonusMalus`), nombre de contrats sinistrés, coût moyen pondéré
+  (montant total / nombre de sinistres, et non moyenne de moyennes).
+- **Filtres** : mêmes bornes qu'en 6.1.
+- **Jointure** : **interne** (`JOIN`) sur `IDpol`, car seuls les contrats ayant des sinistres (présents dans `sev`)
+  ont un coût ; une jointure externe ajouterait des lignes sans montant. `sev` est d'abord agrégé par contrat (CTE
+  `couts`) : la jointure porte sur une ligne par contrat, sans multiplier les lignes de `freq`.
+- **Optimisations** :
+  - jointure par **diffusion** : l'indice `/*+ BROADCAST(couts) */` envoie la petite table `couts` à chaque
+    exécuteur, ce qui évite de brasser la grande table `freq` ;
+  - élagage de colonnes sur les deux tables, filtres poussés sur `freq` ;
+  - agrégation de `sev` avant la jointure (réduit le volume diffusé).
+
+```text
+== Physical Plan ==
+AdaptiveSparkPlan (21)
++- Project (20)
+   +- Sort (19)
+      +- Exchange (18)
+         +- HashAggregate (17)
+            +- Exchange (16)
+               +- HashAggregate (15)
+                  +- HashAggregate (14)
+                     +- Exchange (13)
+                        +- HashAggregate (12)
+                           +- Project (11)
+                              +- BroadcastHashJoin Inner BuildRight (10)
+                                 :- Project (3)
+                                 :  +- Filter (2)
+                                 :     +- Scan parquet  (1)
+                                 +- BroadcastExchange (9)
+                                    +- HashAggregate (8)
+                                       +- Exchange (7)
+                                          +- HashAggregate (6)
+                                             +- Filter (5)
+                                                +- Scan parquet  (4)
+...
+PushedFilters: [IsNotNull(Exposure), IsNotNull(BonusMalus), GreaterThan(Exposure,0.0), LessThanOrEqual(Exposure,1.0), GreaterThanOrEqual(BonusMalus,50), LessThanOrEqual(BonusMalus,230), IsNotNull(IDpol)]
+ReadSchema: struct<IDpol:double,Exposure:double,BonusMalus:int>
+...
+PushedFilters: [IsNotNull(IDpol)]
+ReadSchema: struct<IDpol:int,ClaimAmount:double>
+...
+(10) BroadcastHashJoin
+Left keys [1]: [knownfloatingpointnormalized(normalizenanandzero(IDpol#78))]
+Right keys [1]: [knownfloatingpointnormalized(normalizenanandzero(cast(IDpol#90 as double)))]
+Join type: Inner
+Join condition: None
+```
+
+Tri : les tranches sont ordonnées numériquement (`ORDER BY MIN(freq.BonusMalus)`) : `50-99`, `100-149`, `150-230`.
+
+Limites constatées : (a) les bornes d'exposition et de bonus-malus sont filtrées mais non écrêtées, à la différence du GLM
+(`donnees.py` écrête) : les agrégats excluent les lignes hors bornes ; (b) `IDpol` est lu en `double` côté `freq`
+et en `int` côté `sev` (inférence du schéma CSV) : Spark ajoute un `cast` dans la clé de diffusion, sans effet sur le résultat.

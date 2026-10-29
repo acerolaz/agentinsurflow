@@ -8,14 +8,15 @@ import hashlib
 import tomllib
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-_SOURCE = tomllib.loads((Path(__file__).parent / "donnees.toml").read_text("utf-8"))["source"]
-URL: str = _SOURCE["url"]
+_TOML = tomllib.loads((Path(__file__).parent / "donnees.toml").read_text("utf-8"))
+_SOURCE: dict[str, Any] = _TOML["source"]
+SOURCE_SEV: dict[str, Any] = _TOML["source_sev"]
 NOM_FICHIER: str = _SOURCE["fichier"]
-SHA256: str = _SOURCE["sha256"]
 LIGNES: int = _SOURCE["lignes"]
 
 COLONNES = ["ClaimNb", "Exposure", "BonusMalus", "VehPower", "Region"]
@@ -33,25 +34,35 @@ def _sha256(fichier: Path) -> str:
     return hashlib.sha256(fichier.read_bytes()).hexdigest()
 
 
-def telecharger(cache: Path) -> Path:
-    """Fichier freMTPL2 dans `cache` (téléchargé s'il manque), SHA-256 toujours vérifié."""
-    fichier = cache / NOM_FICHIER
+def telecharger(cache: Path, source: dict[str, Any] = _SOURCE) -> Path:
+    """Fichier de `source` dans `cache` (téléchargé s'il manque), SHA-256 toujours vérifié."""
+    fichier: Path = cache / source["fichier"]
     if not fichier.exists():
-        with urllib.request.urlopen(URL, timeout=120) as reponse:
+        with urllib.request.urlopen(source["url"], timeout=120) as reponse:
             fichier.write_bytes(reponse.read())
-    if _sha256(fichier) != SHA256:
+    if _sha256(fichier) != source["sha256"]:
         raise ValueError(f"SHA-256 de {fichier.name} différent de celui figé dans donnees.toml")
     return fichier
 
 
-def charger(fichier: Path) -> pd.DataFrame:
-    """Lit l'ARFF avec pandas seul (en-tête `@attribute`, puis CSV) : colonnes utiles."""
+def attributs(fichier: Path) -> list[str]:
+    """Noms des lignes `@attribute` de l'en-tête ARFF, jusqu'à `@data`."""
     noms: list[str] = []
     with fichier.open(encoding="utf-8") as f:
         for ligne in f:
             if ligne.lower().startswith("@attribute"):
                 noms.append(ligne.split()[1])
             elif ligne.lower().startswith("@data"):
+                break
+    return noms
+
+
+def charger(fichier: Path) -> pd.DataFrame:
+    """Lit l'ARFF avec pandas seul (en-tête `@attribute`, puis CSV) : colonnes utiles."""
+    noms = attributs(fichier)
+    with fichier.open(encoding="utf-8") as f:
+        for ligne in f:
+            if ligne.lower().startswith("@data"):
                 break
         df = pd.read_csv(f, names=noms, quotechar="'", usecols=COLONNES)
     return df[COLONNES]

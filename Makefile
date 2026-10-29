@@ -9,7 +9,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et underwriting-admin/
 # (C#, leurs propres Makefile, appelés par gateway-<cible> et underwriting-<cible>).
-.PHONY: agreger bareme modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval donnees-evals calibrer run build docker infra proteger rollback preuve
+.PHONY: agreger bareme scraper bigdata modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval donnees-evals calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked --all-packages --all-groups
@@ -44,7 +44,7 @@ agreger:            ## Légifrance + barème + documents rédigés → data/aggr
 	uv run python -m agentinsurflow_rag.cli.agreger
 
 ingest:             ## make ingest [URL=<gateway>] [INSTANTANE=data/raw/…] [COLLECTION=… SOURCE=rag/corpus/…] [JEU=data/aggregated/…] : Légifrance, rejeu, Markdown ou jeu agrégé → /api/ingestions
-	uv run python -m agentinsurflow_rag.cli.ingest --url $(URL) $(if $(INSTANTANE),--instantane $(INSTANTANE)) $(if $(JEU),--jeu $(JEU)) $(if $(SOURCE),--collection $(COLLECTION) --source $(SOURCE))
+	uv run python -m agentinsurflow_rag.cli.ingest --url $(URL) $(if $(INSTANTANE),--instantane $(INSTANTANE)) $(if $(JEU),--jeu $(JEU)) $(if $(COLLECTION),--collection $(COLLECTION)) $(if $(SOURCE),--source $(SOURCE))
 
 extraire:           ## extraction Légifrance seule → data/raw/ (identifiants PISTE du .env, bac à sable)
 	uv run python -m agentinsurflow_rag.cli.ingest --sans-envoi
@@ -74,6 +74,12 @@ eval:               ## porte 3 : make eval [URL=…] — golden set + jeu de dé
 
 donnees-evals:      ## schéma des jeux d'évaluation, articles attendus, sha256 de l'instantané (hors ligne)
 	uv run python -m tools.donnees_evals
+
+scraper:            ## make scraper URL=<gateway> — notices produits publiques → data/raw/notices-<date>.json
+	uv run python tools/scraping_notices.py --url $(URL)
+
+bigdata:           ## make bigdata [ARGS=--expliquer] — freMTPL2 en PySpark/Spark SQL → data/raw/fremtpl2-agregats-<date>.json (Java 17)
+	JAVA_HOME=$${JAVA_HOME:-$$(brew --prefix openjdk@17 2>/dev/null)} PYTHONPATH=fonction-calcul uv run --group bigdata python tools/extraction_bigdata.py $(ARGS)
 
 calibrer:           ## make calibrer URL=… — cosinus max par question, intervalle pour RAG_SEUIL
 	uv run python tools/evals.py --calibrer --url $(URL) --questions eval/questions-demo.jsonl

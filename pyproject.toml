@@ -36,6 +36,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.10",
 ]
+bigdata = ["pyspark>=4.0,<5"]  # source big data (#51) : hors dev, hors paquet du workspace
 
 [tool.pytest.ini_options]
 # tests/ : outillage de la racine (tools/) ; rag/tests : le service rag (unit = TU, integration = TI)
@@ -75,7 +76,14 @@ known-first-party = [
 [tool.mypy]
 python_version = "3.12"
 strict = true
+mypy_path = "fonction-calcul"  # tools/ importe entrainement (fonction-calcul/entrainement)
 
 [[tool.mypy.overrides]]
-module = ["llm_guard.*"]  # LLM Guard n'est pas typé (pas de py.typed)
+module = [
+    "llm_guard.*",  # LLM Guard n'est pas typé (pas de py.typed)
+    "pyspark.*",  # groupe bigdata : pas de stubs
+    "py4j.*",  # idem (passerelle Java de pyspark)
+    "pandas.*",  # importés par entrainement (GLM), sans stubs ni py.typed
+    "sklearn.*",
+]
 ignore_missing_imports = true

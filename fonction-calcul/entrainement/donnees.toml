@@ -12,3 +12,16 @@ licence = "CC0"               # tel qu'affiché par OpenML
 origine = "CASdatasets (C. Dutang, A. Charpentier, 2018), https://github.com/dutangc/CASdatasets"
 # La description OpenML annonce 677 991 contrats ; le fichier en contient 678 013 (mesuré).
 lignes = 678013
+
+# freMTPL2sev figé (#51, source big data) : mêmes règles, vérifié le 29/10/2026 (data/41215).
+[source_sev]
+nom = "freMTPL2sev"
+url = "https://openml.org/data/v1/download/20649149/freMTPL2sev.arff"
+fichier = "freMTPL2sev.arff"
+openml_data_id = 41215
+version = "1"
+sha256 = "047632016b87e132247124f449a95d6d0e9f8ba05f2fe0947ef76ab8aaa10e0a"
+md5_openml = "24cc74449e3931cb1aad0d43a12e7a6e"
+licence = "CC0"
+origine = "CASdatasets (C. Dutang, A. Charpentier, 2018), https://github.com/dutangc/CASdatasets"
+lignes = 26639

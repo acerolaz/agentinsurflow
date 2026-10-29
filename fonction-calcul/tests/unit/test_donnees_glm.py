@@ -87,3 +87,20 @@ def test_charger_arff_minimal(tmp_path: Path) -> None:
     df = donnees.charger(fichier)
     assert list(df.columns) == ["ClaimNb", "Exposure", "BonusMalus", "VehPower", "Region"]
     assert list(df["Region"]) == ["R94", "R11"]
+
+
+def test_source_sev_figee() -> None:
+    assert donnees.SOURCE_SEV["sha256"] == (
+        "047632016b87e132247124f449a95d6d0e9f8ba05f2fe0947ef76ab8aaa10e0a"
+    )
+    assert donnees.SOURCE_SEV["openml_data_id"] == 41215
+    assert donnees.SOURCE_SEV["licence"] == "CC0"
+
+
+def test_attributs_arff(tmp_path: Path) -> None:
+    arff = tmp_path / "x.arff"
+    arff.write_text(
+        "@relation x\n@attribute IDpol numeric\n@attribute ClaimAmount numeric\n@data\n1,2.5\n",
+        encoding="utf-8",
+    )
+    assert donnees.attributs(arff) == ["IDpol", "ClaimAmount"]

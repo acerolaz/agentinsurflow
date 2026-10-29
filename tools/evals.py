@@ -253,6 +253,12 @@ def resumer(rapport: dict[str, Any], portes_ok: tuple[bool, bool]) -> str:
         lignes += [f"| {r['id']} | {', '.join(r['echecs'])} | {r['http']} |" for r in ratés]
     else:
         lignes.append("Tous les cas passent (aucun cas raté).")
+    rejoues = [r for r in rapport["resultats"] if r.get("rejeu")]
+    if rejoues:
+        detail = ", ".join(
+            f"{r['id']} ({r['rejeu']['raison']}, {r['rejeu']['latence_s']} s)" for r in rejoues
+        )
+        lignes += ["", f"Rejoués une fois : {detail}."]
     if rapport["ecartes"]:
         lignes += ["", f"Cas écartés : {', '.join(rapport['ecartes'])}."]
     lignes += [
@@ -301,16 +307,30 @@ def main(argv: list[str] | None = None) -> int:
 
     resultats = []
     for cas in tous:
-        for essai in range(2):  # un 429 de la gateway : rejoué une fois, après la fenêtre
+        # un seul rejeu : 429 de la gateway (après la fenêtre), délai client dépassé ou réponse
+        # au-dessus de la porte (aléa isolé du LLM, #192) ; la porte juge la réponse rejouée
+        rejeu = None
+        for essai in range(2):
             debut = time.perf_counter()
             try:
                 http, reponse = interroger(args.url, cas, jeton)
-            except (OSError, ValueError) as exc:  # réseau, JSON illisible
+            except (OSError, ValueError) as exc:  # réseau, délai client, JSON illisible
                 http, reponse = 0, {"erreur": repr(exc)}
             latence = round(time.perf_counter() - debut, 2)  # attente exclue
-            if http != 429 or essai:
+            raison = (
+                "429"
+                if http == 429
+                else "http 0"
+                if http == 0
+                else "latence"
+                if latence > args.latence_p95_max
+                else None
+            )
+            if raison is None or essai:
                 break
-            time.sleep(ATTENTE_429_S)
+            rejeu = {"raison": raison, "latence_s": latence}
+            if http == 429:
+                time.sleep(ATTENTE_429_S)
         resultats.append(
             {
                 "id": cas["id"],
@@ -318,6 +338,7 @@ def main(argv: list[str] | None = None) -> int:
                 "http": http,
                 "latence_s": latence,
                 "reponse": reponse,
+                **({"rejeu": rejeu} if rejeu else {}),
             }
         )
 

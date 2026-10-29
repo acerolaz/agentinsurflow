@@ -258,6 +258,62 @@ def test_un_429_est_rejoue_apres_la_fenetre_hors_latence(
     assert resultat["latence_s"] < evals.ATTENTE_429_S  # l'attente n'est pas de la latence
 
 
+def test_une_reponse_lente_est_rejouee_une_fois_et_la_porte_juge_le_rejeu(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    golden = tmp_path / "golden.jsonl"
+    golden.write_text(json.dumps({"id": "a", "question": "q"}), encoding="utf-8")
+    monkeypatch.setattr(evals, "interroger", lambda url, cas, jeton: (200, OK))
+    horloge = iter([0.0, 31.21, 100.0, 102.5])  # 31,21 s puis 2,5 s (#192)
+    monkeypatch.setattr(evals.time, "perf_counter", lambda: next(horloge))
+    attentes: list[float] = []
+    monkeypatch.setattr(evals.time, "sleep", attentes.append)
+    rapport = tmp_path / "rapport.json"
+
+    assert evals.main(["--golden", str(golden), "--rapport", str(rapport)]) == 0
+    assert attentes == []  # rejoué tout de suite, sans la fenêtre du 429
+    (resultat,) = json.loads(rapport.read_text(encoding="utf-8"))["resultats"]
+    assert resultat["latence_s"] == 2.5
+    assert resultat["rejeu"] == {"raison": "latence", "latence_s": 31.21}
+
+
+def test_un_delai_client_depasse_est_rejoue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    golden = tmp_path / "golden.jsonl"
+    golden.write_text(json.dumps({"id": "a", "question": "q"}), encoding="utf-8")
+    appels = iter([TimeoutError("timed out"), (200, OK)])
+
+    def interroger(url: str, cas: dict[str, Any], jeton: str | None) -> tuple[int, dict[str, Any]]:
+        appel = next(appels)
+        if isinstance(appel, Exception):
+            raise appel
+        return appel
+
+    monkeypatch.setattr(evals, "interroger", interroger)
+    rapport = tmp_path / "rapport.json"
+
+    assert evals.main(["--golden", str(golden), "--rapport", str(rapport)]) == 0
+    (resultat,) = json.loads(rapport.read_text(encoding="utf-8"))["resultats"]
+    assert (resultat["http"], resultat["echecs"], resultat["rejeu"]["raison"]) == (
+        200,
+        [],
+        "http 0",
+    )
+
+
+def test_une_reponse_lente_au_rejeu_fait_toujours_echouer_la_porte(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    golden = tmp_path / "golden.jsonl"
+    golden.write_text(json.dumps({"id": "a", "question": "q"}), encoding="utf-8")
+    monkeypatch.setattr(evals, "interroger", lambda url, cas, jeton: (200, OK))
+    horloge = iter([0.0, 40.0, 100.0, 140.0])  # lent deux fois : lenteur systématique
+    monkeypatch.setattr(evals.time, "perf_counter", lambda: next(horloge))
+
+    assert evals.main(["--golden", str(golden)]) == 1
+
+
 def test_sans_dossiers_ecarte_les_cas_a_numero_de_contrat(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -321,6 +377,17 @@ def test_resume_detaille_les_cas_rates() -> None:
 
 def test_resume_liste_les_ecartes() -> None:
     assert "dossier-1" in evals.resumer(_rapport(ecartes=["dossier-1"]), (True, True))
+
+
+def test_resume_signale_les_rejeux() -> None:
+    rejoue = {
+        "id": "lent",
+        "echecs": [],
+        "http": 200,
+        "rejeu": {"raison": "latence", "latence_s": 31.21},
+    }
+    resume = evals.resumer(_rapport(resultats=[rejoue]), (True, True))
+    assert "Rejoués une fois : lent (latence, 31.21 s)." in resume
 
 
 def test_resume_dit_la_limite() -> None:

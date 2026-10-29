@@ -280,7 +280,7 @@ jobs:
             evals-pr.md
           if-no-files-found: warn
       - name: Résumé du run et commentaire sur la PR
-        if: always()
+        if: ${{ !cancelled() }} # un run annulé (nouveau libellé) ne doit pas écrire « rapport absent »
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}

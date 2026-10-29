@@ -58,7 +58,7 @@ def test_evaluation_contre_staging_avec_resume():
 
 def test_commentaire_meme_sans_rapport():
     etape = JOB["steps"][_etape("--edit-last")]
-    assert etape["if"] == "always()"
+    assert etape["if"] == "${{ !cancelled() }}"  # run annulé: pas de faux rapport absent
     assert "rapport absent" in etape["run"]
     assert "--edit-last --create-if-none" in etape["run"]
     assert "GITHUB_STEP_SUMMARY" in etape["run"]
@@ -73,3 +73,7 @@ def test_jeton_masque():
 def test_chaine_de_merge_fermee_aux_nouveaux_evenements():
     for nom in ("build",):
         assert CI["jobs"][nom]["if"] == "github.event_name == 'push'"
+    jobs = CI["jobs"]
+    assert "build" in jobs["staging"]["needs"]
+    assert "staging" in jobs["release"]["needs"]
+    assert "release" in jobs["production"]["needs"]

@@ -11,7 +11,8 @@ l'API de **staging**, avec la porte bloquante de `tools/evals.py` (taux de réus
 posté en commentaire sur la PR.
 
 Aucun secret : le jeton d'évaluation est demandé à Entra par OIDC (`azure/login`, puis
-`az account get-access-token`). Aucune écriture Azure ni Entra n'est nécessaire pour utiliser la chaîne.
+`az account get-access-token`). Une fois l'identité de la CI installée (`infra/bootstrap.sh` et `infra/entra.sh`, déjà exécutés), aucune écriture
+Azure ni Entra n'est nécessaire pour utiliser la chaîne.
 
 ## Schéma
 
@@ -81,13 +82,15 @@ make eval URL=<URL de staging>
 ```
 
 `tools/evals.py` accepte aussi `--resume <fichier.md>` (résumé Markdown, repris en commentaire) et
-`--rapport <fichier.json>`. Le jeton n'est jamais écrit dans le rapport.
+`--rapport <fichier.json>`. Le jeton n'est jamais écrit dans le rapport. En local, `make eval` ne passe pas
+`--sans-dossiers` (contrairement à la CI) : les cas à `numero_contrat` sont donc inclus.
 
 ## Procédure de démonstration
 
 1. Créer une **branche du dépôt** (pas un fork : les forks n'ont ni OIDC ni variables).
-2. Modifier un fichier d'évaluation, par exemple une question de `eval/questions-demo.jsonl`, ou ne rien
-   modifier et poser le libellé `evals`.
+2. Faire au moins un commit trivial (GitHub refuse une PR sans commit entre les branches), par exemple une
+   modification de la doc ou d'une question de `eval/questions-demo.jsonl`. Si aucun déclencheur n'a changé,
+   le libellé `evals` (étape 4) force l'exécution.
 3. Ouvrir la PR vers `main`.
 4. Poser le libellé `evals` (si aucun déclencheur n'a changé).
 5. Attendre `lint`, `test`, puis `evals-pr` au vert.
@@ -97,7 +100,8 @@ make eval URL=<URL de staging>
 
 Un seul commentaire du bot par PR, **édité à chaque passage** (`gh pr comment --edit-last --create-if-none`). Si les
 évaluations n'ont pas pu s'exécuter, il indique « rapport absent » avec le lien du run. Le résumé est aussi dans
-l'onglet *Summary* du run ; l'artefact contient `evals-pr.json` et `evals-pr.md`.
+l'onglet *Summary* du run ; l'artefact contient `evals-pr.json` et `evals-pr.md`. Sur une PR, le commit du manifeste
+est le commit de fusion que GitHub construit (tête de la PR fusionnée dans `main`), pas la tête de la PR.
 
 | Champ du rapport JSON | Sens |
 |---|---|

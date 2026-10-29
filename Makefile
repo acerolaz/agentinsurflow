@@ -9,7 +9,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et underwriting-admin/
 # (C#, leurs propres Makefile, appelés par gateway-<cible> et underwriting-<cible>).
-.PHONY: scraper modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
+.PHONY: scraper bigdata modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked --all-packages --all-groups
@@ -71,6 +71,9 @@ eval:               ## porte 3 : make eval [URL=…] — golden set + jeu de dé
 
 scraper:            ## make scraper URL=<gateway> — notices produits publiques → data/raw/notices-<date>.json
 	uv run python tools/scraping_notices.py --url $(URL)
+
+bigdata:           ## make bigdata [ARGS=--expliquer] — freMTPL2 en PySpark/Spark SQL → data/raw/fremtpl2-agregats-<date>.json (Java 17)
+	JAVA_HOME=$${JAVA_HOME:-$$(brew --prefix openjdk@17 2>/dev/null)} PYTHONPATH=fonction-calcul uv run --group bigdata python tools/extraction_bigdata.py $(ARGS)
 
 calibrer:           ## make calibrer URL=… — cosinus max par question, intervalle pour RAG_SEUIL
 	uv run python tools/evals.py --calibrer --url $(URL) --questions eval/questions-demo.jsonl

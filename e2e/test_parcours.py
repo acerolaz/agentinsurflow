@@ -73,7 +73,8 @@ def test_ingestion_rejouee_zero_insere(url, jeton_ingestion, manque):
         if "EMBEDDINGS_INDISPONIBLES" in s.stdout + s.stderr:
             manque("EMBEDDINGS_INDISPONIBLES (HTTP 503)")
         assert s.returncode == 0, s.stderr[-500:]
-    assert re.search(r"✔ 0 insérés", sorties[1].stdout), sorties[1].stdout[-500:]
+    # bilan par collection depuis #52 : « ✔ textes_reglementaires : 0 insérés, … »
+    assert re.search(r"✔ \w+ : 0 insérés", sorties[1].stdout), sorties[1].stdout[-500:]
 
 
 def test_question_couverte_citee_et_tracable(

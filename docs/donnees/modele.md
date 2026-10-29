@@ -33,6 +33,14 @@ signalement, décision) existent et restent vides jusqu'aux agents (S4).
 | **justifie** | CONTRAT (0,n) | PIECE_JUSTIFICATIVE (1,1) |
 | **signale** | CONTRAT (0,n) | SIGNALEMENT_FRAUDE (1,1) |
 | **décide** | CONTRAT (0,n) | DECISION (1,1) |
+| **mémorise** | CONTRAT (0,1) | ETAT_DOSSIER (1,1) |
+| **rapporte** | ETAT_DOSSIER (0,n) | RAPPORT_AGENT (1,1) |
+| **compose** | ETAT_DOSSIER (0,n) | SECTION_ETAT (1,1) |
+| **pilote** | ETAT_DOSSIER (0,n) | TOUR_PILOTAGE (1,1) |
+| **relance** | CONTRAT (0,3) | RELANCE (1,1) |
+
+Les cinq dernières entités (migrations `MemoireDossier` du 23/10 et `Relances` du 27/10) sont la mémoire du
+cluster d'agents (K11) et les relances du gestionnaire (K8, trois au plus par dossier).
 
 ```mermaid
 erDiagram
@@ -47,6 +55,11 @@ erDiagram
     CONTRAT ||--o{ PIECE_JUSTIFICATIVE : justifie
     CONTRAT ||--o{ SIGNALEMENT_FRAUDE : signale
     CONTRAT ||--o{ DECISION : decide
+    CONTRAT ||--o| ETAT_DOSSIER : memorise
+    ETAT_DOSSIER ||--o{ RAPPORT_AGENT : rapporte
+    ETAT_DOSSIER ||--o{ SECTION_ETAT : compose
+    ETAT_DOSSIER ||--o{ TOUR_PILOTAGE : pilote
+    CONTRAT ||--o{ RELANCE : relance
 ```
 
 *Lecture du schéma : `||--||` un pour un ; `||--o|` un pour zéro ou un ; `||--o{` un pour zéro ou plusieurs.*
@@ -69,6 +82,11 @@ Noms en snake_case (convention EF `UseSnakeCaseNamingConvention`), clés `uuid`,
 | `piece_justificative` | `id`, `contrat_id`, `type`, `nom_fichier`, `url_blob` | FK `contrat_id` |
 | `signalement_fraude` | `id`, `contrat_id`, `motif`, `signale_le`, `statut` | FK `contrat_id` |
 | `decision` | `id`, `contrat_id`, `decision_rendue`, `contrat_type`, `score`, `version_bareme`, `regle_id`, `motifs` (jsonb), `citations` (jsonb), `etat_validation`, `auteur`, `horodatage` | FK `contrat_id` |
+| `etat_dossier` (migration `MemoireDossier`) | `numero_contrat`, `version_schema`, `statut_parcours`, `tentative`, `nb_relances`, `maj_le` | PK et FK `numero_contrat` → `contrat` (clé alternative `ak_contrat_numero_contrat`) |
+| `rapport_agent` | `numero_contrat`, `agent`, `tentative`, `trace_id`, `rapport` (jsonb), `mode` (LLM ou repli), `cause`, `version_prompt`, `cree_le` | PK (`numero_contrat`, `agent`, `tentative`, `trace_id`) · FK → `etat_dossier` |
+| `section_etat` | `numero_contrat`, `section`, `tentative`, `contenu` (jsonb) | PK (`numero_contrat`, `section`, `tentative`) · FK → `etat_dossier` |
+| `tour_pilotage` | `numero_contrat`, `tentative`, `tour`, `outil_appele`, `precondition`, `mode` | PK (`numero_contrat`, `tentative`, `tour`) · FK → `etat_dossier` |
+| `relance` (migration `Relances`) | `numero_contrat`, `rang`, `texte`, `pieces` (jsonb), `envoyee_le`, `envoyee_par` (`oid` du gestionnaire) | PK (`numero_contrat`, `rang`) · FK → `contrat` |
 
 ### Vue `vue_contrat_minimisee` (migration `VueEtDroits`, D39)
 
@@ -112,6 +130,8 @@ vol, incendie et tempête et bris de glace dès `tiers_etendu` ; dommages tous a
 | `CONTRAT.gestionnaire_id` | `oid` Entra du gestionnaire : contrôle BOLA (OWASP API1) | S3-17 |
 | `PRIME` 1–1 avec `CONTRAT` + `periodicite`, `date_effet`, `etat_validation` | Une prime par contrat (MCD officiel) ; brouillon validé par un humain (S4) | P18, tranché par Acerola le 20/10 |
 | `DECISION` ajoutée | Trace de la décision de souscription (dossier de conception, L6.7) | S3-17 |
+| Mémoire du dossier (`ETAT_DOSSIER`, `RAPPORT_AGENT`, `SECTION_ETAT`, `TOUR_PILOTAGE`) ajoutée | Reprise après redémarrage du cluster, audit de la Saga (K11) | Migration `MemoireDossier`, 23/10 |
+| `RELANCE` ajoutée | Relance des pièces manquantes par le gestionnaire, bornée à trois (K8) | Migration `Relances`, 27/10 (#134) |
 | Catégorie du véhicule absente de la vue | Champ absent du MCD | 🔴 point ouvert |
 
 ## 3. MPD — base `traces` (migration EF Core de `Traces/`)

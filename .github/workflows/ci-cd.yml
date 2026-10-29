@@ -3,6 +3,7 @@
 #           evals-pr évalue staging si les jeux ont changé, si la PR porte le libellé « evals »,
 #           ou à la main (workflow_dispatch) ; il commente le résumé sur la PR.
 #   merge : lint → test → build → staging (+ fumée) → [evals] → e2e-staging → release → production (+ fumée)
+#           sauf merge purement doc (paths-ignore du push) : aucune chaîne, aucune version
 #   integration (compose + TI) et pyramide tournent en parallèle ; toutes deux sont exigées par la protection de main.
 # [evals…] ne tournent QUE si le prompt, le golden dataset ou la version du LLM ont changé depuis le
 # dernier manifeste validé (job changements) ; sinon ils sont sautés et la chaîne continue.
@@ -18,6 +19,17 @@ on:
   workflow_dispatch: {} # evals-pr à la main (OIDC fédéré pour main seulement : lancer depuis main)
   push:
     branches: [main]
+    # Merge purement doc : rien ne part (ni build, ni staging, ni tag de release, ni production).
+    # Pas sur pull_request : les portes exigées par la protection de main doivent tourner.
+    # Prompts (*/prompts/*.md), corpus RAG et eval/golden.jsonl restent hors liste : ils changent le produit.
+    paths-ignore:
+      - "docs/**"
+      - "**/README.md"
+      - "**/CLAUDE.md"
+      - ".claude/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - "eval/ateliers/**"
+      - "eval/preuves/**"
 
 permissions:
   contents: read

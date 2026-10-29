@@ -246,3 +246,69 @@ def test_collection_et_source_vont_ensemble(
 ) -> None:
     assert ingest.main(arguments) == 1
     assert "--source" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------- jeu agrégé (#52)
+
+
+def _jeu(chemin: Path) -> Path:
+    entrees = [
+        {**CORPUS[0], "collection": c, "source": "x", "doc_id": f"d-{c}"}
+        for c in ingest.COLLECTIONS
+    ]
+    manifeste = {"date": "2026-10-27", "entrees": 3, "sha256": sha_articles(entrees)}
+    chemin.write_text(json.dumps({"manifeste": manifeste, "entrees": entrees}), encoding="utf-8")
+    return chemin
+
+
+def test_jeu_envoie_chaque_collection_et_ecrit_ses_preuves(
+    tmp_path: Path, appels: list[httpx.Request]
+) -> None:
+    code = ingest.main(
+        ["--jeu", str(_jeu(tmp_path / "jeu.json")), "--url", "http://gw",
+         "--preuves", str(tmp_path / "preuves"), "--environnement", "local"]
+    )  # fmt: skip
+    assert code == 0
+    corps = [json.loads(r.content) for r in appels]
+    assert [c["collection"] for c in corps] == list(ingest.COLLECTIONS)
+    assert all("source" not in a and "collection" not in a for c in corps for a in c["articles"])
+    assert sorted(p.name for p in (tmp_path / "preuves").iterdir()) == [
+        "ingestion-2026-10-27-local.json",
+        "ingestion-notices_produits-2026-10-27-local.json",
+        "ingestion-procedures_internes-2026-10-27-local.json",
+    ]
+    preuve = json.loads((tmp_path / "preuves" / "ingestion-2026-10-27-local.json").read_text())
+    assert preuve["mode"] == "jeu"
+
+
+def test_jeu_altere_refuse(
+    tmp_path: Path, appels: list[httpx.Request], capsys: pytest.CaptureFixture[str]
+) -> None:
+    chemin = _jeu(tmp_path / "jeu.json")
+    contenu = json.loads(chemin.read_text())
+    contenu["entrees"][0]["texte_html"] = "modifié"
+    chemin.write_text(json.dumps(contenu), encoding="utf-8")
+    assert ingest.main(["--jeu", str(chemin), "--preuves", str(tmp_path)]) == 1
+    assert "altéré" in capsys.readouterr().err
+    assert appels == []
+
+
+@pytest.mark.parametrize(
+    "autres",
+    [["--instantane", "x"], ["--collection", "notices_produits", "--source", "x"]],
+)
+def test_jeu_exclusif_avec_instantane_et_source(
+    tmp_path: Path, appels: list[httpx.Request], autres: list[str]
+) -> None:
+    assert ingest.main(["--jeu", str(_jeu(tmp_path / "jeu.json")), *autres]) == 1
+    assert appels == []
+
+
+def test_procedures_par_source_refusees(
+    tmp_path: Path, appels: list[httpx.Request], capsys: pytest.CaptureFixture[str]
+) -> None:
+    _md(tmp_path / "src", "R01.md", _procedure("R01_SUSPENSION"))
+    code = ingest.main(["--collection", "procedures_internes", "--source", str(tmp_path / "src")])
+    assert code == 1
+    assert "make agreger" in capsys.readouterr().err
+    assert appels == []

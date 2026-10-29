@@ -168,7 +168,9 @@ erDiagram
 ```bash
 make up          # postgres annexe (crée les 3 bases et les comptes), rag, underwriting-admin, serveur MCP, cluster d'agents, calcul, gateway
 make migrate     # base vecteurs (Alembic) ; dossiers et traces migrent au démarrage d'underwriting-admin
-make ingest URL=http://localhost:8000 INSTANTANE=data/raw/code-assurances-2026-10-27.json
+make bareme      # instantané du barème (data/raw/bareme-2026.10-v1.json)
+make agreger     # jeu agrégé unique (data/aggregated/corpus-2026-10-27.json, #52)
+make ingest URL=http://localhost:8000 JEU=data/aggregated/corpus-2026-10-27.json
 ```
 
 Les mots de passe des comptes viennent du `.env` local (clés listées dans `.env.example`) ; en Azure, des

@@ -254,6 +254,8 @@ le réévalue, même s'il ne touche pas ces fichiers. Sans aucun tag `manifeste-
 | `evals-pr` | PR | API lancée dans le runner | ⏸️ **désactivé jusqu'à U5** : depuis R6, `/api/reponses` exige un jeton Entra, PostgreSQL et `RAG_SEUIL`, que ce job n'a pas encore. Sauté, il satisfait la protection de `main` |
 | `evals` | merge, avant la production | **staging** déployé, corpus réingéré par `deploy.yml` ; cas à `numero_contrat` écartés jusqu'à underwriting-admin (U2, `--sans-dossiers`) | Entra par **OIDC** (`api://agentinsurflow-rag/.default`) : l'identité de la CI porte le rôle `Gestionnaire` (`make entra`) |
 
+Installation, déclenchement, limites et démonstration de `evals-pr` : [`docs/ci-evals.md`](docs/ci-evals.md).
+
 **Artefact de chaque passage** : `evals-staging-<sha>` (onglet *Summary* du run). Le rapport JSON s'ouvre sur un
 **manifeste** qui dit ce qui a été évalué :
 

@@ -9,7 +9,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et underwriting-admin/
 # (C#, leurs propres Makefile, appelés par gateway-<cible> et underwriting-<cible>).
-.PHONY: modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval calibrer run build docker infra proteger rollback preuve
+.PHONY: modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval donnees-evals calibrerrun build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked --all-packages --all-groups
@@ -68,6 +68,9 @@ underwriting-%:     ## cibles de underwriting-admin/Makefile : make underwriting
 
 eval:               ## porte 3 : make eval [URL=…] — golden set + jeu de démo (jeton : EVALS_JETON)
 	uv run python tools/evals.py --url $(URL) --questions eval/questions-demo.jsonl
+
+donnees-evals:      ## schéma des jeux d'évaluation, articles attendus, sha256 de l'instantané (hors ligne)
+	uv run python -m tools.donnees_evals
 
 calibrer:           ## make calibrer URL=… — cosinus max par question, intervalle pour RAG_SEUIL
 	uv run python tools/evals.py --calibrer --url $(URL) --questions eval/questions-demo.jsonl

@@ -284,3 +284,60 @@ def test_sans_dossiers_ecarte_les_cas_a_numero_de_contrat(
     assert evals.main(["--golden", str(golden), "--sans-dossiers", "--rapport", str(rapport)]) == 0
     assert interroges == ["corpus"]
     assert json.loads(rapport.read_text(encoding="utf-8"))["ecartes"] == ["dossier"]
+
+
+def _rapport(**surcharge: Any) -> dict[str, Any]:
+    rapport = {
+        "manifeste": {
+            "cible": "https://staging.example",
+            "commit": "abc123",
+            "run": "https://github.com/o/r/actions/runs/1",
+            "golden": {"sha256": "a" * 64},
+            "questions": {"sha256": "b" * 64},
+            "corpus": {"instantane_sha256": "c" * 64},
+            "modele": {"deploiement": "chat-epingle", "observe": ["chat-observe"]},
+            "portes": {"seuil": 0.8, "latence_p95_max_s": 30.0},
+        },
+        "taux": 1.0,
+        "latence_p95_s": 2.5,
+        "ecartes": [],
+        "resultats": [{"id": "a", "echecs": [], "http": 200}],
+    }
+    return {**rapport, **surcharge}
+
+
+def test_resume_porte_passee_sans_cas_rate() -> None:
+    resume = evals.resumer(_rapport(), (True, True))
+    assert "✔ porte passée" in resume and "aucun cas raté" in resume
+    assert "chat-epingle" in resume and "chat-observe" in resume and "a" * 12 in resume
+
+
+def test_resume_detaille_les_cas_rates() -> None:
+    rate = {"id": "cas-rate", "echecs": ["statut"], "http": 503}
+    resume = evals.resumer(_rapport(taux=0.5, resultats=[rate]), (False, True))
+    assert "✘ porte échouée" in resume
+    assert "| cas-rate | statut | 503 |" in resume
+
+
+def test_resume_liste_les_ecartes() -> None:
+    assert "dossier-1" in evals.resumer(_rapport(ecartes=["dossier-1"]), (True, True))
+
+
+def test_resume_dit_la_limite() -> None:
+    assert "qu'après merge" in evals.resumer(_rapport(), (True, True))
+
+
+def test_resume_ecrit_meme_si_la_porte_echoue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    golden = tmp_path / "golden.jsonl"
+    golden.write_text(json.dumps({"id": "a", "question": "q"}), encoding="utf-8")
+    monkeypatch.setattr(
+        evals, "interroger", lambda url, cas, jeton: (200, {**OK, "mode": "degrade"})
+    )
+    monkeypatch.setenv("EVALS_JETON", "jeton-secret")
+    resume = tmp_path / "r.md"
+
+    assert evals.main(["--golden", str(golden), "--resume", str(resume)]) == 1
+    texte = resume.read_text(encoding="utf-8")
+    assert "✘ porte échouée" in texte and "jeton-secret" not in texte

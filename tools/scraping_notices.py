@@ -14,6 +14,7 @@ sauvegarde (``sauvegarder_instantane``, écriture atomique).
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from collections.abc import Sequence
@@ -138,23 +139,33 @@ def collecter(client: httpx.Client, base: str, delai_s: float = DELAI_S) -> list
     return sorted(articles, key=lambda a: str(a["doc_id"]))
 
 
-def main(argv: Sequence[str] | None = None, client: httpx.Client | None = None) -> int:
-    parseur = argparse.ArgumentParser(description=__doc__.split("\n")[0] if __doc__ else "")
+def main(
+    argv: Sequence[str] | None = None,
+    client: httpx.Client | None = None,
+    delai_s: float = DELAI_S,
+) -> int:
+    parseur = argparse.ArgumentParser(description=__doc__)
     parseur.add_argument(
         "--url", required=True, help="racine de la gateway, ex. http://localhost:8000"
     )
     parseur.add_argument("--sortie", type=Path, default=Path("data/raw"))
     parseur.add_argument("--date", default=Date.today().isoformat())
+    parseur.add_argument("--environnement", default=os.environ.get("APP_ENV", "local"))
     args = parseur.parse_args(argv)
     base = args.url.rstrip("/") + "/notices/"
     try:
         with client or httpx.Client(headers={"User-Agent": AGENT}, timeout=10.0) as ouvert:
-            articles = collecter(ouvert, base, 0 if client else DELAI_S)
+            articles = collecter(ouvert, base, delai_s)
     except (ErreurScraping, httpx.HTTPError) as erreur:
         print(f"✘ scraping interrompu : {erreur}", file=sys.stderr)
         return 1
     chemin = sauvegarder_instantane(
-        articles, args.sortie, "gateway", args.date, prefixe="notices", perimetre="notices_produits"
+        articles,
+        args.sortie,
+        args.environnement,
+        args.date,
+        prefixe="notices",
+        perimetre="notices_produits",
     )
     print(f"✔ instantané {chemin} ({len(articles)} notices)")
     return 0

@@ -74,7 +74,9 @@ def test_collecter_les_trois_formules() -> None:
 def test_robots_interdit_notices(tmp_path: Path) -> None:
     with pytest.raises(sn.ErreurScraping):
         sn.collecter(_client(robots=ROBOTS_KO), BASE, delai_s=0)
-    code = sn.main(["--url", "http://gw", "--sortie", str(tmp_path)], client=_client(ROBOTS_KO))
+    code = sn.main(
+        ["--url", "http://gw", "--sortie", str(tmp_path)], client=_client(ROBOTS_KO), delai_s=0
+    )
     assert code == 1
     assert list(tmp_path.iterdir()) == []
 
@@ -97,9 +99,22 @@ def test_main_ecrit_instantane_et_manifeste(tmp_path: Path) -> None:
     code = sn.main(
         ["--url", "http://gw", "--sortie", str(tmp_path), "--date", "2026-10-29"],
         client=_client(),
+        delai_s=0,
     )
     assert code == 0
     contenu = json.loads((tmp_path / "notices-2026-10-29.json").read_text(encoding="utf-8"))
     assert contenu["manifeste"]["articles"] == 4
     assert contenu["manifeste"]["perimetre"] == "notices_produits"
     assert contenu["manifeste"]["sha256"] == sha_articles(contenu["articles"])
+
+
+def test_main_environnement_dans_le_manifeste(tmp_path: Path) -> None:
+    code = sn.main(
+        ["--url", "http://gw", "--sortie", str(tmp_path), "--date", "2026-10-29",
+         "--environnement", "staging"],
+        client=_client(),
+        delai_s=0,
+    )  # fmt: skip
+    assert code == 0
+    contenu = json.loads((tmp_path / "notices-2026-10-29.json").read_text(encoding="utf-8"))
+    assert contenu["manifeste"]["environnement"] == "staging"

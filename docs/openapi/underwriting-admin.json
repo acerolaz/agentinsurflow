@@ -1020,6 +1020,336 @@
           }
         }
       }
+    },
+    "/api/points-de-reprise/{thread_id}": {
+      "get": {
+        "tags": [
+          "PointsDeReprise"
+        ],
+        "summary": "Le point demandé (id), ou le dernier du fil, avec ses écritures en attente",
+        "operationId": "LirePointDeReprise",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ns",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointReponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "PointsDeReprise"
+        ],
+        "summary": "Upsert d'un point (dernier écrit gagnant)",
+        "operationId": "EcrirePointDeReprise",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PointCorps"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "PointsDeReprise"
+        ],
+        "summary": "Supprime tous les points et écritures du fil",
+        "operationId": "SupprimerFilDePointsDeReprise",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/points-de-reprise/{thread_id}/liste": {
+      "get": {
+        "tags": [
+          "PointsDeReprise"
+        ],
+        "summary": "Les points du fil, checkpoint_id décroissant",
+        "operationId": "ListerPointsDeReprise",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ns",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "avant",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListeReponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/points-de-reprise/{thread_id}/ecritures": {
+      "put": {
+        "tags": [
+          "PointsDeReprise"
+        ],
+        "summary": "Écritures en attente d'une tâche (idx < 0 : remplacées ; sinon écrites une seule fois)",
+        "operationId": "EcrireEcrituresDePointDeReprise",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EcrituresCorps"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1136,6 +1466,126 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/GarantieContrat"
+            }
+          }
+        }
+      },
+      "EcritureCorps": {
+        "required": [
+          "idx",
+          "canal",
+          "type",
+          "valeur"
+        ],
+        "type": "object",
+        "properties": {
+          "idx": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "canal": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "valeur": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "byte"
+          }
+        }
+      },
+      "EcritureReponse": {
+        "required": [
+          "task_id",
+          "idx",
+          "canal",
+          "type",
+          "valeur",
+          "task_path"
+        ],
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "idx": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "canal": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "valeur": {
+            "type": "string",
+            "format": "byte"
+          },
+          "task_path": {
+            "type": "string"
+          }
+        }
+      },
+      "EcrituresCorps": {
+        "required": [
+          "ns",
+          "checkpoint_id",
+          "task_id",
+          "task_path",
+          "ecritures"
+        ],
+        "type": "object",
+        "properties": {
+          "ns": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "checkpoint_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "task_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "task_path": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ecritures": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/EcritureCorps"
             }
           }
         }
@@ -1353,6 +1803,20 @@
         }
       },
       "JsonElement": { },
+      "ListeReponse": {
+        "required": [
+          "points"
+        ],
+        "type": "object",
+        "properties": {
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PointReponse"
+            }
+          }
+        }
+      },
       "ObservationsCorps": {
         "required": [
           "observations"
@@ -1380,6 +1844,111 @@
           "date_emission": {
             "type": "string",
             "format": "date"
+          }
+        }
+      },
+      "PointCorps": {
+        "required": [
+          "ns",
+          "checkpoint_id",
+          "parent_id",
+          "type",
+          "checkpoint",
+          "type_metadata",
+          "metadata"
+        ],
+        "type": "object",
+        "properties": {
+          "ns": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "checkpoint_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "parent_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "checkpoint": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "byte"
+          },
+          "type_metadata": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "metadata": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "byte"
+          }
+        }
+      },
+      "PointReponse": {
+        "required": [
+          "ns",
+          "checkpoint_id",
+          "parent_id",
+          "type",
+          "checkpoint",
+          "type_metadata",
+          "metadata",
+          "ecritures"
+        ],
+        "type": "object",
+        "properties": {
+          "ns": {
+            "type": "string"
+          },
+          "checkpoint_id": {
+            "type": "string"
+          },
+          "parent_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "type": {
+            "type": "string"
+          },
+          "checkpoint": {
+            "type": "string",
+            "format": "byte"
+          },
+          "type_metadata": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "string",
+            "format": "byte"
+          },
+          "ecritures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EcritureReponse"
+            }
           }
         }
       },
@@ -2047,6 +2616,9 @@
     },
     {
       "name": "Contrats"
+    },
+    {
+      "name": "PointsDeReprise"
     }
   ]
 }

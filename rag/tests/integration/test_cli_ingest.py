@@ -246,3 +246,50 @@ def test_collection_et_source_vont_ensemble(
 ) -> None:
     assert ingest.main(arguments) == 1
     assert "--source" in capsys.readouterr().err
+
+
+def _instantane_notices(tmp_path: Path) -> Path:
+    return sauvegarder_instantane(
+        CORPUS, tmp_path, "local", "2026-10-29", prefixe="notices", perimetre="notices_produits"
+    )
+
+
+def test_instantane_prefixe_et_perimetre(tmp_path: Path) -> None:
+    chemin = _instantane_notices(tmp_path)
+    assert chemin.name == "notices-2026-10-29.json"
+    assert json.loads(chemin.read_text(encoding="utf-8"))["manifeste"]["perimetre"] == (
+        "notices_produits"
+    )
+
+
+def test_rejeu_instantane_notices_dans_sa_collection(
+    tmp_path: Path, appels: list[httpx.Request]
+) -> None:
+    chemin = _instantane_notices(tmp_path)
+    code = ingest.main(
+        ["--instantane", str(chemin), "--collection", "notices_produits", "--url", "http://gw",
+         "--preuves", str(tmp_path / "preuves"), "--date", "2026-10-29"]
+    )  # fmt: skip
+    assert code == 0
+    assert json.loads(appels[0].content)["collection"] == "notices_produits"
+
+
+def test_instantane_notices_refuse_dans_une_autre_collection(
+    tmp_path: Path, appels: list[httpx.Request], capsys: pytest.CaptureFixture[str]
+) -> None:
+    chemin = _instantane_notices(tmp_path)
+    code = ingest.main(["--instantane", str(chemin), "--url", "http://gw"])
+    assert code == 1
+    assert "notices_produits" in capsys.readouterr().err
+    assert appels == []
+
+
+def test_source_et_instantane_exclusifs(
+    tmp_path: Path, appels: list[httpx.Request], capsys: pytest.CaptureFixture[str]
+) -> None:
+    chemin = _instantane_notices(tmp_path)
+    code = ingest.main(
+        ["--instantane", str(chemin), "--source", str(tmp_path), "--collection", "notices_produits"]
+    )
+    assert code == 1
+    assert "--source" in capsys.readouterr().err

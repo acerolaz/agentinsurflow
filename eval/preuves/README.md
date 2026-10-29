@@ -10,6 +10,7 @@ ou répétition**. Nommage : `<sujet>-AAAA-MM-JJ.<ext>`.
 | `blocage` | `make preuve RUN=<id du run rouge> NOM=blocage-AAAA-MM-JJ` + capture de la PR | `.log`, `.resume.txt`, `-pr.png` |
 | `rollback` | `make preuve RUN=<id du run deploy> NOM=rollback-AAAA-MM-JJ` + `/health` avant et après | `.log`, `.resume.txt`, `.md`, `.png` |
 | `recette-k` | Recette des K dans l'espace gestionnaire (Acerola pilote, vérifications en lecture seule : état, traces, journaux) | `recette-k-AAAA-MM-JJ-<env>.md` |
+| `recette-c11` | Recette C11 : évaluation tracée en production (#176), alerte AL-2 en staging (`make recette ACTION=llm-off`/`llm-on`), tableaux de bord `vigie-*` ; gabarit `recette-c11-AAAA-MM-JJ.md` | `.md`, `-<n>.png` |
 | `ingestion` | `make ingest URL=<gateway> INSTANTANE=data/raw/…` (environnement : `APP_ENV` ou `--environnement`) : instantané, lots, insérés, rejets | `ingestion-AAAA-MM-JJ-<env>.json` |
 
 Les journaux GitHub masquent les secrets (`***`). Relire tout de même chaque fichier avant de le committer.

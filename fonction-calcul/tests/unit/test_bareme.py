@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import pytest
 
-from agentinsurflow_calcul.domain.bareme import evaluer
+from agentinsurflow_calcul.domain.bareme import REGLES, Condition, evaluer
 from agentinsurflow_calcul.domain.models import DonneeHorsBareme, FaitsRisque
 
 
@@ -160,3 +160,31 @@ def test_profil_dossier_10_classe_refus():
     )
     regles = [g.regle_id for g in r.regles]
     assert (r.classe, r.decision, regles) == ("refus", "REFUSE", ["R01_SUSPENSION"])
+
+
+def test_table_regles_ordre_et_seuils():
+    assert [r.regle_id for r in REGLES] == [
+        "R01_SUSPENSION",
+        "R02_RESILIATIONS",
+        "R03_CRM",
+        "R04_SINISTRES_RESPONSABLES",
+        "R05_SINISTRES_TOTAL",
+        "R06_JEUNE_PERMIS_PUISSANCE",
+    ]
+    assert REGLES[2].conditions == (Condition("crm", ">", Decimal("1.25")),)
+    assert REGLES[5].conditions == (
+        Condition("anciennete_permis_mois", "<", Decimal(36)),
+        Condition("puissance_fiscale_cv", ">", Decimal(7)),
+    )
+    assert {r.effet for r in REGLES} == {"REFUSE"}
+
+
+def test_chaque_champ_de_condition_existe_dans_les_faits():
+    champs = {f.name for f in dataclasses.fields(FaitsRisque)}
+    assert {c.champ for r in REGLES for c in r.conditions} <= champs
+
+
+def test_motif_rendu_est_celui_de_la_table():
+    r = evaluer(faits(suspensions=1))
+    motif = "Le relevé d'information mentionne une suspension de permis."
+    assert r.regles[0].motif == REGLES[0].motif == motif

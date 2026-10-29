@@ -9,7 +9,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et underwriting-admin/
 # (C#, leurs propres Makefile, appelés par gateway-<cible> et underwriting-<cible>).
-.PHONY: modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval donnees-evals calibrer run build docker infra proteger rollback preuve
+.PHONY: agreger bareme modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval donnees-evals calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked --all-packages --all-groups
@@ -40,8 +40,11 @@ test-e2e:           ## make test-e2e URL=<gateway> : la solution qui tourne (com
 migrate:            ## migrations Alembic de la base vecteurs (compte migrateur, PG_* du .env)
 	cd rag && uv run alembic -n vecteurs upgrade head
 
-ingest:             ## make ingest [URL=<gateway>] [INSTANTANE=data/raw/…] [COLLECTION=… SOURCE=rag/corpus/…] : Légifrance, rejeu ou Markdown → /api/ingestions
-	uv run python -m agentinsurflow_rag.cli.ingest --url $(URL) $(if $(INSTANTANE),--instantane $(INSTANTANE)) $(if $(SOURCE),--collection $(COLLECTION) --source $(SOURCE))
+agreger:            ## Légifrance + barème + documents rédigés → data/aggregated/corpus-<date>.json
+	uv run python -m agentinsurflow_rag.cli.agreger
+
+ingest:             ## make ingest [URL=<gateway>] [INSTANTANE=data/raw/…] [COLLECTION=… SOURCE=rag/corpus/…] [JEU=data/aggregated/…] : Légifrance, rejeu, Markdown ou jeu agrégé → /api/ingestions
+	uv run python -m agentinsurflow_rag.cli.ingest --url $(URL) $(if $(INSTANTANE),--instantane $(INSTANTANE)) $(if $(JEU),--jeu $(JEU)) $(if $(SOURCE),--collection $(COLLECTION) --source $(SOURCE))
 
 extraire:           ## extraction Légifrance seule → data/raw/ (identifiants PISTE du .env, bac à sable)
 	uv run python -m agentinsurflow_rag.cli.ingest --sans-envoi
@@ -120,6 +123,9 @@ rollback:           ## une opération : make rollback [ENV=staging] [TAG=<sha>] 
 preuve:             ## make preuve RUN=<id> NOM=blocage-2026-10-20 → journal versionné
 	gh run view $(RUN) -R $(GITHUB_REPO) --log > eval/preuves/$(NOM).log
 	gh run view $(RUN) -R $(GITHUB_REPO) > eval/preuves/$(NOM).resume.txt
+
+bareme:             ## instantané du barème → data/raw/bareme-<version>.json
+	PYTHONPATH=fonction-calcul uv run python -m agentinsurflow_calcul.instantane
 
 modele:             ## GLM de fréquence : entraîne, évalue, écrit artefact + fiche (FREMTPL2_CACHE=… ; ARGS=--init-seuils la 1re fois)
 	PYTHONPATH=fonction-calcul uv run python -m entrainement $(ARGS)

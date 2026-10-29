@@ -1,0 +1,93 @@
+{
+ "manifeste": {
+  "version_bareme": "bareme-2026.10-v1",
+  "date_debut": "2026-10-26",
+  "regles": 6,
+  "sha256": "f436296b67f30f31078d224f9d7f1c370327f30f23f8d28089df680814d87c0e"
+ },
+ "regles": [
+  {
+   "regle_id": "R01_SUSPENSION",
+   "libelle": "Suspension de permis",
+   "conditions": [
+    {
+     "champ": "suspensions",
+     "operateur": ">=",
+     "seuil": "1"
+    }
+   ],
+   "motif": "Le relevé d'information mentionne une suspension de permis.",
+   "effet": "REFUSE"
+  },
+  {
+   "regle_id": "R02_RESILIATIONS",
+   "libelle": "Résiliations antérieures",
+   "conditions": [
+    {
+     "champ": "resiliations",
+     "operateur": ">=",
+     "seuil": "2"
+    }
+   ],
+   "motif": "Le relevé d'information mentionne au moins deux résiliations.",
+   "effet": "REFUSE"
+  },
+  {
+   "regle_id": "R03_CRM",
+   "libelle": "Coefficient bonus-malus élevé",
+   "conditions": [
+    {
+     "champ": "crm",
+     "operateur": ">",
+     "seuil": "1.25"
+    }
+   ],
+   "motif": "Le coefficient bonus-malus dépasse 1,25.",
+   "effet": "REFUSE"
+  },
+  {
+   "regle_id": "R04_SINISTRES_RESPONSABLES",
+   "libelle": "Sinistres responsables répétés",
+   "conditions": [
+    {
+     "champ": "nb_sinistres_responsables_trois_ans",
+     "operateur": ">",
+     "seuil": "2"
+    }
+   ],
+   "motif": "Plus de deux sinistres responsables dans les 36 mois avant la date d'effet.",
+   "effet": "REFUSE"
+  },
+  {
+   "regle_id": "R05_SINISTRES_TOTAL",
+   "libelle": "Fréquence de sinistres élevée",
+   "conditions": [
+    {
+     "champ": "nb_sinistres_trois_ans",
+     "operateur": ">",
+     "seuil": "4"
+    }
+   ],
+   "motif": "Plus de quatre sinistres dans les 36 mois avant la date d'effet.",
+   "effet": "REFUSE"
+  },
+  {
+   "regle_id": "R06_JEUNE_PERMIS_PUISSANCE",
+   "libelle": "Jeune permis et véhicule puissant",
+   "conditions": [
+    {
+     "champ": "anciennete_permis_mois",
+     "operateur": "<",
+     "seuil": "36"
+    },
+    {
+     "champ": "puissance_fiscale_cv",
+     "operateur": ">",
+     "seuil": "7"
+    }
+   ],
+   "motif": "Permis de moins de 3 ans et véhicule de plus de 7 CV.",
+   "effet": "REFUSE"
+  }
+ ]
+}

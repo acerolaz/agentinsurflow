@@ -1,3 +1,4 @@
+# Démo C (30/10) : PR témoin pour montrer la chaîne ci-cd jusqu'à l'approbation de la production.
 """Fixtures E2E : la solution qui tourne (compose ou staging), toujours jointe par la gateway.
 
 ``E2E_URL`` désigne la gateway (défaut : le compose local). Les jetons viennent de

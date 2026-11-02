@@ -1,6 +1,8 @@
 # Requêtes SQL — recherche hybride, dossiers, traces
 
-*Livrable L5 · compétence C2. Sources : `rag/agentinsurflow_rag/infrastructure/postgres/corpus.py`
+**Rattachement : E1 : C2 Requêtes SQL.**
+
+*Livrable L5. Sources : `rag/agentinsurflow_rag/infrastructure/postgres/corpus.py`
 (`SQL_HYBRIDE`, `SQL_PAR_ARTICLES`), `underwriting-admin/…/Dossiers/VueMinimisee.cs` et `DepotDossiersEf.cs`,
 `underwriting-admin/…/Traces/DepotTracesEf.cs`. Tout le SQL est paramétré (`:param` côté SQLAlchemy,
 interpolation paramétrée côté EF Core) : aucune valeur n'est concaténée.*

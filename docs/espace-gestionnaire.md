@@ -1,5 +1,7 @@
 # Espace gestionnaire
 
+**Rattachement : E3 : C10 Intégration.**
+
 Page HTML + JavaScript sans étape de build, servie par la gateway sous **`/app/`** (Swagger garde la racine). Spec : [`superpowers/specs/2026-10-27-espace-gestionnaire-design.md`](superpowers/specs/2026-10-27-espace-gestionnaire-design.md) ; issues #103, #104, #101, #129, #130.
 
 ## Écrans et routes

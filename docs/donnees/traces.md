@@ -1,6 +1,8 @@
 # Référentiel SQL des traces (OpenTelemetry)
 
-*Livrable L6 · compétences C2, C4. Code : `underwriting-admin` (C#) — `Infrastructure/Otlp/OtlpVersSpans.cs`,
+**Rattachement : E1 : C2 Requêtes SQL, C4 Base de données et RGPD · E3 : C11 Monitoring.**
+
+*Livrable L6. Code : `underwriting-admin` (C#) — `Infrastructure/Otlp/OtlpVersSpans.cs`,
 `Infrastructure/Traces/`, `Api/TracesEndpoints.cs`, `Api/SourcesSansJeton.cs`. Spec §9, décisions S3-13, S3-17, S3-21.*
 
 ## Pourquoi cette forme

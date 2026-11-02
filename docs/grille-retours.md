@@ -1,5 +1,7 @@
 # Grille de retours des ateliers croisés 1 à 5
 
+**Rattachement : transverse, aucune compétence d'E1 ni d'E3.**
+
 *Modalité d'évaluation du brief (§ 4.1) : on consigne ce que les relecteurs ont dit, ce qui a été décidé, et même ce qui a été refusé. Ici, rien n'est inventé : une cellule sans source porte « non consigné ».*
 
 **Constat au 28/10/2026** : aucune source du dépôt ni de GitHub ne contient le texte d'un retour de relecteur des ateliers 1 à 4. Les trois grilles PDF fournies sont vierges (aucune annotation, aucun champ rempli) ; les grilles du dépôt (`eval/ateliers/sprint-2-grille.md`, `sprint-3-grille.md`) sont des modèles non remplis ; les scripts de démo laissent le « journal des retours » à compléter par Acerola. Les lignes ci-dessous sont donc des emplacements : elles se remplissent dès qu'Acerola fournit les retours reçus, sans réécrire l'historique.

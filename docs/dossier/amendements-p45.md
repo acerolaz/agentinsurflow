@@ -1,5 +1,7 @@
 # Amendement au dossier de conception (V1.2) — point ouvert P45
 
+**Rattachement : E1 : C5 API REST · E3 : C13 Livraison continue.**
+
 **P45 : reporter dans L5 et L11 les écarts du §10.1** de l'addendum V2.13 (p. 53). Le dossier décrit la cible d'origine ; le code en production (v0.6.0, 22/10) s'en écarte sur trois points, que le §10.1 consigne déjà :
 
 - la gateway est en **.NET 10** (« dossier : .NET 8 ») ;

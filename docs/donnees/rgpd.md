@@ -1,6 +1,8 @@
 # RGPD — applicabilité, minimisation, registre, procédures de tri
 
-*Livrable L8 · compétence C4. Spec §2.2, §5.3, §9.4.*
+**Rattachement : E1 : C4 Base de données et RGPD.**
+
+*Livrable L8. Spec §2.2, §5.3, §9.4.*
 
 ## Applicabilité
 

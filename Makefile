@@ -9,7 +9,7 @@ VERSION := $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 
 # Monorepo : rag (Python, espace de travail uv à la racine), gateway/ et underwriting-admin/
 # (C#, leurs propres Makefile, appelés par gateway-<cible> et underwriting-<cible>).
-.PHONY: docs-pdf agreger bareme scraper bigdata modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval donnees-evals calibrer run build docker infra proteger rollback preuve
+.PHONY: extraire-base docs-pdf agreger bareme scraper bigdata modele recette garde-fous install fmt lint test espace-test test-integration test-e2e pyramide openapi migrate ingest extraire up down eval donnees-evals calibrer run build docker infra proteger rollback preuve
 
 install:            ## dépendances figées par uv.lock (≈ dotnet restore --locked-mode)
 	uv sync --locked --all-packages --all-groups --no-group bigdata  # pyspark (sdist ~450 Mo) : seulement par make bigdata
@@ -79,6 +79,9 @@ donnees-evals:      ## schéma des jeux d'évaluation, articles attendus, sha256
 
 docs-pdf:           ## docs/pdf/*.pdf : documentation en PDF balisé (Chrome, variable CHROME)
 	uv run python tools/docs_pdf.py
+
+extraire-base:      ## base dossiers (PG_DOSSIERS_PASSWORD du .env) → data/raw/dossiers-agregats-<date>.json
+	uv run python tools/extraction_base.py
 
 scraper:            ## make scraper URL=<gateway> — notices produits publiques → data/raw/notices-<date>.json
 	uv run python tools/scraping_notices.py --url $(URL)

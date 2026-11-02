@@ -259,3 +259,28 @@ Tri : les tranches sont ordonnées numériquement (`ORDER BY MIN(freq.BonusMalus
 Limites constatées : (a) les bornes d'exposition et de bonus-malus sont filtrées mais non écrêtées, à la différence du GLM
 (`donnees.py` écrête) : les agrégats excluent les lignes hors bornes ; (b) `IDpol` est lu en `double` côté `freq`
 et en `int` côté `sev` (inférence du schéma CSV) : Spark ajoute un `cast` dans la clé de diffusion, sans effet sur le résultat.
+
+## 7. Extraction depuis la base `dossiers`
+
+*Source : `tools/extraction_base.py` (`make extraire-base`).*
+
+```sql
+SELECT formule, tranche_age,
+       count(*)::int AS nb_dossiers,
+       round(avg(crm_bonus_malus)::numeric, 2)::float8 AS crm_moyen,
+       round(avg(nb_sinistres)::numeric, 2)::float8 AS sinistres_moyens,
+       count(*) FILTER (WHERE releve_present)::int AS avec_releve
+FROM vue_contrat_minimisee
+GROUP BY formule, tranche_age
+ORDER BY formule, tranche_age
+```
+
+| Choix | Raison |
+|---|---|
+| Sélection sur la vue minimisée, pas sur les tables | Le compte `dossiers` n'a pas le droit de lire `souscripteur` ni `contrat` |
+| Regroupement par formule et tranche d'âge | L'objectif est un profil de portefeuille : aucune ligne individuelle ne sort |
+| Colonnes écartées : `numero_contrat`, `gestionnaire_id`, `departement`, `observations` | Minimisation : elles identifient un dossier ou portent du texte libre |
+| `FILTER` sur `releve_present` | Un seul passage sur la vue au lieu d'une sous-requête |
+
+Pas d'index dédié : la requête parcourt tout le portefeuille, et le volume reste faible (11 dossiers de démonstration).
+

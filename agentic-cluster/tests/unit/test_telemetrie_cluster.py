@@ -224,9 +224,20 @@ def journal_vierge() -> Any:
     """Le journal d'audit tel qu'au démarrage d'un processus, restauré ensuite."""
     journal = logging.getLogger("insurflow.audit")
     etat = (journal.handlers[:], journal.level, journal.propagate)
-    journal.handlers, journal.level, journal.propagate = [], logging.NOTSET, True
+
+    for h in journal.handlers[:]:
+        journal.removeHandler(h)
+    journal.setLevel(logging.NOTSET)
+    journal.propagate = True
+
     yield journal
-    journal.handlers, journal.level, journal.propagate = etat[0], etat[1], etat[2]
+
+    for h in journal.handlers[:]:
+        journal.removeHandler(h)
+    for h in etat[0]:
+        journal.addHandler(h)
+    journal.setLevel(etat[1])
+    journal.propagate = etat[2]
 
 
 def test_audit_info_emis_quand_azure_a_deja_pose_son_gestionnaire(journal_vierge: Any) -> None:

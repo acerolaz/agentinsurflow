@@ -22,7 +22,7 @@ def test_verifier_refuse_tu_trop_faible() -> None:
 def test_verifier_refuse_ti_et_e2e_trop_forts() -> None:
     echecs = verifier({"TU": 65, "TI": 5, "E2E": 30})
     assert len(echecs) == 1 and "E2E" in echecs[0]
-    assert "TI" in verifier({"TU": 65, "TI": 30, "E2E": 5})[0]
+    assert "TI" in verifier({"TU": 65, "TI": 31, "E2E": 4})[0]
 
 
 def test_verifier_refuse_niveau_vide() -> None:
@@ -78,4 +78,3 @@ def test_seuil_ti_a_30_pour_cent() -> None:
     # #179 : services fins et contrats HTTP ; 30 % décidé par écrit, pas davantage
     assert verifier({"TU": 70, "TI": 29, "E2E": 1}) == []
     assert "TI" in verifier({"TU": 68, "TI": 31, "E2E": 1})[0]
-

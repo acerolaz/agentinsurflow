@@ -69,3 +69,14 @@ La base annexe, underwriting-admin, le serveur MCP, le cluster d'agents et rag o
 Un déploiement ou un rollback pose les **cinq** images (`rag`, `underwriting`, `gateway`, `agentinsurflow-mcp`, `agentinsurflow-cluster`) au même SHA, lu sur la gateway de la révision visée. `deploy.yml` vérifie dans l'ACR (lecture seule) qu'elles existent toutes avant de toucher à l'application, sinon il échoue sans rien déployer. Conséquence : un rollback vers une révision **antérieure à U5** est refusé (`agentinsurflow-underwriting:<ancien SHA>` n'a jamais été construite). De même, un rollback vers un SHA **antérieur à `feat/mcp`** est refusé : aucune image `agentinsurflow-mcp:<SHA>` n'existe. Un rollback vers un SHA **antérieur au cluster** (#7) est refusé de même : aucune image `agentinsurflow-cluster:<SHA>` n'existe. Un rollback vers un SHA **antérieur au réglage par agent** (sans `agentic-cluster/agents.toml`) est refusé aussi, par l'étape de vérification des modèles de `deploy.yml`. Le premier rollback possible est vers la première révision à 5 images (fail-closed : un rollback vers un SHA antérieur à la séparation du MCP ou à l'arrivée du cluster n'est **pas pris en charge**) ; au-delà, redéployer à la main un SHA précis (`make rollback TAG=<sha>`).
 
 Un rollback vers un commit antérieur à `fonction-calcul/` (avant T9) échoue au déploiement de la Function : fail-closed, redéployer une version ≥ T9.
+
+## Si les tentatives sur Azure sont épuisées
+
+`deploy.yml` rejoue chaque écriture Azure jusqu'à 3 fois sur erreur passagère (503, 429, `ServerTimeout`…), avec `tools/az_reessayer.py`. Le journal du job donne chaque tentative et sa cause. Une erreur définitive (401, 403, YAML invalide, image absente) échoue tout de suite.
+
+Si le job échoue avec « tentatives épuisées », la production peut être **à versions mêlées** : certains services sur la nouvelle version, d'autres sur l'ancienne, et PostgreSQL éventuellement recréé vide.
+
+1. Relancer le job en échec (*Re-run failed jobs*) : il rejoue toutes les étapes, sans effet sur ce qui est déjà à jour.
+2. Si Azure reste indisponible, consulter son état sur <https://azure.status.microsoft/> et attendre avant de relancer.
+3. Si la nouvelle version est en cause, lancer `make rollback`.
+4. Dans tous les cas, contrôler `/health` et ses variantes par service avant de rouvrir le service.

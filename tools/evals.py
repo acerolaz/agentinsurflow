@@ -227,8 +227,7 @@ def calibrer(url: str, cas: list[dict[str, Any]], jeton: str | None) -> None:
 
 
 LIMITE = (
-    "Jeux d'évaluation de cette PR rejoués contre staging (code de `main`). "
-    "Un prompt modifié ici n'est évalué qu'après merge, par le job `evals`."
+    "Code et jeux d'évaluation de cette PR, évalués dans le runner avec le vrai LLM (#180)."
 )
 
 

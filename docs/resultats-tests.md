@@ -15,7 +15,7 @@
 | Logique et appels de l'espace gestionnaire | `make espace-test` | 23 tests dans `gateway/tests/espace/` | Non mesurée |
 | Parcours sur staging | job `e2e-staging` | 13 réussis, 4 ignorés | Sans objet |
 | Répartition des tests | `make pyramide`, compte corrigé par #179 | 1 007 TU (72 %), 378 TI (27 %), 17 E2E (1 %) : conforme au seuil de 30 % de TI, écart assumé à la cible de 20 % | Sans objet |
-| Évaluations du modèle | `evals-pr`, PR #185 | 100 % de réussite (seuil 80 %), latence p95 de 22,08 s (maximum 30 s) | Sans objet |
+| Évaluations du modèle | `evals-pr`, PR #214 (run 41478839683) : rag de la PR, vrai LLM | 100 % de réussite (seuil 80 %), latence p95 de 26,96 s (maximum 30 s) | Sans objet |
 
 ## API du modèle (C9)
 
@@ -42,7 +42,7 @@ Le seul avertissement affiché vient d'une séquence d'échappement dans la bibl
 
 ## Modèle : lecture des évaluations
 
-Les 100 % portent sur le jeu de référence joué par `evals-pr`, avec deux cas écartés car ils demandent un dossier (`bonus-malus-du-contrat`, `bola-autre-gestionnaire`). Ce jeu est **petit** : ce résultat détecte une régression franche, mais ne donne pas de taux de réussite généralisable. La latence reste sous le maximum, avec une marge de 8 s. La mesure dépend toutefois de Foundry et de l'état de staging : il faut lire une dégradation sur plusieurs runs.
+Les 100 % portent sur le jeu de référence joué par `evals-pr`, avec deux cas écartés car ils demandent un dossier (`bonus-malus-du-contrat`, `bola-autre-gestionnaire`). Ce jeu est **petit** : ce résultat détecte une régression franche, mais ne donne pas de taux de réussite généralisable. La latence reste sous le maximum, avec une marge de 3 s seulement : c'est le point à surveiller, car un ralentissement de Foundry suffirait à faire échouer la porte. La mesure dépend toutefois de Foundry et de l'état de staging : il faut lire une dégradation sur plusieurs runs.
 
 ## Défauts révélés
 

@@ -130,6 +130,7 @@ contrat d'un autre gestionnaire, le même plan ne renvoie aucune ligne (même 40
 
 - Le plan confirme l'usage de l'index : `Index Scan using item_embedding_idx`, `Order By: (embedding <=> $0)`.
 - Le témoin montre que la mesure peut échouer : le rappel chute quand on réduit `ef_search`.
+- Le rappel varie d'un passage à l'autre, car les vecteurs sont retirés au hasard : à 20 000 vecteurs et `ef_search` = 40, un passage précédent donnait 94,4 % au lieu de 89,6 %. Seul l'ordre de grandeur compte.
 - **Au volume actuel (127 chunks), l'index n'apporte presque rien** : le scan exact tient sous la milliseconde. HNSW est un choix pour la croissance du corpus, pas un besoin d'aujourd'hui.
 - L'écart devient net à 20 000 vecteurs, au prix d'un rappel réduit. C'est `ef_search` qui règle ce compromis.
 - La construction de l'index est le coût visible à grand volume. Au-delà d'environ 9 700 vecteurs, PostgreSQL signale que le graphe dépasse `maintenance_work_mem` (64 Mo par défaut), ce qui ralentit la construction.

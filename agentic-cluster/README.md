@@ -24,6 +24,8 @@ flowchart LR
 | `POST /evaluations/{numero_contrat}/revue` `{decision, validation, motif (1-500)}` | `200 {statut}` ; `404 CONTRAT_INTROUVABLE` (autre gestionnaire) ; `409 AUCUNE_REVUE_EN_ATTENTE` / `DOSSIER_DECIDE` ; `422 REQUETE_INVALIDE` (dont motif contenant e-mail, téléphone ou IBAN) |
 | `GET /health` (sans jeton) | `200 {version, prompts, garde_fous, reglages}` ; `503` tant que LLM Guard n'est pas chargé |
 
+Contrat OpenAPI : [`docs/openapi/agentic-cluster.json`](../docs/openapi/agentic-cluster.json), régénéré par `make openapi` (un test échoue s'il est périmé).
+
 Routes publiques (gateway, T12) : `POST /v1/souscriptions/{numero_contrat}/evaluation` → `POST /evaluations/{numero_contrat}`, `POST /v1/souscriptions/{numero_contrat}/revue` → `POST /evaluations/{numero_contrat}/revue`, `GET /health/cluster` → `GET /health`. Le document OpenAPI du cluster (`/cluster/openapi.json`, servi par la gateway) déclare déjà ces chemins publics, pour que la page Swagger unique appelle la gateway.
 
 **Qui peut appeler le cluster (R18).** La gateway **relaie** le jeton du gestionnaire (audience du cluster), comme pour `/mcp` : elle ne l'échange pas. « N'accepte que la gateway » (D105) est garanti par l'**entrée interne** de la Container App (aucune adresse joignable hors de l'environnement) et par la **revalidation du jeton** par le cluster (signature, émetteur, audience, rôle `Gestionnaire`), et non par `azp = gateway`. Le cluster échange ensuite ce jeton pour chaque agent (On-Behalf-Of en deux sauts : cluster, puis agent vers le MCP), d'où un `azp` propre à chaque agent côté MCP.

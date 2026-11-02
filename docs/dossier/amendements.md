@@ -1,5 +1,7 @@
 # Amendements au dossier de conception (V1.2)
 
+**Rattachement : E1 : C5 API REST · E3 : C9 API du modèle, C12 Tests automatisés, C13 Livraison continue.**
+
 Index des amendements, à reporter dans le dossier avant le rendu (spec O5).
 
 | Décision | Objet | Où |

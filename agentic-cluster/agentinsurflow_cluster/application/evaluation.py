@@ -13,7 +13,12 @@ from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any, Literal, get_args
 
-from agentinsurflow_cluster.application.agents import Dependances, empreinte_texte, executer_agent
+from agentinsurflow_cluster.application.agents import (
+    NOTE_HORS_BAREME,
+    Dependances,
+    empreinte_texte,
+    executer_agent,
+)
 from agentinsurflow_cluster.application.serialisation import vers_json
 from agentinsurflow_cluster.domain.fusion import FusionRefusee, fusionner
 from agentinsurflow_cluster.domain.models import (
@@ -193,6 +198,8 @@ def _fiche_provisoire(etat: EtatDossier, cause: str | None) -> Fiche:
     r = etat.risque
     if cause and cause.startswith("garde_fou:entree:"):
         motif = "Contrôle d'entrée : revue humaine requise."
+    elif cause == "limite" and r and r.note.startswith(NOTE_HORS_BAREME):
+        motif = r.note  # nomme le champ, sans sa valeur (#169)
     else:
         motif = _MOTIFS.get(cause or "", "Revue humaine requise.")
     return Fiche(

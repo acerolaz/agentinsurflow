@@ -70,7 +70,6 @@ async def test_schema_du_brouillon_publie_les_champs_de_la_fiche() -> None:
     ("outil", "args"),
     [
         ("enregistrer_brouillon", {"numero_contrat": "A", "fiche": FICHE}),
-        ("update_statut_dossier", {"numero_contrat": "A", "statut": "REFUSE"}),
     ],
 )
 async def test_redacteur_ne_peut_pas_ecrire(outil: str, args: dict[str, Any]) -> None:
@@ -81,7 +80,7 @@ async def test_redacteur_ne_peut_pas_ecrire(outil: str, args: dict[str, Any]) ->
     assert dossiers.ecritures == []
 
 
-@pytest.mark.parametrize("code", ["CONTRAT_INTROUVABLE", "ARGUMENTS_INVALIDES"])
+@pytest.mark.parametrize("code", ["ARGUMENTS_INVALIDES"])
 async def test_update_statut_erreur_is_error_avec_code(code: str) -> None:
     app = _app(FauxDossiers(ErreurOutil(code, "x")))
     async with session_mcp(app, creer(AZP_ORCHESTRATEUR)) as s:

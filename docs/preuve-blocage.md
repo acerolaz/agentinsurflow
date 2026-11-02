@@ -1,5 +1,7 @@
 # Preuve du blocage : le commit volontairement cassé
 
+**Rattachement : E3 : C12 Tests automatisés, C13 Livraison continue.**
+
 > 🗄️ **Preuve du sprint 2**, conservée telle quelle. Depuis, la protection de `main` exige aussi les jobs `gateway`,
 > `underwriting-admin` et `integration` (`lint`, `test`, `gateway`, `underwriting-admin`, `integration`,
 > `evals-pr`, `pyramide`), et `evals-pr` est **réactivé** (#55) : voir le [README](../README.md) et [`ci-evals.md`](ci-evals.md).

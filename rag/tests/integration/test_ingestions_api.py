@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 import httpx
 import pytest
@@ -19,19 +18,10 @@ from agentinsurflow_rag.api.dependances import obtenir_embeddings
 from agentinsurflow_rag.domain.ports import ErreurEmbeddings
 from agentinsurflow_rag.infrastructure.postgres.corpus import PgDepotCorpus
 from conftest import entetes
-from corpus_de_test import CORPUS, DATE_ISO, SHA
+from corpus_de_test import CORPUS, SHA, lot
 from fakes import FakeEmbeddings
 
 INGESTION = entetes("Ingestion")
-
-
-def lot(articles: list[dict[str, Any]] | None = None, **autres: Any) -> dict[str, Any]:
-    return {
-        "collection": "textes_reglementaires",
-        "instantane_sha256": SHA,
-        "instantane_date": DATE_ISO,
-        "articles": CORPUS if articles is None else articles,
-    } | autres
 
 
 async def _documents(conn: AsyncConnection) -> int:
@@ -44,13 +34,6 @@ async def test_post_ingestion_201_location_et_rapport(api: httpx.AsyncClient) ->
     rapport = reponse.json()
     assert reponse.headers["location"] == f"/api/ingestions/{rapport['id']}"
     assert (rapport["lus"], rapport["inseres"], rapport["inchanges"]) == (4, 4, 0)
-
-
-async def test_lot_sans_instantane_date_422(api: httpx.AsyncClient) -> None:
-    corps = lot()
-    del corps["instantane_date"]
-    reponse = await api.post("/api/ingestions", json=corps, headers=INGESTION)
-    assert reponse.status_code == 422
 
 
 async def test_lot_date_future_422(api: httpx.AsyncClient) -> None:
@@ -153,19 +136,9 @@ async def test_quasi_doublon_signale_pas_rejete(api: httpx.AsyncClient) -> None:
     assert [d["proche_de"] for d in rapport["quasi_doublons"]] == [CORPUS[0]["doc_id"]]
 
 
-@pytest.mark.parametrize(
-    "corps",
-    [
-        lot(collection="cgv_conditions"),  # dans le CHECK de la base, pas ingérable
-        lot(collection="inexistante"),
-        lot([CORPUS[0] | {"regle_id": "r01"}]),
-        lot([CORPUS[0] | {"regle_id": "R1_X"}]),
-        lot(instantane_sha256="pas-un-sha"),
-        lot([]),
-        lot(CORPUS * 13),  # 52 articles > 50
-    ],
-)
-async def test_lot_invalide_422(api: httpx.AsyncClient, corps: dict[str, Any]) -> None:
+async def test_lot_invalide_422(api: httpx.AsyncClient) -> None:
+    # les variations de la règle : rag/tests/unit/test_schemas_validation.py
+    corps = lot(collection="inexistante")
     assert (await api.post("/api/ingestions", json=corps, headers=INGESTION)).status_code == 422
 
 

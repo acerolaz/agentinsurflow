@@ -11,11 +11,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Pieces/Demo/*.pdf" LogicalName="pieces-demo/%(Filename).pdf" />
     <Protobuf Include="Otlp/protos/opentelemetry/proto/**/*.proto" ProtoRoot="Otlp/protos" GrpcServices="None" Access="Internal" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="AgentInsurFlow.UnderwritingAdmin.Infrastructure.Tests" />
+    <InternalsVisibleTo Include="AgentInsurFlow.UnderwritingAdmin.Infrastructure.UnitTests" />
     <InternalsVisibleTo Include="AgentInsurFlow.UnderwritingAdmin.Api.Tests" />
   </ItemGroup>
 

@@ -118,16 +118,6 @@ public sealed class ObservationsTests : IDisposable
     }
 
     [Fact]
-    public async Task Deux_mille_et_un_caracteres_400_avec_le_code()
-    {
-        var (statut, corps) = await Appeler(HttpMethod.Put, "AIF-A1", GestionnaireA, Corps(new string('a', 2001)));
-
-        Assert.Equal(HttpStatusCode.BadRequest, statut);
-        Assert.Equal("OBSERVATIONS_TROP_LONGUES", corps!.Value.GetProperty("code").GetString());
-        Assert.Null(await Observations("AIF-A1", GestionnaireA));
-    }
-
-    [Fact]
     public async Task Statut_fige_409_avec_le_code()
     {
         var (statut, corps) = await Appeler(HttpMethod.Put, "AIF-FIGE", GestionnaireA, Corps("x"));

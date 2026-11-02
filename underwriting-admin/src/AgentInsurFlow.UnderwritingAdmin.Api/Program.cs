@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using AgentInsurFlow.UnderwritingAdmin.Api;
 using AgentInsurFlow.UnderwritingAdmin.Application;
 using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
+using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Pieces;
 using AgentInsurFlow.UnderwritingAdmin.Infrastructure.PointsDeReprise;
 using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Traces;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
@@ -99,7 +100,8 @@ var connexions = new ConnexionsDossiers(
     builder.Configuration["PG_MIGRATEUR_PASSWORD"],
     MotDePasse("PG_DOSSIERS_PASSWORD"));
 builder.Services.AjouterDossiers(connexions);
-builder.Services.AddScoped<ListerPortefeuille>().AddScoped<ConsulterContrat>().AddScoped<ListerPieces>()
+builder.Services.AddSingleton<IStockPieces, StockPiecesDemo>();
+builder.Services.AddScoped<ListerPortefeuille>().AddScoped<ConsulterContrat>().AddScoped<ListerPieces>().AddScoped<ConsulterPiece>()
     .AddScoped<EnregistrerBrouillon>().AddScoped<ChangerStatut>().AddScoped<EnregistrerObservations>().AddScoped<EnregistrerEtat>()
     .AddScoped<LireEtat>().AddScoped<EnregistrerRelance>().AddScoped<ClasserSansSuite>().AddScoped<LireContratGenere>().AddScoped<LireFicheSouscripteur>();
 

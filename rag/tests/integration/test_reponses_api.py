@@ -9,7 +9,6 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 import httpx
-import pytest
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from agentinsurflow_rag.api import app
@@ -150,10 +149,10 @@ async def test_llm_en_panne_revue_humaine(corpus: httpx.AsyncClient) -> None:
     assert corps["citations"]
 
 
-@pytest.mark.parametrize("numero", ["../traces", "AIF 2026", "x" * 41])
-async def test_numero_contrat_invalide_422(api: httpx.AsyncClient, numero: str) -> None:
+async def test_numero_contrat_invalide_422(api: httpx.AsyncClient) -> None:
+    # les variations de la règle : rag/tests/unit/test_schemas_validation.py
     brancher()
-    assert (await _poser(api, numero_contrat=numero)).status_code == 422
+    assert (await _poser(api, numero_contrat="../traces")).status_code == 422
 
 
 async def test_spans_exportes_sans_la_question(

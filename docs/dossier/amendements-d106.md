@@ -1,5 +1,7 @@
 # Amendements au dossier de conception (V1.2) — décision D106
 
+**Rattachement : E3 : C9 API du modèle.**
+
 **D106 remplace D26 et amende D10, D93 et D100.** Plus aucune exception à D22 : le cluster écrit ses points de reprise LangGraph par la gateway vers underwriting-admin (`/api/points-de-reprise`, rôle `PointsDeReprise`, `azp` du cluster), dans le schéma `points_reprise` de la base annexe, au compte PostgreSQL `points_reprise`. Le cluster n'a plus ni DSN, ni schéma `agent_state`, ni dépendance `langgraph-checkpoint-postgres`. Spec : [`../superpowers/specs/2026-10-28-o8-suppression-d26-design.md`](../superpowers/specs/2026-10-28-o8-suppression-d26-design.md).
 
 *Numéro* : D105 est déjà prise dans le dossier V1.2 (« le cluster d'agents est un microservice que seule la gateway joint ») ; la spec S4 la réutilisait par erreur, la nouvelle décision est donc **D106**. Les mentions antérieures de D105 (entrée interne du cluster, R18) gardent leur sens.

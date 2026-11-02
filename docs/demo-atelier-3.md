@@ -1,5 +1,7 @@
 # Démo — atelier croisé n°3 « Données et ancrage »
 
+**Rattachement : E1 : C1 Extraction, C3 Agrégation, C5 API REST.**
+
 *Livrable L13. Tout se fait sur l'URL de **production** : `$PROD_URL` (domaine personnalisé, variable GitHub
 `PROD_URL`, tâche G4), par la page Swagger unique de la gateway (`$PROD_URL/`), connecté en Entra (PKCE)
 avec le rôle `Gestionnaire`. Questions : `eval/questions-demo.jsonl`.*

@@ -1,5 +1,7 @@
 # Secrets et variables : du `.env` à GitHub
 
+**Rattachement : E3 : C13 Livraison continue.**
+
 **Règle** : aucune valeur sensible dans le dépôt. `.env.example` (versionné) liste les clés **sans valeurs** ;
 `.env` (ignoré par `.gitignore` et `.dockerignore`) porte les valeurs locales. Pour la chaîne, chaque clé est
 reportée **à la main** dans GitHub.

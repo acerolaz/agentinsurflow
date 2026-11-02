@@ -1,5 +1,7 @@
 # Chaîne d'évaluation sur pull request
 
+**Rattachement : E3 : C12 Tests automatisés, C13 Livraison continue.**
+
 **Critère C13 (issue #55)** : « Documentation : installation, configuration et test de la chaîne + doc utilisateur de
 déclenchement ». Cette page décrit le job `evals-pr` de `.github/workflows/ci-cd.yml` tel qu'il est livré.
 
@@ -7,11 +9,11 @@ déclenchement ». Cette page décrit le job `evals-pr` de `.github/workflows/ci
 
 Sur une pull request, `evals-pr` teste d'abord les données d'évaluation hors ligne (`make donnees-evals`), puis
 rejoue le golden set (`eval/golden.jsonl`) et le jeu de démo (`eval/questions-demo.jsonl`) **de la PR** contre
-l'API de **staging**, avec la porte bloquante de `tools/evals.py` (taux de réussite, latence p95). Le résumé est
+le **rag de la PR**, démarré dans le runner avec PostgreSQL et le vrai LLM (#180), avec la porte bloquante de `tools/evals.py` (taux de réussite, latence p95). Le résumé est
 posté en commentaire sur la PR.
 
 Aucun secret : le jeton d'évaluation est demandé à Entra par OIDC (`azure/login`, puis
-`az account get-access-token`). Une fois l'identité de la CI installée (`infra/bootstrap.sh` et `infra/entra.sh`, déjà exécutés), aucune écriture
+`az account get-access-token`). Une fois l'identité de la CI installée (`infra/bootstrap.sh`, `infra/entra.sh` et `make llm`), aucune écriture
 Azure ni Entra n'est nécessaire pour utiliser la chaîne.
 
 ## Schéma
@@ -46,7 +48,30 @@ Fichiers déclencheurs (`DECLENCHEURS_EVALS`) : `rag/agentinsurflow_rag/prompts/
 Tout **autre libellé** posé sur la PR relance aussi la chaîne de PR (`labeled`) ; la précédente est annulée
 (`cancel-in-progress`).
 
+### Tous les déclencheurs de la chaîne
+
+| Événement | Fichier | Ce qui part |
+|---|---|---|
+| PR ouverte, mise à jour, rouverte ou libellée | `ci-cd.yml` | `lint`, `test`, `integration`, `pyramide`, `modele`, `gateway`, `underwriting-admin` ; `evals-pr` selon le tableau ci-dessus |
+| Push sur `main` (fusion) | `ci-cd.yml` | Les mêmes portes, puis `build` → staging → `evals` si besoin → `e2e-staging` → `release` → production |
+| Push sur `main` limité à la documentation (`paths-ignore`) | `ci-cd.yml` | Rien : ni build, ni version, ni déploiement |
+| **Approbation humaine** de l'environnement `staging`, puis `production` | environnements GitHub | Reprise du job de déploiement en attente |
+| `workflow_dispatch` de `ci-cd.yml` (depuis `main`) | `ci-cd.yml` | `evals-pr` à la main |
+| `workflow_dispatch` de `deploy.yml` (`make rollback`) | `deploy.yml` | Redéploiement d'un environnement, avec un tag précis ou la révision précédente |
+| Appel par `ci-cd.yml` (`workflow_call`) | `deploy.yml` | Déploiement de staging et de production dans la chaîne |
+
+Une PR remplace sa propre chaîne en cours (`cancel-in-progress`), jamais celle de `main`.
+
 ## Installation et configuration
+
+Installation complète, dans l'ordre, sur un dépôt et un abonnement Azure neufs :
+
+1. `infra/bootstrap.sh` crée l'application de la CI et ses sujets OIDC : aucun mot de passe n'est stocké dans GitHub.
+2. `make infra`, `make entra`, `make llm`, `make calcul`, `make annexe` et `make vigie` provisionnent Azure, à la main (écritures Azure).
+3. Reporter les variables et les secrets dans GitHub : [`secrets.md`](secrets.md), clé par clé.
+4. Créer les environnements GitHub `staging` et `production`, avec un relecteur obligatoire.
+5. `make proteger` applique la protection de `main` (`infra/protection-main.json`) : les portes de PR deviennent obligatoires.
+6. Finir avec le tableau ci-dessous, puis le test de la chaîne.
 
 À faire une fois, par Acerola :
 
@@ -57,6 +82,8 @@ Tout **autre libellé** posé sur la PR relance aussi la chaîne de PR (`labeled
 | Libellé `evals` | dépôt | `gh label create evals` |
 | Sujets OIDC fédérés | Entra, application de la CI | créés par `infra/bootstrap.sh` : `ref:refs/heads/main`, `environment:staging`, `environment:production`, `pull_request` |
 | Rôle `Gestionnaire` sur `agentinsurflow-rag` | Entra | attribué à la CI par `infra/entra.sh` (avec `Ingestion`) |
+| Rôle `LLM` sur `agentinsurflow-llm` | Entra | attribué à la CI par `make llm`, à la main (#180) |
+| `LLM_AUDIENCE`, `RAG_API_CLIENT_ID`, `RAG_SEUIL` | variables du dépôt | déjà posées |
 
 Sans `STAGING_URL`, le job échoue avec le message « variable STAGING_URL absente ».
 
@@ -113,11 +140,8 @@ est le commit de fusion que GitHub construit (tête de la PR fusionnée dans `ma
 
 ## Limites
 
-- `evals-pr` évalue le **code de `main` déployé en staging** avec les **jeux d'évaluation de la PR**. Un prompt ou un
-  instantané modifié dans la PR n'est évalué par le modèle qu'**après le merge**, par le job `evals` de staging
-  (porte bloquante avant la release, inchangée). Le test des données, lui, porte bien sur les fichiers de la PR.
-- Pas de service PostgreSQL dans le job : la base est celle de staging.
-- Le critère « service PostgreSQL, `RAG_SEUIL` » de #55 n'est donc couvert qu'à travers staging. La couverture
-  complète (rag de la PR évalué avec le vrai LLM dans le runner) est l'objet de l'issue de suite **#180**.
+- `evals-pr` évalue le **rag de la PR** : prompts, code et instantanés de la PR, démarré dans le runner avec PostgreSQL du compose et le vrai LLM. Le LLM et les embeddings passent par la gateway de **staging**, seule porte vers Foundry.
+- Le rag de la PR prend le jeton de l'identité de la CI par la connexion OIDC de `az` (`RAG_CREDENTIAL_AZ_CLI`). Aucun secret n'est stocké. Il faut que la CI porte le rôle `LLM` : `make llm`, à la main, avec `AZURE_CLIENT_ID` dans le `.env`.
+- Chaque passage consomme des tokens Foundry : le job ne part que sur un déclencheur d'évaluation, un libellé ou à la main.
 - `workflow_dispatch` ne fonctionne que depuis `main` (voir plus haut).
-- Les cas à `numero_contrat` sont écartés (`--sans-dossiers`) jusqu'à underwriting-admin (U2).
+- Les cas à `numero_contrat` sont écartés (`--sans-dossiers`) : le runner n'a ni underwriting-admin ni serveur MCP.

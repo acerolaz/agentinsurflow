@@ -96,6 +96,7 @@ async def test_refus_leve_erreur_outil_avec_le_code() -> None:
         with pytest.raises(ErreurOutil) as exc:
             await client.appeler("analyste", "jeton-gestionnaire", "update_statut_dossier", {})
     assert exc.value.code == "UNAUTHORIZED_TOOL"
+    assert str(exc.value) == "refus"  # le texte du serveur porte le champ hors barème (#169)
 
 
 async def test_panne_de_transport_devient_mcp_indisponible() -> None:

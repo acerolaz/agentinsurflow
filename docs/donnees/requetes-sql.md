@@ -1,6 +1,8 @@
 # Requêtes SQL — recherche hybride, dossiers, traces
 
-*Livrable L5 · compétence C2. Sources : `rag/agentinsurflow_rag/infrastructure/postgres/corpus.py`
+**Rattachement : E1 : C2 Requêtes SQL.**
+
+*Livrable L5. Sources : `rag/agentinsurflow_rag/infrastructure/postgres/corpus.py`
 (`SQL_HYBRIDE`, `SQL_PAR_ARTICLES`), `underwriting-admin/…/Dossiers/VueMinimisee.cs` et `DepotDossiersEf.cs`,
 `underwriting-admin/…/Traces/DepotTracesEf.cs`. Tout le SQL est paramétré (`:param` côté SQLAlchemy,
 interpolation paramétrée côté EF Core) : aucune valeur n'est concaténée.*
@@ -106,19 +108,34 @@ Execution Time: 0.100 ms
 Le contrat est trouvé par l'index unique, puis filtré par gestionnaire (`gestionnaire_id = :oid`) : pour un
 contrat d'un autre gestionnaire, le même plan ne renvoie aucune ligne (même 404 qu'un contrat inexistant).
 
-### Recherche vectorielle, plein texte, référence exacte — 🔴 à mesurer
+### Tri vectoriel HNSW contre scan exact — mesuré le 02/11/2026
 
-À faire sur la base locale **ingérée** (`make agreger` puis `make ingest … JEU=data/aggregated/corpus-2026-10-27.json`,
-qui exige l'accès Azure OpenAI pour les embeddings), avant et après index :
+**Source** : [`tools/mesure_hnsw.sql`](../../tools/mesure_hnsw.sql) et [`hnsw-2026-11-02.txt`](../../eval/preuves/hnsw-2026-11-02.txt), rejouables. PostgreSQL 16.10, pgvector 0.8.0, poste local sous Docker, index aux réglages de la migration (`vector_cosine_ops`, `ef_search` = 40), 50 requêtes, top 10.
 
-```sql
-SET enable_indexscan = off; SET enable_bitmapscan = off;   -- « avant » : scan exact
-EXPLAIN ANALYZE <requête de la §1>;
-RESET ALL;                                                 -- « après » : HNSW, GIN, B-tree
-EXPLAIN ANALYZE <requête de la §1>;
-```
+**Vecteurs synthétiques** : 1536 dimensions, répartis en 50 groupes. La base locale est vide et les embeddings réels demandent Azure OpenAI ; la base de staging n'est pas joignable depuis le poste. Les valeurs de rappel ne se transposent donc pas telles quelles au corpus réel.
 
-Les plans « avant / après » seront collés ici, avec le rappel du HNSW mesuré contre le scan exact.
+| Vecteurs | Construction de l'index | Scan exact, par requête | HNSW, par requête | Rappel@10 |
+|---|---|---:|---:|---:|
+| 127 | 0,0 s | 0,17 ms | 0,10 ms | 100,0 % |
+| 5000 | 1,3 s | 12,48 ms | 0,44 ms | 98,0 % |
+| 20000 | 27,8 s | 49,84 ms | 0,77 ms | 89,6 % |
+
+| Témoin à 20 000 vecteurs | Rappel@10 |
+|---|---:|
+| `ef_search` = 40 | 89,6 % |
+| `ef_search` = 10 | 76,4 % |
+| `ef_search` = 5 (au plus 5 résultats renvoyés sur 10) | 45,6 % |
+
+**Interprétation.**
+
+- Le plan confirme l'usage de l'index : `Index Scan using item_embedding_idx`, `Order By: (embedding <=> $0)`.
+- Le témoin montre que la mesure peut échouer : le rappel chute quand on réduit `ef_search`.
+- Le rappel varie d'un passage à l'autre, car les vecteurs sont retirés au hasard : à 20 000 vecteurs et `ef_search` = 40, un passage précédent donnait 94,4 % au lieu de 89,6 %. Seul l'ordre de grandeur compte.
+- **Au volume actuel (127 chunks), l'index n'apporte presque rien** : le scan exact tient sous la milliseconde. HNSW est un choix pour la croissance du corpus, pas un besoin d'aujourd'hui.
+- L'écart devient net à 20 000 vecteurs, au prix d'un rappel réduit. C'est `ef_search` qui règle ce compromis.
+- La construction de l'index est le coût visible à grand volume. Au-delà d'environ 9 700 vecteurs, PostgreSQL signale que le graphe dépasse `maintenance_work_mem` (64 Mo par défaut), ce qui ralentit la construction.
+
+**Non mesuré** : la requête hybride complète (vectoriel + plein texte + RRF) sur le corpus réel, et le plein texte seul. Il faudrait la base ingérée avec de vrais embeddings.
 
 ## 6. Spark SQL (big data) — freMTPL2
 
@@ -242,3 +259,28 @@ Tri : les tranches sont ordonnées numériquement (`ORDER BY MIN(freq.BonusMalus
 Limites constatées : (a) les bornes d'exposition et de bonus-malus sont filtrées mais non écrêtées, à la différence du GLM
 (`donnees.py` écrête) : les agrégats excluent les lignes hors bornes ; (b) `IDpol` est lu en `double` côté `freq`
 et en `int` côté `sev` (inférence du schéma CSV) : Spark ajoute un `cast` dans la clé de diffusion, sans effet sur le résultat.
+
+## 7. Extraction depuis la base `dossiers`
+
+*Source : `tools/extraction_base.py` (`make extraire-base`).*
+
+```sql
+SELECT formule, tranche_age,
+       count(*)::int AS nb_dossiers,
+       round(avg(crm_bonus_malus)::numeric, 2)::float8 AS crm_moyen,
+       round(avg(nb_sinistres)::numeric, 2)::float8 AS sinistres_moyens,
+       count(*) FILTER (WHERE releve_present)::int AS avec_releve
+FROM vue_contrat_minimisee
+GROUP BY formule, tranche_age
+ORDER BY formule, tranche_age
+```
+
+| Choix | Raison |
+|---|---|
+| Sélection sur la vue minimisée, pas sur les tables | Le compte `dossiers` n'a pas le droit de lire `souscripteur` ni `contrat` |
+| Regroupement par formule et tranche d'âge | L'objectif est un profil de portefeuille : aucune ligne individuelle ne sort |
+| Colonnes écartées : `numero_contrat`, `gestionnaire_id`, `departement`, `observations` | Minimisation : elles identifient un dossier ou portent du texte libre |
+| `FILTER` sur `releve_present` | Un seul passage sur la vue au lieu d'une sous-requête |
+
+Pas d'index dédié : la requête parcourt tout le portefeuille, et le volume reste faible (11 dossiers de démonstration).
+

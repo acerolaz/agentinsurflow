@@ -1,6 +1,6 @@
 using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
 
-namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Tests;
+namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.UnitTests;
 
 /// <summary>TU — SQL du seed des gestionnaires C (CI) et du dossier « refus » de A (démo K1), sans base.</summary>
 public sealed class SeedDossiersTests
@@ -43,6 +43,16 @@ public sealed class SeedDossiersTests
         Assert.Contains("AIF-2026-000010", sql);
         Assert.Contains("releve-10.pdf", sql);
         Assert.DoesNotContain("AIF-2026-000007", sql);
+    }
+
+    [Fact]
+    public void SqlRefusA_seme_aussi_le_dossier_11_hors_bareme_avec_ses_pieces()
+    {
+        var sql = SeedDossiers.SqlRefusA(Oid);
+
+        Assert.Contains("AIF-2026-000011", sql);
+        Assert.Contains("4.00", sql); // CRM au-delà de la borne légale de 3,50 : la Function répond 422
+        Assert.Contains("releve-11.pdf", sql);
     }
 
     [Fact]

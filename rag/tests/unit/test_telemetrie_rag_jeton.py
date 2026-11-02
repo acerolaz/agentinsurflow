@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 import requests
 from azure.core.exceptions import ClientAuthenticationError
-from azure.identity import ClientAssertionCredential
+from azure.identity import AzureCliCredential, ClientAssertionCredential, ClientSecretCredential
 
 from agentinsurflow_rag.infrastructure.entra.application import credential_application
 from agentinsurflow_rag.infrastructure.otel import telemetrie
@@ -104,3 +104,14 @@ def test_identite_managee_sans_secret_la_session_porte_l_auth(
 def test_configuration_incomplete_pas_de_credential() -> None:
     assert credential_application(None, "c", "s", None) is None
     assert credential_application("t", "c", None, None) is None
+
+
+def test_connexion_az_du_runner_sans_secret_ni_identite() -> None:
+    # #180 : evals-pr lance rag sur le runner, après azure/login (OIDC) ; aucun secret
+    assert isinstance(credential_application("t", "c", None, None, az_cli=True), AzureCliCredential)
+
+
+def test_secret_prioritaire_sur_la_connexion_az() -> None:
+    assert isinstance(
+        credential_application("t", "c", "s", None, az_cli=True), ClientSecretCredential
+    )

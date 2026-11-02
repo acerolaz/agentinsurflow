@@ -30,6 +30,7 @@ def _fournisseur_jeton(cfg: ConfigLLM) -> Callable[[], str]:
         cfg.rag_api_client_id,
         cfg.rag_client_secret.get_secret_value(),
         cfg.azure_uami_client_id,
+        az_cli=cfg.rag_credential_az_cli,
     )
     if credential is None:
         raise ErreurLLM("ni RAG_CLIENT_SECRET (local) ni AZURE_UAMI_CLIENT_ID (Azure)")

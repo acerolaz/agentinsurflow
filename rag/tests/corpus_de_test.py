@@ -51,3 +51,12 @@ CORPUS = [
         "leurs ayants droit.",
     ),
 ]
+
+
+def lot(articles: list[dict[str, Any]] | None = None, **autres: Any) -> dict[str, Any]:
+    return {
+        "collection": "textes_reglementaires",
+        "instantane_sha256": SHA,
+        "instantane_date": DATE_ISO,
+        "articles": CORPUS if articles is None else articles,
+    } | autres

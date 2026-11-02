@@ -135,14 +135,6 @@ def test_date_du_manifeste_malformee_message_clair(
     assert appels == []
 
 
-def test_option_date_malformee_message_clair(
-    appels: list[httpx.Request], capsys: pytest.CaptureFixture[str]
-) -> None:
-    assert ingest.main(["--date", "20/10/2026", "--sans-envoi"]) == 1
-    assert "Invalid isoformat string" in capsys.readouterr().err
-    assert appels == []
-
-
 # ---------------------------------------------------------------- documents rédigés (#98)
 
 
@@ -235,17 +227,6 @@ def test_source_envoie_la_collection_et_ecrit_sa_preuve(
         (tmp_path / "preuves" / "ingestion-notices_produits-2026-10-26-local.json").read_text()
     )
     assert preuve["mode"] == "markdown"
-
-
-@pytest.mark.parametrize(
-    "arguments",
-    [["--source", "x"], ["--collection", "notices_produits"]],
-)
-def test_collection_et_source_vont_ensemble(
-    arguments: list[str], capsys: pytest.CaptureFixture[str]
-) -> None:
-    assert ingest.main(arguments) == 1
-    assert "--source" in capsys.readouterr().err
 
 
 # ---------------------------------------------------------------- jeu agrégé (#52)

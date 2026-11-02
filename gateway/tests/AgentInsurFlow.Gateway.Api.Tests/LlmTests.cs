@@ -189,7 +189,7 @@ public sealed class LlmTests(Backends backends) : IClassFixture<Backends>
     }
 
     /// <summary>Amont Foundry factice : répond <paramref name="corps"/> tel quel avec ce type de contenu.</summary>
-    private static async Task<(WebApplication Amont, string Adresse)> AmontFixe(string type, string corps)
+    private static async Task<(WebApplication Amont, string Adresse)> AmontFixe(string type, string corps, bool decoupe = false)
     {
         var constructeur = WebApplication.CreateSlimBuilder();
         constructeur.WebHost.UseUrls("http://127.0.0.1:0");
@@ -197,7 +197,10 @@ public sealed class LlmTests(Backends backends) : IClassFixture<Backends>
         amont.MapPost("/openai/v1/chat/completions", async (HttpContext ctx) =>
         {
             ctx.Response.ContentType = type;
-            ctx.Response.ContentLength = Encoding.UTF8.GetByteCount(corps); // comme Foundry : réponse non découpée
+            if (!decoupe) // sinon sans longueur annoncée : c'est ce que répond Foundry en chat (#71)
+            {
+                ctx.Response.ContentLength = Encoding.UTF8.GetByteCount(corps);
+            }
             await ctx.Response.WriteAsync(corps, ctx.RequestAborted);
         });
         await amont.StartAsync(TestContext.Current.CancellationToken);
@@ -205,7 +208,7 @@ public sealed class LlmTests(Backends backends) : IClassFixture<Backends>
     }
 
     /// <summary>Un appel avec ce jeton ; rend le corps reçu et les attributs du span serveur de la requête.</summary>
-    private async Task<(string Corps, Dictionary<string, object?> Attributs)> AppelMesure(string type, string corps, string jeton, string azpAttendu)
+    private async Task<(string Corps, Dictionary<string, object?> Attributs)> AppelMesure(string type, string corps, string jeton, string azpAttendu, bool decoupe = false)
     {
         var spans = new ConcurrentBag<Activity>();
         using var ecoute = new ActivityListener
@@ -215,7 +218,7 @@ public sealed class LlmTests(Backends backends) : IClassFixture<Backends>
             ActivityStopped = spans.Add,
         };
         ActivitySource.AddActivityListener(ecoute);
-        var (amont, adresse) = await AmontFixe(type, corps);
+        var (amont, adresse) = await AmontFixe(type, corps, decoupe);
         await using var _ = amont;
         using var usine = Gateway(new FauxCredential(), ("ReverseProxy:Clusters:llm:Destinations:d1:Address", adresse));
         using var client = usine.CreateClient();
@@ -276,6 +279,31 @@ public sealed class LlmTests(Backends backends) : IClassFixture<Backends>
         const string corps = "data: {\"usage\":{\"prompt_tokens\":1}}\n\n";
 
         var (recu, attributs) = await AppelMesure("text/event-stream", corps, "app-mesure-flux");
+
+        Assert.Equal(corps, recu);
+        Assert.Equal("non_disponible", attributs["gen_ai.usage.mesure"]);
+        Assert.False(attributs.ContainsKey("gen_ai.usage.input_tokens"));
+    }
+
+    [Fact]
+    public async Task Reponse_sans_longueur_annoncee_mesuree_et_corps_intact()
+    {
+        const string corps = "{\"model\":\"m\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":6}}";
+
+        var (recu, attributs) = await AppelMesure("application/json", corps, JetonLlm(azp: "app-mesure-decoupe"), "app-mesure-decoupe", decoupe: true);
+
+        Assert.Equal(corps, recu);
+        Assert.Equal(5L, attributs["gen_ai.usage.input_tokens"]);
+        Assert.Equal(6L, attributs["gen_ai.usage.output_tokens"]);
+        Assert.False(attributs.ContainsKey("gen_ai.usage.mesure"));
+    }
+
+    [Fact]
+    public async Task Reponse_sans_longueur_au_dela_du_plafond_non_disponible_et_corps_intact()
+    {
+        var corps = "{\"usage\":{\"prompt_tokens\":5},\"remplissage\":\"" + new string('x', (4 * 1024 * 1024) + 10) + "\"}";
+
+        var (recu, attributs) = await AppelMesure("application/json", corps, JetonLlm(azp: "app-mesure-decoupe-gros"), "app-mesure-decoupe-gros", decoupe: true);
 
         Assert.Equal(corps, recu);
         Assert.Equal("non_disponible", attributs["gen_ai.usage.mesure"]);

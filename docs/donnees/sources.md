@@ -1,6 +1,8 @@
 # Inventaire des sources de données
 
-*Livrable L1 · compétence C1. Spec §3.1, §5.3 ; CGU de l'API Légifrance (DILA, 15/12/2022).*
+**Rattachement : E1 : C1 Extraction.**
+
+*Livrable L1. Spec §3.1, §5.3 ; CGU de l'API Légifrance (DILA, 15/12/2022).*
 
 | | API Légifrance (REST) | Instantané JSON (fichier) | Dossiers de démonstration (base de données) | Documents rédigés (`rag/corpus/`) | Instantané du barème (JSON) | Pages notices (scraping) | freMTPL2 (fichier + big data) |
 |---|---|---|---|---|---|---|---|
@@ -10,7 +12,8 @@
 | **Licence** | Licence Ouverte / Open Licence **Etalab 2.0** : citer la source et la date de mise à jour | Idem (dérivé de Légifrance) | Données inventées, aucune licence | Droits détenus par le projet : pas d'attribution Etalab (`/attribution` → 404) | Droits détenus par le projet (règles inventées) | Droits détenus par le projet (`/notices/conditions.html` : réutilisables dans le cadre du projet seulement) | **CC0** (domaine public) |
 | **Données personnelles** | Aucune (textes de loi) | Aucune | Fictives mais au format personnel (nom, adresse, permis) → **exposées seulement par la vue minimisée** | Aucune | Aucune | Aucune | Aucune (données anonymes) |
 | **Contraintes** | Quotas PISTE par seconde, minute et jour (🔴 valeurs) ; bac à sable possiblement en retard sur Légifrance ; identifiants dans le `.env` local seulement | Rejouable sans réseau ni identifiants ; à régénérer quand le texte change | Accès en lecture par le compte `dossiers`, contrôle BOLA par `gestionnaire_id` | Fictifs ; n'y citer que des articles présents dans l'instantané | À régénérer (`make bareme`) à chaque changement du barème : un test casse sinon ; lu par `rag` par le fichier seul | `robots.txt` lu et respecté (`Allow: /notices/`, `Disallow: /`), User-Agent `AgentInsurFlow-scraping/1.0`, délai de 1 s entre requêtes, conditions de réutilisation publiées ; analyseur HTML de la bibliothèque standard ; `make ingest` refuse un instantané de notices envoyé vers une autre collection | SHA-256 des fichiers figées dans `fonction-calcul/entrainement/donnees.toml` ; Java 17 + `pyspark` (groupe `bigdata` d'uv) |
-| **Rôle** | Source primaire | Source de rejeu (CI, démo) | Ancrage SQL de l'agent (`numero_contrat`) | Sources du garde-fou GF5 (`regle_id` d'un refus) ; les notices (GF6, notice = `contrat_type`) viendront à terme de l'instantané scrapé | Partie « Règle » des procédures internes générées (GF5) | Source des notices (collection `notices_produits`), rejouée par `make ingest … INSTANTANE=… COLLECTION=notices_produits` | Source de la démonstration big data ; agrégats disponibles pour l'agrégation #52 |
+| **Rôle** | Source primaire | Source de rejeu (CI, démo) | Ancrage SQL de l'agent (`numero_contrat`) ; agrégats par `make extraire-base` | Sources du garde-fou GF5 (`regle_id` d'un refus) ; les parties rédigées des procédures | Partie « Règle » des procédures internes générées (GF5) | Source des notices (collection `notices_produits`), rejouée par `make ingest … INSTANTANE=… COLLECTION=notices_produits` | Source de la démonstration big data  |
+| **Jeu agrégé** | Non : passe par l'instantané | **Oui** (`legifrance`) | **Exclue** : agrégats statistiques, et dossiers lus seulement par la vue minimisée | **Oui** (procédures, `bareme`) | **Oui** (`bareme`) | **Oui** (`scraping`) | **Exclue** : statistiques, pas des textes à citer |
 
 **Attribution Etalab** : chaque article cité expose son attribution (concédant DILA, licence, lien vers
 l'original, date d'extraction, mention des modifications) via `GET /api/documents/{doc_id}/attribution`.

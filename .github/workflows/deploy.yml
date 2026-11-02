@@ -180,7 +180,7 @@ jobs:
         run: |
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
           envsubst '$IMAGE_POSTGRES $DEPLOIEMENT' < infra/containerapp-postgres.yaml > "$RUNNER_TEMP/containerapp-postgres.yaml"
-          az containerapp update -n "$PG_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-postgres.yaml" --no-wait -o none
+          python3 tools/az_reessayer.py az containerapp update -n "$PG_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-postgres.yaml" --no-wait -o none
 
       - name: Déployer la Function de calcul
         env:
@@ -189,8 +189,8 @@ jobs:
         run: |
           (cd calcul-src/fonction-calcul && zip -qr "$RUNNER_TEMP/calcul.zip" function_app.py host.json requirements.txt agentinsurflow_calcul \
             -x '*/__pycache__/*')
-          az functionapp config appsettings set -g "$RG" -n "$CALCUL_APP_NAME" --settings "APP_VERSION=$TAG" -o none
-          az functionapp deployment source config-zip -g "$RG" -n "$CALCUL_APP_NAME" --src "$RUNNER_TEMP/calcul.zip" --build-remote true -o none
+          python3 tools/az_reessayer.py az functionapp config appsettings set -g "$RG" -n "$CALCUL_APP_NAME" --settings "APP_VERSION=$TAG" -o none
+          python3 tools/az_reessayer.py az functionapp deployment source config-zip -g "$RG" -n "$CALCUL_APP_NAME" --src "$RUNNER_TEMP/calcul.zip" --build-remote true -o none
 
       - name: Fumée de la Function — bonne version, API fermée sans jeton (porte bloquante)
         env:
@@ -256,7 +256,7 @@ jobs:
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
           envsubst '$DEPLOIEMENT $IMAGE_UNDERWRITING $PG_HOST $AZURE_TENANT_ID $UNDERWRITING_API_CLIENT_ID $SEED_GESTIONNAIRE_A $SEED_GESTIONNAIRE_B $SEED_GESTIONNAIRE_C' \
             < infra/containerapp-underwriting.yaml > "$RUNNER_TEMP/containerapp-underwriting.yaml"
-          az containerapp update -n "$UW_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-underwriting.yaml" --no-wait -o none
+          python3 tools/az_reessayer.py az containerapp update -n "$UW_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-underwriting.yaml" --no-wait -o none
           fqdn=$(az containerapp show -n "$UW_APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
           test -n "$fqdn" || { echo "::error::FQDN interne de $UW_APP introuvable (make infra)"; exit 1; }
           echo "fqdn=$fqdn" >> "$GITHUB_OUTPUT"
@@ -299,7 +299,7 @@ jobs:
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
           envsubst '$IMAGE_MCP $APP_ENV $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $MCP_API_CLIENT_ID $MCP_AZP_ORCHESTRATEUR $MCP_AZP_REDACTEUR $MCP_AZP_ACTUAIRE $MCP_AZP_PIECES $MCP_AZP_ANALYSTE $AZURE_UAMI_MCP_CLIENT_ID $GATEWAY_URL $CALCUL_AUDIENCE' \
             < infra/containerapp-mcp.yaml > "$RUNNER_TEMP/containerapp-mcp.yaml"
-          az containerapp update -n "$MCP_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-mcp.yaml" --no-wait -o none
+          python3 tools/az_reessayer.py az containerapp update -n "$MCP_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-mcp.yaml" --no-wait -o none
           # FQDN interne (<app>.internal.<domaine de l'environnement>) : la gateway l'appelle en https, port 443 -> 8003
           fqdn=$(az containerapp show -n "$MCP_APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
           test -n "$fqdn" || { echo "::error::FQDN interne de $MCP_APP introuvable"; exit 1; }
@@ -342,7 +342,7 @@ jobs:
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
           envsubst '$IMAGE_CLUSTER $UNDERWRITING_API_CLIENT_ID $APP_ENV $AZURE_TENANT_ID $AZURE_UAMI_CLUSTER_CLIENT_ID $MCP_API_CLIENT_ID $LLM_AUDIENCE $GATEWAY_URL $INSURFLOW_CLUSTER_CLIENT_ID $INSURFLOW_AGENT_ORCHESTRATEUR_CLIENT_ID $INSURFLOW_AGENT_PIECES_CLIENT_ID $INSURFLOW_AGENT_ANALYSTE_CLIENT_ID $INSURFLOW_AGENT_REDACTEUR_CLIENT_ID $INSURFLOW_AGENT_ACTUAIRE_CLIENT_ID' \
             < infra/containerapp-cluster.yaml > "$RUNNER_TEMP/containerapp-cluster.yaml"
-          az containerapp update -n "$CLUSTER_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-cluster.yaml" --no-wait -o none
+          python3 tools/az_reessayer.py az containerapp update -n "$CLUSTER_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-cluster.yaml" --no-wait -o none
           fqdn=$(az containerapp show -n "$CLUSTER_APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
           test -n "$fqdn" || { echo "::error::FQDN interne de $CLUSTER_APP introuvable (make infra)"; exit 1; }
           echo "fqdn=$fqdn" >> "$GITHUB_OUTPUT"
@@ -391,7 +391,7 @@ jobs:
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
           envsubst '$IMAGE_GATEWAY $UNDERWRITING_APP_FQDN $APP_ENV $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $MCP_API_CLIENT_ID $AZURE_UAMI_CLIENT_ID $CALCUL_URL $CALCUL_AUDIENCE $CALCUL_API_CLIENT_ID $MCP_APP_FQDN $CLUSTER_APP_FQDN $INSURFLOW_CLUSTER_CLIENT_ID $RAG_APP_FQDN $LLM_AUDIENCE $LLM_API_CLIENT_ID $FOUNDRY_ENDPOINT $ESPACE_COMPTE_A $ESPACE_COMPTE_B' \
             < infra/containerapp.yaml > "$RUNNER_TEMP/containerapp.yaml"
-          az containerapp update -n "$APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp.yaml" --no-wait -o none
+          python3 tools/az_reessayer.py az containerapp update -n "$APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp.yaml" --no-wait -o none
           # Production : le domaine personnalisé (G4, #12) dès que PROD_URL est posée ; la fumée
           # vérifie alors aussi son certificat (curl sans -k)
           url="${{ inputs.environnement == 'production' && vars.PROD_URL || '' }}"
@@ -425,7 +425,7 @@ jobs:
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
           envsubst '$DEPLOIEMENT $IMAGE_RAG $APP_ENV $AZURE_TENANT_ID $RAG_API_CLIENT_ID $UNDERWRITING_API_CLIENT_ID $RAG_SEUIL $LLM_AUDIENCE $AZURE_UAMI_RAG_CLIENT_ID $GATEWAY_URL $PG_HOST' \
             < infra/containerapp-rag.yaml > "$RUNNER_TEMP/containerapp-rag.yaml"
-          az containerapp update -n "$RAG_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-rag.yaml" --no-wait -o none
+          python3 tools/az_reessayer.py az containerapp update -n "$RAG_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-rag.yaml" --no-wait -o none
           rag=$(az containerapp show -n "$RAG_APP" -g "$RG" -o json)
           jq -e --arg u "$AZURE_UAMI_RAG_CLIENT_ID" '[.identity.userAssignedIdentities // {} | .[] | .clientId | ascii_downcase] | index($u | ascii_downcase)' <<<"$rag" > /dev/null ||
             { echo "::error::identité managée $AZURE_UAMI_RAG_CLIENT_ID absente de $RAG_APP après l'update (OBO et jeton LLM de rag impossibles)"; exit 1; }

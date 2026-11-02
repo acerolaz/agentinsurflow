@@ -23,6 +23,7 @@ class ConfigLLM(BaseSettings):
     rag_api_client_id: str = ""
     rag_client_secret: SecretStr = SecretStr("")  # 🔒 .env local seulement
     azure_uami_client_id: str = ""
+    rag_credential_az_cli: bool = False  # runner de CI : connexion OIDC de az (#180)
     llm_delai_s: float = Field(default=30, gt=0)  # aligné sur la porte p95 ≤ 30 s (D11)
 
 

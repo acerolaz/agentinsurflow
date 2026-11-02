@@ -7,19 +7,21 @@ function envoyer(methode, chemin, corps, j) {
   return fetch(chemin, { method: methode, headers: entetes, body: corps === undefined ? undefined : JSON.stringify(corps) });
 }
 
-/**
- * Rend {statut, json, entetes} ; un 401 est réessayé une fois avec un jeton renouvelé. Une coupure réseau rend le
- * statut 0 (message générique) : la page ne reste jamais bloquée sur « en cours ».
- */
-export async function appeler(methode, chemin, { portee, corps } = {}) {
-  let r;
+// Un 401 est réessayé une fois avec un jeton renouvelé ; une coupure réseau rend null, jamais une page bloquée.
+async function avecJeton(methode, chemin, corps, portee) {
   try {
-    r = await envoyer(methode, chemin, corps, await jeton(portee));
-    if (r.status === 401) r = await envoyer(methode, chemin, corps, await jeton(portee, true));
+    const r = await envoyer(methode, chemin, corps, await jeton(portee));
+    return r.status === 401 ? await envoyer(methode, chemin, corps, await jeton(portee, true)) : r;
   } catch (e) {
-    if (e instanceof TypeError) return { statut: 0, json: null, entetes: null }; // fetch : réseau
+    if (e instanceof TypeError) return null; // fetch : réseau
     throw e; // redirection MSAL en cours
   }
+}
+
+/** Rend {statut, json, entetes} ; une coupure réseau rend le statut 0 (message générique). */
+export async function appeler(methode, chemin, { portee, corps } = {}) {
+  const r = await avecJeton(methode, chemin, corps, portee);
+  if (r === null) return { statut: 0, json: null, entetes: null };
   const texte = await r.text();
   let json = null;
   try {
@@ -28,4 +30,11 @@ export async function appeler(methode, chemin, { portee, corps } = {}) {
     json = null; // une page d'erreur HTML (proxy) n'est pas du JSON
   }
   return { statut: r.status, json, entetes: r.headers };
+}
+
+/** Fichier binaire : {statut, fichier}, mêmes règles qu'appeler. */
+export async function telecharger(chemin, { portee } = {}) {
+  const r = await avecJeton("GET", chemin, undefined, portee);
+  if (r === null) return { statut: 0, fichier: null };
+  return { statut: r.status, fichier: r.status === 200 ? await r.blob() : null };
 }

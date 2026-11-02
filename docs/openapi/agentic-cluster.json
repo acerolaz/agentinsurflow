@@ -1,0 +1,600 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AgentInsurFlow — cluster d'agents",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health/cluster": {
+      "get": {
+        "summary": "Sante",
+        "operationId": "sante_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SanteReponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/v1/souscriptions/{numero_contrat}/evaluation": {
+      "post": {
+        "summary": "Evaluer",
+        "operationId": "evaluer_evaluations__numero_contrat__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Numero Contrat"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationReponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/souscriptions/{numero_contrat}/pause": {
+      "post": {
+        "summary": "Demander Pause",
+        "description": "Pause au prochain passage entre deux agents ; ``POST /evaluations/{n}`` reprend.\n\n``ignoree`` : plus aucun agent à appeler (revue attendue, dossier décidé, déjà en pause).",
+        "operationId": "demander_pause_evaluations__numero_contrat__pause_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Numero Contrat"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PauseReponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/souscriptions/{numero_contrat}/revue": {
+      "post": {
+        "summary": "Reviser",
+        "operationId": "reviser_evaluations__numero_contrat__revue_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Numero Contrat"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevueCorps"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevueReponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EtapeDto": {
+        "properties": {
+          "tour": {
+            "type": "integer",
+            "title": "Tour"
+          },
+          "outil_appele": {
+            "type": "string",
+            "title": "Outil Appele"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tour",
+          "outil_appele"
+        ],
+        "title": "EtapeDto"
+      },
+      "EvaluationReponse": {
+        "properties": {
+          "statut": {
+            "type": "string",
+            "enum": [
+              "EN_ANALYSE",
+              "REVUE_HUMAINE",
+              "EN_PAUSE"
+            ],
+            "title": "Statut"
+          },
+          "fiche": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FicheDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "prime": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrimeDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "synthese": {
+            "items": {
+              "$ref": "#/components/schemas/EtapeDto"
+            },
+            "type": "array",
+            "title": "Synthese"
+          }
+        },
+        "type": "object",
+        "required": [
+          "statut",
+          "fiche",
+          "prime",
+          "score",
+          "message",
+          "synthese"
+        ],
+        "title": "EvaluationReponse"
+      },
+      "FicheDto": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ACCEPTE",
+              "REFUSE",
+              "REVUE_HUMAINE"
+            ],
+            "title": "Decision"
+          },
+          "contrat_type": {
+            "type": "string",
+            "title": "Contrat Type"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "version_bareme": {
+            "type": "string",
+            "title": "Version Bareme"
+          },
+          "regle_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Regle Ids"
+          },
+          "motifs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Motifs"
+          },
+          "citations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Citations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision",
+          "contrat_type",
+          "score",
+          "version_bareme",
+          "regle_ids",
+          "motifs",
+          "citations"
+        ],
+        "title": "FicheDto"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PauseReponse": {
+        "properties": {
+          "pause": {
+            "type": "string",
+            "enum": [
+              "demandee",
+              "ignoree"
+            ],
+            "title": "Pause"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pause"
+        ],
+        "title": "PauseReponse"
+      },
+      "PrimeDto": {
+        "properties": {
+          "prime_ttc_annuelle": {
+            "type": "string",
+            "title": "Prime Ttc Annuelle"
+          },
+          "prime_mensuelle": {
+            "type": "string",
+            "title": "Prime Mensuelle"
+          },
+          "version_formule": {
+            "type": "string",
+            "title": "Version Formule"
+          },
+          "explication": {
+            "type": "string",
+            "title": "Explication"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prime_ttc_annuelle",
+          "prime_mensuelle",
+          "version_formule",
+          "explication"
+        ],
+        "title": "PrimeDto"
+      },
+      "ReglageDto": {
+        "properties": {
+          "modele": {
+            "type": "string",
+            "title": "Modele"
+          },
+          "temperature": {
+            "type": "number",
+            "title": "Temperature"
+          },
+          "max_tokens": {
+            "type": "integer",
+            "title": "Max Tokens"
+          },
+          "delai_s": {
+            "type": "number",
+            "title": "Delai S"
+          },
+          "version_prompt": {
+            "type": "string",
+            "title": "Version Prompt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "modele",
+          "temperature",
+          "max_tokens",
+          "delai_s",
+          "version_prompt"
+        ],
+        "title": "ReglageDto"
+      },
+      "RevueCorps": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ACCEPTE",
+              "REFUSE"
+            ],
+            "title": "Decision"
+          },
+          "validation": {
+            "type": "string",
+            "enum": [
+              "VALIDEE",
+              "CORRIGEE"
+            ],
+            "title": "Validation"
+          },
+          "motif": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Motif"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision",
+          "validation",
+          "motif"
+        ],
+        "title": "RevueCorps"
+      },
+      "RevueReponse": {
+        "properties": {
+          "statut": {
+            "type": "string",
+            "enum": [
+              "ACCEPTE",
+              "REFUSE"
+            ],
+            "title": "Statut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "statut"
+        ],
+        "title": "RevueReponse"
+      },
+      "SanteReponse": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "prompts": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Prompts"
+          },
+          "reglages": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ReglageDto"
+            },
+            "type": "object",
+            "title": "Reglages"
+          },
+          "garde_fous": {
+            "type": "string",
+            "const": "prets",
+            "title": "Garde Fous"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "prompts",
+          "reglages",
+          "garde_fous"
+        ],
+        "title": "SanteReponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # Chaîne du socle (CI/CD/Evals)
 #   PR    : lint → test → [evals-pr]                       (portes exigées par la protection de main)
-#           evals-pr évalue staging si les jeux ont changé, si la PR porte le libellé « evals »,
+#           evals-pr évalue le rag de la PR si les jeux ont changé, si la PR porte le libellé « evals »,
 #           ou à la main (workflow_dispatch) ; il commente le résumé sur la PR.
 #   merge : lint → test → build → staging (+ fumée) → [evals] → e2e-staging → release → production (+ fumée)
 #           sauf merge purement doc (paths-ignore du push) : aucune chaîne, aucune version
@@ -246,7 +246,8 @@ jobs:
           if-no-files-found: warn
 
   evals-pr:
-    # Évalue l'API de STAGING (rag ne peut pas obtenir de jeton LLM sur un runner) avec les jeux de la PR.
+    # Évalue le rag de la PR, démarré dans le runner (PostgreSQL du compose), avec le vrai LLM par la
+    # gateway de staging : jeton de l'identité de la CI (rôle LLM, make llm), sans aucun secret (#180).
     # Lancé si les déclencheurs d'évaluation ont changé, si la PR porte le libellé « evals », ou à la main.
     needs: [test, changements]
     if: >-
@@ -257,10 +258,18 @@ jobs:
     permissions: { contents: read, id-token: write, pull-requests: write }
     env:
       STAGING_URL: ${{ vars.STAGING_URL }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }} # docker compose valide tout le fichier, même pour la seule base
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with: { version: "0.11.13", enable-cache: true }
+      - name: Mots de passe PostgreSQL éphémères (générés à chaque run, jamais stockés)
+        run: |
+          for v in MIGRATEUR WRITER READER DOSSIERS TRACES_WRITER TRACES_READER POINTS_REPRISE POSTGRES; do
+            mdp=$(openssl rand -hex 16)
+            echo "::add-mask::$mdp"
+            echo "PG_${v}_PASSWORD=$mdp" >> "$GITHUB_ENV"
+          done
       - run: make install
       - run: make donnees-evals # jeux d'évaluation cohérents, hors ligne, avant toute connexion
       - uses: azure/login@v2 # OIDC : le jeton d'évaluation est demandé à Entra, aucun secret
@@ -271,13 +280,36 @@ jobs:
       - name: URL de staging connue ?
         run: |
           [ -n "$STAGING_URL" ] || { echo "::error::variable STAGING_URL absente (gh variable set STAGING_URL)"; exit 1; }
-      - name: Golden set + jeu de démo de la PR contre staging (porte bloquante)
+      - name: Base du rag de la PR
+        run: |
+          docker compose up -d --wait postgres
+          make migrate
+      - name: Démarrer le rag de la PR (uvicorn)
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ vars.STAGING_URL }}/api/llm
+          LLM_AUDIENCE: ${{ vars.LLM_AUDIENCE }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          RAG_API_CLIENT_ID: ${{ vars.RAG_API_CLIENT_ID }}
+          RAG_SEUIL: ${{ vars.RAG_SEUIL }}
+          RAG_CREDENTIAL_AZ_CLI: "true"
+        run: |
+          (cd rag && nohup uv run uvicorn agentinsurflow_rag.api:app --port 8000 > "$RUNNER_TEMP/rag.log" 2>&1 &)
+          for _ in $(seq 1 30); do
+            curl -fs http://localhost:8000/health > /dev/null && exit 0
+            sleep 2
+          done
+          tail -n 40 "$RUNNER_TEMP/rag.log"
+          echo "::error::le rag de la PR n'a pas démarré"
+          exit 1
+      - name: Corpus de la PR dans le rag du runner
+        run: make ingest URL=http://localhost:8000 JEU="$(ls data/aggregated/corpus-*.json | sort | tail -1)"
+      - name: Golden set + jeu de démo contre le rag de la PR (porte bloquante)
         run: |
           EVALS_JETON=$(az account get-access-token --scope "api://agentinsurflow-rag/.default" \
             --query accessToken -o tsv)
           echo "::add-mask::$EVALS_JETON"
           export EVALS_JETON
-          python3 tools/evals.py --url "$STAGING_URL" --questions eval/questions-demo.jsonl \
+          python3 tools/evals.py --url http://localhost:8000 --questions eval/questions-demo.jsonl \
             --sans-dossiers --rapport evals-pr.json --resume evals-pr.md
       - uses: actions/upload-artifact@v4
         if: always()

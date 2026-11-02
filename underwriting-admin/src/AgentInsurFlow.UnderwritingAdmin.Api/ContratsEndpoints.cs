@@ -49,6 +49,19 @@ internal static class ContratsEndpoints
             .Produces<IReadOnlyList<PieceDeclaree>>()
             .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
 
+        contrats.MapGet("/{numero_contrat}/pieces/{type}/fichier", async (ClaimsPrincipal utilisateur, ConsulterPiece cas, string type,
+                CancellationToken ct, [FromRoute(Name = "numero_contrat")] string numeroContrat) =>
+            Oid(utilisateur) is not { } oid
+                ? Problemes.Creer(403, "Jeton sans identité de gestionnaire", "ACCES_REFUSE")
+                // Même 404 pour « inexistant », « à un autre gestionnaire » (BOLA) et « pièce non déclarée ».
+                : await cas.Executer(oid, numeroContrat, type, ct) is { } fichier
+                    ? Results.File(fichier, "application/pdf", $"{type}.pdf")
+                    : Problemes.Creer(404, "Contrat introuvable", "CONTRAT_INTROUVABLE"))
+            .WithName("ConsulterPiece")
+            .WithSummary("Fichier PDF d'une pièce déclarée du contrat")
+            .Produces(200, contentType: "application/pdf")
+            .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
+
         contrats.MapGet("/{numero_contrat}/etat", async (ClaimsPrincipal utilisateur, LireEtat cas, CancellationToken ct,
                 [FromRoute(Name = "numero_contrat")] string numeroContrat) =>
             Oid(utilisateur) is not { } oid

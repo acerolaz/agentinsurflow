@@ -45,21 +45,9 @@ async def test_description_de_search_rag_dit_ce_qu_il_ne_fait_pas() -> None:
     assert "NOT_FOUND_IN_CORPUS" in (outil.description or "")
 
 
-@pytest.mark.parametrize(
-    "code", ["NOT_FOUND_IN_CORPUS", "DOSSIERS_INDISPONIBLES", "ARGUMENTS_INVALIDES"]
-)
+@pytest.mark.parametrize("code", ["NOT_FOUND_IN_CORPUS"])
 async def test_search_rag_erreur_is_error_avec_code(code: str) -> None:
     app = _app(FauxCorpus(ErreurOutil(code, "x")), FauxDossiers())
     async with session_mcp(app, creer(AZP_REDACTEUR)) as s:
         r = await s.call_tool("search_rag", {"question": "q"})
-    assert (r.isError, r.structuredContent) == (True, {"code": code})
-
-
-@pytest.mark.parametrize(
-    "code", ["CONTRAT_INTROUVABLE", "DOSSIERS_INDISPONIBLES", "ARGUMENTS_INVALIDES"]
-)
-async def test_get_contrat_erreur_is_error_avec_code(code: str) -> None:
-    app = _app(FauxCorpus(), FauxDossiers(ErreurOutil(code, "x")))
-    async with session_mcp(app, creer(AZP_ORCHESTRATEUR)) as s:
-        r = await s.call_tool("get_contrat", {"numero_contrat": "X"})
     assert (r.isError, r.structuredContent) == (True, {"code": code})

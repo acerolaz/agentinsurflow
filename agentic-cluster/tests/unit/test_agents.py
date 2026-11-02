@@ -402,3 +402,11 @@ async def test_garde_de_l_agent_lit_le_delai_du_reglage() -> None:
     deps = _deps(redaction=Lente(), reglages=reglages)
     rap = await executer_agent("pieces", _etat(), "jeton", deps, 5)
     assert rap.mode == "repli"
+
+
+async def test_hors_bareme_la_note_nomme_le_champ_fautif() -> None:
+    outils = FakeOutils(
+        evaluer_risque=ErreurOutil("DONNEE_HORS_BAREME", "Donnée hors barème : crm")
+    )
+    rap = await executer_agent("analyste", _etat(), "j", _deps(outils), 5)
+    assert rap.section["risque"].note == "Donnée hors barème : crm. Revue humaine requise."  # type: ignore[attr-defined]

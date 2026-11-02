@@ -226,10 +226,7 @@ def calibrer(url: str, cas: list[dict[str, Any]], jeton: str | None) -> None:
         print("✘ aucun seuil ne sépare les questions couvertes des hors corpus (verrous ② ③)")
 
 
-LIMITE = (
-    "Jeux d'évaluation de cette PR rejoués contre staging (code de `main`). "
-    "Un prompt modifié ici n'est évalué qu'après merge, par le job `evals`."
-)
+LIMITE = "Code et jeux d'évaluation de cette PR, évalués dans le runner avec le vrai LLM (#180)."
 
 
 def _court(bloc: dict[str, Any] | None, cle: str) -> str:

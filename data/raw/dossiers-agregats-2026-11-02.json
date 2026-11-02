@@ -1,0 +1,51 @@
+{
+ "manifeste": {
+  "date": "2026-11-02",
+  "environnement": "local",
+  "perimetre": "vue_contrat_minimisee",
+  "articles": 5,
+  "sha256": "1b85cd61d0ac03a37cde9482f32f59d3d62f0f4f7c0a850930fa2ef6781ba885"
+ },
+ "articles": [
+  {
+   "formule": "tiers",
+   "tranche_age": "25-39",
+   "nb_dossiers": 2,
+   "crm_moyen": 1.0,
+   "sinistres_moyens": 1.0,
+   "avec_releve": 2
+  },
+  {
+   "formule": "tiers",
+   "tranche_age": "60+",
+   "nb_dossiers": 1,
+   "crm_moyen": 0.5,
+   "sinistres_moyens": 0.0,
+   "avec_releve": 1
+  },
+  {
+   "formule": "tiers_etendu",
+   "tranche_age": "40-59",
+   "nb_dossiers": 3,
+   "crm_moyen": 0.84,
+   "sinistres_moyens": 0.33,
+   "avec_releve": 3
+  },
+  {
+   "formule": "tous_risques",
+   "tranche_age": "<25",
+   "nb_dossiers": 2,
+   "crm_moyen": 1.25,
+   "sinistres_moyens": 2.0,
+   "avec_releve": 2
+  },
+  {
+   "formule": "tous_risques",
+   "tranche_age": "25-39",
+   "nb_dossiers": 2,
+   "crm_moyen": 0.9,
+   "sinistres_moyens": 0.0,
+   "avec_releve": 2
+  }
+ ]
+}

@@ -3,13 +3,14 @@
 Compte ``rag``, ``serveur-mcp``, ``agentic-cluster``, ``fonction-calcul``, ``underwriting-admin``
 et ``e2e/`` ; ``tests/`` (racine : doc et outils) n'est pas un service et n'est pas compté ;
 la gateway (forme diamant) est comptée à part.
-Échoue si TU < 65 %, TI > 25 %, E2E > 15 %, ou si un niveau est vide.
+Échoue si TU < 65 %, TI > 30 % (#179), E2E > 15 %, ou si un niveau est vide.
 
 Usage : ``python tools/pyramide.py`` (depuis la racine du monorepo).
 """
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -23,7 +24,7 @@ NIVEAUX: dict[str, tuple[list[str], list[str]]] = {
             "agentic-cluster/tests/unit",
             "fonction-calcul/tests/unit",
         ],
-        ["*.Domain.Tests", "*.Application.Tests"],
+        ["*.Domain.Tests", "*.Application.Tests", "*.Infrastructure.UnitTests"],
     ),
     "TI": (
         [
@@ -36,7 +37,7 @@ NIVEAUX: dict[str, tuple[list[str], list[str]]] = {
     "E2E": (["e2e"], []),
 }
 TESTS_CSHARP = "underwriting-admin/tests"
-MIN_TU, MAX_TI, MAX_E2E = 65, 25, 15  # en % du total
+MIN_TU, MAX_TI, MAX_E2E = 65, 30, 15  # en % du total
 
 
 def _pytest(racine: Path, dossier: Path) -> int:
@@ -54,7 +55,11 @@ def _dotnet(projet: Path) -> int:
         ["dotnet", "test", "--project", str(projet), "--list-tests"],
         capture_output=True,
         text=True,
+        # VERSION (SHA de la CI), lue comme propriété MSBuild, fait échouer la restauration
+        env={k: v for k, v in os.environ.items() if k != "VERSION"},
     )
+    if sortie.returncode != 0:  # compter 0 ici rendrait la porte faussement verte (#179)
+        raise RuntimeError(f"{projet} : dotnet test --list-tests en échec\n{sortie.stderr}")
     # ponytail: une ligne indentée par test (format --list-tests de Microsoft.Testing.Platform),
     # à confirmer quand underwriting-admin existera (Task U1)
     return sum(

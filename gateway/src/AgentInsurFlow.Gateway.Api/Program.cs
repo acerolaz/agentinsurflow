@@ -362,16 +362,21 @@ static async Task MesurerTokens(HttpContext ctx, HttpResponseMessage? reponse)
     {
         span.SetTag("appelant.azp", appelant);
     }
-    // Plafond : on ne tamponne que les corps de taille annoncée ; gros ou découpé = non lu (comme le flux).
+    // Plafond : au-delà, non mesuré (comme le flux) ; le corps relayé reste identique.
     const long plafond = 4 * 1024 * 1024;
-    if (Est(type, "text/event-stream") || reponse.Content.Headers.ContentEncoding.Count > 0 || reponse.Content.Headers.ContentLength is not { } taille || taille > plafond)
+    if (Est(type, "text/event-stream") || reponse.Content.Headers.ContentEncoding.Count > 0 || reponse.Content.Headers.ContentLength > plafond)
     {
         span.SetTag("gen_ai.usage.mesure", "non_disponible");
         return;
     }
     try
     {
-        var octets = await reponse.Content.ReadAsByteArrayAsync(ctx.RequestAborted);
+        var octets = await LireSansDepasser(reponse, plafond, ctx.RequestAborted);
+        if (octets is null)
+        {
+            span.SetTag("gen_ai.usage.mesure", "non_disponible");
+            return;
+        }
         using var json = JsonDocument.Parse(octets);
         var racine = json.RootElement;
         if (racine.ValueKind != JsonValueKind.Object || !racine.TryGetProperty("usage", out var usage)
@@ -396,6 +401,33 @@ static async Task MesurerTokens(HttpContext ctx, HttpResponseMessage? reponse)
     {
         // JSON invalide : rien à mesurer, le client reçoit quand même la réponse d'amont
     }
+}
+
+// Foundry répond au chat sans Content-Length (#71) : lecture plafonnée ; le contenu est remplacé par ce qui a été lu,
+// suivi du reste du flux si le plafond est dépassé (rend alors null : non mesuré, mais relayé intact).
+static async Task<byte[]?> LireSansDepasser(HttpResponseMessage reponse, long plafond, CancellationToken ct)
+{
+    if (reponse.Content.Headers.ContentLength is not null)
+    {
+        return await reponse.Content.ReadAsByteArrayAsync(ct);
+    }
+    var origine = reponse.Content;
+    var flux = await origine.ReadAsStreamAsync(ct);
+    using var lu = new MemoryStream();
+    var morceau = new byte[81920];
+    int n;
+    while (lu.Length <= plafond && (n = await flux.ReadAsync(morceau, ct)) > 0)
+    {
+        lu.Write(morceau, 0, n);
+    }
+    var octets = lu.ToArray();
+    HttpContent contenu = lu.Length > plafond ? new StreamContent(new FluxPrefixe(octets, flux)) : new ByteArrayContent(octets);
+    foreach (var (nom, valeurs) in origine.Headers)
+    {
+        contenu.Headers.TryAddWithoutValidation(nom, valeurs);
+    }
+    reponse.Content = contenu;
+    return lu.Length > plafond ? null : octets;
 }
 
 static FixedWindowRateLimiterOptions FenetreFixe(int limite, TimeSpan fenetre) =>

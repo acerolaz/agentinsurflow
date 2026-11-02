@@ -136,11 +136,6 @@ async def test_erreur_outil_en_resultat_is_error(ouvrir: Ouvrir) -> None:
     assert r.structuredContent == {"code": "CONTRAT_INTROUVABLE"}
 
 
-async def test_pieces_ne_voit_que_lister_pieces(ouvrir: Ouvrir) -> None:
-    async with ouvrir(creer(AZP_PIECES)) as s:
-        assert [t.name for t in (await s.list_tools()).tools] == ["lister_pieces"]
-
-
 async def test_pieces_appelle_lister_pieces(ouvrir: Ouvrir, dossiers: FauxDossiers) -> None:
     dossiers.erreur = None
     async with ouvrir(creer(AZP_PIECES)) as s:

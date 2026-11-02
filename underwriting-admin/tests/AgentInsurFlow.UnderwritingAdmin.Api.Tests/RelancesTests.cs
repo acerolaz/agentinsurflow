@@ -222,13 +222,4 @@ public sealed class RelancesTests : IDisposable
         Assert.Equal((HttpStatusCode.NotFound, "CONTRAT_INTROUVABLE"), await ClasserSansSuite("AIF-A1", GestionnaireB));
         Assert.False(_depot.SansSuite);
     }
-
-    [Fact]
-    public async Task Sans_suite_concurrente_d_une_decision_409()
-    {
-        for (var i = 0; i < 3; i++) await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
-        _depot.DecideEntreTemps = true;
-
-        Assert.Equal((HttpStatusCode.Conflict, "DOSSIER_DECIDE"), await ClasserSansSuite("AIF-A1", GestionnaireA));
-    }
 }

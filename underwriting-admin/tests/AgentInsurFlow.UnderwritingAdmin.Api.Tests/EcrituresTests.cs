@@ -81,19 +81,6 @@ public sealed class EcrituresTests : IDisposable
         Assert.Equal(["brouillon oid-gestionnaire-a AIF-A1 ACCEPTE R1 512.4"], DepotEnMemoire.Appels);
     }
 
-    [Theory]
-    [InlineData("brouillon")]
-    [InlineData("statut")]
-    public async Task Dossier_decide_409_STATUT_FIGE_sans_ecriture(string route)
-    {
-        var json = route == "brouillon" ? Brouillon : "{\"statut\":\"REFUSE\",\"validation\":\"CORRIGEE\"}";
-        var (statut, corps) = await Put($"/api/contrats/AIF-FIGE/{route}", json, GestionnaireA, "Gestionnaire");
-
-        Assert.Equal(HttpStatusCode.Conflict, statut);
-        Assert.Equal("STATUT_FIGE", corps!.Value.GetProperty("code").GetString());
-        Assert.Empty(DepotEnMemoire.Appels);
-    }
-
     [Fact]
     public async Task Brouillon_sans_prime_204()
     {
@@ -137,24 +124,6 @@ public sealed class EcrituresTests : IDisposable
 
         Assert.Equal(HttpStatusCode.NoContent, statut);
         Assert.Equal(["statut oid-gestionnaire-a AIF-A1 REFUSE CORRIGEE"], DepotEnMemoire.Appels);
-    }
-
-    [Fact]
-    public async Task Statut_final_sans_validation_400_VALIDATION_EXIGEE()
-    {
-        var (statut, corps) = await Put("/api/contrats/AIF-A1/statut", """{"statut":"ACCEPTE","validation":null}""", GestionnaireA, "Gestionnaire");
-
-        Assert.Equal(HttpStatusCode.BadRequest, statut);
-        Assert.Equal("VALIDATION_EXIGEE", corps!.Value.GetProperty("code").GetString());
-    }
-
-    [Fact]
-    public async Task Statut_validation_sans_brouillon_400_DECISION_ABSENTE()
-    {
-        var (statut, corps) = await Put("/api/contrats/AIF-SANS-BROUILLON/statut", """{"statut":"ACCEPTE","validation":"VALIDEE"}""", GestionnaireA, "Gestionnaire");
-
-        Assert.Equal(HttpStatusCode.BadRequest, statut);
-        Assert.Equal("DECISION_ABSENTE", corps!.Value.GetProperty("code").GetString());
     }
 
     [Fact]

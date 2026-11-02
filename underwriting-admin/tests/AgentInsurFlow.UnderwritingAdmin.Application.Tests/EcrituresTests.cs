@@ -87,6 +87,17 @@ public sealed class EcrituresTests
     private static PrimeBrouillon Prime(string periodicite) => new(42m, periodicite, new DateOnly(2026, 1, 1));
 
     [Fact]
+    public async Task EnregistrerEtat_section_inconnue_SECTION_INCONNUE_sans_appel_au_depot()
+    {
+        var depot = new DepotSimule(true);
+        var r = await new EnregistrerEtat(depot).Executer("A", "C-1",
+            new EtatEntrant("EN_COURS", 1, [new SectionEntrante("identite", "{}")], [], []), TestContext.Current.CancellationToken);
+
+        Assert.Equal(new ResultatEcriture(false, "SECTION_INCONNUE"), r);
+        Assert.Equal(0, depot.Appels);
+    }
+
+    [Fact]
     public async Task ChangerStatut_sans_validation_n_appelle_pas_le_depot()
     {
         var depot = new DepotSimule(true);

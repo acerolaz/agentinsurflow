@@ -40,7 +40,7 @@ make ingest URL=http://localhost:8000                       # ①-⑩ : extracti
 make ingest URL=http://localhost:8000 INSTANTANE=data/raw/code-assurances-2026-10-27.json   # ④-⑩ : rejeu
 ```
 
-## Deux autres chaînes d'extraction
+## Trois autres chaînes d'extraction
 
 ### Notices produits : scraping (#45)
 
@@ -62,6 +62,23 @@ make ingest URL=http://localhost:8000 INSTANTANE=data/raw/code-assurances-2026-1
 | Notice requise absente | Arrêt avec le nom de la notice |
 
 L'instantané versionné a été produit depuis la production le 02/11/2026 (4 notices). La démonstration le rejoue, sans scraping en direct : `make agreger` lit le dernier `data/raw/notices-*.json`, et le déploiement ingère ce jeu.
+
+### Dossiers : base de données
+
+*Code : `tools/extraction_base.py`. Requête : [`requetes-sql.md`](requetes-sql.md) §7.*
+
+| Étape | Règle |
+|---|---|
+| Lancement | `make extraire-base`, avec `PG_DOSSIERS_PASSWORD` dans l'environnement ; `PG_HOST` et `PG_PORT` facultatifs |
+| Initialisation | Connexion `asyncpg` au compte `dossiers`, délai de 10 s |
+| Traitement | Une requête SQL sur `vue_contrat_minimisee` : agrégats par formule et tranche d'âge, jamais de ligne individuelle |
+| Sauvegarde | `data/raw/dossiers-agregats-<date>.json` + manifeste SHA-256, par écriture atomique ; connexion toujours fermée |
+
+| Erreur | Comportement |
+|---|---|
+| Mot de passe absent | Message nommant la variable, code de sortie 1, aucune connexion |
+| Base injoignable ou authentification refusée | Message sans le mot de passe, code de sortie 1, aucun instantané |
+| Aucun dossier en base | Code de sortie 1, aucun instantané |
 
 ### freMTPL2 : big data (#51)
 
@@ -117,7 +134,7 @@ Un **jeu unique** réunit les trois collections avant l'envoi : ce qui est ingé
 | Source | Raison de l'exclusion |
 |---|---|
 | Agrégats freMTPL2 (`data/raw/fremtpl2-agregats-*.json`) | Statistiques de sinistralité d'un portefeuille automobile : ce ne sont pas des textes que l'agent peut citer. Ils servent à l'analyse, et le modèle GLM de comparaison utilise freMTPL2 de son côté |
-| Dossiers en base (`dossiers`) | Données personnelles, même fictives : l'agent les lit uniquement par la vue minimisée et l'outil MCP, sous contrôle du gestionnaire. Les copier dans un corpus partagé contournerait cette protection |
+| Agrégats des dossiers (`data/raw/dossiers-agregats-*.json`) | Statistiques de portefeuille : ce ne sont pas des textes que l'agent peut citer. Les dossiers eux-mêmes restent lus par la vue minimisée et l'outil MCP, sous contrôle du gestionnaire : les copier dans un corpus partagé contournerait cette protection |
 
 ### Règles par source
 

@@ -78,4 +78,37 @@ public sealed class PiecesTests : IDisposable
         Assert.Equal("CONTRAT_INTROUVABLE", corpsAutre.GetProperty("code").GetString());
         Assert.Equal(corpsAbsent.GetProperty("code").GetString(), corpsAutre.GetProperty("code").GetString());
     }
+
+    private async Task<HttpResponseMessage> GetFichier(string numero, string type, string oid)
+    {
+        using var client = _usine.CreateClient();
+        using var requete = new HttpRequestMessage(HttpMethod.Get, $"/api/contrats/{numero}/pieces/{type}/fichier");
+        requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer",
+            JetonsDeTest.Jeton(JetonsDeTest.AudienceParDefaut, oid, "Gestionnaire"));
+        return await client.SendAsync(requete, TestContext.Current.CancellationToken);
+    }
+
+    [Theory]
+    [InlineData(TypesPiece.ReleveInformation)]
+    [InlineData(TypesPiece.Permis)]
+    public async Task Fichier_d_une_piece_declaree_est_un_pdf_embarque(string type)
+    {
+        using var reponse = await GetFichier("AIF-A1", type, GestionnaireA);
+
+        Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
+        Assert.Equal("application/pdf", reponse.Content.Headers.ContentType?.MediaType);
+        var octets = await reponse.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("%PDF-"u8.ToArray(), octets[..5]);
+    }
+
+    [Fact]
+    public async Task Fichier_du_contrat_d_un_autre_gestionnaire_rend_le_meme_404()
+    {
+        using var autre = await GetFichier("AIF-A1", TypesPiece.Permis, GestionnaireB);
+        using var inexistant = await GetFichier("AIF-INEXISTANT", TypesPiece.Permis, GestionnaireA);
+
+        Assert.Equal(HttpStatusCode.NotFound, autre.StatusCode);
+        Assert.Equal(await inexistant.Content.ReadAsStringAsync(TestContext.Current.CancellationToken),
+            await autre.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
 }

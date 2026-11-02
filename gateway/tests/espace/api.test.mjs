@@ -43,3 +43,19 @@ test("appel : un 401 est rejoué une fois avec un jeton renouvelé", async () =>
   assert.deepEqual(jetons, ["Bearer jeton", "Bearer renouvele"]);
   assert.deepEqual(r, { statut: 200, json: { ok: true }, entetes: null });
 });
+
+test("fichier : rend le contenu binaire sur 200, le statut seul sinon", async () => {
+  const { telecharger } = await import(`${APP}/api.js`);
+  const contenu = new Blob(["%PDF-"]);
+  const appels = [];
+  globalThis.fetch = async (url, options) => {
+    appels.push(options.headers.Authorization);
+    return url.endsWith("/absent")
+      ? { status: 404 }
+      : { status: 200, blob: async () => contenu };
+  };
+  assert.deepEqual(await telecharger("/x/absent", { portee: "underwriting" }), { statut: 404, fichier: null });
+  assert.deepEqual(await telecharger("/x/permis", { portee: "underwriting" }), { statut: 200, fichier: contenu });
+  assert.ok(appels.every((a) => a.startsWith("Bearer ")));
+});
+

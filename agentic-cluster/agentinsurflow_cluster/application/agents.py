@@ -41,6 +41,7 @@ from agentinsurflow_cluster.domain.specs import SPECS
 
 NOT_FOUND = "NOT_FOUND_IN_CORPUS"
 HORS_BAREME = "DONNEE_HORS_BAREME"
+NOTE_HORS_BAREME = "Donnée hors barème"  # début de la note : seule cette note devient un motif
 _ERREURS_REFERENCE = (ErreurOutil, KeyError, TypeError, ValueError)
 _ERREURS_SORTIE = (KeyError, TypeError, ValueError)
 
@@ -211,7 +212,8 @@ async def _analyste(
     except ErreurOutil as e:
         if e.code != HORS_BAREME:
             raise
-        limite = Risque(0, "limite", (), "inconnue", "Donnée hors barème : revue humaine requise.")
+        detail = str(e) if str(e) != e.code else NOTE_HORS_BAREME  # message du serveur : le champ
+        limite = Risque(0, "limite", (), "inconnue", f"{detail}. Revue humaine requise.")
         return Rapport(nom, {"risque": limite}, "repli", HORS_BAREME, version), []
     ref = risque_de(retour)
 

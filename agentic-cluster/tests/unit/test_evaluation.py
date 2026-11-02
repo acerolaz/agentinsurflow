@@ -333,3 +333,36 @@ async def test_refus_avant_la_saga_ne_trace_rien() -> None:
         with pytest.raises(EvaluationEnCours):
             await service.evaluer("C-1", JETON, "oid-a")
     assert audit.evaluations == []
+
+
+async def test_proposer_hors_bareme_le_motif_du_brouillon_nomme_le_champ() -> None:
+    from agentinsurflow_cluster.domain.models import Pieces, Risque
+
+    outils = FakeOutils()
+    note = "Donnée hors barème : crm. Revue humaine requise."
+    etat = EtatDossier(
+        "C-1",
+        dossier={"date_effet": "2026-01-01"},
+        pieces=Pieces("complet", (), "n"),
+        risque=Risque(0, "limite", (), "inconnue", note),
+    )
+    etat = await proposer(etat, JETON, _deps(outils))
+    assert statut_de(etat) == "REVUE_HUMAINE"
+    brouillon = outils.corps("enregistrer_brouillon")[0]
+    assert note in str(brouillon)
+    assert "à la limite du barème" not in str(brouillon)
+
+
+async def test_proposer_classe_limite_sans_hors_bareme_garde_le_motif_generique() -> None:
+    from agentinsurflow_cluster.domain.models import Pieces, Risque
+
+    outils = FakeOutils()
+    etat = EtatDossier(
+        "C-1",
+        dossier={"date_effet": "2026-01-01"},
+        pieces=Pieces("complet", (), "n"),
+        risque=Risque(5, "limite", (), "b", "note libre du LLM"),
+    )
+    await proposer(etat, JETON, _deps(outils))
+    brouillon = str(outils.corps("enregistrer_brouillon")[0])
+    assert "à la limite du barème" in brouillon and "note libre" not in brouillon

@@ -46,5 +46,15 @@ public sealed class SeedDossiersTests
     }
 
     [Fact]
+    public void SqlRefusA_seme_aussi_le_dossier_11_hors_bareme_avec_ses_pieces()
+    {
+        var sql = SeedDossiers.SqlRefusA(Oid);
+
+        Assert.Contains("AIF-2026-000011", sql);
+        Assert.Contains("4.00", sql); // CRM au-delà de la borne légale de 3,50 : la Function répond 422
+        Assert.Contains("releve-11.pdf", sql);
+    }
+
+    [Fact]
     public void SqlRefusA_sans_variable_ne_seme_rien() => Assert.Equal("SELECT 1", SeedDossiers.SqlRefusA(" "));
 }

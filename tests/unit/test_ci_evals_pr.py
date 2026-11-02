@@ -1,4 +1,4 @@
-"""ci-cd.yml : le job evals-pr évalue l'API de staging sur les PR et commente le résumé (C13, #55).
+"""ci-cd.yml : evals-pr évalue le rag de la PR, avec le vrai LLM, et commente le résumé (C13, #180).
 
 Niveau : TU (lecture du workflow YAML, aucune I/O réseau).
 """
@@ -50,9 +50,9 @@ def test_staging_url_exigee():
     assert "STAGING_URL" in controle and "exit 1" in controle
 
 
-def test_evaluation_contre_staging_avec_resume():
+def test_evaluation_avec_resume():
     run = JOB["steps"][_etape("tools/evals.py")]["run"]
-    for morceau in ('--url "$STAGING_URL"', "--rapport evals-pr.json", "--resume evals-pr.md"):
+    for morceau in ("--rapport evals-pr.json", "--resume evals-pr.md"):
         assert morceau in run
 
 
@@ -77,3 +77,22 @@ def test_chaine_de_merge_fermee_aux_nouveaux_evenements():
     assert "build" in jobs["staging"]["needs"]
     assert "staging" in jobs["release"]["needs"]
     assert "release" in jobs["production"]["needs"]
+
+
+def test_rag_de_la_pr_demarre_dans_le_runner_avec_le_vrai_llm():
+    run = JOB["steps"][_etape("uvicorn")]
+    assert run["env"]["RAG_CREDENTIAL_AZ_CLI"] == "true"
+    assert "/api/llm" in run["env"]["AZURE_OPENAI_ENDPOINT"]
+    assert _etape("azure/login") < _etape("uvicorn") < _etape("tools/evals.py")
+    assert _etape("docker compose up") <= _etape("make migrate") < _etape("uvicorn")
+    assert _etape("uvicorn") < _etape("make ingest") < _etape("tools/evals.py")
+
+
+def test_evaluation_vise_le_rag_local_et_non_staging():
+    evaluation = JOB["steps"][_etape("tools/evals.py")]["run"]
+    assert "--url http://localhost:8000" in evaluation
+    assert '$STAGING_URL" --questions' not in evaluation
+
+
+def test_mots_de_passe_postgres_ephemeres_et_masques():
+    assert "add-mask" in JOB["steps"][_etape("openssl rand")]["run"]

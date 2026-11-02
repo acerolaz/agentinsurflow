@@ -12,16 +12,7 @@ from pydantic import ValidationError
 
 from agentinsurflow_rag.api.schemas.agent import Question
 from agentinsurflow_rag.api.schemas.corpus import LotIngestion
-from corpus_de_test import CORPUS, DATE_ISO, SHA
-
-
-def lot(articles: list[dict[str, Any]] | None = None, **autres: Any) -> dict[str, Any]:
-    return {
-        "collection": "textes_reglementaires",
-        "instantane_sha256": SHA,
-        "instantane_date": DATE_ISO,
-        "articles": CORPUS if articles is None else articles,
-    } | autres
+from corpus_de_test import CORPUS, lot
 
 
 def test_lot_valide_accepte() -> None:

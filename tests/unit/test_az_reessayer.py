@@ -60,6 +60,7 @@ def test_erreur_passagere_rejouee_puis_succes(erreur: str) -> None:
         "401 Unauthorized",
         "(InvalidRequestContent) YAML invalide",
         "(ContainerAppImageNotFound) image absente",
+        "(InvalidRequestContent) port 503 refusé pour la ressource 429",  # un nombre n'est pas un statut
     ],
 )
 def test_erreur_definitive_echoue_sans_nouvelle_tentative(erreur: str) -> None:

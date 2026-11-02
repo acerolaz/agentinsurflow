@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 import httpx
 import pytest
@@ -19,19 +18,10 @@ from agentinsurflow_rag.api.dependances import obtenir_embeddings
 from agentinsurflow_rag.domain.ports import ErreurEmbeddings
 from agentinsurflow_rag.infrastructure.postgres.corpus import PgDepotCorpus
 from conftest import entetes
-from corpus_de_test import CORPUS, DATE_ISO, SHA
+from corpus_de_test import CORPUS, SHA, lot
 from fakes import FakeEmbeddings
 
 INGESTION = entetes("Ingestion")
-
-
-def lot(articles: list[dict[str, Any]] | None = None, **autres: Any) -> dict[str, Any]:
-    return {
-        "collection": "textes_reglementaires",
-        "instantane_sha256": SHA,
-        "instantane_date": DATE_ISO,
-        "articles": CORPUS if articles is None else articles,
-    } | autres
 
 
 async def _documents(conn: AsyncConnection) -> int:

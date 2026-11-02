@@ -35,6 +35,7 @@ dev = [
     "httpx>=0.28",
     "ruff>=0.6",
     "mypy>=1.10",
+    "markdown-it-py>=4.2",  # tools/docs_pdf.py
 ]
 bigdata = ["pyspark>=4.0,<5"]  # source big data (#51) : hors dev, hors paquet du workspace
 

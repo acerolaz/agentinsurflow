@@ -21,7 +21,7 @@ TENTATIVES = 3
 PAUSE_S = 30.0
 PASSAGERE = re.compile(
     r"ServerTimeout|GatewayTimeout|TooManyRequests|Service Unavailable|Bad Gateway|timed out"
-    r"|\b(429|502|503|504)\b"
+    r"|\b(?:HTTP|status|code)\b\D{0,3}(?:429|502|503|504)\b"
 )
 
 Executeur = Callable[[list[str]], CompletedProcess[str]]
@@ -63,9 +63,10 @@ def executer(
         sys.stdout.write(resultat.stdout)
         sys.stderr.write(resultat.stderr)
         code = resultat.returncode
-        if code == 0 or not PASSAGERE.search(resultat.stderr):
+        passagere = PASSAGERE.search(resultat.stderr)
+        if code == 0 or passagere is None:
             return code
-        cause = PASSAGERE.search(resultat.stderr)[0]  # type: ignore[index]
+        cause = passagere[0]
         print(f"::warning::az : erreur passagère « {cause} », tentative {tentative}/{TENTATIVES}")
         if cause == "ServerTimeout" and _deja_applique(commande, azure):
             print("::notice::az : la mise à jour demandée est déjà appliquée, pas de nouvel essai")

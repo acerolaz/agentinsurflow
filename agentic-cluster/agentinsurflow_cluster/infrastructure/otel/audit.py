@@ -39,12 +39,13 @@ class FormatJson(logging.Formatter):
 
 
 def configurer_journal_audit() -> None:
-    if not journal.handlers:
+    # Azure Monitor a pu poser son gestionnaire avant : INFO se règle dans tous les cas (#176)
+    journal.setLevel(logging.INFO)
+    journal.propagate = False
+    if not any(isinstance(g.formatter, FormatJson) for g in journal.handlers):
         gestionnaire = logging.StreamHandler()
         gestionnaire.setFormatter(FormatJson())
         journal.addHandler(gestionnaire)
-        journal.setLevel(logging.INFO)
-        journal.propagate = False
 
 
 class AuditOtel:

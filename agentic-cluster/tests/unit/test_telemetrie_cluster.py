@@ -6,9 +6,12 @@ Un fournisseur local (jamais le global) : aucune interférence avec les autres s
 from __future__ import annotations
 
 import asyncio
+import importlib
 import json
 import logging
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import pytest
@@ -26,6 +29,9 @@ from agentinsurflow_cluster.infrastructure.otel.telemetrie import (
     anonymiser_requete,
     configurer_telemetrie,
 )
+
+# le paquet api expose l'objet app sous ce nom : passer par le module
+app_module = importlib.import_module("agentinsurflow_cluster.api.app")
 
 
 @pytest.fixture
@@ -202,3 +208,67 @@ def test_chargement_des_garde_fous_journalise(
     (enreg,) = [r for r in caplog.records if r.name == "insurflow.audit"]
     ligne = json.loads(audit.FormatJson().format(enreg))
     assert (ligne["message"], ligne["chargement_ms"]) == ("garde_fous.chargement", 6123)
+
+
+class _Capture(logging.Handler):
+    def __init__(self) -> None:
+        super().__init__()
+        self.messages: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.messages.append(record.getMessage())
+
+
+@pytest.fixture
+def journal_vierge() -> Any:
+    """Le journal d'audit tel qu'au démarrage d'un processus, restauré ensuite."""
+    journal = logging.getLogger("insurflow.audit")
+    etat = (journal.handlers[:], journal.level, journal.propagate)
+
+    for h in journal.handlers[:]:
+        journal.removeHandler(h)
+    journal.setLevel(logging.NOTSET)
+    journal.propagate = True
+
+    yield journal
+
+    for h in journal.handlers[:]:
+        journal.removeHandler(h)
+    for h in etat[0]:
+        journal.addHandler(h)
+    journal.setLevel(etat[1])
+    journal.propagate = etat[2]
+
+
+def test_audit_info_emis_quand_azure_a_deja_pose_son_gestionnaire(journal_vierge: Any) -> None:
+    # #176 : configure_azure_monitor(logger_name=…) ajoute son gestionnaire avant ce réglage
+    azure = _Capture()
+    journal_vierge.addHandler(azure)
+    audit.configurer_journal_audit()
+    audit.journaliser_chargement_garde_fous(1)
+    assert azure.messages == ["garde_fous.chargement"]
+    sortie = [h for h in journal_vierge.handlers if isinstance(h.formatter, audit.FormatJson)]
+    assert len(sortie) == 1  # et la ligne JSON part aussi sur la sortie standard
+
+
+def test_configurer_le_journal_deux_fois_ne_double_pas_les_lignes(journal_vierge: Any) -> None:
+    audit.configurer_journal_audit()
+    audit.configurer_journal_audit()
+    assert len(journal_vierge.handlers) == 1
+
+
+async def test_le_demarrage_du_serveur_configure_la_telemetrie_avant_le_journal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    appels: list[str] = []
+    monkeypatch.setattr(app_module, "configurer_telemetrie", lambda _v: appels.append("telemetrie"))
+    monkeypatch.setattr(app_module, "configurer_journal_audit", lambda: appels.append("journal"))
+    monkeypatch.delenv("AZURE_TENANT_ID", raising=False)
+
+    @asynccontextmanager
+    async def composition(_config: Any) -> AsyncIterator[Any]:
+        yield object()
+
+    app = app_module.creer_app(composition)
+    async with app.router.lifespan_context(app):
+        assert appels == ["telemetrie", "journal"]

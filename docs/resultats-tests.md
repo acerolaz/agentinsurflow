@@ -14,7 +14,7 @@
 | Tests de la gateway | job `gateway` | 174 réussis, 0 échec | Voir le job |
 | Logique et appels de l'espace gestionnaire | `make espace-test` | 23 tests dans `gateway/tests/espace/` | Non mesurée |
 | Parcours sur staging | job `e2e-staging` | 13 réussis, 4 ignorés | Sans objet |
-| Répartition des tests | job `pyramide` | 74 % unitaires, 24 % intégration, 1 % bout en bout : conforme (cible 70 / 20 / 10, avec tolérance) | Sans objet |
+| Répartition des tests | `make pyramide`, compte corrigé par #179 | 993 TU (72 %), 375 TI (27 %), 17 E2E (1 %) : conforme au seuil de 30 % de TI, écart assumé à la cible de 20 % | Sans objet |
 | Évaluations du modèle | `evals-pr`, PR #185 | 100 % de réussite (seuil 80 %), latence p95 de 22,08 s (maximum 30 s) | Sans objet |
 
 ## API du modèle (C9)
@@ -49,4 +49,5 @@ Les 100 % portent sur le jeu de référence joué par `evals-pr`, avec deux cas 
 Ces tests ont permis de trouver de vrais défauts, ce qui donne une mesure de leur utilité et de leurs limites :
 
 - #160 : test instable, corrigé.
+- #179 : la porte de pyramide était faussement verte. `VERSION` faisait échouer `dotnet test`, et les tests C# comptaient 0 : elle affichait 24 % de TI pour 31 % en réalité. Le compte est corrigé, un échec arrête la porte, et le seuil de 30 % est justifié dans `.claude/rules/testing-pyramid.md`.
 - #176 : les lignes `audit.*` du cluster n'arrivaient pas en production. Les tests appelaient `caplog`, qui règle lui-même le niveau du journal : ils passaient alors que le défaut existait. Un test reproduit maintenant l'ordre réel du démarrage.

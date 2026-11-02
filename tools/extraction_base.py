@@ -71,7 +71,7 @@ def main(argv: Sequence[str] | None = None, connecter: Connecteur = asyncpg.conn
     parseur = argparse.ArgumentParser(description=__doc__)
     parseur.add_argument("--sortie", type=Path, default=Path("data/raw"))
     parseur.add_argument("--date", default=Date.today().isoformat())
-    parseur.add_argument("--environnement", default=os.environ.get("APP_ENV", "local"))
+    parseur.add_argument("--environnement", default=os.environ.get("APP_ENV") or "local")
     args = parseur.parse_args(argv)
     try:
         lignes = asyncio.run(extraire(connecter))

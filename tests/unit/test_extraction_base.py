@@ -86,3 +86,11 @@ def test_base_vide_refusee_sans_instantane(
     assert _main(tmp_path, connexion) == 1
     assert "aucun dossier" in capsys.readouterr().err
     assert list(tmp_path.iterdir()) == [] and connexion.ferme
+
+
+def test_app_env_vide_vaut_local(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PG_DOSSIERS_PASSWORD", "x")
+    monkeypatch.setenv("APP_ENV", "")
+    assert _main(tmp_path, Connexion(LIGNES)) == 0
+    contenu = json.loads((tmp_path / "dossiers-agregats-2026-11-02.json").read_text("utf-8"))
+    assert contenu["manifeste"]["environnement"] == "local"

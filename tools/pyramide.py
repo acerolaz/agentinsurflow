@@ -3,7 +3,7 @@
 Compte ``rag``, ``serveur-mcp``, ``agentic-cluster``, ``fonction-calcul``, ``underwriting-admin``
 et ``e2e/`` ; ``tests/`` (racine : doc et outils) n'est pas un service et n'est pas compté ;
 la gateway (forme diamant) est comptée à part.
-Échoue si TU < 65 %, TI > 25 %, E2E > 15 %, ou si un niveau est vide.
+Échoue si TU < 65 %, TI > 30 % (#179), E2E > 15 %, ou si un niveau est vide.
 
 Usage : ``python tools/pyramide.py`` (depuis la racine du monorepo).
 """
@@ -24,7 +24,7 @@ NIVEAUX: dict[str, tuple[list[str], list[str]]] = {
             "agentic-cluster/tests/unit",
             "fonction-calcul/tests/unit",
         ],
-        ["*.Domain.Tests", "*.Application.Tests"],
+        ["*.Domain.Tests", "*.Application.Tests", "*.Infrastructure.UnitTests"],
     ),
     "TI": (
         [
@@ -37,7 +37,7 @@ NIVEAUX: dict[str, tuple[list[str], list[str]]] = {
     "E2E": (["e2e"], []),
 }
 TESTS_CSHARP = "underwriting-admin/tests"
-MIN_TU, MAX_TI, MAX_E2E = 65, 25, 15  # en % du total
+MIN_TU, MAX_TI, MAX_E2E = 65, 30, 15  # en % du total
 
 
 def _pytest(racine: Path, dossier: Path) -> int:

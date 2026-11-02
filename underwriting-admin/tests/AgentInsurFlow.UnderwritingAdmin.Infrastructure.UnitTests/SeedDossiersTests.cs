@@ -1,6 +1,6 @@
 using AgentInsurFlow.UnderwritingAdmin.Infrastructure.Dossiers;
 
-namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Tests;
+namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.UnitTests;
 
 /// <summary>TU — SQL du seed des gestionnaires C (CI) et du dossier « refus » de A (démo K1), sans base.</summary>
 public sealed class SeedDossiersTests

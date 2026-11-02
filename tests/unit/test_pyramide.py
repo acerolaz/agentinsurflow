@@ -72,3 +72,10 @@ def test_dotnet_en_echec_arrete_la_porte_au_lieu_de_compter_zero(
     )
     with pytest.raises(RuntimeError, match="projet"):
         pyramide._dotnet(Path("projet"))
+
+
+def test_seuil_ti_a_30_pour_cent() -> None:
+    # #179 : services fins et contrats HTTP ; 30 % décidé par écrit, pas davantage
+    assert verifier({"TU": 70, "TI": 29, "E2E": 1}) == []
+    assert "TI" in verifier({"TU": 68, "TI": 31, "E2E": 1})[0]
+

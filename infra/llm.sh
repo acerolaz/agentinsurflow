@@ -55,6 +55,19 @@ if [ "$(az rest --uri "$GRAPH/servicePrincipals/$sp_llm/appRoleAssignedTo" \
 fi
 # Les quatre sous-agents du cluster (#7, inscrits par make entra ⑧) reçoivent le même rôle : leur jeton d'application
 # (identité managée du cluster fédérée sur leur inscription) ouvre /api/llm, avec leur propre azp (limite de débit par agent).
+# CI : evals-pr évalue le rag de la PR avec le vrai LLM (#180) ; AZURE_CLIENT_ID = l'application de la CI
+if [ -n "${AZURE_CLIENT_ID:-}" ]; then
+  sp_ci=$(az ad sp show --id "$AZURE_CLIENT_ID" --query id -o tsv)
+  if [ "$(az rest --uri "$GRAPH/servicePrincipals/$sp_llm/appRoleAssignedTo" \
+    --query "length(value[?principalId=='$sp_ci' && appRoleId=='$LLM_ROLE'])" -o tsv)" = 0 ]; then
+    az rest --method POST --uri "$GRAPH/servicePrincipals/$sp_llm/appRoleAssignedTo" \
+      --headers content-type=application/json \
+      --body "{\"principalId\":\"$sp_ci\",\"resourceId\":\"$sp_llm\",\"appRoleId\":\"$LLM_ROLE\"}" -o none
+    echo "   rôle LLM attribué à la CI"
+  fi
+else
+  echo "   ⚠ AZURE_CLIENT_ID absent : rôle LLM de la CI non attribué"
+fi
 for agent in pieces analyste redacteur actuaire; do
   app=$(az ad app list --display-name "agentinsurflow-agent-$agent" --query "[0].appId" -o tsv)
   [ -n "$app" ] || { echo "✘ agentinsurflow-agent-$agent absente : lancer make entra d'abord"; exit 1; }

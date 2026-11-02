@@ -13,7 +13,6 @@ from agentinsurflow_rag.cli.ingest import ErreurEnvoi, sha_articles
 from agentinsurflow_rag.domain.corpus import normaliser_numero
 
 RACINE = Path(__file__).resolve().parents[3]
-NOTICES = RACINE / "rag/corpus/notices_produits"
 PROCEDURES = RACINE / "rag/corpus/procedures_internes"
 VERSIONNE = RACINE / "data/aggregated/corpus-2026-10-27.json"
 TEXTE = "<p>Toute personne physique ou morale doit être assurée.</p>"
@@ -65,14 +64,10 @@ def test_formats_homogeneises() -> None:
 
 
 def test_doc_id_en_double_refuse(tmp_path: Path) -> None:
-    notices = tmp_path / "notices"
-    notices.mkdir()
-    for nom in ("a.md", "b.md"):
-        (notices / nom).write_text(
-            "---\ndoc_id: NOTICE-X\nversion: v1\narticle: N-1\ndate_debut: 2026-01-01\n---\n"
-            "Une notice suffisamment longue pour passer la porte de qualité du pipeline.\n",
-            encoding="utf-8",
-        )
+    dossier = tmp_path / "notices"
+    dossier.mkdir()
+    notice = brut(doc_id="NOTICE-X")
+    notices = instantane(dossier, [notice, notice])
     legifrance = instantane(tmp_path, [brut()])
     with pytest.raises(ErreurEnvoi, match="NOTICE-X"):
         agreger(legifrance, dernier("bareme"), notices, PROCEDURES)
@@ -81,7 +76,7 @@ def test_doc_id_en_double_refuse(tmp_path: Path) -> None:
 def test_ecart_consigne_dans_le_manifeste(tmp_path: Path) -> None:
     vide = brut(doc_id="LEGIARTI000000000001", texte_html="")
     legifrance = instantane(tmp_path, [brut(), vide])
-    jeu = agreger(legifrance, dernier("bareme"), NOTICES, PROCEDURES)
+    jeu = agreger(legifrance, dernier("bareme"), dernier("notices"), PROCEDURES)
     assert "LEGIARTI000000000001" not in {e["doc_id"] for e in jeu["entrees"]}
     assert jeu["manifeste"]["ecarts"] == [
         {"doc_id": "LEGIARTI000000000001", "source": "legifrance", "raison": "partiel:texte_html"}
@@ -94,12 +89,29 @@ def test_bareme_altere_refuse(tmp_path: Path) -> None:
     bareme = tmp_path / "bareme-altere.json"
     bareme.write_text(json.dumps(contenu), encoding="utf-8")
     with pytest.raises(ErreurEnvoi, match="altéré"):
-        agreger(dernier("code-assurances"), bareme, NOTICES, PROCEDURES)
+        agreger(dernier("code-assurances"), bareme, dernier("notices"), PROCEDURES)
 
 
 def test_sources_reelles_volumes_et_identite(tmp_path: Path) -> None:
-    jeu = agreger(dernier("code-assurances"), dernier("bareme"), NOTICES, PROCEDURES)
-    assert jeu["manifeste"]["par_source"] == {"legifrance": 119, "redige": 4, "bareme": 6}
+    jeu = agreger(dernier("code-assurances"), dernier("bareme"), dernier("notices"), PROCEDURES)
+    assert jeu["manifeste"]["par_source"] == {"legifrance": 119, "scraping": 4, "bareme": 6}
     assert jeu["manifeste"]["ecarts"] == []
     assert sum(e["etat"] == "ABROGE" for e in jeu["entrees"]) >= 11
     assert ecrire_jeu(jeu, tmp_path).read_bytes() == VERSIONNE.read_bytes()
+
+
+def test_les_notices_viennent_de_l_instantane_scrape() -> None:
+    jeu = agreger(dernier("code-assurances"), dernier("bareme"), dernier("notices"), PROCEDURES)
+    notices = [e for e in jeu["entrees"] if e["collection"] == "notices_produits"]
+    assert {e["doc_id"] for e in notices} >= {"tiers", "tiers_etendu", "tous_risques"}
+    assert all(e["url_source"].startswith("https://aibrokerflow.fr/notices/") for e in notices)
+    assert "notices" in jeu["manifeste"]["sources"]
+
+
+def test_instantane_de_notices_altere_refuse(tmp_path: Path) -> None:
+    instantane = json.loads(dernier("notices").read_text(encoding="utf-8"))
+    instantane["articles"][0]["texte_html"] += " altéré"
+    fichier = tmp_path / "notices-2026-01-01.json"
+    fichier.write_text(json.dumps(instantane), encoding="utf-8")
+    with pytest.raises(ErreurEnvoi):
+        agreger(dernier("code-assurances"), dernier("bareme"), fichier, PROCEDURES)

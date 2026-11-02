@@ -8,8 +8,8 @@
 
 | Rubrique | Contenu |
 |---|---|
-| Technologies | Python 3.12, FastAPI, SQLAlchemy 2.0 async, Alembic, PostgreSQL 16 + pgvector, `httpx`, Docker ; C# / ASP.NET Core 10 pour `underwriting-admin` et la gateway |
-| Services externes | API Légifrance (PISTE, OAuth 2.0), Azure OpenAI (`text-embedding-3-small`, Kimi-K2.5), Entra ID |
+| Technologies | Python 3.12, FastAPI, SQLAlchemy 2.0 async, Alembic, PostgreSQL 16 + pgvector, `httpx`, Docker ; C# / ASP.NET Core 10 pour `underwriting-admin` et la gateway ; analyseur `html.parser` de la bibliothèque standard (scraping) ; PySpark, Spark SQL, Parquet et Java 17 (big data, groupe uv `bigdata`) |
+| Services externes | API Légifrance (PISTE, OAuth 2.0), Azure OpenAI (`text-embedding-3-small`, Kimi-K2.5), Entra ID, OpenML (fichiers ARFF de freMTPL2, sans identifiant) |
 | Langages | Python, C#, SQL, YAML (chaîne), JSONL (questions), Bash (`infra/`) |
 | Accessibilité | Markdown structuré, schémas doublés d'un texte, messages d'erreur explicites, Swagger UI comme interface |
 
@@ -38,16 +38,45 @@ make ingest URL=http://localhost:8000                       # ①-⑩ : extracti
 make ingest URL=http://localhost:8000 INSTANTANE=data/raw/code-assurances-2026-10-27.json   # ④-⑩ : rejeu
 ```
 
-## Deux autres chaînes (#45, #51)
+## Deux autres chaînes d'extraction
 
-**Notices scrapées** : gateway `/notices/` → `make scraper URL=…` (lit `robots.txt`, User-Agent `AgentInsurFlow-scraping/1.0`,
-1 s entre requêtes) → `data/raw/notices-<date>.json` + manifeste → `make ingest URL=… INSTANTANE=data/raw/notices-<date>.json COLLECTION=notices_produits`
-(étapes ④-⑩ ci-dessus). Le déploiement ingère encore les notices depuis le Markdown ; il passera à l'instantané scrapé
-une fois celui-ci produit en production (#45, PR 2).
+### Notices produits : scraping (#45)
 
-**freMTPL2 (big data)** : `make bigdata` → ARFF OpenML (SHA-256 vérifiées) → Parquet → 2 requêtes Spark SQL →
-`data/raw/fremtpl2-agregats-<date>.json` (25 lignes), disponible pour l'agrégation #52. Requêtes :
-[`requetes-sql.md`](requetes-sql.md) §6.
+*Code : `tools/scraping_notices.py`. Pages servies par la gateway sous `/notices/`.*
+
+| Étape | Règle |
+|---|---|
+| Lancement | `make scraper URL=<gateway>` ; `--environnement` et `--date` facultatifs |
+| Initialisation | Lit `robots.txt` et respecte ses règles ; User-Agent `AgentInsurFlow-scraping/1.0` |
+| Traitement | Page d'index, puis chaque notice, avec 1 s entre deux requêtes ; les méta `doc_id`, `version`, `article` et `date_debut` sont lues dans la page, le corps est converti en texte structuré |
+| Contrôle | `tiers`, `tiers_etendu` et `tous_risques` doivent être présentes |
+| Sauvegarde | `data/raw/notices-<date>.json` + manifeste SHA-256, par écriture atomique |
+
+| Erreur | Comportement |
+|---|---|
+| Page interdite par `robots.txt` | Arrêt, code de sortie 1, aucun instantané |
+| Statut HTTP autre que 200, ou erreur réseau | Arrêt, code de sortie 1, aucun instantané |
+| Méta manquante ou vide | Arrêt avec le nom de la méta et l'URL |
+| Notice requise absente | Arrêt avec le nom de la notice |
+
+L'instantané versionné a été produit depuis la production le 02/11/2026 (4 notices). La démonstration le rejoue, sans scraping en direct : `make agreger` lit le dernier `data/raw/notices-*.json`, et le déploiement ingère ce jeu.
+
+### freMTPL2 : big data (#51)
+
+*Code : `tools/extraction_bigdata.py`. Requêtes : [`requetes-sql.md`](requetes-sql.md) §6.*
+
+| Étape | Règle |
+|---|---|
+| Lancement | `make bigdata [ARGS=--expliquer]`, Java 17 requis |
+| Initialisation | Session Spark locale ; téléchargement des ARFF d'OpenML en cache, SHA-256 vérifiées (`fonction-calcul/entrainement/donnees.toml`) |
+| Traitement | ARFF → Parquet → 2 requêtes Spark SQL : fréquence par région, coût moyen par tranche de bonus-malus (jointure `BROADCAST`) |
+| Sauvegarde | `data/raw/fremtpl2-agregats-<date>.json` (25 lignes) + manifeste ; session Spark toujours arrêtée |
+
+| Erreur | Comportement |
+|---|---|
+| Java absent ou mauvaise version | Message explicite, code de sortie 1 |
+| SHA-256 différente ou fichier illisible | Arrêt, code de sortie 1, aucun instantané |
+| Erreur Spark | Arrêt, code de sortie 1, aucun instantané |
 
 En CI, le déploiement réagrège puis réingère le jeu à chaque déploiement (la base annexe repart vide), avec un jeton
 OIDC de la CI (voir « Agrégation (#52) »).
@@ -74,19 +103,26 @@ Un **jeu unique** réunit les trois collections avant l'envoi : ce qui est ingé
 
 | Rubrique | Contenu |
 |---|---|
-| Entrées | Instantané Légifrance (`data/raw/code-assurances-*.json`), instantané du barème (`data/raw/bareme-*.json`), notices (`rag/corpus/notices_produits/`), parties rédigées des procédures (`rag/corpus/procedures_internes/`) |
+| Entrées | Instantané Légifrance (`data/raw/code-assurances-*.json`), instantané du barème (`data/raw/bareme-*.json`), instantané des notices scrapées (`data/raw/notices-*.json`), parties rédigées des procédures (`rag/corpus/procedures_internes/`) |
 | Sortie | `data/aggregated/corpus-<date Légifrance>.json`, octet pour octet identique à chaque relance (aucune date du jour) |
 | Schéma d'une entrée | `doc_id`, `version`, `article`, `date_debut` (ISO), `etat` (majuscules), `texte_html`, `url_source`, `regle_id`, `collection`, `source` |
-| Manifeste | `date`, `entrees`, `par_collection`, `par_source`, `sources` (sha256 de l'instantané Légifrance et du barème), `ecarts` (`doc_id`, `source`, `raison`), `sha256` du jeu |
+| Manifeste | `date`, `entrees`, `par_collection`, `par_source`, `sources` (sha256 des instantanés Légifrance, barème et notices), `ecarts` (`doc_id`, `source`, `raison`), `sha256` du jeu |
 | Dépendances | Aucune nouvelle (stdlib et code existant) ; fonctionne sans réseau ni identifiants |
-| Volumétrie actuelle | 129 entrées : 119 `legifrance`, 4 `redige`, 6 `bareme` ; 0 écart |
+| Volumétrie actuelle | 129 entrées : 119 `legifrance`, 4 `scraping`, 6 `bareme` ; 0 écart |
+
+### Sources exclues du jeu agrégé
+
+| Source | Raison de l'exclusion |
+|---|---|
+| Agrégats freMTPL2 (`data/raw/fremtpl2-agregats-*.json`) | Statistiques de sinistralité d'un portefeuille français de 2004 : ce ne sont pas des textes que l'agent peut citer. Ils servent à l'analyse, et le modèle GLM de comparaison utilise freMTPL2 de son côté |
+| Dossiers en base (`dossiers`) | Données personnelles, même fictives : l'agent les lit uniquement par la vue minimisée et l'outil MCP, sous contrôle du gestionnaire. Les copier dans un corpus partagé contournerait cette protection |
 
 ### Règles par source
 
 | Source | Origine | Collection |
 |---|---|---|
 | `legifrance` | Instantané du Code des assurances | `textes_reglementaires` |
-| `redige` | Notices produits rédigées | `notices_produits` |
+| `scraping` | Instantané des notices produits scrapées | `notices_produits` |
 | `bareme` | Une procédure par règle : en-tête, titre et section « Règle » **générés** depuis `REGLES`, section « Pièces à vérifier » rédigée (marqueur `{version_bareme}` remplacé) | `procedures_internes` |
 
 La version du barème (`bareme-2026.10-v1`) est citable dans chaque procédure, et le texte de la règle ne peut pas
@@ -103,7 +139,7 @@ diverger du code qui l'applique (garde-fou GF5).
 | Numéros | Normalisés (`L. 211-1` → `L211-1`) |
 | État | En majuscules |
 | HTML et Markdown | Gardés tels quels : le serveur les convertit par `html_vers_texte` |
-| Intégrité | Le sha256 du barème est vérifié avant lecture ; un instantané altéré arrête l'agrégation |
+| Intégrité | Les sha256 des instantanés sont vérifiés avant lecture ; un instantané altéré arrête l'agrégation |
 
 Le nettoyage réutilise `nettoyer` du serveur (état forcé à `VIGUEUR` pour ne pas écarter les abrogés, état d'origine rétabli).
 
@@ -117,8 +153,9 @@ make ingest URL=http://localhost:8000 JEU=data/aggregated/corpus-2026-10-27.json
 
 ```text
 REGLES (bareme.py) → make bareme → instantané du barème ─┐
-Légifrance → make extraire → instantané ─────────────────┼→ make agreger → jeu agrégé → make ingest JEU=…
-notices + parties rédigées des procédures ───────────────┘
+Légifrance → make extraire → instantané ─────────────────┤
+notices → make scraper → instantané ─────────────────────┼→ make agreger → jeu agrégé → make ingest JEU=…
+parties rédigées des procédures ─────────────────────────┘
 ```
 
 `make ingest JEU=…` vérifie le sha256 du jeu, refuse un jeu où manque une collection, envoie chaque collection par

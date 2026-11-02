@@ -391,7 +391,7 @@ def test_resume_signale_les_rejeux() -> None:
 
 
 def test_resume_dit_la_limite() -> None:
-    assert "qu'après merge" in evals.resumer(_rapport(), (True, True))
+    assert "dans le runner" in evals.resumer(_rapport(), (True, True))
 
 
 def test_resume_ecrit_meme_si_la_porte_echoue(

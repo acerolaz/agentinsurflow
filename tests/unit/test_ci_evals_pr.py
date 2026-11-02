@@ -96,3 +96,8 @@ def test_evaluation_vise_le_rag_local_et_non_staging():
 
 def test_mots_de_passe_postgres_ephemeres_et_masques():
     assert "add-mask" in JOB["steps"][_etape("openssl rand")]["run"]
+
+
+def test_compose_a_ses_variables_requises_pour_demarrer_la_base():
+    # docker compose valide tout le fichier, même pour ne démarrer que postgres
+    assert "vars.AZURE_TENANT_ID" in JOB["env"]["AZURE_TENANT_ID"]

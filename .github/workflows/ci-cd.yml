@@ -258,6 +258,7 @@ jobs:
     permissions: { contents: read, id-token: write, pull-requests: write }
     env:
       STAGING_URL: ${{ vars.STAGING_URL }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }} # docker compose valide tout le fichier, même pour la seule base
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

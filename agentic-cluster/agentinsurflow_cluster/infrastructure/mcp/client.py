@@ -16,6 +16,7 @@ import httpx
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 from mcp.shared.exceptions import McpError
+from mcp.types import TextContent
 
 from ...domain.ports import AgentOuSaga, ErreurOutil
 
@@ -103,5 +104,7 @@ class ClientMcpGateway:
             raise ErreurOutil("MCP_INDISPONIBLE", type(g).__name__) from g
         if resultat.isError:
             code = (resultat.structuredContent or {}).get("code", "MCP_ERREUR")
-            raise ErreurOutil(str(code))
+            # ce texte ne porte ni valeur ni donnée personnelle (au plus un nom de champ)
+            texte = next((c.text for c in resultat.content if isinstance(c, TextContent)), "")
+            raise ErreurOutil(str(code), texte)
         return dict(resultat.structuredContent or {})

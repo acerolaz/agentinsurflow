@@ -26,6 +26,8 @@ internal static class SeedDossiers
         new(8, 'C', new(1972, 1, 30), new(1992, 8, 18), "33000", "0.76", 0, 0, "tiers_etendu", 0),
         new(9, 'C', new(1990, 11, 11), new(2010, 4, 4), "59000", "1.00", 0, 2, "tiers", 1),
         new(10, 'A', new(2002, 7, 7), new(2020, 2, 2), "2A004", "1.25", 1, 0, "tous_risques", 2),
+        // Hors barème (#169) : CRM au-delà de la borne légale de 3,50, la Function répond 422 sur le champ « crm »
+        new(11, 'A', new(1985, 5, 15), new(2006, 3, 10), "31000", "4.00", 0, 0, "tiers", 0),
     ];
 
     // Dossiers de la migration Seed (n° 1 à 6) ; les suivants viennent de SeedGestionnaireC.
@@ -57,7 +59,7 @@ internal static class SeedDossiers
     public static string SqlPiecesC(string? gestionnaireC) =>
         string.IsNullOrWhiteSpace(gestionnaireC) ? "SELECT 1" : Pieces(Dossiers.Where(d => d.Gestionnaire == 'C'));
 
-    /// <summary>Dossier 10 du gestionnaire A, que le barème refuse (démo K1), avec ses pièces.</summary>
+    /// <summary>Dossiers de démo K1 du gestionnaire A, avec leurs pièces : 10 (refusé par le barème), 11 (hors barème).</summary>
     public static string SqlRefusA(string? gestionnaireA) =>
         Semer(gestionnaireA, "SEED_GESTIONNAIRE_A", d => !Initial(d) && d.Gestionnaire == 'A', pieces: true);
 

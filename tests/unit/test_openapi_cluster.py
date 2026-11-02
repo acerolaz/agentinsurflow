@@ -7,7 +7,7 @@ from pathlib import Path
 
 from agentinsurflow_cluster.api import app
 
-FICHIER = Path(__file__).parents[3] / "docs/openapi/agentic-cluster.json"
+FICHIER = Path(__file__).parents[2] / "docs/openapi/agentic-cluster.json"
 
 
 def test_le_contrat_versionne_est_celui_du_code() -> None:

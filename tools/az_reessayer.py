@@ -36,7 +36,7 @@ def _option(commande: list[str], nom: str) -> str | None:
 
 
 def _deja_applique(commande: list[str], azure: Executeur) -> bool:
-    """Après un ServerTimeout : l'application porte-t-elle déjà l'image et le DEPLOIEMENT voulus ?"""
+    """Après un ServerTimeout : l'application a-t-elle déjà l'image et le DEPLOIEMENT voulus ?"""
     fichier, app, groupe = (_option(commande, o) for o in ("--yaml", "-n", "-g"))
     if commande[:3] != ["az", "containerapp", "update"] or not (fichier and app and groupe):
         return False

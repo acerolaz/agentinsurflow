@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Pieces/Demo/*.pdf" LogicalName="pieces-demo/%(Filename).pdf" />
     <Protobuf Include="Otlp/protos/opentelemetry/proto/**/*.proto" ProtoRoot="Otlp/protos" GrpcServices="None" Access="Internal" />
   </ItemGroup>
 

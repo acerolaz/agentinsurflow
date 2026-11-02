@@ -29,3 +29,16 @@ export async function appeler(methode, chemin, { portee, corps } = {}) {
   }
   return { statut: r.status, json, entetes: r.headers };
 }
+
+/** Fichier binaire : {statut, fichier} ; 401 réessayé une fois, coupure réseau = statut 0, comme appeler. */
+export async function telecharger(chemin, { portee } = {}) {
+  let r;
+  try {
+    r = await envoyer("GET", chemin, undefined, await jeton(portee));
+    if (r.status === 401) r = await envoyer("GET", chemin, undefined, await jeton(portee, true));
+  } catch (e) {
+    if (e instanceof TypeError) return { statut: 0, fichier: null };
+    throw e; // redirection MSAL en cours
+  }
+  return { statut: r.status, fichier: r.status === 200 ? await r.blob() : null };
+}

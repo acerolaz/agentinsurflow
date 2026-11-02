@@ -1,7 +1,7 @@
 // Vue d'un dossier (#104, #129, #101) : lancer ou reprendre l'évaluation, suivre la frise, mettre en pause,
 // valider la proposition, relancer puis classer sans suite, et afficher le contrat généré. L'état se relit chaque
 // seconde pendant l'évaluation.
-import { appeler } from "./api.js";
+import { appeler, telecharger } from "./api.js";
 import { el, erreur, picto, remplir } from "./dom.js";
 import {
   LIBELLES_GARANTIES, LIBELLES_PIECES, PICTOS, STATUTS_FIGES, classableSansSuite, conditionsGenerales, dateEcheance, etatAffiche,
@@ -11,13 +11,13 @@ import {
 
 const SOUS_ONGLETS = [
   ["detail", "Détail de l'étape", "detail"],
-  ["pieces", "Pièces manquantes", "manquantes"],
+  ["pieces", "Pièces", "manquantes"],
   ["contrat", "Contrat proposé", "contrat"],
 ];
 
 export async function afficherDossier(zone, numero) {
   const v = {
-    numero, etat: null, fiche: null, contrat: null, conditions: null, enVol: false, lanceA: undefined, ecoule: null,
+    numero, etat: null, fiche: null, pieces: null, messagePiece: null, contrat: null, conditions: null, enVol: false, lanceA: undefined, ecoule: null,
     message: null, etape: null, tokens: {}, sousOnglet: "detail", minuteur: null, tentativeAvant: null, motif: "",
   };
   const SUIVI_MAX_S = 120; // rechargement pendant une évaluation : l'état se relit au plus ce temps
@@ -56,6 +56,38 @@ export async function afficherDossier(zone, numero) {
   async function lireFiche() {
     const r = await appeler("GET", `/api/contrats/${chemin}/souscripteur`, { portee: "underwriting" });
     v.fiche = r.statut === 200 ? r.json : null;
+  }
+
+  // Pièces du lead (#141) : réservées au gestionnaire, jamais envoyées au cluster ni à un LLM.
+  async function lirePieces() {
+    const r = await appeler("GET", `/api/contrats/${chemin}/pieces`, { portee: "underwriting" });
+    v.pieces = r.statut === 200 ? r.json : null;
+  }
+
+  async function ouvrirPiece(type) {
+    const r = await telecharger(`/api/contrats/${chemin}/pieces/${encodeURIComponent(type)}/fichier`, { portee: "underwriting" });
+    if (r.statut === 200) {
+      const url = URL.createObjectURL(r.fichier);
+      const lien = el("a", { href: url, download: `${type}.pdf` });
+      lien.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      v.messagePiece = el("p", { role: "status" }, `${LIBELLES_PIECES[type] ?? type} : téléchargement lancé.`);
+    } else {
+      v.messagePiece = erreur({ statut: r.statut, json: null });
+    }
+    rendre();
+  }
+
+  function piecesDuLead() {
+    if (v.pieces === null) return el("p", { class: "discret" }, "Pièces du dossier indisponibles.");
+    if (v.pieces.length === 0) return el("p", {}, "Aucune pièce déclarée pour ce dossier.");
+    return el("div", {},
+      el("h3", {}, "Pièces du dossier"),
+      el("ul", {}, ...v.pieces.map((p) => el("li", {},
+        `${LIBELLES_PIECES[p.type] ?? p.type}, émise le ${p.date_emission} `,
+        el("button", { type: "button", class: "secondaire", onclick: () => ouvrirPiece(p.type),
+          "aria-label": `Télécharger : ${LIBELLES_PIECES[p.type] ?? p.type}` }, "Télécharger")))),
+      v.messagePiece);
   }
 
   async function lireContrat() {
@@ -226,6 +258,10 @@ export async function afficherDossier(zone, numero) {
   }
 
   function panneauPieces() {
+    return el("div", {}, piecesDuLead(), panneauManquantes());
+  }
+
+  function panneauManquantes() {
     if (statut() === "SANS_SUITE")
       return el("div", {}, el("p", {}, `Dossier classé sans suite après ${v.etat.nb_relances ?? 0} relances restées sans réponse.`),
         v.relance?.message ?? null);
@@ -462,6 +498,7 @@ export async function afficherDossier(zone, numero) {
   remplir(zone, el("h1", {}, `Dossier ${numero}`), el("p", { "aria-busy": "true" }, "Chargement…"));
   if ((await lireEtat()) !== 200) return remplir(zone, el("p", {}, el("a", { href: "#/dossiers" }, "← Mes dossiers")), v.message);
   await lireFiche();
+  await lirePieces();
   if (statut() === "ACCEPTE") await lireContrat();
   if (statut() === "ACCEPTE" || statut() === "EN_ANALYSE") v.sousOnglet = "contrat";
   rendre();

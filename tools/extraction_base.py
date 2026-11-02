@@ -21,7 +21,7 @@ from datetime import date as Date
 from pathlib import Path
 from typing import Any
 
-import asyncpg
+import asyncpg  # type: ignore[import-untyped]
 
 from agentinsurflow_rag.cli.ingest import sauvegarder_instantane
 

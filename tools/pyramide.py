@@ -10,6 +10,7 @@ Usage : ``python tools/pyramide.py`` (depuis la racine du monorepo).
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -54,7 +55,11 @@ def _dotnet(projet: Path) -> int:
         ["dotnet", "test", "--project", str(projet), "--list-tests"],
         capture_output=True,
         text=True,
+        # VERSION (SHA de la CI), lue comme propriété MSBuild, fait échouer la restauration
+        env={k: v for k, v in os.environ.items() if k != "VERSION"},
     )
+    if sortie.returncode != 0:  # compter 0 ici rendrait la porte faussement verte (#179)
+        raise RuntimeError(f"{projet} : dotnet test --list-tests en échec\n{sortie.stderr}")
     # ponytail: une ligne indentée par test (format --list-tests de Microsoft.Testing.Platform),
     # à confirmer quand underwriting-admin existera (Task U1)
     return sum(

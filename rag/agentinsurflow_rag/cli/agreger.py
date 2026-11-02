@@ -1,4 +1,4 @@
-"""Agrège Légifrance, notices et procédures générées du barème en UN jeu brut versionné.
+"""Agrège Légifrance, notices scrapées et procédures générées du barème en UN jeu brut versionné.
 
     uv run python -m agentinsurflow_rag.cli.agreger
 
@@ -26,11 +26,10 @@ from .ingest import (
     ErreurEnvoi,
     lire_en_tete,
     lire_instantane,
-    lire_markdown,
     sha_articles,
 )
 
-SOURCES = ("legifrance", "redige", "bareme")
+SOURCES = ("legifrance", "scraping", "bareme")
 
 
 def normaliser(brut: Mapping[str, Any]) -> dict[str, Any] | str:
@@ -67,6 +66,7 @@ def _lire_bareme(chemin: Path) -> tuple[dict[str, Any], str]:
 def agreger(legifrance: Path, bareme: Path, notices: Path, procedures: Path) -> dict[str, Any]:
     articles, sha_legifrance, jour = lire_instantane(legifrance)
     regles, sha_bareme = _lire_bareme(bareme)
+    notices_scrapees, sha_notices, _ = lire_instantane(notices)
     rediges = {}
     for fichier in sorted(procedures.glob("*.md")):
         en_tete, corps = lire_en_tete(fichier)
@@ -75,10 +75,7 @@ def agreger(legifrance: Path, bareme: Path, notices: Path, procedures: Path) -> 
         rediges[en_tete["regle_id"]] = corps
     bruts = (
         [{**a, "collection": COLLECTIONS[0], "source": SOURCES[0]} for a in articles]
-        + [
-            {**n, "collection": COLLECTIONS[1], "source": SOURCES[1]}
-            for n in lire_markdown(notices, COLLECTIONS[1])
-        ]
+        + [{**n, "collection": COLLECTIONS[1], "source": SOURCES[1]} for n in notices_scrapees]
         + [
             {**p, "collection": COLLECTIONS[2], "source": SOURCES[2]}
             for p in generer(regles, rediges, URL_DEPOT)
@@ -105,7 +102,7 @@ def agreger(legifrance: Path, bareme: Path, notices: Path, procedures: Path) -> 
         "entrees": len(entrees),
         "par_collection": {c: sum(e["collection"] == c for e in entrees) for c in COLLECTIONS},
         "par_source": {s: sum(e["source"] == s for e in entrees) for s in SOURCES},
-        "sources": {"legifrance": sha_legifrance, "bareme": sha_bareme},
+        "sources": {"legifrance": sha_legifrance, "bareme": sha_bareme, "notices": sha_notices},
         "ecarts": ecarts,
         "sha256": sha_articles(entrees),
     }
@@ -132,7 +129,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--legifrance", type=Path)
     parser.add_argument("--bareme", type=Path)
-    parser.add_argument("--notices", type=Path, default=Path("rag/corpus/notices_produits"))
+    parser.add_argument("--notices", type=Path)
     parser.add_argument("--procedures", type=Path, default=Path("rag/corpus/procedures_internes"))
     parser.add_argument("--dossier", type=Path, default=Path("data/aggregated"))
     args = parser.parse_args(argv)
@@ -140,7 +137,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         jeu = agreger(
             args.legifrance or _dernier("code-assurances-*.json"),
             args.bareme or _dernier("bareme-*.json"),
-            args.notices,
+            args.notices or _dernier("notices-*.json"),
             args.procedures,
         )
         chemin = ecrire_jeu(jeu, args.dossier)

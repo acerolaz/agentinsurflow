@@ -1,7 +1,7 @@
 """CLI d'ingestion (spec §3.2, ① à ④) : Légifrance → instantané versionné → ``/api/ingestions``.
 
     make ingest [URL=https://<gateway>] [INSTANTANE=data/raw/code-assurances-<date>.json]
-    make ingest [URL=…] COLLECTION=notices_produits SOURCE=rag/corpus/notices_produits
+    make ingest [URL=…] COLLECTION=<collection> SOURCE=<dossier de .md>
     make ingest [URL=…] JEU=data/aggregated/corpus-<date>.json   (jeu de ``make agreger``)
     make ingest URL=… INSTANTANE=data/raw/notices-<date>.json COLLECTION=notices_produits
 

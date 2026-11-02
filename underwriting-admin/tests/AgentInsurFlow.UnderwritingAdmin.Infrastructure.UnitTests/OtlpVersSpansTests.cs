@@ -6,7 +6,7 @@ using OpenTelemetry.Proto.Common.V1;
 using OpenTelemetry.Proto.Resource.V1;
 using OpenTelemetry.Proto.Trace.V1;
 
-namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.Tests;
+namespace AgentInsurFlow.UnderwritingAdmin.Infrastructure.UnitTests;
 
 /// <summary>Conversion OTLP → spans (adapter, octets en mémoire, sans base).</summary>
 public sealed class OtlpVersSpansTests

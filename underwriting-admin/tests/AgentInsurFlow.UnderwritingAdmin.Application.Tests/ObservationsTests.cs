@@ -40,4 +40,15 @@ public sealed class ObservationsTests
         Assert.Equal(new ResultatEcriture(ecrit, refus), r);
         Assert.Equal(ecritures, depot.Ecritures);
     }
+
+    [Fact]
+    public async Task Executer_deux_mille_et_un_caracteres_OBSERVATIONS_TROP_LONGUES_sans_ecriture()
+    {
+        var depot = new DepotSimule("EN_ANALYSE");
+
+        var r = await new EnregistrerObservations(depot).Executer("A", "C-1", new string('a', 2001), TestContext.Current.CancellationToken);
+
+        Assert.Equal(new ResultatEcriture(false, "OBSERVATIONS_TROP_LONGUES"), r);
+        Assert.Equal(0, depot.Ecritures);
+    }
 }

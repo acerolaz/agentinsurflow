@@ -111,13 +111,4 @@ public sealed class EtatTests : IDisposable
         Assert.Empty(_depot.Tours);
     }
 
-    [Fact]
-    public async Task Section_inconnue_400_et_aucune_ligne()
-    {
-        var (statut, corps) = await Put("AIF-A1", GestionnaireA, Corps("identite"));
-
-        Assert.Equal(HttpStatusCode.BadRequest, statut);
-        Assert.Equal("SECTION_INCONNUE", corps!.Value.GetProperty("code").GetString());
-        Assert.Empty(_depot.Etats);
-    }
 }

@@ -5,14 +5,14 @@ import { appeler, telecharger } from "./api.js";
 import { el, erreur, picto, remplir } from "./dom.js";
 import {
   LIBELLES_GARANTIES, LIBELLES_PIECES, PICTOS, STATUTS_FIGES, classableSansSuite, conditionsGenerales, dateEcheance, etatAffiche,
-  frise, gabaritRelance,
+  boutonsRevue, frise, gabaritRelance,
   spansAffichables, tokensEtape,
 } from "./logique.js";
 
 const SOUS_ONGLETS = [
   ["detail", "Détail de l'étape", "detail"],
   ["pieces", "Pièces", "manquantes"],
-  ["contrat", "Contrat proposé", "contrat"],
+  ["contrat", "Proposition", "contrat"],
 ];
 
 export async function afficherDossier(zone, numero) {
@@ -314,7 +314,7 @@ export async function afficherDossier(zone, numero) {
     return el("div", {},
       el("dl", {},
         el("dt", {}, "Décision proposée"), el("dd", {}, fiche.decision),
-        el("dt", {}, "Type de contrat"), el("dd", {}, fiche.contrat_type || "—"),
+        ...(fiche.decision === "ACCEPTE" ? [el("dt", {}, "Type de contrat"), el("dd", {}, fiche.contrat_type || "—")] : []),
         el("dt", {}, "Règles"), el("dd", {}, (fiche.regle_ids ?? []).join(", ") || "—"),
         ...liste("Motifs", fiche.motifs),
         ...liste("Citations", fiche.citations),
@@ -344,9 +344,7 @@ export async function afficherDossier(zone, numero) {
     el("label", { for: "motif" }, "Motif de votre décision (obligatoire, 500 caractères au plus)"),
     motif,
     el("div", { class: "actions" },
-      bouton("Valider", "ACCEPTE", "VALIDEE"),
-      bouton("Corriger et accepter", "ACCEPTE", "CORRIGEE", "secondaire"),
-      bouton("Refuser", "REFUSE", "VALIDEE", "secondaire")));
+      ...boutonsRevue(v.etat?.sections?.fiche, v.etat?.sections?.prime).map((b) => bouton(...b))));
   }
 
   function ficheSouscripteur() {

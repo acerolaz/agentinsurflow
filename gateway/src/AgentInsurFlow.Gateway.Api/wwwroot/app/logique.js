@@ -125,6 +125,7 @@ export function gabaritRelance(manquantes) {
 }
 
 const MESSAGES = {
+  ACCEPTATION_SANS_PRIME: "Ce dossier n'a pas de prime : il ne peut pas être accepté",
   EVALUATION_EN_COURS: "Une évaluation est déjà en cours pour ce dossier",
   EVALUATION_EN_ATTENTE: "Une revue est déjà en attente pour ce dossier",
   DOSSIER_DECIDE: "Ce dossier a déjà reçu sa décision",
@@ -145,6 +146,17 @@ export function classableSansSuite(etat) {
 }
 
 /** Message lisible d'une réponse en erreur (ProblemDetails avec un code). */
+/**
+ * Boutons de la revue : [texte, décision, validation, classe]. « Valider » reprend la décision proposée : un refus
+ * ne devient jamais une acceptation, et sans prime aucune acceptation n'est possible (contrat sans montant).
+ */
+export function boutonsRevue(fiche, prime) {
+  if (fiche?.decision === "REFUSE") return [["Valider le refus", "REFUSE", "VALIDEE"]];
+  const refuser = ["Refuser", "REFUSE", "VALIDEE", "secondaire"];
+  if (!prime) return [refuser];
+  return [["Valider", "ACCEPTE", "VALIDEE"], ["Corriger et accepter", "ACCEPTE", "CORRIGEE", "secondaire"], refuser];
+}
+
 export function messageProbleme(statut, code) {
   if (statut === 404) return "Contrat introuvable";
   if (statut === 429) return "Trop de requêtes, réessayez dans quelques secondes";

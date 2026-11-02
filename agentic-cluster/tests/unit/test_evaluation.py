@@ -366,3 +366,23 @@ async def test_proposer_classe_limite_sans_hors_bareme_garde_le_motif_generique(
     await proposer(etat, JETON, _deps(outils))
     brouillon = str(outils.corps("enregistrer_brouillon")[0])
     assert "à la limite du barème" in brouillon and "note libre" not in brouillon
+
+
+async def test_accepter_sans_prime_refuse_sans_rien_ecrire() -> None:
+    # un refus du barème n'a pas de prime : l'accepter imprimerait un contrat sans montant
+    from agentinsurflow_cluster.application.evaluation import AcceptationSansPrime
+    from agentinsurflow_cluster.domain.models import Fiche
+
+    outils = FakeOutils()
+    etat = EtatDossier("C-1", fiche=Fiche("REFUSE", "", 9, "b", ("R01",), ("m",), ("c",)))
+    with pytest.raises(AcceptationSansPrime):
+        await enregistrer_revue(etat, Revue("ACCEPTE", "VALIDEE", "m"), JETON, _deps(outils))
+    assert outils.corps("update_statut_dossier") == []
+    assert outils.corps("enregistrer_etat") == []
+
+
+async def test_refuser_sans_prime_reste_possible() -> None:
+    outils = FakeOutils()
+    etat = EtatDossier("C-1")
+    await enregistrer_revue(etat, Revue("REFUSE", "VALIDEE", "m"), JETON, _deps(outils))
+    assert outils.corps("update_statut_dossier")[-1]["statut"] == "REFUSE"

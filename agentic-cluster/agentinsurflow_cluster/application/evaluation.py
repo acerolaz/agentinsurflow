@@ -65,6 +65,10 @@ class AucuneRevueEnAttente(Exception):
     """Aucune évaluation n'attend la revue du gestionnaire."""
 
 
+class AcceptationSansPrime(Exception):
+    """Accepter sans prime imprimerait un contrat sans montant : un refus du barème n'en a pas."""
+
+
 class DelaiDepasse(Exception):
     """Budget global épuisé, et l'état du dossier ne permet pas de conclure en revue humaine."""
 
@@ -253,6 +257,8 @@ async def enregistrer_revue(
     etat: EtatDossier, revue: Revue, jeton: str, deps: Dependances
 ) -> EtatDossier:
     """Le motif va dans la section ``validation`` (la table DECISION n'a pas de colonne motif)."""
+    if revue.decision == "ACCEPTE" and etat.prime is None:
+        raise AcceptationSansPrime(etat.numero_contrat)
     etat = replace(
         etat,
         validation={

@@ -114,7 +114,7 @@ Un **jeu unique** réunit les trois collections avant l'envoi : ce qui est ingé
 
 | Source | Raison de l'exclusion |
 |---|---|
-| Agrégats freMTPL2 (`data/raw/fremtpl2-agregats-*.json`) | Statistiques de sinistralité d'un portefeuille français de 2004 : ce ne sont pas des textes que l'agent peut citer. Ils servent à l'analyse, et le modèle GLM de comparaison utilise freMTPL2 de son côté |
+| Agrégats freMTPL2 (`data/raw/fremtpl2-agregats-*.json`) | Statistiques de sinistralité d'un portefeuille automobile : ce ne sont pas des textes que l'agent peut citer. Ils servent à l'analyse, et le modèle GLM de comparaison utilise freMTPL2 de son côté |
 | Dossiers en base (`dossiers`) | Données personnelles, même fictives : l'agent les lit uniquement par la vue minimisée et l'outil MCP, sous contrôle du gestionnaire. Les copier dans un corpus partagé contournerait cette protection |
 
 ### Règles par source

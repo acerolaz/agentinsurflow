@@ -75,10 +75,7 @@ def agreger(legifrance: Path, bareme: Path, notices: Path, procedures: Path) -> 
         rediges[en_tete["regle_id"]] = corps
     bruts = (
         [{**a, "collection": COLLECTIONS[0], "source": SOURCES[0]} for a in articles]
-        + [
-            {**n, "collection": COLLECTIONS[1], "source": SOURCES[1]}
-            for n in notices_scrapees
-        ]
+        + [{**n, "collection": COLLECTIONS[1], "source": SOURCES[1]} for n in notices_scrapees]
         + [
             {**p, "collection": COLLECTIONS[2], "source": SOURCES[2]}
             for p in generer(regles, rediges, URL_DEPOT)

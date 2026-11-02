@@ -14,7 +14,7 @@
 | Tests de la gateway | job `gateway` | 174 réussis, 0 échec | Voir le job |
 | Logique et appels de l'espace gestionnaire | `make espace-test` | 23 tests dans `gateway/tests/espace/` | Non mesurée |
 | Parcours sur staging | job `e2e-staging` | 13 réussis, 4 ignorés | Sans objet |
-| Répartition des tests | `make pyramide`, compte corrigé par #179 | 993 TU (72 %), 375 TI (27 %), 17 E2E (1 %) : conforme au seuil de 30 % de TI, écart assumé à la cible de 20 % | Sans objet |
+| Répartition des tests | `make pyramide`, compte corrigé par #179 | 1 007 TU (72 %), 378 TI (27 %), 17 E2E (1 %) : conforme au seuil de 30 % de TI, écart assumé à la cible de 20 % | Sans objet |
 | Évaluations du modèle | `evals-pr`, PR #185 | 100 % de réussite (seuil 80 %), latence p95 de 22,08 s (maximum 30 s) | Sans objet |
 
 ## API du modèle (C9)

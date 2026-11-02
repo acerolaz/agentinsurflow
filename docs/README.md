@@ -25,3 +25,7 @@ Chaque document porte son rattachement sous son titre. Les plans et spécificati
 ## Hors E1 et E3
 
 [`grille-retours.md`](grille-retours.md) : retours des ateliers croisés, transverse.
+
+## Versions PDF
+
+Les PDF balisés de la documentation des compétences C9 à C13 sont dans [`pdf/`](pdf/) : `make docs-pdf` les régénère. Les liens relatifs à d'autres fichiers du dépôt ne fonctionnent pas depuis un PDF, et les schémas Mermaid y restent en texte.

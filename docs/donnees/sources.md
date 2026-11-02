@@ -1,6 +1,8 @@
 # Inventaire des sources de données
 
-*Livrable L1 · compétence C1. Spec §3.1, §5.3 ; CGU de l'API Légifrance (DILA, 15/12/2022).*
+**Rattachement : E1 : C1 Extraction.**
+
+*Livrable L1. Spec §3.1, §5.3 ; CGU de l'API Légifrance (DILA, 15/12/2022).*
 
 | | API Légifrance (REST) | Instantané JSON (fichier) | Dossiers de démonstration (base de données) | Documents rédigés (`rag/corpus/`) | Instantané du barème (JSON) | Pages notices (scraping) | freMTPL2 (fichier + big data) |
 |---|---|---|---|---|---|---|---|

@@ -1,5 +1,7 @@
 # Contrat personnel — état au 27/10 (Sprint 4, cluster d'agents 7a et espace gestionnaire, en production)
 
+**Rattachement : E3 : C9 API du modèle, C10 Intégration, C11 Monitoring, C12 Tests automatisés, C13 Livraison continue.**
+
 *Ce qui a été promis au Sprint 1 (critères K1 à K11 du dossier) face à ce qui est en production ou en code livré, critère par critère. Statuts : **tenu**, **en cours** (le travail est prévu, la preuve n'est pas encore complète), **avenant** (le critère change, avec l'accord d'Acerola). Un inconnu est marqué `🔴 À CONFIRMER`, jamais inventé.*
 
 *Sources : `docs/superpowers/specs/2026-10-23-agentic-cluster-7a-design.md` (avenants A1 à A6, § 5, § 7, § 8), `docs/superpowers/specs/2026-10-24-parametrage-agents-design.md`, `agentic-cluster/README.md`, rulings R1 à R24 de l'exécution (recopiés dans l'issue #7, le registre SDD étant supprimé), mesures de `task-13-report.md`. Chaque preuve est un fichier de test, une commande ou une route que l'évaluateur peut relancer.*

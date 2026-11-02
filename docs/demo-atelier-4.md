@@ -1,5 +1,7 @@
 # Démo — atelier croisé n°4 « Cluster d'agents » (sans interface)
 
+**Rattachement : E3 : C9 API du modèle.**
+
 *Script de la spec § 7 (`docs/superpowers/specs/2026-10-23-agentic-cluster-7a-design.md`). Tout se fait par la page Swagger unique de la **gateway** (`$PROD_URL/`), connecté en Entra avec le rôle `Gestionnaire` (gestionnaire A). Le cluster n'est jamais appelé directement : son URL est interne. Durée prévue : `🔴 À CONFIRMER` (répétition à faire).*
 
 *Prérequis : cluster déployé (staging et production depuis le 24/10, #116 ; modèle `gpt-4.1-mini` par agent, `agentic-cluster/agents.toml`). Deux contrats complets du portefeuille du gestionnaire connecté (un pour le cas légitime, un pour le cas hostile) et un contrat de l'autre gestionnaire. Le seed attribue `AIF-2026-000001` à `000003` au gestionnaire A et `000004` à `000006` au gestionnaire B ; avec le compte B (poste, `az login`), `E2E_CONTRAT_AUTRE=AIF-2026-000001` et des contrats propres parmi `000004` à `000006` (`e2e/README.md`). Les parcours du cluster exigent un compte humain (OBO).*

@@ -1,6 +1,8 @@
 # Recherche — démarche, comparatifs, décisions datées
 
-*Compétence C4 (transverse). Source : spec du sprint 3 (`brief3/2026-10-19-donnees-ancrage-design.md`, §0 et §0 bis)
+**Rattachement : E1 : C4 Base de données et RGPD.**
+
+*Source : spec du sprint 3 (`brief3/2026-10-19-donnees-ancrage-design.md`, §0 et §0 bis)
 et registre de suivi de l'implémentation.*
 
 ## Démarche

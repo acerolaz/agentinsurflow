@@ -1,5 +1,7 @@
 # Démo — sprint 5, « les 10 minutes » : parcours, livraison automatique, alerte
 
+**Rattachement : E3 : C10 Intégration, C11 Monitoring, C13 Livraison continue.**
+
 *Spec : [`superpowers/specs/2026-10-28-o6-demo-10-min-design.md`](superpowers/specs/2026-10-28-o6-demo-10-min-design.md) (§ 8 bis prime sur le § 4). Issue #157. Compétence visée : C6, avec C11, C20 et C21 en appui. On montre du réel, jamais une capture, sauf en plan B.*
 
 *Durée totale du tableau : **10:00** (1:00 + 3:00 + 1:30 + 1:30 + 1:30 + 1:00 + 0:30). Les durées de chaque séquence sont des budgets : à confirmer par la répétition.*

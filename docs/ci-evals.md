@@ -1,5 +1,7 @@
 # Chaîne d'évaluation sur pull request
 
+**Rattachement : E3 : C12 Tests automatisés, C13 Livraison continue.**
+
 **Critère C13 (issue #55)** : « Documentation : installation, configuration et test de la chaîne + doc utilisateur de
 déclenchement ». Cette page décrit le job `evals-pr` de `.github/workflows/ci-cd.yml` tel qu'il est livré.
 
@@ -46,7 +48,30 @@ Fichiers déclencheurs (`DECLENCHEURS_EVALS`) : `rag/agentinsurflow_rag/prompts/
 Tout **autre libellé** posé sur la PR relance aussi la chaîne de PR (`labeled`) ; la précédente est annulée
 (`cancel-in-progress`).
 
+### Tous les déclencheurs de la chaîne
+
+| Événement | Fichier | Ce qui part |
+|---|---|---|
+| PR ouverte, mise à jour, rouverte ou libellée | `ci-cd.yml` | `lint`, `test`, `integration`, `pyramide`, `modele`, `gateway`, `underwriting-admin` ; `evals-pr` selon le tableau ci-dessus |
+| Push sur `main` (fusion) | `ci-cd.yml` | Les mêmes portes, puis `build` → staging → `evals` si besoin → `e2e-staging` → `release` → production |
+| Push sur `main` limité à la documentation (`paths-ignore`) | `ci-cd.yml` | Rien : ni build, ni version, ni déploiement |
+| **Approbation humaine** de l'environnement `staging`, puis `production` | environnements GitHub | Reprise du job de déploiement en attente |
+| `workflow_dispatch` de `ci-cd.yml` (depuis `main`) | `ci-cd.yml` | `evals-pr` à la main |
+| `workflow_dispatch` de `deploy.yml` (`make rollback`) | `deploy.yml` | Redéploiement d'un environnement, avec un tag précis ou la révision précédente |
+| Appel par `ci-cd.yml` (`workflow_call`) | `deploy.yml` | Déploiement de staging et de production dans la chaîne |
+
+Une PR remplace sa propre chaîne en cours (`cancel-in-progress`), jamais celle de `main`.
+
 ## Installation et configuration
+
+Installation complète, dans l'ordre, sur un dépôt et un abonnement Azure neufs :
+
+1. `infra/bootstrap.sh` crée l'application de la CI et ses sujets OIDC : aucun mot de passe n'est stocké dans GitHub.
+2. `make infra`, `make entra`, `make llm`, `make calcul`, `make annexe` et `make vigie` provisionnent Azure, à la main (écritures Azure).
+3. Reporter les variables et les secrets dans GitHub : [`secrets.md`](secrets.md), clé par clé.
+4. Créer les environnements GitHub `staging` et `production`, avec un relecteur obligatoire.
+5. `make proteger` applique la protection de `main` (`infra/protection-main.json`) : les portes de PR deviennent obligatoires.
+6. Finir avec le tableau ci-dessous, puis le test de la chaîne.
 
 À faire une fois, par Acerola :
 

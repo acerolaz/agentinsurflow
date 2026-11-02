@@ -1,5 +1,7 @@
 # Soutenance du 30/10 — E1 (C1 à C5) et E3 (C9 à C13) : critère → preuve
 
+**Rattachement : E1 : C1 Extraction, C2 Requêtes SQL, C3 Agrégation, C4 Base de données et RGPD, C5 API REST · E3 : C9 API du modèle, C10 Intégration, C11 Monitoring, C12 Tests automatisés, C13 Livraison continue.**
+
 > ⚠️ **Tableau historique (v0.6.24).** La matrice à jour (v0.6.29) est l'**annexe B** des rapports `E1-rapport.pdf` et
 > `E3-rapport.pdf` ; les écarts à jour sont leur **annexe C**. Depuis ce tableau : scraping (#45 PR 1), big data (#51),
 > jeu agrégé unique (#52) et barème citable (#99) livrés ; pyramide **verte et bloquante** (75 / 24 / 2) ; `evals-pr`

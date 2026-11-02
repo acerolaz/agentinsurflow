@@ -1,6 +1,8 @@
 # Modèle de données — Merise, MPD, SGBD, installation
 
-*Livrable L4 · compétence C4. Sources : migrations EF Core de `underwriting-admin`
+**Rattachement : E1 : C4 Base de données et RGPD.**
+
+*Livrable L4. Sources : migrations EF Core de `underwriting-admin`
 (`underwriting-admin/src/AgentInsurFlow.UnderwritingAdmin.Infrastructure/Dossiers/` et `Traces/`),
 migrations Alembic de `rag` (`rag/migrations/vecteurs/versions/`), image annexe `infra/postgres/init.sh`.*
 

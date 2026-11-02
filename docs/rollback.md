@@ -1,5 +1,7 @@
 # Rollback en une seule opération
 
+**Rattachement : E3 : C13 Livraison continue.**
+
 **Critère 4 de la grille** : « Le retour à la version précédente est montré, en une opération »
 (source : grille-atelier-2-socle-chaine.pdf). La procédure suit le dossier : « Code d'un service → redéployer
 l'image précédente, < 5 min » (source : dossier-conception-v1.md, §7.3).

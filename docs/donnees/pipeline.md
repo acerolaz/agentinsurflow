@@ -1,6 +1,8 @@
 # Pipeline d'ingestion
 
-*Livrables L2, L3 · compétences C1, C3. Code : `rag/agentinsurflow_rag/cli/ingest.py` (CLI),
+**Rattachement : E1 : C1 Extraction, C3 Agrégation.**
+
+*Livrables L2, L3. Code : `rag/agentinsurflow_rag/cli/ingest.py` (CLI),
 `rag/agentinsurflow_rag/infrastructure/legifrance/` (client PISTE), `rag/agentinsurflow_rag/domain/corpus.py`
 (nettoyage, découpage), `rag/agentinsurflow_rag/application/use_cases/` (ingestion). Spec §3.*
 

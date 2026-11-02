@@ -1,5 +1,7 @@
 # Amendement au dossier de conception (V1.2) — décision D42
 
+**Rattachement : E3 : C12 Tests automatisés, C13 Livraison continue.**
+
 **D42 passe de V2 au sprint 5.** Le GLM de Poisson de fréquence (freMTPL2, fiche `fonction-calcul/agentinsurflow_calcul/modeles/glm-freq-20261028-v1.md`) est livré au sprint 5, en comparaison seulement : il n'entre ni dans la décision, ni dans la prime, ni dans le rapport de l'Actuaire.
 
 Source : `dossier-conception-v1.2.pdf` (hors dépôt), texte extrait le 28/10.

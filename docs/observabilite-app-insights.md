@@ -1,5 +1,7 @@
 # Observer AgentInsurFlow dans Application Insights
 
+**Rattachement : E3 : C11 Monitoring.**
+
 *Guide pas à pas pour ouvrir les outils d'observation d'Azure : Live Metrics, Application Map, Transaction Diagnostics, journaux KQL, tableau de bord et alertes. Il sert la recette (K9, K11) et la démo. Les procédures de diagnostic par alerte sont dans [`exploitation.md`](exploitation.md) (sections 4 à 6).*
 
 ## 1. Où sont les données
@@ -127,3 +129,25 @@ az monitor app-insights query --app appi-insurflow-staging -g svespuceRG \
 
   Sans évaluation, le cluster n'émet que ses compteurs de performance (`performanceCounters`) : il n'a ni requête, ni `audit.*`, ni span d'agent. Constat du 30/10 (#176) : les 2 évaluations réelles de staging ont produit les spans du cluster (`POST /evaluations/{numero_contrat}`, `invoke_agent`), mais aucune ligne `audit.*` : le journal `insurflow.audit` restait au niveau WARNING, car le gestionnaire posé par Azure Monitor empêchait de régler INFO. Après le correctif, une évaluation de contrôle (§ 2) doit faire apparaître `audit.agent` et `audit.evaluation` : sinon, rouvrir #176.
 - **Service absent de la carte** : il n'a pas émis de trace dans l'intervalle, ou sa variable `APPLICATIONINSIGHTS_CONNECTION_STRING` manque. Voir [`exploitation.md`](exploitation.md) § 5.
+
+## 9. Pourquoi cet outil, et son accessibilité
+
+**Choix.** Application Insights et Log Analytics, restitués par un tableau de bord du portail Azure.
+
+| Critère | Application Insights + portail Azure | Grafana managé |
+|---|---|---|
+| Déjà dans le projet | Oui : les services y exportent déjà leurs traces, dans la même région et le même abonnement | Non : un service de plus à provisionner, à sécuriser et à payer |
+| Authentification | Entra ID, comme le reste du projet | À raccorder à Entra ID |
+| Temps réel | Live Metrics, immédiat ; journaux en 2 à 5 minutes | Dépend de la même source de données |
+| Alertes par e-mail | Oui, avec les règles AL-1 à AL-10 | Oui, à reconfigurer |
+| Contrainte du projet : un seul développeur | Rien de plus à exploiter | Une brique de plus à maintenir |
+
+**Limite assumée.** Le portail est un outil d'exploitation, réservé aux personnes ayant accès à Azure : ni les gestionnaires ni les souscripteurs n'en ont besoin.
+
+**Accessibilité dans le choix de l'outil.** Microsoft publie des [rapports de conformité d'accessibilité](https://www.microsoft.com/en-us/accessibility/conformance-reports) (WCAG, EN 301 549) pour ses services. Le niveau précis du portail n'a pas été vérifié ici : le rapport du portail Azure reste à consulter et à joindre. Un graphique peut rester difficile à lire au lecteur d'écran. Le projet ne dépend donc pas des seuls graphiques :
+
+| Besoin | Moyen sans graphique |
+|---|---|
+| Lire une valeur de tuile | La requête KQL correspondante (`infra/vigie/kql/`) rend un **tableau**, parcourable au clavier et exportable en CSV |
+| Être prévenu | L'alerte arrive par **e-mail**, un texte lisible dans le client de messagerie de chacun |
+| Réagir à une alerte | Les fiches de [`exploitation.md`](exploitation.md) § 6 sont du texte structuré, sans information portée par la seule couleur |

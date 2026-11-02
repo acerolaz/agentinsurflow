@@ -69,9 +69,9 @@ quota `/api/reponses` à la gateway (#188). Le job `evals-pr` (avant merge) rejo
 > l'espace gestionnaire `/app/` (#134), les relances et `SANS_SUITE` (#136), `make recette` (#137, #149), `make entra`
 > qui garde les agents pré-autorisés sur le MCP (#138), le contrat imprimé et la fiche du lead (#139), les tokens par
 > étape (#140), les pictogrammes (#142), la visionneuse du contrat (#145), les délais de l'évaluation (#146) et les liens
-> de l'en-tête au clavier (#147). Le cluster exporte vers Application Insights (compteurs et métriques
-> `agentic-cluster` présents) mais aucune évaluation authentifiée ne l'a atteint depuis le 28/10 (encore vrai le 29/10 en v0.6.26) : ses spans et
-> `audit.*` restent à prouver par une évaluation réelle (#176). **Bases éphémères** : chaque
+> de l'en-tête au clavier (#147). Le cluster exporte vers Application Insights : ses spans sont prouvés en staging
+> (2 évaluations réelles du 30/10, #176) ; ses lignes `audit.*` n'arrivaient pas (niveau du journal jamais réglé), à reprouver
+> par une évaluation réelle après ce correctif. **Bases éphémères** : chaque
 > déploiement remet les dossiers de staging et de production au seed ([`docs/rollback.md`](docs/rollback.md)).
 > Historique (v0.6.0, du 22/10 au 26/10) : le cluster d'agents (#92, production depuis le 24/10 par #116),
 > le job `test` limité aux TU (#93), le cache Docker inline depuis l'ACR (#95), l'audience `api://agentinsurflow-cluster` (#96),

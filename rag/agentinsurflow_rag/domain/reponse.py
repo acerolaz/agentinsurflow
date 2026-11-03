@@ -49,7 +49,7 @@ def articles_cites(texte: str) -> list[str]:
 
 def contexte(question: str, extraits: Sequence[Extrait], contrat: VueContrat | None) -> str:
     """Message envoyé au LLM : les extraits numérotés par article, le dossier, puis la question."""
-    lignes = ["Extraits du Code des assurances :"]
+    lignes = ["Extraits du corpus :"]
     lignes += [f"[{e.citation.article}] {e.texte}" for e in extraits]
     if contrat is not None:
         lignes += ["", "Dossier du contrat (vue minimisée) :"]

@@ -105,3 +105,19 @@ Le tchat est encore sur Kimi-K2.5 ; `gpt-4.1-mini` arrive avec #224.
 - Blocage de 30 s (#218) : non reproduit sur ce rejeu, cause toujours non établie.
 - Quatre évaluations lancées à la suite ont reçu un 429 de la limite de débit : comportement attendu, espacées d'une minute elles passent.
 
+## Rejeu sur `gpt-4.1-mini` et prompt durci (SHA `3548f2b`, v0.6.36, 16:50 à 17:13 UTC)
+
+Mesures d'`evals-pr` sur #227 : 100 % sur 3 exécutions, p95 de 3,47 à 4,12 s. Essai écarté : `gpt-5-mini` (#228), 91 %, p95 12,71 s, une exécution.
+
+| Point | Staging | Production |
+|---|---|---|
+| Questions du tchat (5 questions rejouées) | 18 envois : 16 réponses, 2 en 429 (limite de 10 par fenêtre, cadence du script) ; 1,6 à 3,5 s sur les 13 réponses chronométrées | 10 envois espacés : 10 réponses, 1,9 à 3,0 s |
+| « Que couvre la formule tous risques ? » (#225) | répond 4 fois sur 4, cite `NP-TOUS-RISQUES` | répond 2 fois sur 2, cite `NP-TOUS-RISQUES` |
+| Question de démonstration | répond 3 fois sur 3 | répond 2 fois sur 2 |
+| Via la gateway | heure de 16 h : 58 appels, aucun au-delà de 20 s, aucun 5xx, p95 3,08 s | sur 20 min : aucun au-delà de 20 s, aucun 429 ni 5xx |
+
+**Ce qui reste ouvert :**
+- Blocage de 30 s (#218) : non reproduit, cause toujours non établie.
+- Une réponse a écrit « article L. 211-1 et L. 211-4 » hors crochets, malgré la consigne du prompt ; le jeu d'évaluation ne le détecte pas.
+- Sources parfois affichées en double à l'écran (plusieurs extraits d'un même article).
+- L'exactitude juridique de chaque réponse n'a pas été relue : ce rejeu contrôle le comportement et les sources citées.

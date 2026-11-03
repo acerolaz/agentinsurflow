@@ -33,7 +33,7 @@ Pictogrammes décoratifs (emoji, `aria-hidden`) sur l'en-tête, les agents de la
 Écritures Entra et variables GitHub : jamais lancées par un agent.
 
 ```bash
-make entra DEMO_USER_ID=<oid de A>                         # rôles de A (rag, underwriting, mcp, cluster) et redirections /app/
+make entra DOMAINE=aibrokerflow.fr DEMO_USER_ID=<oid de A> # rôles de A (rag, underwriting, mcp, cluster) et redirections /app/ ; sans DOMAINE, le domaine de production est retiré des redirections (AADSTS50011)
 gh variable set SEED_GESTIONNAIRE_A --body <oid de A>
 gh variable set SEED_GESTIONNAIRE_C --body <oid de l'identité de la CI>
 gh variable set ESPACE_COMPTE_A --body <UPN de A>          # facultatif : préremplit la connexion

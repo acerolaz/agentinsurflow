@@ -51,7 +51,7 @@ Erreurs : `application/problem+json` avec un `code` stable. Le message de `REVUE
 - **Modifier par PR** : le fichier est copié dans l'image et lu au démarrage ; pas de variable, pas de réglage à chaud.
 - **Validé au démarrage** : un réglage invalide empêche le cluster de démarrer (message : agent et clé).
 - **Vérifié au déploiement** (`deploy.yml`, avant toute mise à jour) : le fichier du SHA déployé est lu et chaque `modele` doit exister comme déploiement de la ressource Foundry (`vars.FOUNDRY_ENDPOINT`, lecture seule) ; sinon le déploiement est refusé avec le nom manquant. Un rollback vérifie donc l'ancien réglage.
-- Les modèles ne sont plus dans un `llm.env` : le cluster n'a ni `agentic-cluster/llm.env` ni `AZURE_OPENAI_DEPLOYMENT` (rag garde `rag/llm.env`, `Kimi-K2.5`). Réglage exposé par `GET /health` (`reglages`) et par `audit.agent` / `invoke_agent`.
+- Les modèles ne sont plus dans un `llm.env` : le cluster n'a ni `agentic-cluster/llm.env` ni `AZURE_OPENAI_DEPLOYMENT` (rag garde `rag/llm.env`, `gpt-4.1-mini`). Réglage exposé par `GET /health` (`reglages`) et par `audit.agent` / `invoke_agent`.
 
 ## Configuration (variables d'environnement, aucune valeur dans le dépôt)
 

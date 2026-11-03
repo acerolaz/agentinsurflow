@@ -16,6 +16,7 @@ import pytest
 from fakes_cluster import (
     CONTRAT,
     REGLAGES,
+    RISQUE_REFUS,
     FakeAudit,
     FakeGarde,
     FakeOutils,
@@ -688,3 +689,19 @@ def test_composition_reelle_refuse_un_reglage_invalide_au_demarrage(
     app.state.jwks = FauxJwks()
     with pytest.raises(ReglageInvalide, match="somme"), TestClient(app):
         pass
+
+
+async def test_dossier_refuse_accepter_409_puis_refuser_reste_possible() -> None:
+    banc = Banc(outils=FakeOutils(evaluer_risque=RISQUE_REFUS))
+    async with client(banc) as c:
+        assert (await c.post("/evaluations/C-1")).json()["statut"] == "EN_ANALYSE"
+        accepter = await c.post("/evaluations/C-1/revue", json=REVUE)
+        assert accepter.status_code == 409
+        assert accepter.json()["code"] == "ACCEPTATION_SANS_PRIME"
+        refuser = await c.post(
+            "/evaluations/C-1/revue",
+            json={"decision": "REFUSE", "validation": "VALIDEE", "motif": "Suspension de permis."},
+        )
+        assert refuser.status_code == 200 and refuser.json() == {"statut": "REFUSE"}
+    assert [a["statut"] for a in banc.outils.corps("update_statut_dossier")][-1] == "REFUSE"
+    assert "ACCEPTE" not in [a["statut"] for a in banc.outils.corps("update_statut_dossier")]

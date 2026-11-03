@@ -3,6 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  boutonsRevue,
   classableSansSuite,
   conditionsGenerales,
   dateEcheance,
@@ -185,4 +186,12 @@ test("échéance : un an moins un jour, 29 février compris", () => {
   assert.equal(dateEcheance("2026-11-01"), "2027-10-31");
   assert.equal(dateEcheance("2026-01-01"), "2026-12-31");
   assert.equal(dateEcheance("2028-02-29"), "2029-02-28");
+});
+
+test("revue : Valider reprend la décision proposée, un refus ne peut pas devenir une acceptation", () => {
+  const decisions = (fiche, prime) => boutonsRevue(fiche, prime).map(([, d, val]) => `${d}/${val}`);
+  assert.deepEqual(decisions({ decision: "REFUSE" }, null), ["REFUSE/VALIDEE"]);
+  assert.equal(boutonsRevue({ decision: "REFUSE" }, null)[0][0], "Valider le refus");
+  assert.deepEqual(decisions({ decision: "ACCEPTE" }, { prime_ttc_annuelle: "1" }), ["ACCEPTE/VALIDEE", "ACCEPTE/CORRIGEE", "REFUSE/VALIDEE"]);
+  assert.deepEqual(decisions({ decision: "ACCEPTE" }, null), ["REFUSE/VALIDEE"]); // sans prime : jamais de contrat
 });

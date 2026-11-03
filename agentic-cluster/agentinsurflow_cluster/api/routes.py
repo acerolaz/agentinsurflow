@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from ..application.evaluation import (
     MESSAGE_INDISPONIBLE,
     MESSAGE_REVUE_HUMAINE,
+    AcceptationSansPrime,
     AucuneRevueEnAttente,
     DelaiDepasse,
     DossierDecide,
@@ -161,6 +162,10 @@ async def reviser(
         )
     except AucuneRevueEnAttente as e:
         raise Probleme(409, "AUCUNE_REVUE_EN_ATTENTE", "Aucune revue en attente") from e
+    except AcceptationSansPrime as e:
+        raise Probleme(
+            409, "ACCEPTATION_SANS_PRIME", "Dossier sans prime : acceptation impossible"
+        ) from e
     except ErreurOutil as e:
         raise _outil_en_echec(e) from e
     return RevueReponse(statut=resultat.statut)  # type: ignore[arg-type]

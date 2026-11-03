@@ -334,6 +334,7 @@ public sealed class EcrituresPostgresTests
         await using var _ = db;
         var ct = TestContext.Current.CancellationToken;
         await depot.EnregistrerBrouillon(GestionnaireA, numero, Fiche, Prime, ct);
+        await depot.EnregistrerEtat(GestionnaireA, numero, new EtatEntrant("TERMINE", 1, [new("prime", "{}")], [], []), ct);
 
         Assert.Equal(new ResultatEcriture(true, null), await depot.ChangerStatut(GestionnaireA, numero, new("ACCEPTE", "VALIDEE"), ct));
 
@@ -354,6 +355,24 @@ public sealed class EcrituresPostgresTests
 
         var d = Assert.Single(await Decisions(numero));
         Assert.Equal(["CORRIGEE", "REFUSE", GestionnaireA], d.Take(3).Select(o => o.ToString()));
+    }
+
+    [Fact]
+    public async Task Accepter_sans_prime_refuse_PRIME_ABSENTE_et_ne_change_rien()
+    {
+        var (db, depot, numero) = await Preparer();
+        await using var _ = db;
+        var ct = TestContext.Current.CancellationToken;
+        await Lire(Connexions().Migrateur, "DELETE FROM section_etat WHERE numero_contrat = @p0", numero);
+        await depot.EnregistrerBrouillon(GestionnaireA, numero, Fiche, Prime, ct);
+        var avant = (string)(await Lire(Connexions().Migrateur, "SELECT statut FROM contrat WHERE numero_contrat = @p0", numero))[0][0];
+        await depot.EnregistrerEtat(GestionnaireA, numero, new EtatEntrant("TERMINE", 1, [new("fiche", "{}")], [], []), ct);
+
+        var r = await depot.ChangerStatut(GestionnaireA, numero, new("ACCEPTE", "VALIDEE"), ct);
+
+        Assert.Equal(new ResultatEcriture(false, "PRIME_ABSENTE"), r);
+        Assert.Equal(avant, (string)(await Lire(Connexions().Migrateur, "SELECT statut FROM contrat WHERE numero_contrat = @p0", numero))[0][0]);
+        Assert.Equal("brouillon", Assert.Single(await Decisions(numero))[0].ToString());
     }
 
     [Fact]

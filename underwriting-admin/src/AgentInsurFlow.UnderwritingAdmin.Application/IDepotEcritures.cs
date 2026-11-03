@@ -11,7 +11,8 @@ public interface IDepotEcritures
 
     /// <summary>
     /// <c>Ecrit=false, CodeRefus=null</c> si le contrat n'existe pas ou appartient à un autre gestionnaire ;
-    /// <c>DECISION_ABSENTE</c> si une validation est demandée sans décision brouillon (rien n'est écrit).
+    /// <c>DECISION_ABSENTE</c> si une validation est demandée sans décision brouillon, <c>PRIME_ABSENTE</c> si ACCEPTE est
+    /// demandé sans section « prime » (rien n'est écrit dans les deux cas).
     /// L'auteur de la validation est le gestionnaire.
     /// </summary>
     Task<ResultatEcriture> ChangerStatut(string gestionnaireId, string numeroContrat, ChangementStatut changement,

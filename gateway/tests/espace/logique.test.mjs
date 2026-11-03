@@ -195,4 +195,3 @@ test("revue : Valider reprend la décision proposée, un refus ne peut pas deven
   assert.deepEqual(decisions({ decision: "ACCEPTE" }, { prime_ttc_annuelle: "1" }), ["ACCEPTE/VALIDEE", "ACCEPTE/CORRIGEE", "REFUSE/VALIDEE"]);
   assert.deepEqual(decisions({ decision: "ACCEPTE" }, null), ["REFUSE/VALIDEE"]); // sans prime : jamais de contrat
 });
-

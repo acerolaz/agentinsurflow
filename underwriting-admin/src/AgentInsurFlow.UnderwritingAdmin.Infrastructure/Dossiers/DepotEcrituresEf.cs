@@ -142,6 +142,14 @@ internal sealed class DepotEcrituresEf(DossiersDbContext db, TimeProvider horlog
                 await transaction.RollbackAsync(ct);
                 return new(false, "DECISION_ABSENTE");
             }
+            // Sans section « prime », le contrat imprimé aurait des montants vides. ponytail: toutes tentatives confondues, comme
+            // LireContratGenere ; comparer à etat_dossier.tentative bloquerait à tort une Saga repartie à 1 (points de reprise perdus).
+            if (changement.StatutCible == "ACCEPTE"
+                && !await db.Set<SectionEtat>().AnyAsync(s => s.NumeroContrat == numeroContrat && s.Section == "prime", ct))
+            {
+                await transaction.RollbackAsync(ct);
+                return new(false, "PRIME_ABSENTE");
+            }
         }
         await transaction.CommitAsync(ct);
         return new(true, null);

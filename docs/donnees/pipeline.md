@@ -11,7 +11,7 @@
 | Rubrique | Contenu |
 |---|---|
 | Technologies | Python 3.12, FastAPI, SQLAlchemy 2.0 async, Alembic, PostgreSQL 16 + pgvector, `httpx`, Docker ; C# / ASP.NET Core 10 pour `underwriting-admin` et la gateway ; analyseur `html.parser` de la bibliothèque standard (scraping) ; PySpark, Spark SQL, Parquet et Java 17 (big data, groupe uv `bigdata`) |
-| Services externes | API Légifrance (PISTE, OAuth 2.0), Azure OpenAI (`text-embedding-3-small`, Kimi-K2.5), Entra ID, OpenML (fichiers ARFF de freMTPL2, sans identifiant) |
+| Services externes | API Légifrance (PISTE, OAuth 2.0), Azure OpenAI (`text-embedding-3-small`, `gpt-4.1-mini`), Entra ID, OpenML (fichiers ARFF de freMTPL2, sans identifiant) |
 | Langages | Python, C#, SQL, YAML (chaîne), JSONL (questions), Bash (`infra/`) |
 | Accessibilité | Markdown structuré, schémas doublés d'un texte, messages d'erreur explicites, Swagger UI comme interface |
 

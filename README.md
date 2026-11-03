@@ -2,7 +2,7 @@
 
 Assistant des **gestionnaires d'assurance auto** : une **gateway** (seule entrée publique) devant ses services,
 **underwriting-admin** (dossiers minimisés et référentiel SQL des traces), **rag**, qui ingère le **Code des assurances** depuis Légifrance, le cherche (recherche hybride pgvector) et répond par un
-**agent à réponses citées**, et le **cluster d'agents** (Saga déterministe et quatre sous-agents, revue humaine du gestionnaire). Les modèles sont des déploiements **Azure AI Foundry** (API v1 compatible OpenAI), un par usage : rag sur `Kimi-K2.5` (`rag/llm.env`), le cluster sur `gpt-4.1-mini` par agent (`agentic-cluster/agents.toml`). Le tout est
+**agent à réponses citées**, et le **cluster d'agents** (Saga déterministe et quatre sous-agents, revue humaine du gestionnaire). Les modèles sont des déploiements **Azure AI Foundry** (API v1 compatible OpenAI), un par usage : rag sur `gpt-4.1-mini` (`rag/llm.env`), le cluster sur `gpt-4.1-mini` par agent (`agentic-cluster/agents.toml`). Le tout est
 livré par une **chaîne GitHub Actions CI/CD/Evals bloquante** jusqu'à la production (Azure Container Apps).
 
 Toutes les API sont **REST** et consultables dans **une seule page Swagger**, servie à la racine de la gateway. Les gestionnaires travaillent dans l'**espace gestionnaire**, servi par la gateway sous `/app/` : [`docs/espace-gestionnaire.md`](docs/espace-gestionnaire.md).
@@ -207,7 +207,7 @@ dossier-conception-v1.md, K5). Pour un article cité, `GET /api/documents/{doc_i
 `${GATEWAY_URL}/api/llm`, `http://gateway:8000/api/llm` dans le compose) avec un jeton d'**application** pour
 l'audience `LLM_AUDIENCE` (rôle `LLM`) : secret de l'inscription rag (`RAG_CLIENT_SECRET`) en local, identité
 managée fédérée (`AZURE_UAMI_CLIENT_ID`) en Azure, comme l'OBO. La gateway échange son propre jeton avec Foundry.
-Le modèle de rag (`Kimi-K2.5`) est épinglé dans `rag/llm.env` ; celui du cluster (`gpt-4.1-mini`), par agent, dans `agentic-cluster/agents.toml`.
+Le modèle de rag (`gpt-4.1-mini`, #218) est épinglé dans `rag/llm.env` ; celui du cluster (`gpt-4.1-mini`), par agent, dans `agentic-cluster/agents.toml`.
 
 ## Tester
 
@@ -341,7 +341,7 @@ ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le L
 | Container Apps par service | `insurflow-{uw,mcp,rag,pg}-{staging,production}` et `ai-cluster-{staging,production}` : entrée interne (PostgreSQL en TCP 5432, base éphémère) | ✅ |
 | Function de calcul | `acerolaz-calcul-{staging,production}` (Flex Consumption, Python 3.12), stockage `acerolazcalcul` ; Easy Auth : la gateway seule | ✅ |
 | Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.6.28` |
-| Modèles | `Kimi-K2.5` (rag), `gpt-4.1-mini` (cluster, `agents.toml`) et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971`, **sans clé** (`disableLocalAuth`) : appelée par la gateway seule (`/api/llm`) | ✅ |
+| Modèles | `gpt-4.1-mini` (rag, `llm.env` ; cluster, `agents.toml`) et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971`, **sans clé** (`disableLocalAuth`) : appelée par la gateway seule (`/api/llm`) | ✅ |
 | Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag`, `-underwriting`, `-mcp`, `-calcul`, `-llm` ; `agentinsurflow-gateway-local` (secret dans le `.env` local seulement) ; rôle `PointsDeReprise` (principal du cluster seul, D106) | ✅ |
 | Vigie (`make vigie`) | `appi-insurflow-{staging,production}` sur le Log Analytics `workspace-svespucepZG6` ; groupe d'actions `ag-insurflow-<env>` (e-mail), alertes AL-1 → AL-10 (`infra/vigie/alertes.tsv`), test de disponibilité `web-sante-<env>`, tableau de bord `vigie-<env>` | ✅ |
 | Identités managées | gateway `uami-insurflow-rag` (nom historique), rag `uami-insurflow-rag-app`, serveur MCP `uami-insurflow-mcp` ; underwriting-admin sans identité Azure | ✅ |

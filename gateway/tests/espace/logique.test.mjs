@@ -11,6 +11,7 @@ import {
   frise,
   gabaritRelance,
   messageRevueHumaine,
+  revueOuverte,
   messageProbleme,
   PICTOS,
   routeDepuisHash,
@@ -205,4 +206,13 @@ test("messageRevueHumaine : le message et le score, y compris 0 ; sans score, le
   assert.equal(messageRevueHumaine({ message: "Ce dossier nécessite une revue humaine.", score: null }),
     "Ce dossier nécessite une revue humaine.");
   assert.equal(messageRevueHumaine({ score: 0.5 }), "Ce dossier nécessite une revue humaine. Score : 0.5");
+});
+
+test("revueOuverte : proposition, ou revue humaine sans pièce manquante ; jamais un dossier figé", () => {
+  const avec = (statut) => ({ sections: { pieces: { statut } } });
+  assert.equal(revueOuverte("EN_ANALYSE", avec("complet")), true);
+  assert.equal(revueOuverte("REVUE_HUMAINE", avec("complet")), true);
+  assert.equal(revueOuverte("REVUE_HUMAINE", avec("incomplet")), false); // K8 : relances, puis sans suite
+  assert.equal(revueOuverte("REFUSE", avec("complet")), false);
+  assert.equal(revueOuverte("EN_PAUSE", avec("complet")), false);
 });

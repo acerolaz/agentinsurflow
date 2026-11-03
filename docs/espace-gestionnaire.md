@@ -84,7 +84,7 @@ Prévu dans le code :
 | 2 | Liens de l'en-tête au Tab | réussi : Mes dossiers, Tchat corpus, thème, Déconnexion, focus visible (#147 revérifiée) |
 | 3 | Ouverture d'un dossier avec Entrée | réussi (000010) |
 | 4 | Thème basculé puis gardé après rechargement | réussi |
-| 5 | Question au tchat : réponse et sources | réussi sur une question du corpus ; **réserve** : blocages à 30 s et question de démonstration refusée (voir la preuve) |
+| 5 | Question au tchat : réponse et sources | réussi, y compris la question de démonstration après #223 (notice citée) ; **réserve** : blocage à 30 s non expliqué (#218), une question sur une notice encore refusée |
 | 6 | Dossier : lancer, frise qui avance chaque seconde, focus gardé sur « Pause » | réussi (000001) |
 | 7 | Pause puis « Reprendre » : la frise repart de l'étape suivante | réussi (000004), même après redémarrage du cluster (K11) |
 | 8 | Double clic sur « Lancer » : un seul appel, sinon message 409 | réussi à la souris : un seul appel (000010) |

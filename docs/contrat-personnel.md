@@ -167,7 +167,7 @@ Recettes en staging : 27/10 ([`recette-k-2026-10-27-staging.md`](../eval/preuves
 
 - K2 : requête sur les traces (cluster déployé : `GET /api/traces/{trace_id}`), puis en KQL avec #54.
 - K9 : évaluation tracée en production, e-mail d'AL-2, Application Map et Live Metrics ([`recette-c11-2026-11-03.md`](../eval/preuves/recette-c11-2026-11-03.md)).
-- Rejouer après déploiement : Pièces sans `llm_ko` (#219), réponses citant une notice (#220), clôture de `000011` (#221). Tchat bloqué 30 s : #218, encore ouvert pour le chat.
+- Rejoués le 03/11 après #223 et tenus : Pièces sans `llm_ko` (#219), réponse citant une notice (#220), clôture de `000011` (#221). Tchat bloqué 30 s : #218, encore ouvert pour le chat.
 
 Retours des ateliers 1 à 5 et leurs décisions : [`grille-retours.md`](grille-retours.md).
 

@@ -1,0 +1,6 @@
+# Benchmark C7 : change le seul modèle de rag, sans toucher à rag/llm.env.
+# docker compose -f docker-compose.yml -f eval/benchmark/compose-benchmark.yml up -d --wait rag
+services:
+  rag:
+    environment:
+      AZURE_OPENAI_DEPLOYMENT: ${BENCH_MODELE:?BENCH_MODELE absent}

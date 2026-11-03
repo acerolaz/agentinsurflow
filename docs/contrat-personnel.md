@@ -1,4 +1,4 @@
-# Contrat personnel — état au 03/11 (v0.6.33, en production)
+# Contrat personnel — état au 03/11 (v0.6.36, en production)
 
 **Rattachement : E3 : C9 API du modèle, C10 Intégration, C11 Monitoring, C12 Tests automatisés, C13 Livraison continue.**
 

@@ -10,6 +10,7 @@ import {
   etatAffiche,
   frise,
   gabaritRelance,
+  messageRevueHumaine,
   messageProbleme,
   PICTOS,
   routeDepuisHash,
@@ -194,4 +195,14 @@ test("revue : Valider reprend la décision proposée, un refus ne peut pas deven
   assert.equal(boutonsRevue({ decision: "REFUSE" }, null)[0][0], "Valider le refus");
   assert.deepEqual(decisions({ decision: "ACCEPTE" }, { prime_ttc_annuelle: "1" }), ["ACCEPTE/VALIDEE", "ACCEPTE/CORRIGEE", "REFUSE/VALIDEE"]);
   assert.deepEqual(decisions({ decision: "ACCEPTE" }, null), ["REFUSE/VALIDEE"]); // sans prime : jamais de contrat
+});
+
+test("messageRevueHumaine : le message et le score, y compris 0 ; sans score, le message seul", () => {
+  assert.equal(messageRevueHumaine({ message: "Service temporairement indisponible", score: 0.42 }),
+    "Service temporairement indisponible. Score : 0.42");
+  assert.equal(messageRevueHumaine({ message: "Service temporairement indisponible", score: 0 }),
+    "Service temporairement indisponible. Score : 0");
+  assert.equal(messageRevueHumaine({ message: "Ce dossier nécessite une revue humaine.", score: null }),
+    "Ce dossier nécessite une revue humaine.");
+  assert.equal(messageRevueHumaine({ score: 0.5 }), "Ce dossier nécessite une revue humaine. Score : 0.5");
 });

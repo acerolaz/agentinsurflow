@@ -81,9 +81,9 @@ La reprise est prouvée. L'évaluation finit en `REVUE_HUMAINE`, cause `garde_fo
 
 | Constat | Détail | Suite |
 |---|---|---|
-| **Tchat bloqué 30 s, deux fois** | 10:11:34 (`llm.completer`) et 10:16:04 (`embeddings.vectoriser`), `APITimeoutError` côté rag, aucune trace de ces appels côté gateway. Non reproduit ensuite. Cause non établie. | À instruire |
-| **Marge du tchat faible** | Chat côté gateway, sur 14 jours : médiane ≈ 8 s, p95 ≈ 22 s ; limite de 30 s, sans nouvelle tentative (`max_retries=0`). | À instruire |
-| **`llm_ko` avec le LLM actif** | Agent Pièces en repli à 09:56, 10:15, 11:35 et 13:26, en 0,4 à 2,5 s (pas un délai dépassé). AL-2 s'est donc déclenchée hors coupure (09:59, 10:19, 11:39). La proposition reste correcte grâce au repli. Cause non établie. | À instruire |
-| **Question de démonstration refusée** | « Quelles pièces pour souscrire une assurance auto ? » → « Je ne trouve pas la réponse dans le corpus » (200, 6,5 s). | À instruire |
-| **`000011` non clôturable** | Pas de formulaire de revue en `REVUE_HUMAINE` : seuls « Lancer » et « Pause » sont proposés. | Décision d'Acerola |
+| **Tchat bloqué 30 s, deux fois** | 10:11:34 (`llm.completer`) et 10:16:04 (`embeddings.vectoriser`), `APITimeoutError` côté rag, aucune trace de ces appels côté gateway. Non reproduit ensuite. Cause non établie. | #218 : embeddings à 15 s avec un second essai ; chat non traité |
+| **Marge du tchat faible** | Chat de rag sur Kimi-K2.5 : médiane ≈ 8 s, p95 ≈ 22 s ; limite de 30 s, sans nouvelle tentative. | #218 : changer de modèle est une décision d'Acerola |
+| **`llm_ko` avec le LLM actif** | Agent Pièces en repli à 09:56, 10:15, 11:35 et 13:26 ; AL-2 déclenchée hors coupure (09:59, 10:19, 11:39). **Cause, établie après la recette** : garde de 1,5 s pour des appels de ≈ 1,3 s (p90 ≈ 4,7 s). À 11:35, l'appel démarre 0,57 s après l'agent et dure 1,43 s, côté gateway en 200 : la garde coupe avant. Le cas de 13:26 (0,38 s, aucun appel à la gateway, pendant une pause) n'est pas expliqué par cette garde. | #219 : garde portée à 4 s |
+| **Question de démonstration refusée** | « Quelles pièces pour souscrire une assurance auto ? » → refus, verrou 3, avec `NP-JEUNES-CONDUCTEURS` en tête de la recherche. **Cause probable** : seules les citations d'articles (`[L211-1]`) étaient reconnues, pas `[NP-…]` ni `[PI-…]`. | #220 : citations reconnues, à vérifier après déploiement |
+| **`000011` non clôturable** | Pas de formulaire de revue en `REVUE_HUMAINE` : seuls « Lancer » et « Pause » sont proposés. | #221 : refus motivé possible |
 | **Message de revue humaine fugace** | Le message et le score disparaissent au rechargement de la page. | Connu (#216) |

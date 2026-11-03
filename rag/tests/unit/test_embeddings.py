@@ -94,3 +94,25 @@ def test_fabrique_embeddings_none_sans_deploiement() -> None:
 def test_fabrique_embeddings_donne_l_adaptateur_azure() -> None:
     emb = fabrique_embeddings(_config())
     assert isinstance(emb, AzureEmbeddings) and emb.modele == "text-embedding-3-small"
+
+
+def test_azure_retente_une_fois_apres_un_blocage() -> None:
+    # blocage isolé constaté en staging (#218) : un second essai plutôt qu'un 503
+    appels: list[httpx.Request] = []
+
+    def repondre(requete: httpx.Request) -> httpx.Response:
+        appels.append(requete)
+        if len(appels) == 1:
+            raise httpx.ReadTimeout("bloqué", request=requete)
+        return httpx.Response(
+            200,
+            json={
+                "object": "list",
+                "model": "m",
+                "data": [{"object": "embedding", "index": 0, "embedding": [0.5]}],
+                "usage": {"prompt_tokens": 1, "total_tokens": 1},
+            },
+        )
+
+    assert _azure(repondre).vectoriser(["a"]) == [[0.5]]
+    assert len(appels) == 2

@@ -147,7 +147,7 @@ Les seuils viennent de la spec O2/O3 §4 et de `infra/vigie/alertes.tsv`. Les re
 | # | Signal | Seuil | Argument | Requête | Gravité | Action |
 |---|---|---|---|---|---|---|
 | AL-1 | Latence p95 d'une évaluation | > 30 s sur 15 min, évaluée toutes les 15 min | SLO-2 (p95 ≤ 30 s) ; p95 mesurée 14,9 s le 27/10 | [`al-1-latence-p95.kql`](../infra/vigie/kql/al-1-latence-p95.kql) (requête à valider en staging) | gravité 2 | [`docs/exploitation.md#al-1`](exploitation.md#al-1) |
-| AL-2 | Erreurs `llm_ko` | ≥ 1 en 5 min, évaluée toutes les 5 min | 0 attendu en nominal depuis `gpt-4.1-mini` (#105), **pas tenu le 03/11** : Pièces en `llm_ko` LLM actif, cause non établie ; `llm_ko` = LLM sans réponse exploitable (K5) | [`al-2-llm-ko.kql`](../infra/vigie/kql/al-2-llm-ko.kql) (requête à valider en staging) | gravité 1 | [`docs/exploitation.md#al-2`](exploitation.md#al-2) |
+| AL-2 | Erreurs `llm_ko` | ≥ 1 en 5 min, évaluée toutes les 5 min | 0 attendu en nominal depuis `gpt-4.1-mini` (#105), **pas tenu le 03/11** : garde de 1,5 s de l'agent Pièces trop courte, portée à 4 s (#219) ; `llm_ko` = LLM sans réponse exploitable dans le délai (K5) | [`al-2-llm-ko.kql`](../infra/vigie/kql/al-2-llm-ko.kql) (requête à valider en staging) | gravité 1 | [`docs/exploitation.md#al-2`](exploitation.md#al-2) |
 | AL-3 | Cluster en `503 GARDE_FOUS_EN_CHARGEMENT` | > 180 s sur 5 min, évaluée toutes les 5 min | Sonde de démarrage ≈ 3 min autorisées | [`al-3-garde-fous-chargement.kql`](../infra/vigie/kql/al-3-garde-fous-chargement.kql) (requête à valider en staging) | gravité 1 | [`docs/exploitation.md#al-3`](exploitation.md#al-3) |
 | AL-4 | `MCP_INDISPONIBLE` (502 `OUTIL_INDISPONIBLE`) | ≥ 1 en 5 min, évaluée toutes les 5 min | 0 en nominal ; délai MCP 22 s (#146) | [`al-4-mcp-indisponible.kql`](../infra/vigie/kql/al-4-mcp-indisponible.kql) (requête à valider en staging) | gravité 1 | [`docs/exploitation.md#al-4`](exploitation.md#al-4) |
 | AL-5 | Part des évaluations en `REVUE_HUMAINE` (A7) | > 30 % sur 2 h, évaluée toutes les heures, si ≥ 10 évaluations | SLO-5 (≤ 20 %) ; alerte A7 du dossier (L7.5) | [`al-5-revue-humaine.kql`](../infra/vigie/kql/al-5-revue-humaine.kql) (requête à valider en staging) | gravité 2 | [`docs/exploitation.md#al-5`](exploitation.md#al-5) |
@@ -167,7 +167,7 @@ Recettes en staging : 27/10 ([`recette-k-2026-10-27-staging.md`](../eval/preuves
 
 - K2 : requête sur les traces (cluster déployé : `GET /api/traces/{trace_id}`), puis en KQL avec #54.
 - K9 : évaluation tracée en production, e-mail d'AL-2, Application Map et Live Metrics ([`recette-c11-2026-11-03.md`](../eval/preuves/recette-c11-2026-11-03.md)).
-- Instruire les constats du 03/11 : tchat bloqué 30 s, Pièces en `llm_ko` avec le LLM actif, question de démonstration refusée, `000011` non clôturable.
+- Rejouer après déploiement : Pièces sans `llm_ko` (#219), réponses citant une notice (#220), clôture de `000011` (#221). Tchat bloqué 30 s : #218, encore ouvert pour le chat.
 
 Retours des ateliers 1 à 5 et leurs décisions : [`grille-retours.md`](grille-retours.md).
 

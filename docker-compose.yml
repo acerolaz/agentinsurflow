@@ -22,7 +22,8 @@ services:
       PG_BASES_TEST: "1"
     ports: ["${PG_PORT:-5432}:5432"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d vecteurs"]
+      # Par TCP : pendant init.sh, le serveur temporaire répond sur le socket seul (Healthy trop tôt).
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d vecteurs"]
       interval: 2s
       timeout: 3s
       retries: 30

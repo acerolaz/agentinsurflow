@@ -128,6 +128,7 @@ az monitor app-insights query --app appi-insurflow-staging -g svespuceRG \
   ```
 
   Sans évaluation, le cluster n'émet que ses compteurs de performance (`performanceCounters`) : il n'a ni requête, ni `audit.*`, ni span d'agent. Constat du 30/10 (#176) : les 2 évaluations réelles de staging ont produit les spans du cluster (`POST /evaluations/{numero_contrat}`, `invoke_agent`), mais aucune ligne `audit.*` : le journal `insurflow.audit` restait au niveau WARNING, car le gestionnaire posé par Azure Monitor empêchait de régler INFO. Après le correctif, une évaluation de contrôle (§ 2) doit faire apparaître `audit.agent` et `audit.evaluation` : sinon, rouvrir #176.
+  **Contrôle du 03/11 en staging (v0.6.33)** : 8 `audit.evaluation` et 19 `audit.agent` après le déploiement, donc le correctif tient en staging ; la production reste à contrôler ([`recette-c11-2026-11-03.md`](../eval/preuves/recette-c11-2026-11-03.md)).
 - **Service absent de la carte** : il n'a pas émis de trace dans l'intervalle, ou sa variable `APPLICATIONINSIGHTS_CONNECTION_STRING` manque. Voir [`exploitation.md`](exploitation.md) § 5.
 
 ## 9. Pourquoi cet outil, et son accessibilité

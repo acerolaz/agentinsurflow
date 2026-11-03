@@ -49,7 +49,7 @@ quota `/api/reponses` à la gateway (#188). Le job `evals-pr` (avant merge) rejo
 | [`fonction-calcul/`](fonction-calcul/README.md) | Python · Azure Functions | Risque (`bareme-2026.10-v1`) et prime (`formule-2026.10-v1`) déterministes ; n'accepte que la gateway | ✅ déployée (Flex Consumption, staging et production), v0.6.0 (#64, #74) ; une instance toujours prête depuis le 28/10 (`infra/calcul.sh` ①b, #146) : plus de démarrage à froid ; fréquence du GLM Poisson freMTPL2 en comparaison (`/api/frequence`, porte de qualité en CI, #168) |
 | [`e2e/`](e2e/README.md) | Python · pytest | Parcours bout en bout par la gateway (compose ou staging) | ✅ ; job `e2e-staging` bloquant avant la release |
 
-> **Pyramide au 29/10** : 75 % TU / 24 % TI / 2 % E2E (cible 70 / 20 / 10) ; le job `pyramide` est **bloquant**
+> **Pyramide au 03/11** : 72 % TU / 27 % TI / 1 % E2E (cible 70 / 20 / 10, seuil TI à 30 % : écart assumé, #179) ; le job `pyramide` est **bloquant**
 > en CI depuis #48.
 
 > **Production et staging** : release **`v0.6.28`** au SHA `4e8a5e6` (#195), déployée le 29/10 ; la version de la

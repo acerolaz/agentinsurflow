@@ -22,7 +22,7 @@ Azure ni Entra n'est nécessaire pour utiliser la chaîne.
 flowchart LR
     PR["Pull request"] --> L[lint] --> T[test]
     T --> C{"changements : déclencheurs<br/>ou libellé evals ?"}
-    C -- oui --> D["make donnees-evals"] --> E["evals-pr<br/>(staging)"] --> K["commentaire sur la PR"]
+    C -- oui --> D["make donnees-evals"] --> E["evals-pr<br/>(rag de la PR)"] --> K["commentaire sur la PR"]
     C -- non --> S["evals-pr sauté"]
     K --> M["Merge dans main"]
     S --> M
@@ -30,7 +30,7 @@ flowchart LR
 ```
 
 *Description du schéma : après lint et test, la PR lance `evals-pr` si un déclencheur a changé ou si le libellé
-`evals` est posé (données testées, évaluation contre staging, commentaire). Après le merge, la chaîne
+`evals` est posé (données testées, évaluation du rag de la PR, commentaire). Après le merge, la chaîne
 build → staging → `evals` → release → production s'exécute ; `evals` reste la porte bloquante avant la release.*
 
 ## Déclencheurs

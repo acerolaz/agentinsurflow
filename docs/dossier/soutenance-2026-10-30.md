@@ -2,9 +2,9 @@
 
 **Rattachement : E1 : C1 Extraction, C2 Requêtes SQL, C3 Agrégation, C4 Base de données et RGPD, C5 API REST · E3 : C9 API du modèle, C10 Intégration, C11 Monitoring, C12 Tests automatisés, C13 Livraison continue.**
 
-> ⚠️ **Tableau historique (v0.6.24).** La matrice à jour (v0.6.29) est l'**annexe B** des rapports `E1-rapport.pdf` et
+> ⚠️ **Tableau historique (v0.6.24).** Depuis, v0.6.33 : pyramide 72 / 27 / 1 (#179). La matrice à jour est l'**annexe B** des rapports `E1-rapport.pdf` et
 > `E3-rapport.pdf` ; les écarts à jour sont leur **annexe C**. Depuis ce tableau : scraping (#45 PR 1), big data (#51),
-> jeu agrégé unique (#52) et barème citable (#99) livrés ; pyramide **verte et bloquante** (75 / 24 / 2) ; `evals-pr`
+> jeu agrégé unique (#52) et barème citable (#99) livrés ; pyramide **bloquante** ; `evals-pr`
 > réactivé (#55) ; rejeu du 401 testé (#195).
 
 *État de `main` au 29/10 (v0.6.24 en production, `ci-cd` vert sauf `pyramide`, non bloquant). Démo : scénario

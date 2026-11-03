@@ -10,6 +10,7 @@ Critères fixés avant la mesure : `docs/superpowers/specs/2026-11-03-e2-rapport
 ```bash
 # 1. Préparer : la solution du dépôt principal doit être arrêtée (mêmes ports).
 cp ../../../.env .env
+bash infra/benchmark-e2.sh creer   # écriture Entra : secret temporaire du rag local (.env local seul)
 export EVALS_JETON=$(az account get-access-token --scope "api://agentinsurflow-rag/.default" --query accessToken -o tsv)
 make up
 make ingest URL=http://localhost:8000 JEU=data/aggregated/corpus-2026-10-27.json
@@ -25,8 +26,10 @@ done
 uv run --env-file .env --project agentic-cluster python agentic-cluster/benchmark_agents.py \
   --modeles gpt-4.1-mini gpt-5-mini Kimi-K2.5 --sortie eval/preuves/benchmark-2026-11-03/agents.json
 
-# 4. Arrêter.
+# 4. Arrêter et retirer le secret.
 make down
+bash infra/benchmark-e2.sh retirer
+rm .env
 ```
 
 Ensuite, Claude écrit `benchmark.md` : `uv run python -m tools.benchmark_synthese --dossier eval/preuves/benchmark-2026-11-03`.

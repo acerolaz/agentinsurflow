@@ -52,7 +52,7 @@ L'approbation n'est **pas** cliquée avant la démo : elle l'est en direct à 8:
 - [ ] Le gestionnaire de démo est connecté sur la production : `https://aibrokerflow.fr/app/` (`PROD_URL`, `README.md` ligne 321), carte « Gestionnaire A » `🔴 À CONFIRMER`.
 - [ ] Le compte a reçu les droits de relecture sur l'App Insights de production et de staging, et la fiche AL-2 est ouverte.
 - [ ] Deux dossiers frais de A, prêts : un pour le parcours de bout en bout (`AIF-2026-00000N`, `🔴 À CONFIRMER` après le déploiement de la veille), un de réserve. La Function de calcul est réveillée (premier appel avant la démo : un démarrage à froid a coûté 10 s dans la recette du 27/10).
-- [ ] La boîte mail destinataire de l'alerte (`ALERTE_EMAIL`) est ouverte.
+- [ ] La boîte mail destinataire de l'alerte (`ALERTE_EMAIL`) est ouverte, et sa réception a été vérifiée (la boîte Simplon n'a rien reçu le 03/11).
 - [ ] Un export ou une capture de l'e-mail AL-2 d'une répétition, en plan B.
 - [ ] Le terminal est à la racine du dépôt, `az login` fait.
 

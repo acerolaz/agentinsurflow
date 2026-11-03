@@ -155,6 +155,13 @@ export function boutonsRevue(fiche, prime) {
   return [["Valider", "ACCEPTE", "VALIDEE"], ["Corriger et accepter", "ACCEPTE", "CORRIGEE", "secondaire"], refuser];
 }
 
+/** Dossier en revue humaine : le message du cluster et, s'il existe, le score (K5). */
+export function messageRevueHumaine(reponse) {
+  const message = reponse.message ?? "Ce dossier nécessite une revue humaine.";
+  const fin = /[.!?]$/.test(message) ? "" : ".";
+  return reponse.score == null ? message : `${message}${fin} Score : ${reponse.score}`;
+}
+
 /** Message lisible d'une réponse en erreur (ProblemDetails avec un code). */
 export function messageProbleme(statut, code) {
   if (statut === 404) return "Contrat introuvable";

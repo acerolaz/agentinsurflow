@@ -705,3 +705,20 @@ async def test_dossier_refuse_accepter_409_puis_refuser_reste_possible() -> None
         assert refuser.status_code == 200 and refuser.json() == {"statut": "REFUSE"}
     assert [a["statut"] for a in banc.outils.corps("update_statut_dossier")][-1] == "REFUSE"
     assert "ACCEPTE" not in [a["statut"] for a in banc.outils.corps("update_statut_dossier")]
+
+
+async def test_revue_humaine_terminee_se_cloture_par_un_refus_jamais_par_une_acceptation() -> None:
+    # sans revue possible, un dossier hors barème (000011) resterait bloqué en REVUE_HUMAINE
+    banc = Banc()
+    banc.redaction.scenario = lambda agent, vue: None
+    async with client(banc) as c:
+        assert (await c.post("/evaluations/C-1")).json()["statut"] == "REVUE_HUMAINE"
+        accepter = await c.post("/evaluations/C-1/revue", json=REVUE)
+        assert accepter.status_code == 409
+        assert accepter.json()["code"] == "ACCEPTATION_SANS_PRIME"
+        refuser = await c.post(
+            "/evaluations/C-1/revue",
+            json={"decision": "REFUSE", "validation": "VALIDEE", "motif": "Hors barème."},
+        )
+        assert refuser.status_code == 200 and refuser.json() == {"statut": "REFUSE"}
+    assert banc.outils.corps("update_statut_dossier")[-1]["statut"] == "REFUSE"

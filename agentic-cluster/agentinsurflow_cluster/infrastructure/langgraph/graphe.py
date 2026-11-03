@@ -187,6 +187,11 @@ class ServiceEvaluation:
         """La revue est posée mais ``enregistrer`` a échoué : elle ne doit pas être perdue."""
         return tuple(instantane.next) == ("enregistrer",) and bool(instantane.values.get("revue"))
 
+    @staticmethod
+    def _revue_humaine_terminee(instantane: Any) -> bool:
+        """Parcours fini en REVUE_HUMAINE : le gestionnaire le clôt, par un refus (pas de prime)."""
+        return not instantane.next and instantane.values.get("statut") == "REVUE_HUMAINE"
+
     async def _resultat(self, numero: str) -> Resultat:
         valeurs = (await self._etat(numero)).values
         return Resultat(valeurs["statut"] or "EN_ANALYSE", etat_depuis_dict(valeurs["etat"]))
@@ -285,7 +290,8 @@ class ServiceEvaluation:
             instantane = await self._controler_proprietaire(numero, oid)
             if self._attend_revue(instantane):
                 entree: Any = Command(resume=asdict(revue))
-            elif self._a_rejouer(instantane):  # la décision la plus récente l'emporte
+            elif self._a_rejouer(instantane) or self._revue_humaine_terminee(instantane):
+                # la décision la plus récente l'emporte
                 await self._graphe.aupdate_state(
                     self._config(numero), {"revue": asdict(revue)}, as_node="valider"
                 )

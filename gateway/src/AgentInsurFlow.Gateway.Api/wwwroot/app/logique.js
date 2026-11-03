@@ -144,6 +144,12 @@ export function classableSansSuite(etat) {
   return (etat?.nb_relances ?? 0) >= 3 && !STATUTS_FIGES.includes(etat?.statut_parcours);
 }
 
+/** La revue se fait sur une proposition, ou sur une revue humaine complète ; pièces manquantes : relances (K8). */
+export function revueOuverte(statut, etat) {
+  if (statut === "EN_ANALYSE") return true;
+  return statut === "REVUE_HUMAINE" && etat?.sections?.pieces?.statut !== "incomplet";
+}
+
 /**
  * Boutons de la revue : [texte, décision, validation, classe]. « Valider » reprend la décision proposée : un refus
  * ne devient jamais une acceptation, et sans prime aucune acceptation n'est possible (contrat sans montant).

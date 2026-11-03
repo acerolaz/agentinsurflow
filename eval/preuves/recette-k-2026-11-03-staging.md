@@ -121,3 +121,26 @@ Mesures d'`evals-pr` sur #227 : 100 % sur 3 exécutions, p95 de 3,47 à 4,12 s. 
 - Une réponse a écrit « article L. 211-1 et L. 211-4 » hors crochets, malgré la consigne du prompt ; le jeu d'évaluation ne le détecte pas.
 - Sources parfois affichées en double à l'écran (plusieurs extraits d'un même article).
 - L'exactitude juridique de chaque réponse n'a pas été relue : ce rejeu contrôle le comportement et les sources citées.
+
+## K2 : requête sur les traces (7 jours, le 03/11)
+
+Portée : `requests`, `dependencies`, `traces`, `exceptions`, `customEvents` ; champs `name`, `url`, `data`, `message`, `outerMessage` et `customDimensions`. Seuls des comptes sont lus, jamais les valeurs.
+
+| Motif | Staging (38 700 lignes) | Production (9 484 lignes) |
+|---|---|---|
+| E-mail, téléphone français, NIR, IBAN français, immatriculation | 0 | 0 |
+| JWT, jeton Bearer | 0 | 0 |
+| Nom et prénom des dossiers de test (`Nom<n>`, `Prenom<n>`) | 0 | 0 |
+| Numéro de contrat en clair | 101, `audit.*` du cluster | 5, `audit.*` du cluster |
+
+```kusto
+union requests, dependencies, traces, exceptions, customEvents
+| where timestamp > ago(7d)
+| extend blob = strcat(name, ' ', url, ' ', data, ' ', message, ' ', outerMessage, ' ', tostring(customDimensions))
+| where blob matches regex @'AIF-[0-9]{4}-[0-9]{6}'
+| summarize n = count() by cloud_RoleName, itemType
+```
+
+**Décision d'Acerola (03/11)** : le numéro de contrat reste dans `audit.*` comme pseudonyme d'audit, documenté dans [`rgpd.md`](../../docs/donnees/rgpd.md) ; K2 vise les données directement identifiantes.
+
+**Limites** : motifs français seulement, et des dossiers de test. La requête ne couvre pas `client.address` (IP, au registre) ni le contenu envoyé au LLM, qui n'est pas tracé : celui-ci n'est couvert que par les tests cités au contrat personnel.

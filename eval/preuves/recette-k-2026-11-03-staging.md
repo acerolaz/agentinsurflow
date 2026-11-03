@@ -87,3 +87,21 @@ La reprise est prouvée. L'évaluation finit en `REVUE_HUMAINE`, cause `garde_fo
 | **Question de démonstration refusée** | « Quelles pièces pour souscrire une assurance auto ? » → refus, verrou 3, avec `NP-JEUNES-CONDUCTEURS` en tête de la recherche. **Cause probable** : seules les citations d'articles (`[L211-1]`) étaient reconnues, pas `[NP-…]` ni `[PI-…]`. | #220 : citations reconnues, à vérifier après déploiement |
 | **`000011` non clôturable** | Pas de formulaire de revue en `REVUE_HUMAINE` : seuls « Lancer » et « Pause » sont proposés. | #221 : refus motivé possible |
 | **Message de revue humaine fugace** | Le message et le score disparaissent au rechargement de la page. | Connu (#216) |
+
+## Rejeu après #223 (staging, SHA `d7b5d87`, 15:49 à 15:55 UTC)
+
+Le tchat est encore sur Kimi-K2.5 ; `gpt-4.1-mini` arrive avec #224.
+
+| Point | Résultat | Preuve |
+|---|---|---|
+| #221 `000011` | « Refuser » seul, motif, revue en 200, `REFUSE`, « Lancer » désactivé, `/contrat` en 409 | `ab406e2f3603…` |
+| #221 `000003` (pièces manquantes) | aucun bouton de revue : le parcours reste relances, puis sans suite | `5208fff32198…` |
+| #219 agent Pièces | 6 évaluations en mode `llm`, 0 `llm_ko`, aucune alerte active dans l'heure | `audit.agent` |
+| #220 question de démonstration | réponse en 12,4 s, citation `NP-JEUNES-CONDUCTEURS` : **les notices scrapées sont citées** | tchat |
+| Propositions | `000001`, `000002`, `000004`, `000010` en `EN_ANALYSE`, 12 à 17 s | `489b97b57390…`, `73156206046b…`, `29fc7920e45f…`, `d9b6b1b02106…` |
+
+**Ce qui reste ouvert :**
+- « Que couvre la formule tous risques ? » est refusée au verrou 3, alors que `NP-TOUS-RISQUES` arrive en tête de la recherche : suivi séparé.
+- Blocage de 30 s (#218) : non reproduit sur ce rejeu, cause toujours non établie.
+- Quatre évaluations lancées à la suite ont reçu un 429 de la limite de débit : comportement attendu, espacées d'une minute elles passent.
+

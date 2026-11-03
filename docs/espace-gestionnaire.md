@@ -24,6 +24,7 @@ Pictogrammes décoratifs (emoji, `aria-hidden`) sur l'en-tête, les agents de la
 4. **Proposition** : lire fiche et prime → motif → **Valider** → contrat généré → **Imprimer**.
 5. Dossier 3 (sans relevé) → **Lancer** → **Pièces manquantes** : modifier le mail → **Envoyer la relance** (« Relance 1/3 enregistrée… »).
 6. Dossier 10 (refus R01) → **Lancer** → proposition de refus → **Valider le refus** avec un motif.
+   Dossier 11 (hors barème) → **Lancer** → revue humaine : le motif nomme le champ (« Donnée hors barème : crm »), le score s'affiche.
 7. **Tchat corpus** : « Quelles pièces pour souscrire une assurance auto ? » → réponse et sources.
 8. Se déconnecter, se connecter en **B** : le dossier de A est introuvable (même 404 qu'un dossier inexistant).
 
@@ -75,25 +76,25 @@ Prévu dans le code :
 - portefeuille : chaque numéro est un lien (Entrée l'ouvre) ;
 - fil du tchat en `aria-live="polite"`, erreurs en `role="alert"`.
 
-**Vérification au clavier seul** (à faire en local, `make up`, `http://localhost:8000/app/`) — *non faite par Claude : la connexion Entra est interactive.*
+**Vérification au clavier seul : jouée le 03/11/2026 en staging sur v0.6.33.** Claude pilote avec Playwright (non versionné, hors CI) ; Acerola joue la connexion et relit le contrat imprimé. Preuve : [`recette-k-2026-11-03-staging.md`](../eval/preuves/recette-k-2026-11-03-staging.md). Le lecteur d'écran n'est pas couvert ici.
 
-| Parcours | Résultat |
-|---|---|
-| Connexion A | à vérifier |
-| Liens de l'en-tête au Tab | staging 28/10 : « Tchat corpus » inatteignable (onglet ARIA en `tabindex="-1"`) → liens simples, à revérifier après déploiement |
-| Ouverture d'un dossier avec Entrée | staging 28/10 (000006) : OK, comme le lancement, les sous-onglets, le motif et la validation |
-| Thème basculé puis gardé après rechargement | à vérifier |
-| Question au tchat : réponse et sources | à vérifier |
-| Dossier : lancer, frise qui avance chaque seconde, focus gardé sur « Pause » | à vérifier |
-| Pause puis « Reprendre » : la frise repart de l'étape suivante | staging 27/10 (000005) : OK, même après redémarrage du cluster (K11) |
-| Double clic sur « Lancer » : un seul appel, sinon message 409 | à vérifier |
-| Valider avec un motif, contrat affiché puis « Imprimer » : conditions particulières sur le modèle d'Acerola (échéance, souscripteur, véhicule, garanties et franchises, cotisation, notice RGPD) et conditions générales (notice du contrat type) | staging 27/10 (000001) : OK, contrat imprimé, relu en `GET` ; visionneuse (#145) à vérifier |
-| En tête du dossier : fiche du souscripteur (civilité, nom, prénom, adresse, mobile, e-mail, véhicule) ; 404 sur un dossier d'un autre gestionnaire | staging 27/10 : OK (fiche affichée ; 404 sur 000007) |
-| Étape choisie : mode, cause, tokens (entrée + sortie, « aucun appel LLM » en repli), outils appelés | à vérifier |
-| Dossier sans relevé : trois relances, la quatrième refusée ; `<b>x</b>` affiché littéralement | staging 27/10 (000003) : trois relances, plus de quatrième proposée ; `<b>x</b>` à vérifier |
-| Après la troisième relance : « Classer sans suite », confirmation, statut `SANS_SUITE`, « Lancer l'évaluation » désactivé | staging 27/10 (000003) : OK |
-| Motif de revue saisi, changement de sous-onglet puis retour : motif gardé ; curseur stable pendant l'évaluation | à vérifier |
-| Page rechargée pendant une évaluation : la frise reprend sa progression | à vérifier |
+| N° | Parcours | Résultat au 03/11 |
+|---|---|---|
+| 1 | Connexion A | réussi (Acerola) |
+| 2 | Liens de l'en-tête au Tab | réussi : Mes dossiers, Tchat corpus, thème, Déconnexion, focus visible (#147 revérifiée) |
+| 3 | Ouverture d'un dossier avec Entrée | réussi (000010) |
+| 4 | Thème basculé puis gardé après rechargement | réussi |
+| 5 | Question au tchat : réponse et sources | réussi sur une question du corpus ; **réserve** : blocages à 30 s et question de démonstration refusée (voir la preuve) |
+| 6 | Dossier : lancer, frise qui avance chaque seconde, focus gardé sur « Pause » | réussi (000001) |
+| 7 | Pause puis « Reprendre » : la frise repart de l'étape suivante | réussi (000004), même après redémarrage du cluster (K11) |
+| 8 | Double clic sur « Lancer » : un seul appel, sinon message 409 | réussi à la souris : un seul appel (000010) |
+| 9 | Valider avec un motif, contrat affiché puis « Imprimer » : conditions particulières et conditions générales, visionneuse (#145) | réussi (000001), contrat imprimé relu par Acerola |
+| 10 | En tête du dossier : fiche du souscripteur ; 404 sur un dossier d'un autre gestionnaire | réussi (404 sur 000007) |
+| 11 | Étape choisie : mode, cause, tokens, outils appelés | réussi (Analyste : 335 tokens, entrée 277, sortie 58) |
+| 12 | Dossier sans relevé : trois relances, la quatrième refusée ; `<b>x</b>` affiché littéralement | réussi (000003, 4ᵉ en 409 `RELANCES_EPUISEES`) |
+| 13 | Après la troisième relance : « Classer sans suite », confirmation, statut `SANS_SUITE`, « Lancer l'évaluation » désactivé | réussi (000003) ; confirmation acceptée par script |
+| 14 | Motif de revue saisi, changement de sous-onglet puis retour : motif gardé ; curseur stable pendant l'évaluation | motif gardé, flèches réussies ; **curseur non testé** |
+| 15 | Page rechargée pendant une évaluation : la frise reprend sa progression | réussi (000001) |
 
 ## Vue du dossier
 
@@ -103,5 +104,5 @@ Prévu dans le code :
 - **Détail d'une étape** : mode, cause, durée, **tokens** (lus une fois dans la trace : attributs `gen_ai.usage.*` du span `invoke_agent` de l'agent ; « — (aucun appel LLM) » quand le total est nul), puis les spans de sa trace réduits à une liste blanche (outil MCP, décision, code ; agent, mode, cause) — jamais de prompt ni de sortie du modèle.
 - **Pièces du dossier** (#141) : liste des pièces déclarées, avec leur date d'émission, et téléchargement de chaque fichier (`GET /api/contrats/{numero_contrat}/pieces/{type}/fichier`). Ce sont des PDF fictifs, communs à tous les dossiers : aucun dépôt réel ni Blob Storage à ce stade (écart assumé).
 - **Pièces manquantes** (pastille quand la section `pieces` est `incomplet`) : mail prérempli et modifiable ; « Envoyer la relance » fait `POST /api/contrats/{n}/relances`, qui l'**enregistre et le trace comme envoyé, sans e-mail** avant ACS (#123, 15/11). Trois au plus (`409 RELANCES_EPUISEES`), jamais sur un dossier décidé (`409 DOSSIER_DECIDE`), seulement pour des pièces que l'agent Pièces a trouvées manquantes (`400 PIECES_INVALIDES`) ; deux envois simultanés : le second reçoit `409 RELANCE_CONCURRENTE` ; le span ne porte que le rang et les types de pièces, jamais le texte.
-- **Proposition** : fiche et prime des sections de l'état ; en `REVUE_HUMAINE`, le message du cluster s'affiche avec le score ; « Valider » reprend la décision proposée (un refus donne seulement « Valider le refus », et une acceptation sans prime est refusée : 409 `ACCEPTATION_SANS_PRIME` par le cluster, 400 `PRIME_ABSENTE` par `underwriting-admin` sur un appel direct) ; revue avec motif obligatoire (Valider, Corriger et accepter, Refuser). Après `ACCEPTE`, `GET /v1/souscriptions/{n}/contrat` : le contrat s'affiche dans une **visionneuse** (cadre de 70vh qui défile ; page à largeur A4, 794 px, qui défile horizontalement sur un écran étroit ; cadre focusable, `role="region"`, pour défiler au clavier), « Imprimer » hors du cadre (`@media print` neutralise le cadre et la largeur fixe, #145). Le contrat suit le modèle fictif d'Acerola : en-tête (n°, effet, échéance à un an moins un jour, reconduction tacite), 1. souscripteur, 2. véhicule, 3. garanties et franchises, 4. cotisation (TTC annuelle, prélèvement mensuel), 5. notice RGPD (articles 13, 14 et 22), puis conditions générales (notice du contrat type, lue au corpus) et références de la décision.
+- **Proposition** : fiche et prime des sections de l'état ; en `REVUE_HUMAINE`, le message du cluster s'affiche avec le score ; sans pièce manquante, « Refuser » avec un motif clôt le dossier ; « Valider » reprend la décision proposée (un refus donne seulement « Valider le refus », et une acceptation sans prime est refusée : 409 `ACCEPTATION_SANS_PRIME` par le cluster, 400 `PRIME_ABSENTE` par `underwriting-admin` sur un appel direct) ; revue avec motif obligatoire (Valider, Corriger et accepter, Refuser). Après `ACCEPTE`, `GET /v1/souscriptions/{n}/contrat` : le contrat s'affiche dans une **visionneuse** (cadre de 70vh qui défile ; page à largeur A4, 794 px, qui défile horizontalement sur un écran étroit ; cadre focusable, `role="region"`, pour défiler au clavier), « Imprimer » hors du cadre (`@media print` neutralise le cadre et la largeur fixe, #145). Le contrat suit le modèle fictif d'Acerola : en-tête (n°, effet, échéance à un an moins un jour, reconduction tacite), 1. souscripteur, 2. véhicule, 3. garanties et franchises, 4. cotisation (TTC annuelle, prélèvement mensuel), 5. notice RGPD (articles 13, 14 et 22), puis conditions générales (notice du contrat type, lue au corpus) et références de la décision.
 - **Après `REVUE_HUMAINE`, trois relances envoyées** : « Classer sans suite » (`POST /api/contrats/{n}/sans-suite`, statut `SANS_SUITE`, K8).

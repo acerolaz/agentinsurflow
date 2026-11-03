@@ -48,5 +48,15 @@
 | Purge des dossiers échus | Dossiers non aboutis de plus de 3 ans, contrats échus depuis plus de 2 ans, avec leur mémoire et leurs relances (suppression en cascade) | Non (requête SQL relue par le DPO) | Annuelle |
 | Questions de l'agent | Non conservées hors traces techniques (sha256 seulement) | — | — |
 
-**Durées** proposées le 29/10 (#53), à valider par Acerola. Les données du MVP sont fictives (seed) : aucune
-purge réelle n'a encore lieu de s'appliquer. **Hors périmètre** : l'automatisation de la purge des dossiers échus.
+**Durées** proposées le 29/10 (#53) ; les deux durées principales (prospects : 3 ans ; contrat : durée + 2 ans) sont
+reprises par la politique de conservation d'Acerola du 03/11. Les données du MVP sont fictives (seed) : aucune purge
+réelle n'a encore lieu de s'appliquer. **Hors périmètre** : l'automatisation de la purge des dossiers échus.
+
+Ce que cette politique prévoit et que le projet ne reprend pas, faute d'objet ou de source vérifiée :
+
+| Point de la politique | Pourquoi il n'est pas repris |
+|---|---|
+| Documents OCR bruts : 30 ou 60 jours, règle d'expiration sur le stockage | Pas d'OCR ni de stockage de pièces : les PDF sont fictifs (#141). À reprendre si de vraies pièces arrivent. |
+| Prompts et réponses LLM : 90 jours, puis 1 an, puis anonymisation pour réentraîner ou évaluer | Le projet ne stocke ni prompt ni réponse : les traces gardent le sha256 et la longueur, 30 jours. |
+| Archives intermédiaires de 5 et 10 ans | Non mises en œuvre ; références juridiques à faire vérifier par un DPO. |
+| Requêtes de purge sur `leads` et `agent_sessions` | Ces tables n'existent pas ici. La purge reste la requête annuelle relue par le DPO (tableau ci-dessus). |

@@ -5,7 +5,7 @@ import { appeler, telecharger } from "./api.js";
 import { el, erreur, picto, remplir } from "./dom.js";
 import {
   LIBELLES_GARANTIES, LIBELLES_PIECES, PICTOS, STATUTS_FIGES, classableSansSuite, conditionsGenerales, dateEcheance, etatAffiche,
-  boutonsRevue, frise, gabaritRelance, messageRevueHumaine,
+  boutonsRevue, frise, gabaritRelance, messageRevueHumaine, revueOuverte,
   spansAffichables, tokensEtape,
 } from "./logique.js";
 
@@ -310,7 +310,7 @@ export async function afficherDossier(zone, numero) {
     const fiche = v.etat?.sections?.fiche;
     const prime = v.etat?.sections?.prime;
     if (!fiche) return el("p", { class: "discret" }, "Aucune proposition pour l'instant.");
-    const enAttente = statut() === "EN_ANALYSE";
+    const enAttente = revueOuverte(statut(), v.etat);
     return el("div", {},
       el("dl", {},
         el("dt", {}, "Décision proposée"), el("dd", {}, fiche.decision),

@@ -16,7 +16,9 @@ MESSAGE_REFUS = (
     "je ne réponds pas sans source."
 )
 ABSTENTION = "NOT_FOUND_IN_CORPUS"
-_CITATION = re.compile(r"\[\s*([LRAD])\s*\.?\s*(\d+(?:-\d+)+)\s*\]", re.IGNORECASE)
+_CITATION = re.compile(
+    r"\[\s*(?:([LRAD])\s*\.?\s*(\d+(?:-\d+)+)|((?:NP|PI)-[A-Z0-9_-]+))\s*\]", re.IGNORECASE
+)
 
 # Champs de la vue minimisée donnés au LLM : aucun identifiant de personne (RGPD)
 CHAMPS_CONTRAT = (
@@ -37,9 +39,11 @@ def est_abstention(texte: str) -> bool:
 
 
 def articles_cites(texte: str) -> list[str]:
-    """Numéros cités entre crochets (« [L211-1] »), normalisés, sans doublon, dans l'ordre."""
+    """Références citées entre crochets ([L211-1], [NP-TIERS]), sans doublon, dans l'ordre."""
     return list(
-        dict.fromkeys(normaliser_numero(lettre + num) for lettre, num in _CITATION.findall(texte))
+        dict.fromkeys(
+            normaliser_numero(lettre + num + ref) for lettre, num, ref in _CITATION.findall(texte)
+        )
     )
 
 

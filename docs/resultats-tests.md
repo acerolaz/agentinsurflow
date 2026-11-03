@@ -12,7 +12,7 @@
 | Tests unitaires et d'intégration Python, avec PostgreSQL | job `integration` | 1 281 réussis, 2 ignorés, 14 désélectionnés | 94,92 % (seuil bloquant : 80 %) |
 | Tests d'`underwriting-admin` | job `integration` | 258 réussis, 0 échec | 95,3 % des lignes (seuil bloquant : 80 %) |
 | Tests de la gateway | job `gateway` | 174 réussis, 0 échec | Voir le job |
-| Logique et appels de l'espace gestionnaire | `make espace-test` | 23 tests dans `gateway/tests/espace/` | Non mesurée |
+| Logique et appels de l'espace gestionnaire | `make espace-test` | 26 tests dans `gateway/tests/espace/` | Non mesurée |
 | Parcours sur staging | job `e2e-staging` | 13 réussis, 4 ignorés | Sans objet |
 | Répartition des tests | `make pyramide`, compte corrigé par #179 | 1 007 TU (72 %), 378 TI (27 %), 17 E2E (1 %) : conforme au seuil de 30 % de TI, écart assumé à la cible de 20 % | Sans objet |
 | Évaluations du modèle | `evals-pr`, PR #214 (run 41478839683) : rag de la PR, vrai LLM | 100 % de réussite (seuil 80 %), latence p95 de 26,96 s (maximum 30 s) | Sans objet |
@@ -29,7 +29,7 @@
 
 **Ce que ces résultats prouvent.** La logique de l'espace gestionnaire et ses appels à l'API sont testés sans navigateur, et les routes de la gateway qu'elle utilise passent leurs 174 tests.
 
-**Ce qu'ils ne prouvent pas.** Aucun test automatisé ne pilote un vrai navigateur : l'accessibilité au clavier (K6) se vérifie donc à la main, comme le rendu visuel. Le résultat est dans [`recette-k-2026-10-27-staging.md`](../eval/preuves/recette-k-2026-10-27-staging.md).
+**Ce qu'ils ne prouvent pas.** La CI ne pilote pas de vrai navigateur : l'accessibilité au clavier (K6) se vérifie par une recette, le rendu visuel à l'œil. La recette du 03/11 sur v0.6.33 a joué les 15 parcours avec Playwright, hors CI ([`recette-k-2026-11-03-staging.md`](../eval/preuves/recette-k-2026-11-03-staging.md)). Le résultat est dans [`recette-k-2026-10-27-staging.md`](../eval/preuves/recette-k-2026-10-27-staging.md).
 
 ## Tests ignorés
 

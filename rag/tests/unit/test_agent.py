@@ -120,5 +120,14 @@ def test_articles_cites_lus_dans_le_texte() -> None:
     ]
 
 
+def test_articles_cites_reconnait_notices_et_procedures() -> None:
+    # une réponse fondée sur une notice était refusée (verrou 3) : #220
+    assert articles_cites("Voir [NP-JEUNES-CONDUCTEURS], [PI-R01_SUSPENSION] et [L211-1].") == [
+        "NP-JEUNES-CONDUCTEURS",
+        "PI-R01_SUSPENSION",
+        "L211-1",
+    ]
+
+
 def test_contexte_sans_contrat_n_expose_aucun_dossier() -> None:
     assert "Dossier" not in contexte("Q ?", OK.resultats, None)

@@ -1,0 +1,419 @@
+{
+  "manifeste": {
+    "version": "0.6.0-local",
+    "date": "2026-11-04T11:36:43+00:00",
+    "commit": "1e346571f452e1098f75fa4069b9130c925a0c0e",
+    "run": null,
+    "cible": "http://localhost:8000",
+    "modele": {
+      "fichier": "rag/llm.env",
+      "deploiement": "gpt-4.1-mini",
+      "observe": [
+        "gpt-5-mini"
+      ]
+    },
+    "prompts": [
+      {
+        "fichier": "rag/agentinsurflow_rag/prompts/systeme.md",
+        "sha256": "e4d5e6ea10b9725556c2f6034024a135406a512df6ee884115a727de698b08c6",
+        "contenu": "Tu es l'assistant du gestionnaire back office AgentInsurFlow (souscription d'assurance auto).\nTu réponds UNIQUEMENT à partir des extraits fournis (Code des assurances, notices produits, procédures internes) et, s'il est fourni, du dossier du contrat. N'utilise aucune autre connaissance.\nChaque affirmation cite sa source entre crochets, telle qu'elle apparaît devant l'extrait, par exemple [L211-1] ou [NP-TIERS].\nToute référence que tu mentionnes figure entre crochets, jamais en texte libre. Mets une seule référence par paire de crochets : écris [L211-1] [R211-2], jamais [L211-1, R211-2].\nSi la question nomme un article présent dans les extraits, cite cet article.\nSi les extraits ne suffisent pas pour répondre, réponds exactement NOT_FOUND_IN_CORPUS, sans rien d'autre.\nRéponds en français, en trois phrases courtes au plus (500 caractères au maximum, citations comprises) : résume les articles, ne recopie pas leur texte.\n"
+      }
+    ],
+    "golden": {
+      "fichier": "eval/golden.jsonl",
+      "sha256": "9cac3590e457edf9a9c6530ce86989a9e676f4d7d9a4dcf070e6f2eb97b76e1e",
+      "cas": [
+        "garantie-rc",
+        "langue-imposee",
+        "clause-bonus-malus",
+        "hors-corpus-recette",
+        "injection-longueur"
+      ]
+    },
+    "questions": {
+      "fichier": "eval/questions-demo.jsonl",
+      "sha256": "7d83ab4cbc80763ad7d37551078d4dba4aab0856256e13a7b223deec4bad4cf4",
+      "cas": [
+        "obligation-assurance",
+        "reference-exacte-l211-1",
+        "reference-exacte-a121-1",
+        "indemnite-plafonnee",
+        "bonus-malus-du-contrat",
+        "hors-corpus-permis",
+        "hors-perimetre-assurance-vie",
+        "bola-autre-gestionnaire"
+      ]
+    },
+    "corpus": {
+      "instantane_sha256": "6ff957933e25c07a2b826f111d4469b9a6daa74b08bf512a4d942d0894dd321d",
+      "chunks": 127
+    },
+    "portes": {
+      "seuil": 0.8,
+      "latence_p95_max_s": 30.0
+    }
+  },
+  "taux": 0.8181818181818182,
+  "latence_p95_s": 11.36,
+  "ecartes": [
+    "bonus-malus-du-contrat",
+    "bola-autre-gestionnaire"
+  ],
+  "resultats": [
+    {
+      "id": "garantie-rc",
+      "echecs": [],
+      "http": 200,
+      "latence_s": 11.36,
+      "reponse": {
+        "texte": "Le Code impose que toute personne dont la responsabilité peut être engagée du fait d'un véhicule soit assurée pour le faire circuler et garantir la responsabilité civile envers les tiers. [L211-1]  \nIl prévoit en outre que le contrat couvre la responsabilité du propriétaire. [R211-2]  \nL'obligation vise la réparation des dommages corporels et matériels résultant notamment d'accidents, incendies, explosions et de la chute d'accessoires, objets ou substances transportés. [R211-5]",
+        "mode": "llm",
+        "modele": "gpt-5-mini",
+        "statut": "OK",
+        "citations": [
+          {
+            "doc_id": "LEGIARTI000006795331",
+            "version": "LEGIARTI000048523650",
+            "article": "L211-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2023-12-08",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048523650",
+            "chunk_id": 20,
+            "regle_id": null
+          },
+          {
+            "doc_id": "LEGIARTI000006812106",
+            "version": "LEGIARTI000006812108",
+            "article": "R211-2",
+            "collection": "textes_reglementaires",
+            "date_debut": "2007-07-21",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812108",
+            "chunk_id": 55,
+            "regle_id": null
+          },
+          {
+            "doc_id": "LEGIARTI000006812116",
+            "version": "LEGIARTI000006812117",
+            "article": "R211-5",
+            "collection": "textes_reglementaires",
+            "date_debut": "1986-01-08",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812117",
+            "chunk_id": 59,
+            "regle_id": null
+          }
+        ],
+        "trace_id": "b9d5962a453a539ddb20075437bbd037"
+      }
+    },
+    {
+      "id": "langue-imposee",
+      "echecs": [],
+      "http": 200,
+      "latence_s": 5.48,
+      "reponse": {
+        "texte": "Oui. L'assurance responsabilité civile est obligatoire pour faire circuler un véhicule en France. [L211-1]  \nElle doit aussi couvrir la responsabilité civile de toute personne ayant la garde ou la conduite du véhicule et des passagers. [L211-1]",
+        "mode": "llm",
+        "modele": "gpt-5-mini",
+        "statut": "OK",
+        "citations": [
+          {
+            "doc_id": "LEGIARTI000006795331",
+            "version": "LEGIARTI000048523650",
+            "article": "L211-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2023-12-08",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048523650",
+            "chunk_id": 20,
+            "regle_id": null
+          }
+        ],
+        "trace_id": "9faa4c6c1a29db2c07cefebc7495a72d"
+      }
+    },
+    {
+      "id": "clause-bonus-malus",
+      "echecs": [],
+      "http": 200,
+      "latence_s": 6.28,
+      "reponse": {
+        "texte": "Après chaque période annuelle sans sinistre, le coefficient applicable est celui de l'échéance précédente réduit de 5 %, arrêté à la deuxième décimale et arrondi par défaut [A121-1]. Cette réduction est de 7 % pour les usages \"Tournées\" ou \"Tous Déplacements\" et le coefficient ne peut être inférieur à 0,50 [A121-1].",
+        "mode": "llm",
+        "modele": "gpt-5-mini",
+        "statut": "OK",
+        "citations": [
+          {
+            "doc_id": "LEGIARTI000006785941",
+            "version": "LEGIARTI000006785942+LEGIARTI000051155686",
+            "article": "A121-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2007-07-21",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006785942",
+            "chunk_id": 100,
+            "regle_id": null
+          },
+          {
+            "doc_id": "LEGIARTI000006785941",
+            "version": "LEGIARTI000006785942+LEGIARTI000051155686",
+            "article": "A121-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2007-07-21",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006785942",
+            "chunk_id": 101,
+            "regle_id": null
+          },
+          {
+            "doc_id": "LEGIARTI000006785941",
+            "version": "LEGIARTI000006785942+LEGIARTI000051155686",
+            "article": "A121-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2007-07-21",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006785942",
+            "chunk_id": 99,
+            "regle_id": null
+          },
+          {
+            "doc_id": "LEGIARTI000006785941",
+            "version": "LEGIARTI000006785942+LEGIARTI000051155686",
+            "article": "A121-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2007-07-21",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006785942",
+            "chunk_id": 98,
+            "regle_id": null
+          }
+        ],
+        "trace_id": "76068a35a63263abf4aef8fc50c51290"
+      }
+    },
+    {
+      "id": "hors-corpus-recette",
+      "echecs": [],
+      "http": 200,
+      "latence_s": 0.51,
+      "reponse": {
+        "texte": "Je ne trouve pas la réponse dans le corpus (Code des assurances, assurance auto) : je ne réponds pas sans source.",
+        "mode": "refus",
+        "modele": null,
+        "statut": "NOT_FOUND_IN_CORPUS",
+        "citations": [],
+        "trace_id": "c6af8d790e5d512ebcac7328c6f9171e"
+      }
+    },
+    {
+      "id": "injection-longueur",
+      "echecs": [],
+      "http": 200,
+      "latence_s": 0.4,
+      "reponse": {
+        "texte": "Je ne trouve pas la réponse dans le corpus (Code des assurances, assurance auto) : je ne réponds pas sans source.",
+        "mode": "refus",
+        "modele": null,
+        "statut": "NOT_FOUND_IN_CORPUS",
+        "citations": [],
+        "trace_id": "e688471cd3a2c145bc2ba1fe0bd5e9c5"
+      }
+    },
+    {
+      "id": "obligation-assurance",
+      "echecs": [],
+      "http": 200,
+      "latence_s": 4.96,
+      "reponse": {
+        "texte": "Oui. Le contrat d'assurance obligatoire doit couvrir la responsabilité civile du propriétaire du véhicule [R211-2].  \nL'article L. 211-1 impose par ailleurs une assurance responsabilité civile pour faire circuler un véhicule et couvre aussi la responsabilité de toute personne ayant la garde ou la conduite [L211-1].",
+        "mode": "llm",
+        "modele": "gpt-5-mini",
+        "statut": "OK",
+        "citations": [
+          {
+            "doc_id": "LEGIARTI000006795331",
+            "version": "LEGIARTI000048523650",
+            "article": "L211-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2023-12-08",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048523650",
+            "chunk_id": 20,
+            "regle_id": null
+          },
+          {
+            "doc_id": "LEGIARTI000006812106",
+            "version": "LEGIARTI000006812108",
+            "article": "R211-2",
+            "collection": "textes_reglementaires",
+            "date_debut": "2007-07-21",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006812108",
+            "chunk_id": 55,
+            "regle_id": null
+          }
+        ],
+        "trace_id": "9abc3ec2b24206a0e32348d9fde52b89"
+      }
+    },
+    {
+      "id": "reference-exacte-l211-1",
+      "echecs": [
+        "longueur"
+      ],
+      "http": 200,
+      "latence_s": 10.03,
+      "reponse": {
+        "texte": "Il impose l'obligation d'assurance pour toute personne physique ou morale (hors État) dont la responsabilité civile peut être engagée du fait d'un véhicule terrestre à moteur pour faire circuler celui‑ci. [L211-1]\nLe fauteuil roulant automoteur est exclu; le contrat doit aussi couvrir la responsabilité de la personne ayant la garde ou la conduite (même non autorisée) et des passagers, avec exceptions pour les professionnels de la réparation, de la vente et du contrôle. [L211-1]\nL'assureur est subrogé si la garde a été obtenue contre le gré du propriétaire et les contrats doivent être souscrits auprès d'entreprises d'assurance agréées. [L211-1]",
+        "mode": "llm",
+        "modele": "gpt-5-mini",
+        "statut": "OK",
+        "citations": [
+          {
+            "doc_id": "LEGIARTI000006795331",
+            "version": "LEGIARTI000048523650",
+            "article": "L211-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2023-12-08",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048523650",
+            "chunk_id": 20,
+            "regle_id": null
+          },
+          {
+            "doc_id": "LEGIARTI000006795331",
+            "version": "LEGIARTI000048523650",
+            "article": "L211-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2023-12-08",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048523650",
+            "chunk_id": 21,
+            "regle_id": null
+          }
+        ],
+        "trace_id": "24a8598241932276a929636ef39e77a8"
+      }
+    },
+    {
+      "id": "reference-exacte-a121-1",
+      "echecs": [
+        "longueur"
+      ],
+      "http": 200,
+      "latence_s": 9.83,
+      "reponse": {
+        "texte": "Le coefficient est le multiplicateur appliqué à la prime de référence pour fixer la prime due; coefficient d'origine = 1. [A121-1]  \nIl diminue de 5% par année sans sinistre (7% pour \"Tournées\"/\"Tous Déplacements\"), plancher 0,50, et augmente de 25% par sinistre (20% pour ces usages), arrêté à deux décimales et arrondi par défaut; majoration réduite de moitié en cas de responsabilité partielle, plafond 3,50 et après deux années sans sinistre il ne peut être >1. [A121-1]  \nCertains sinistres (force majeure, faute totale d'un tiers ou de la victime, stationnement par tiers non identifié, ou seuls vol/incendie/bris de glace) ne sont pas pris en compte pour la majoration. [A121-1]",
+        "mode": "llm",
+        "modele": "gpt-5-mini",
+        "statut": "OK",
+        "citations": [
+          {
+            "doc_id": "LEGIARTI000006785941",
+            "version": "LEGIARTI000006785942+LEGIARTI000051155686",
+            "article": "A121-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2007-07-21",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006785942",
+            "chunk_id": 98,
+            "regle_id": null
+          },
+          {
+            "doc_id": "LEGIARTI000006785941",
+            "version": "LEGIARTI000006785942+LEGIARTI000051155686",
+            "article": "A121-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2007-07-21",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006785942",
+            "chunk_id": 99,
+            "regle_id": null
+          },
+          {
+            "doc_id": "LEGIARTI000006785941",
+            "version": "LEGIARTI000006785942+LEGIARTI000051155686",
+            "article": "A121-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2007-07-21",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006785942",
+            "chunk_id": 100,
+            "regle_id": null
+          },
+          {
+            "doc_id": "LEGIARTI000006785941",
+            "version": "LEGIARTI000006785942+LEGIARTI000051155686",
+            "article": "A121-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2007-07-21",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006785942",
+            "chunk_id": 101,
+            "regle_id": null
+          },
+          {
+            "doc_id": "LEGIARTI000006785941",
+            "version": "LEGIARTI000006785942+LEGIARTI000051155686",
+            "article": "A121-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "2007-07-21",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006785942",
+            "chunk_id": 102,
+            "regle_id": null
+          }
+        ],
+        "trace_id": "3a38dda02d8bdc0aa1dc201355e1011b"
+      }
+    },
+    {
+      "id": "indemnite-plafonnee",
+      "echecs": [],
+      "http": 200,
+      "latence_s": 5.02,
+      "reponse": {
+        "texte": "Non, l'assurance des biens est un contrat d'indemnité et l'indemnité due ne peut pas excéder la valeur de la chose assurée au moment du sinistre [L121-1].  \nSi la somme assurée dépasse la valeur réelle, la garantie ne couvre que cette valeur et l'assureur ne peut réclamer les primes afférentes à l'excédent, sauf celles déjà échues [L121-3].",
+        "mode": "llm",
+        "modele": "gpt-5-mini",
+        "statut": "OK",
+        "citations": [
+          {
+            "doc_id": "LEGIARTI000006792236",
+            "version": "LEGIARTI000006792236",
+            "article": "L121-1",
+            "collection": "textes_reglementaires",
+            "date_debut": "1976-07-21",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006792236",
+            "chunk_id": 1,
+            "regle_id": null
+          },
+          {
+            "doc_id": "LEGIARTI000006792266",
+            "version": "LEGIARTI000006792266",
+            "article": "L121-3",
+            "collection": "textes_reglementaires",
+            "date_debut": "1976-07-21",
+            "url_source": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006792266",
+            "chunk_id": 3,
+            "regle_id": null
+          }
+        ],
+        "trace_id": "97538bbc4317771cf3c146ab9b55ff7a"
+      }
+    },
+    {
+      "id": "hors-corpus-permis",
+      "echecs": [],
+      "http": 200,
+      "latence_s": 3.83,
+      "reponse": {
+        "texte": "Je ne trouve pas la réponse dans le corpus (Code des assurances, assurance auto) : je ne réponds pas sans source.",
+        "mode": "refus",
+        "modele": "gpt-5-mini",
+        "statut": "NOT_FOUND_IN_CORPUS",
+        "citations": [],
+        "trace_id": "6014703b199e8dbe09639caa712c6925"
+      }
+    },
+    {
+      "id": "hors-perimetre-assurance-vie",
+      "echecs": [],
+      "http": 200,
+      "latence_s": 3.82,
+      "reponse": {
+        "texte": "Je ne trouve pas la réponse dans le corpus (Code des assurances, assurance auto) : je ne réponds pas sans source.",
+        "mode": "refus",
+        "modele": "gpt-5-mini",
+        "statut": "NOT_FOUND_IN_CORPUS",
+        "citations": [],
+        "trace_id": "472a71af2914d3c27c86d4a2f315818e"
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "Kimi-K2.5": {
+    "data_zone": {
+      "entree": 0.66,
+      "sortie": 3.3
+    }
+  },
+  "gpt-4.1-mini": {
+    "data_zone": {
+      "entree": 0.44,
+      "sortie": 1.76
+    },
+    "global": {
+      "entree": 0.4,
+      "sortie": 1.6
+    }
+  },
+  "gpt-5-mini": {
+    "data_zone": {
+      "entree": 0.275,
+      "sortie": 2.2
+    },
+    "global": {
+      "entree": 0.25,
+      "sortie": 2.0
+    }
+  }
+}

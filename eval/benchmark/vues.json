@@ -1,0 +1,80 @@
+{
+  "acceptable": {
+    "pieces": {
+      "statut": "complet",
+      "manquantes": [],
+      "pieces_exigees": ["releve_information", "permis"]
+    },
+    "analyste": {
+      "score": 3,
+      "classe": "acceptable",
+      "regle_ids": ["R03_CRM"],
+      "version_bareme": "bareme-2026.10-v1"
+    },
+    "redacteur": {
+      "classe": "acceptable",
+      "score": 3,
+      "regle_ids": ["R03_CRM"],
+      "version_bareme": "bareme-2026.10-v1",
+      "formule": "tiers",
+      "observations": ""
+    },
+    "actuaire": {
+      "prime_ttc_annuelle": "600.00",
+      "prime_mensuelle": "50.00",
+      "version_formule": "tarif-v1"
+    }
+  },
+  "limite": {
+    "pieces": {
+      "statut": "incomplet",
+      "manquantes": ["permis"],
+      "pieces_exigees": ["releve_information", "permis"]
+    },
+    "analyste": {
+      "score": 7,
+      "classe": "limite",
+      "regle_ids": ["R04_SINISTRES_RESPONSABLES"],
+      "version_bareme": "bareme-2026.10-v1"
+    },
+    "redacteur": {
+      "classe": "limite",
+      "score": 7,
+      "regle_ids": ["R04_SINISTRES_RESPONSABLES"],
+      "version_bareme": "bareme-2026.10-v1",
+      "formule": "tous_risques",
+      "observations": ""
+    },
+    "actuaire": {
+      "prime_ttc_annuelle": "1200.00",
+      "prime_mensuelle": "100.00",
+      "version_formule": "tarif-v1"
+    }
+  },
+  "refus": {
+    "pieces": {
+      "statut": "complet",
+      "manquantes": [],
+      "pieces_exigees": ["releve_information", "permis"]
+    },
+    "analyste": {
+      "score": 12,
+      "classe": "refus",
+      "regle_ids": ["R01_SUSPENSION"],
+      "version_bareme": "bareme-2026.10-v1"
+    },
+    "redacteur": {
+      "classe": "refus",
+      "score": 12,
+      "regle_ids": ["R01_SUSPENSION"],
+      "version_bareme": "bareme-2026.10-v1",
+      "formule": "tiers",
+      "observations": ""
+    },
+    "actuaire": {
+      "prime_ttc_annuelle": "900.00",
+      "prime_mensuelle": "75.00",
+      "version_formule": "tarif-v1"
+    }
+  }
+}

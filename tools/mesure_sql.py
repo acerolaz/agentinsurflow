@@ -15,6 +15,7 @@ import re
 import statistics
 import sys
 from pathlib import Path
+from typing import Any
 
 import asyncpg
 
@@ -44,7 +45,7 @@ def resume(temps: list[float]) -> str:
     return f"médiane {statistics.median(temps):.2f} ms, p95 {centiles[18]:.2f} ms"
 
 
-def noeuds(plan: dict) -> set[str]:
+def noeuds(plan: dict[str, Any]) -> set[str]:
     ici = {f"{plan['Node Type']} ({plan['Index Name']})"} if "Index Name" in plan else set()
     for fils in plan.get("Plans", []):
         ici |= noeuds(fils)

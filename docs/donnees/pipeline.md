@@ -116,25 +116,28 @@ OIDC de la CI (voir « Agrégation (#52) »).
 *Code : `rag/agentinsurflow_rag/cli/agreger.py` (CLI), `rag/agentinsurflow_rag/domain/procedures.py` (procédures
 générées), `fonction-calcul/agentinsurflow_calcul/domain/bareme.py` (table `REGLES`) et `instantane.py` (instantané).*
 
-Un **jeu unique** réunit les trois collections avant l'envoi : ce qui est ingéré est exactement ce qui est versionné.
+Un **jeu unique** réunit les cinq sources du projet. Avant l'envoi, ce qui est ingéré est exactement la section `entrees` versionnée.
 
 ### Spécifications techniques
 
 | Rubrique | Contenu |
 |---|---|
-| Entrées | Instantané Légifrance (`data/raw/code-assurances-*.json`), instantané du barème (`data/raw/bareme-*.json`), instantané des notices scrapées (`data/raw/notices-*.json`), parties rédigées des procédures (`rag/corpus/procedures_internes/`) |
+| Entrées | Instantané Légifrance (`data/raw/code-assurances-*.json`), instantané du barème (`data/raw/bareme-*.json`), instantané des notices scrapées (`data/raw/notices-*.json`), parties rédigées des procédures (`rag/corpus/procedures_internes/`), agrégats freMTPL2 (`data/raw/fremtpl2-agregats-*.json`) et des dossiers (`data/raw/dossiers-agregats-*.json`) |
 | Sortie | `data/aggregated/corpus-<date Légifrance>.json`, octet pour octet identique à chaque relance (aucune date du jour) |
 | Schéma d'une entrée | `doc_id`, `version`, `article`, `date_debut` (ISO), `etat` (majuscules), `texte_html`, `url_source`, `regle_id`, `collection`, `source` |
-| Manifeste | `date`, `entrees`, `par_collection`, `par_source`, `sources` (sha256 des instantanés Légifrance, barème et notices), `ecarts` (`doc_id`, `source`, `raison`), `sha256` du jeu |
+| Schéma d'une statistique | `source`, `indicateur`, `dimensions` (champs descriptifs), `mesures` (champs numériques) ; une ligne sans mesure ou sans dimension arrête l'agrégation |
+| Manifeste | `date`, `entrees`, `par_collection`, `par_source`, `sources` (sha256 des cinq instantanés), `ecarts` (`doc_id`, `source`, `raison`), `sha256` des entrées, `statistiques` (`lignes`, `par_source`, `sha256`) |
 | Dépendances | Aucune nouvelle (stdlib et code existant) ; fonctionne sans réseau ni identifiants |
-| Volumétrie actuelle | 129 entrées : 119 `legifrance`, 4 `scraping`, 6 `bareme` ; 0 écart |
+| Volumétrie actuelle | 129 entrées : 119 `legifrance`, 4 `scraping`, 6 `bareme` ; 0 écart. 30 statistiques : 25 `fremtpl2`, 5 `dossiers` |
 
-### Sources exclues du jeu agrégé
+### Deux sections dans le même jeu
 
-| Source | Raison de l'exclusion |
-|---|---|
-| Agrégats freMTPL2 (`data/raw/fremtpl2-agregats-*.json`) | Statistiques de sinistralité d'un portefeuille automobile : ce ne sont pas des textes que l'agent peut citer. Ils servent à l'analyse, et le modèle GLM de comparaison utilise freMTPL2 de son côté |
-| Agrégats des dossiers (`data/raw/dossiers-agregats-*.json`) | Statistiques de portefeuille : ce ne sont pas des textes que l'agent peut citer. Les dossiers eux-mêmes restent lus par la vue minimisée et l'outil MCP, sous contrôle du gestionnaire : les copier dans un corpus partagé contournerait cette protection |
+| Section | Sources | Usage |
+|---|---|---|
+| `entrees` | Légifrance, notices scrapées, procédures du barème | Corpus citable : **seule section ingérée** dans le RAG |
+| `statistiques` | Agrégats freMTPL2, agrégats des dossiers | Analyse du portefeuille et de la sinistralité : l'agent ne les cite jamais, et aucune ligne individuelle n'y figure |
+
+Les statistiques ne sont pas ingérées, car ce ne sont pas des textes que l'agent peut citer. Les dossiers eux-mêmes restent lus par la vue minimisée et l'outil MCP, sous contrôle du gestionnaire.
 
 ### Règles par source
 

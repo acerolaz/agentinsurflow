@@ -34,6 +34,10 @@ def dernier(prefixe: str) -> Path:
     return sorted((RACINE / "data/raw").glob(f"{prefixe}-*.json"))[-1]
 
 
+def statistiques() -> tuple[Path, Path]:
+    return dernier("fremtpl2-agregats"), dernier("dossiers-agregats")
+
+
 def instantane(dossier: Path, articles: list[dict[str, Any]]) -> Path:
     chemin = dossier / "code-assurances-2026-10-27.json"
     manifeste = {"date": "2026-10-27", "sha256": sha_articles(articles)}
@@ -70,13 +74,13 @@ def test_doc_id_en_double_refuse(tmp_path: Path) -> None:
     notices = instantane(dossier, [notice, notice])
     legifrance = instantane(tmp_path, [brut()])
     with pytest.raises(ErreurEnvoi, match="NOTICE-X"):
-        agreger(legifrance, dernier("bareme"), notices, PROCEDURES)
+        agreger(legifrance, dernier("bareme"), notices, PROCEDURES, *statistiques())
 
 
 def test_ecart_consigne_dans_le_manifeste(tmp_path: Path) -> None:
     vide = brut(doc_id="LEGIARTI000000000001", texte_html="")
     legifrance = instantane(tmp_path, [brut(), vide])
-    jeu = agreger(legifrance, dernier("bareme"), dernier("notices"), PROCEDURES)
+    jeu = agreger(legifrance, dernier("bareme"), dernier("notices"), PROCEDURES, *statistiques())
     assert "LEGIARTI000000000001" not in {e["doc_id"] for e in jeu["entrees"]}
     assert jeu["manifeste"]["ecarts"] == [
         {"doc_id": "LEGIARTI000000000001", "source": "legifrance", "raison": "partiel:texte_html"}
@@ -89,11 +93,17 @@ def test_bareme_altere_refuse(tmp_path: Path) -> None:
     bareme = tmp_path / "bareme-altere.json"
     bareme.write_text(json.dumps(contenu), encoding="utf-8")
     with pytest.raises(ErreurEnvoi, match="altéré"):
-        agreger(dernier("code-assurances"), bareme, dernier("notices"), PROCEDURES)
+        agreger(dernier("code-assurances"), bareme, dernier("notices"), PROCEDURES, *statistiques())
 
 
 def test_sources_reelles_volumes_et_identite(tmp_path: Path) -> None:
-    jeu = agreger(dernier("code-assurances"), dernier("bareme"), dernier("notices"), PROCEDURES)
+    jeu = agreger(
+        dernier("code-assurances"),
+        dernier("bareme"),
+        dernier("notices"),
+        PROCEDURES,
+        *statistiques(),
+    )
     assert jeu["manifeste"]["par_source"] == {"legifrance": 119, "scraping": 4, "bareme": 6}
     assert jeu["manifeste"]["ecarts"] == []
     assert sum(e["etat"] == "ABROGE" for e in jeu["entrees"]) >= 11
@@ -101,7 +111,13 @@ def test_sources_reelles_volumes_et_identite(tmp_path: Path) -> None:
 
 
 def test_les_notices_viennent_de_l_instantane_scrape() -> None:
-    jeu = agreger(dernier("code-assurances"), dernier("bareme"), dernier("notices"), PROCEDURES)
+    jeu = agreger(
+        dernier("code-assurances"),
+        dernier("bareme"),
+        dernier("notices"),
+        PROCEDURES,
+        *statistiques(),
+    )
     notices = [e for e in jeu["entrees"] if e["collection"] == "notices_produits"]
     assert {e["doc_id"] for e in notices} >= {"tiers", "tiers_etendu", "tous_risques"}
     assert all(e["url_source"].startswith("https://aibrokerflow.fr/notices/") for e in notices)
@@ -114,4 +130,48 @@ def test_instantane_de_notices_altere_refuse(tmp_path: Path) -> None:
     fichier = tmp_path / "notices-2026-01-01.json"
     fichier.write_text(json.dumps(instantane), encoding="utf-8")
     with pytest.raises(ErreurEnvoi):
-        agreger(dernier("code-assurances"), dernier("bareme"), fichier, PROCEDURES)
+        agreger(dernier("code-assurances"), dernier("bareme"), fichier, PROCEDURES, *statistiques())
+
+
+def test_statistiques_rejoignent_le_jeu_sans_toucher_aux_entrees() -> None:
+    jeu = agreger(
+        dernier("code-assurances"),
+        dernier("bareme"),
+        dernier("notices"),
+        PROCEDURES,
+        *statistiques(),
+    )
+    assert jeu["manifeste"]["sha256"] == sha_articles(jeu["entrees"])
+    assert jeu["manifeste"]["statistiques"]["par_source"] == {"fremtpl2": 25, "dossiers": 5}
+    assert {s["source"] for s in jeu["statistiques"]} == {"fremtpl2", "dossiers"}
+    assert jeu["manifeste"]["statistiques"]["sha256"] == sha_articles(jeu["statistiques"])
+    assert set(jeu["manifeste"]["sources"]) >= {"fremtpl2", "dossiers"}
+
+
+def test_statistique_homogene_separe_dimensions_et_mesures() -> None:
+    jeu = agreger(
+        dernier("code-assurances"),
+        dernier("bareme"),
+        dernier("notices"),
+        PROCEDURES,
+        *statistiques(),
+    )
+    ligne = next(s for s in jeu["statistiques"] if s["indicateur"] == "cout_moyen_par_bonus_malus")
+    assert set(ligne) == {"source", "indicateur", "dimensions", "mesures"}
+    assert set(ligne["dimensions"]) == {"tranche_bm"}
+    assert set(ligne["mesures"]) == {"contrats_sinistres", "cout_moyen"}
+    portefeuille = next(s for s in jeu["statistiques"] if s["source"] == "dossiers")
+    assert set(portefeuille["dimensions"]) == {"formule", "tranche_age"}
+
+
+def test_statistique_sans_mesure_refusee(tmp_path: Path) -> None:
+    altere = instantane(tmp_path, [{"requete": "x", "Region": "R11"}])
+    with pytest.raises(ErreurEnvoi, match="statistique"):
+        agreger(
+            dernier("code-assurances"),
+            dernier("bareme"),
+            dernier("notices"),
+            PROCEDURES,
+            altere,
+            dernier("dossiers-agregats"),
+        )

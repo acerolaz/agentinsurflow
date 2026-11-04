@@ -18,6 +18,11 @@ def fabrique_embeddings(cfg: ConfigLLM) -> ClientEmbeddings | None:
     return AzureEmbeddings(client_openai(cfg), cfg.azure_openai_embedding_deployment)
 
 
+# Un lot répond en 6 s au plus en staging ; un blocage isolé (#218) ne doit pas perdre la recherche.
+_DELAI_S = 15.0
+_NOUVEL_ESSAI = 1
+
+
 class AzureEmbeddings:
     """Un appel par lot de textes ; l'ordre des vecteurs suit celui des textes."""
 
@@ -30,7 +35,8 @@ class AzureEmbeddings:
                 {"gen_ai.request.model": self.modele, "embeddings.textes": len(textes)}
             )
             try:
-                reponse = self._client.embeddings.create(model=self.modele, input=textes)
+                client = self._client.with_options(timeout=_DELAI_S, max_retries=_NOUVEL_ESSAI)
+                reponse = client.embeddings.create(model=self.modele, input=textes)
             except (OpenAIError, ClientAuthenticationError) as exc:
                 raise ErreurEmbeddings(f"erreur du fournisseur d'embeddings : {exc!r}") from exc
             if reponse.usage is not None:

@@ -44,7 +44,7 @@ Menu de gauche, **Investiguer › Métriques temps réel** (*Live Metrics*).
 
 ## 4. Application Map : qui appelle qui
 
-Menu de gauche, **Investiguer › Carte d'application** (*Application Map*).
+Menu de gauche, **Investiguer › Carte d'application** (*Application Map*). La vue s'ouvre sur la dernière heure : sans évaluation récente, le cluster et le MCP n'y figurent pas. Choisir **Last 24 hours** ou lancer une évaluation d'abord.
 
 - Chaque bulle est un service (son `service.name`), chaque flèche un appel avec son nombre d'appels, sa durée moyenne et son taux d'échec.
 - Le chemin attendu part de la gateway vers rag, underwriting-admin, le serveur MCP, le cluster d'agents et la Function de calcul. Le cluster rappelle la gateway, qui seule joint les autres services (D22, D106).
@@ -58,7 +58,7 @@ Menu de gauche, **Investiguer › Recherche de transactions** (*Transaction sear
 1. Coller le `trace_id` noté au § 2 dans la zone de recherche, puis valider.
 2. Ouvrir un des résultats : la vue **Détails de transaction de bout en bout** (*Transaction Diagnostics*) s'ouvre.
 3. Elle montre l'arbre des appels de cette évaluation : gateway, cluster, chaque agent (span `invoke_agent`), appels au serveur MCP, à la Function de calcul, aux points de reprise (`/api/points-de-reprise/…`) et au modèle de langage. Chaque appel porte sa durée et son code de réponse.
-4. Cliquer un élément pour voir ses propriétés : agent, mode, cause, réglage, tokens. Aucune donnée personnelle n'y figure, seulement des empreintes SHA-256.
+4. Cliquer un élément pour voir ses propriétés : agent, mode, cause, réglage, tokens. Le contenu n'y figure que par son empreinte SHA-256 ; le seul lien vers une personne est le numéro de contrat des lignes `audit.*`, un pseudonyme ([`rgpd.md`](donnees/rgpd.md)).
 
 Sans `trace_id`, on part du menu **Investiguer › Échecs** ou **Performances**, puis on ouvre une requête dans la liste.
 
@@ -112,7 +112,7 @@ az monitor app-insights query --app appi-insurflow-staging -g svespuceRG \
 ## 7. Tableau de bord et alertes
 
 - **Tableau de bord** : portail Azure › **Tableaux de bord** (*Dashboard*), puis `vigie-staging` ou `vigie-production`. Une tuile par question : disponibilité, évaluations par heure, p95, revue humaine par cause, coût par agent, évaluations sans décision. La lecture de chaque tuile est dans [`exploitation.md`](exploitation.md) § 4.
-- **Alertes** : dans la ressource Application Insights › **Surveillance › Alertes**, on voit les règles AL-1 à AL-10 et celles qui sont déclenchées. Chaque alerte envoie un e-mail par le groupe d'actions `ag-insurflow-<env>`. La fiche de chaque alerte est dans [`exploitation.md`](exploitation.md) § 6.
+- **Alertes** : les règles visent l'espace Log Analytics, donc la page **Alertes de la ressource Application Insights reste vide**. Ouvrir **Monitor › Alertes › Règles d'alerte** pour voir les règles AL-1 à AL-10 ; le tableau de bord donne aussi un lien vers les alertes déclenchées. Chaque alerte envoie un e-mail par le groupe d'actions `ag-insurflow-<env>`. La fiche de chaque alerte est dans [`exploitation.md`](exploitation.md) § 6.
 
 ## 8. Si rien n'apparaît
 
@@ -128,6 +128,7 @@ az monitor app-insights query --app appi-insurflow-staging -g svespuceRG \
   ```
 
   Sans évaluation, le cluster n'émet que ses compteurs de performance (`performanceCounters`) : il n'a ni requête, ni `audit.*`, ni span d'agent. Constat du 30/10 (#176) : les 2 évaluations réelles de staging ont produit les spans du cluster (`POST /evaluations/{numero_contrat}`, `invoke_agent`), mais aucune ligne `audit.*` : le journal `insurflow.audit` restait au niveau WARNING, car le gestionnaire posé par Azure Monitor empêchait de régler INFO. Après le correctif, une évaluation de contrôle (§ 2) doit faire apparaître `audit.agent` et `audit.evaluation` : sinon, rouvrir #176.
+  **Contrôle du 03/11 en staging (v0.6.33)** : 8 `audit.evaluation` et 19 `audit.agent` après le déploiement, donc le correctif tient en staging. **En production (v0.6.36)** : une évaluation réelle donne 4 `audit.agent`, 1 `audit.evaluation` et 1 `garde_fous.chargement` ([`recette-c11-2026-11-03.md`](../eval/preuves/recette-c11-2026-11-03.md)).
 - **Service absent de la carte** : il n'a pas émis de trace dans l'intervalle, ou sa variable `APPLICATIONINSIGHTS_CONNECTION_STRING` manque. Voir [`exploitation.md`](exploitation.md) § 5.
 
 ## 9. Pourquoi cet outil, et son accessibilité
@@ -144,7 +145,7 @@ az monitor app-insights query --app appi-insurflow-staging -g svespuceRG \
 
 **Limite assumée.** Le portail est un outil d'exploitation, réservé aux personnes ayant accès à Azure : ni les gestionnaires ni les souscripteurs n'en ont besoin.
 
-**Accessibilité dans le choix de l'outil.** Microsoft publie des [rapports de conformité d'accessibilité](https://www.microsoft.com/en-us/accessibility/conformance-reports) (WCAG, EN 301 549) pour ses services. Le niveau précis du portail n'a pas été vérifié ici : le rapport du portail Azure reste à consulter et à joindre. Un graphique peut rester difficile à lire au lecteur d'écran. Le projet ne dépend donc pas des seuls graphiques :
+**Accessibilité dans le choix de l'outil.** Microsoft publie des [rapports de conformité d'accessibilité](https://www.microsoft.com/en-us/accessibility/conformance-reports) (WCAG, EN 301 549) pour ses services. Le rapport du portail Azure (Web), daté du 13/08/2024 et relu le 03/11/2026, déclare pour WCAG 2.1 : niveau A, 22 critères pris en charge et 8 non applicables sur 30 ; niveau AA, 18 pris en charge et 2 non applicables sur 20 ; niveau AAA non évalué ; aucun critère partiel ni non pris en charge. Le rapport EN 301 549 et le résumé Section 508 ne signalent pas davantage de critère partiel. **Limites** : c'est une déclaration de l'éditeur, qui date de 2024, et elle ne cite ni Application Insights ni les tableaux de bord. Un graphique peut rester difficile à lire au lecteur d'écran. Le projet ne dépend donc pas des seuls graphiques :
 
 | Besoin | Moyen sans graphique |
 |---|---|

@@ -2,7 +2,7 @@
 
 Assistant des **gestionnaires d'assurance auto** : une **gateway** (seule entrée publique) devant ses services,
 **underwriting-admin** (dossiers minimisés et référentiel SQL des traces), **rag**, qui ingère le **Code des assurances** depuis Légifrance, le cherche (recherche hybride pgvector) et répond par un
-**agent à réponses citées**, et le **cluster d'agents** (Saga déterministe et quatre sous-agents, revue humaine du gestionnaire). Les modèles sont des déploiements **Azure AI Foundry** (API v1 compatible OpenAI), un par usage : rag sur `Kimi-K2.5` (`rag/llm.env`), le cluster sur `gpt-4.1-mini` par agent (`agentic-cluster/agents.toml`). Le tout est
+**agent à réponses citées**, et le **cluster d'agents** (Saga déterministe et quatre sous-agents, revue humaine du gestionnaire). Les modèles sont des déploiements **Azure AI Foundry** (API v1 compatible OpenAI), un par usage : rag sur `gpt-4.1-mini` (`rag/llm.env`), le cluster sur `gpt-4.1-mini` par agent (`agentic-cluster/agents.toml`). Le tout est
 livré par une **chaîne GitHub Actions CI/CD/Evals bloquante** jusqu'à la production (Azure Container Apps).
 
 Toutes les API sont **REST** et consultables dans **une seule page Swagger**, servie à la racine de la gateway. Les gestionnaires travaillent dans l'**espace gestionnaire**, servi par la gateway sous `/app/` : [`docs/espace-gestionnaire.md`](docs/espace-gestionnaire.md).
@@ -37,7 +37,7 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 (voir *Évaluer l'agent*). `e2e-staging` passe **après** les evals (sautées ou non) : même identité de CI, donc même
 quota `/api/reponses` à la gateway (#188). Le job `evals-pr` (avant merge) rejoue les jeux de la PR contre staging : voir [`docs/ci-evals.md`](docs/ci-evals.md).
 
-## État au 29/10 (release v0.6.28)
+## État au 04/11 (release v0.6.38)
 
 | Projet | Langage | Rôle | État |
 |---|---|---|---|
@@ -49,11 +49,11 @@ quota `/api/reponses` à la gateway (#188). Le job `evals-pr` (avant merge) rejo
 | [`fonction-calcul/`](fonction-calcul/README.md) | Python · Azure Functions | Risque (`bareme-2026.10-v1`) et prime (`formule-2026.10-v1`) déterministes ; n'accepte que la gateway | ✅ déployée (Flex Consumption, staging et production), v0.6.0 (#64, #74) ; une instance toujours prête depuis le 28/10 (`infra/calcul.sh` ①b, #146) : plus de démarrage à froid ; fréquence du GLM Poisson freMTPL2 en comparaison (`/api/frequence`, porte de qualité en CI, #168) |
 | [`e2e/`](e2e/README.md) | Python · pytest | Parcours bout en bout par la gateway (compose ou staging) | ✅ ; job `e2e-staging` bloquant avant la release |
 
-> **Pyramide au 29/10** : 75 % TU / 24 % TI / 2 % E2E (cible 70 / 20 / 10) ; le job `pyramide` est **bloquant**
+> **Pyramide au 03/11** : 72 % TU / 27 % TI / 1 % E2E (cible 70 / 20 / 10, seuil TI à 30 % : écart assumé, #179) ; le job `pyramide` est **bloquant**
 > en CI depuis #48.
 
-> **Production et staging** : release **`v0.6.28`** au SHA `4e8a5e6` (#195), déployée le 29/10 ; la version de la
-> solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. Depuis v0.6.26 (`d56a01e`, #193) :
+> **Production et staging** : release **`v0.6.38`** au SHA `00f6a7f` (#234), déployée le 04/11 ; la version de la
+> solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. Depuis v0.6.28 : `rag` sur `gpt-4.1-mini` avec un prompt durci (#224, #227), jeu unique des cinq sources (#233), délai de l'Analyste à 4 s (#234), recette et preuves du 03-04/11 (`eval/preuves/recette-c11-2026-11-03.md`, `e2e-obo-2026-11-04-staging.md`). Depuis v0.6.26 (`d56a01e`, #193) :
 > synchronisation de la doc (v0.6.27, #194) et test du rejeu d'un 401 par l'espace gestionnaire (v0.6.28, #195). **Livraison du 29/10** (v0.6.25,
 > PR groupée #185, puis #188 → #193) : pyramide bloquante (#48), `evals-pr` réactivé contre staging (#55), barème
 > citable et jeu agrégé unique (#99, #52), scraping des notices `/notices/` et extraction big data PySpark (#45, #51),
@@ -69,9 +69,8 @@ quota `/api/reponses` à la gateway (#188). Le job `evals-pr` (avant merge) rejo
 > l'espace gestionnaire `/app/` (#134), les relances et `SANS_SUITE` (#136), `make recette` (#137, #149), `make entra`
 > qui garde les agents pré-autorisés sur le MCP (#138), le contrat imprimé et la fiche du lead (#139), les tokens par
 > étape (#140), les pictogrammes (#142), la visionneuse du contrat (#145), les délais de l'évaluation (#146) et les liens
-> de l'en-tête au clavier (#147). Le cluster exporte vers Application Insights : ses spans sont prouvés en staging
-> (2 évaluations réelles du 30/10, #176) ; ses lignes `audit.*` n'arrivaient pas (niveau du journal jamais réglé), à reprouver
-> par une évaluation réelle après ce correctif. **Bases éphémères** : chaque
+> de l'en-tête au clavier (#147). Le cluster exporte vers Application Insights : ses spans et ses lignes `audit.*` sont prouvés
+> par une évaluation réelle en production le 03/11 ([`recette-c11-2026-11-03.md`](eval/preuves/recette-c11-2026-11-03.md), #176). **Bases éphémères** : chaque
 > déploiement remet les dossiers de staging et de production au seed ([`docs/rollback.md`](docs/rollback.md)).
 > Historique (v0.6.0, du 22/10 au 26/10) : le cluster d'agents (#92, production depuis le 24/10 par #116),
 > le job `test` limité aux TU (#93), le cache Docker inline depuis l'ACR (#95), l'audience `api://agentinsurflow-cluster` (#96),
@@ -207,7 +206,7 @@ dossier-conception-v1.md, K5). Pour un article cité, `GET /api/documents/{doc_i
 `${GATEWAY_URL}/api/llm`, `http://gateway:8000/api/llm` dans le compose) avec un jeton d'**application** pour
 l'audience `LLM_AUDIENCE` (rôle `LLM`) : secret de l'inscription rag (`RAG_CLIENT_SECRET`) en local, identité
 managée fédérée (`AZURE_UAMI_CLIENT_ID`) en Azure, comme l'OBO. La gateway échange son propre jeton avec Foundry.
-Le modèle de rag (`Kimi-K2.5`) est épinglé dans `rag/llm.env` ; celui du cluster (`gpt-4.1-mini`), par agent, dans `agentic-cluster/agents.toml`.
+Le modèle de rag (`gpt-4.1-mini`, #218) est épinglé dans `rag/llm.env` ; celui du cluster (`gpt-4.1-mini`), par agent, dans `agentic-cluster/agents.toml`.
 
 ## Tester
 
@@ -341,7 +340,7 @@ ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le L
 | Container Apps par service | `insurflow-{uw,mcp,rag,pg}-{staging,production}` et `ai-cluster-{staging,production}` : entrée interne (PostgreSQL en TCP 5432, base éphémère) | ✅ |
 | Function de calcul | `acerolaz-calcul-{staging,production}` (Flex Consumption, Python 3.12), stockage `acerolazcalcul` ; Easy Auth : la gateway seule | ✅ |
 | Container App production | `insurflow-production` (principale = gateway seule ; underwriting, MCP, rag et PostgreSQL ont les leurs) → `https://aibrokerflow.fr` (domaine personnalisé, `PROD_URL`) | ✅ `v0.6.28` |
-| Modèles | `Kimi-K2.5` (rag), `gpt-4.1-mini` (cluster, `agents.toml`) et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971`, **sans clé** (`disableLocalAuth`) : appelée par la gateway seule (`/api/llm`) | ✅ |
+| Modèles | `gpt-4.1-mini` (rag, `llm.env` ; cluster, `agents.toml`) et le déploiement d'embeddings (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`) sur la ressource Foundry `svespuce-971`, **sans clé** (`disableLocalAuth`) : appelée par la gateway seule (`/api/llm`) | ✅ |
 | Entra | application de la CI `agentinsurflow` + 4 fédérations OIDC ; API `agentinsurflow-rag`, `-underwriting`, `-mcp`, `-calcul`, `-llm` ; `agentinsurflow-gateway-local` (secret dans le `.env` local seulement) ; rôle `PointsDeReprise` (principal du cluster seul, D106) | ✅ |
 | Vigie (`make vigie`) | `appi-insurflow-{staging,production}` sur le Log Analytics `workspace-svespucepZG6` ; groupe d'actions `ag-insurflow-<env>` (e-mail), alertes AL-1 → AL-10 (`infra/vigie/alertes.tsv`), test de disponibilité `web-sante-<env>`, tableau de bord `vigie-<env>` | ✅ |
 | Identités managées | gateway `uami-insurflow-rag` (nom historique), rag `uami-insurflow-rag-app`, serveur MCP `uami-insurflow-mcp` ; underwriting-admin sans identité Azure | ✅ |
@@ -373,5 +372,5 @@ Le rollback redéploie **gateway, rag, underwriting-admin, serveur MCP et cluste
 ## Hors périmètre actuel
 
 Livrés depuis : le point d'entrée **MCP** par la gateway (#15), la Saga et les agents avec **validation humaine** (#7).
-Pas encore : l'OCR en A2A (source : dossier-conception-v1.md) et la décision `ACCEPTE` d'un dossier complet de bout en bout (#98).
+Pas encore : l'OCR en A2A (source : dossier-conception-v1.md), l'e-mail réel des relances, tracées sans envoi, et le flux SSE de l'évaluation (#123).
 Les sujets encore ouverts (découpage des agents, protocoles…) ne sont pas présumés.

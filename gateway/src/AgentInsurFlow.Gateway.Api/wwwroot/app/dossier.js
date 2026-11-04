@@ -5,7 +5,7 @@ import { appeler, telecharger } from "./api.js";
 import { el, erreur, picto, remplir } from "./dom.js";
 import {
   LIBELLES_GARANTIES, LIBELLES_PIECES, PICTOS, STATUTS_FIGES, classableSansSuite, conditionsGenerales, dateEcheance, etatAffiche,
-  boutonsRevue, frise, gabaritRelance,
+  boutonsRevue, frise, gabaritRelance, messageRevueHumaine, revueOuverte,
   spansAffichables, tokensEtape,
 } from "./logique.js";
 
@@ -115,7 +115,7 @@ export async function afficherDossier(zone, numero) {
     v.tentativeAvant = null;
     v.ecoule = ecoule();
     if (r.statut !== 200) v.message = erreur(r);
-    else if (r.json.statut === "REVUE_HUMAINE") v.message = el("p", { role: "status" }, r.json.message ?? "Ce dossier nécessite une revue humaine.");
+    else if (r.json.statut === "REVUE_HUMAINE") v.message = el("p", { role: "status" }, messageRevueHumaine(r.json));
     else if (r.json.statut === "EN_PAUSE") v.message = el("p", { role: "status" }, "Évaluation en pause : « Reprendre » repart de l'étape suivante.");
     await lireEtat();
     if (r.json?.statut === "EN_ANALYSE") v.sousOnglet = "contrat";
@@ -310,7 +310,7 @@ export async function afficherDossier(zone, numero) {
     const fiche = v.etat?.sections?.fiche;
     const prime = v.etat?.sections?.prime;
     if (!fiche) return el("p", { class: "discret" }, "Aucune proposition pour l'instant.");
-    const enAttente = statut() === "EN_ANALYSE";
+    const enAttente = revueOuverte(statut(), v.etat);
     return el("div", {},
       el("dl", {},
         el("dt", {}, "Décision proposée"), el("dd", {}, fiche.decision),

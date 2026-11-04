@@ -1,0 +1,23 @@
+# tools/mesure_sql.py — PostgreSQL 16.10, pgvector 0.8.0, poste local (Docker), base jetable, 04/11/2026
+# textes du corpus, vecteurs et dossiers synthétiques, 50 mesures EXPLAIN ANALYZE par ligne
+hybride|129|avec index|index 0.0 s|médiane 0.36 ms, p95 0.44 ms|lignes min 5
+  plan : 
+hybride|129|témoin sans index|index 0.0 s|médiane 0.34 ms, p95 0.48 ms|lignes min 5
+hybride|5000|avec index|index 1.5 s|médiane 10.73 ms, p95 13.03 ms|lignes min 5
+  plan : Index Scan (chunk_pkey)
+hybride|5000|témoin sans index|index 1.5 s|médiane 11.22 ms, p95 12.90 ms|lignes min 5
+hybride|20000|avec index|index 13.2 s|médiane 1.82 ms, p95 3.75 ms|lignes min 5
+  plan : Bitmap Index Scan (chunk_tsv_gin), Index Scan (chunk_embedding_hnsw), Index Scan (chunk_pkey)
+hybride|20000|témoin sans index|index 13.2 s|médiane 75.37 ms, p95 114.99 ms|lignes min 5
+vue|6|un contrat|médiane 0.02 ms, p95 0.05 ms|lignes max 1
+  plan : Index Scan (ix_vehicule_contrat_id)
+vue|6|portefeuille, 20 lignes|médiane 0.02 ms, p95 0.03 ms|lignes max 1
+  plan : Index Scan (ix_vehicule_contrat_id)
+vue|1000|un contrat|médiane 0.03 ms, p95 0.05 ms|lignes max 1
+  plan : Index Scan (ix_contrat_numero_contrat), Index Scan (ix_releve_information_contrat_id), Index Scan (ix_vehicule_contrat_id)
+vue|1000|portefeuille, 20 lignes|médiane 0.28 ms, p95 0.32 ms|lignes max 20
+  plan : Index Scan (ix_contrat_numero_contrat), Index Scan (ix_releve_information_contrat_id), Index Scan (ix_vehicule_contrat_id)
+vue|10000|un contrat|médiane 0.03 ms, p95 0.05 ms|lignes max 1
+  plan : Index Scan (ix_contrat_numero_contrat), Index Scan (ix_releve_information_contrat_id), Index Scan (ix_vehicule_contrat_id)
+vue|10000|portefeuille, 20 lignes|médiane 0.15 ms, p95 0.18 ms|lignes max 20
+  plan : Index Scan (ix_contrat_numero_contrat), Index Scan (ix_releve_information_contrat_id), Index Scan (ix_vehicule_contrat_id)

@@ -144,6 +144,12 @@ export function classableSansSuite(etat) {
   return (etat?.nb_relances ?? 0) >= 3 && !STATUTS_FIGES.includes(etat?.statut_parcours);
 }
 
+/** La revue se fait sur une proposition, ou sur une revue humaine complète ; pièces manquantes : relances (K8). */
+export function revueOuverte(statut, etat) {
+  if (statut === "EN_ANALYSE") return true;
+  return statut === "REVUE_HUMAINE" && etat?.sections?.pieces?.statut !== "incomplet";
+}
+
 /**
  * Boutons de la revue : [texte, décision, validation, classe]. « Valider » reprend la décision proposée : un refus
  * ne devient jamais une acceptation, et sans prime aucune acceptation n'est possible (contrat sans montant).
@@ -153,6 +159,13 @@ export function boutonsRevue(fiche, prime) {
   const refuser = ["Refuser", "REFUSE", "VALIDEE", "secondaire"];
   if (!prime) return [refuser];
   return [["Valider", "ACCEPTE", "VALIDEE"], ["Corriger et accepter", "ACCEPTE", "CORRIGEE", "secondaire"], refuser];
+}
+
+/** Dossier en revue humaine : le message du cluster et, s'il existe, le score (K5). */
+export function messageRevueHumaine(reponse) {
+  const message = reponse.message ?? "Ce dossier nécessite une revue humaine.";
+  const fin = /[.!?]$/.test(message) ? "" : ".";
+  return reponse.score == null ? message : `${message}${fin} Score : ${reponse.score}`;
 }
 
 /** Message lisible d'une réponse en erreur (ProblemDetails avec un code). */

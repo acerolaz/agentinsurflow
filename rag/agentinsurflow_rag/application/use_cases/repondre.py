@@ -17,7 +17,7 @@ from ...domain.reponse import MESSAGE_REFUS, articles_cites, contexte, est_abste
 
 # Prompt versionné à part : le modifier déclenche les évaluations (ci-cd.yml, job changements)
 SYSTEME = (Path(__file__).parents[2] / "prompts" / "systeme.md").read_text(encoding="utf-8").strip()
-REPLI = "LLM indisponible : la demande passe en revue humaine."
+REPLI = "Réponse indisponible pour le moment : réessayez dans quelques instants."
 
 journal = logging.getLogger(__name__)
 

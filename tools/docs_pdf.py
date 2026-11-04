@@ -20,6 +20,7 @@ from markdown_it import MarkdownIt
 CHROME = os.environ.get("CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
 DOCUMENTS = (
     "agentic-cluster/README.md",  # C9
+    "docs/securite-api.md",  # C9
     "docs/resultats-tests.md",  # C9, C10, C12
     "docs/observabilite-app-insights.md",  # C11
     "docs/exploitation.md",  # C11, C13

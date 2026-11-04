@@ -11,6 +11,8 @@ Critères fixés avant la mesure : `docs/superpowers/specs/2026-11-03-e2-rapport
 # 1. Préparer : la solution du dépôt principal doit être arrêtée (mêmes ports).
 cp ../../../.env .env
 bash infra/benchmark-e2.sh creer   # écriture Entra : secret temporaire du rag local (.env local seul)
+# le jeton az a pour audience l'ID client (v2) ; sans cette ligne, la gateway locale répond 401
+echo "RAG_API_AUDIENCES=$(grep -E '^RAG_API_CLIENT_ID=' .env | cut -d= -f2)" >> .env
 export EVALS_JETON=$(az account get-access-token --scope "api://agentinsurflow-rag/.default" --query accessToken -o tsv)
 make up
 make ingest URL=http://localhost:8000 JEU=data/aggregated/corpus-2026-10-27.json
@@ -18,6 +20,8 @@ make ingest URL=http://localhost:8000 JEU=data/aggregated/corpus-2026-10-27.json
 # 2. Usage RAG, trois fois (un code de sortie non nul est un résultat : garder le fichier).
 for m in gpt-4.1-mini gpt-5-mini Kimi-K2.5; do
   BENCH_MODELE=$m docker compose -f docker-compose.yml -f eval/benchmark/compose-benchmark.yml up -d --wait rag
+  # rag n'a pas de healthcheck : sans cette attente, les premiers cas tombent en 502 (connexion refusée)
+  until docker compose exec -T rag python -c "import urllib.request as u;u.urlopen('http://localhost:8001/health',timeout=2)" 2>/dev/null; do sleep 2; done
   uv run python tools/evals.py --url http://localhost:8000 --questions eval/questions-demo.jsonl \
     --sans-dossiers --rapport eval/preuves/benchmark-2026-11-03/rag-$m.json
 done

@@ -1,10 +1,13 @@
-"""Agrège Légifrance, notices scrapées et procédures générées du barème en UN jeu brut versionné.
+"""Agrège les cinq sources du projet en UN jeu versionné.
 
     uv run python -m agentinsurflow_rag.cli.agreger
 
 Sortie ``data/aggregated/corpus-<date Légifrance>.json`` : octet pour octet identique à chaque
 relance (aucune date du jour). Les articles abrogés sont conservés ; seules les entrées corrompues
 sont écartées, avec leur raison, dans le manifeste.
+
+``entrees`` (Légifrance, notices scrapées, procédures du barème) est le corpus citable, seul
+ingéré ; ``statistiques`` (agrégats freMTPL2 et des dossiers) sert à l'analyse, jamais citée.
 """
 
 from __future__ import annotations
@@ -63,7 +66,37 @@ def _lire_bareme(chemin: Path) -> tuple[dict[str, Any], str]:
     return bareme, sha
 
 
-def agreger(legifrance: Path, bareme: Path, notices: Path, procedures: Path) -> dict[str, Any]:
+def _lire_statistiques(
+    chemin: Path, source: str, indicateur: str
+) -> tuple[list[dict[str, Any]], str]:
+    """Lignes d'un instantané d'agrégats au format commun : dimensions puis mesures."""
+    lignes, sha, _ = lire_instantane(chemin)
+    statistiques = []
+    for ligne in lignes:
+        champs = {k: v for k, v in ligne.items() if k != "requete"}
+        mesures = {k: v for k, v in champs.items() if isinstance(v, int | float)}
+        dimensions = {k: v for k, v in champs.items() if k not in mesures}
+        if not mesures or not dimensions:
+            raise ErreurEnvoi(f"{chemin.name} : statistique sans mesure ou sans dimension")
+        statistiques.append(
+            {
+                "source": source,
+                "indicateur": ligne.get("requete", indicateur),
+                "dimensions": dimensions,
+                "mesures": mesures,
+            }
+        )
+    return statistiques, sha
+
+
+def agreger(
+    legifrance: Path,
+    bareme: Path,
+    notices: Path,
+    procedures: Path,
+    fremtpl2: Path,
+    dossiers: Path,
+) -> dict[str, Any]:
     articles, sha_legifrance, jour = lire_instantane(legifrance)
     regles, sha_bareme = _lire_bareme(bareme)
     notices_scrapees, sha_notices, _ = lire_instantane(notices)
@@ -97,16 +130,32 @@ def agreger(legifrance: Path, bareme: Path, notices: Path, procedures: Path) -> 
             raise ErreurEnvoi(f"doc_id en double : {cle[0]} (version {cle[1]})")
         vus.add(cle)
         entrees.append(resultat)
+    stats_fremtpl2, sha_fremtpl2 = _lire_statistiques(fremtpl2, "fremtpl2", "fremtpl2")
+    stats_dossiers, sha_dossiers = _lire_statistiques(
+        dossiers, "dossiers", "portefeuille_par_formule_et_age"
+    )
+    statistiques = stats_fremtpl2 + stats_dossiers
     manifeste = {
         "date": jour.isoformat(),
         "entrees": len(entrees),
         "par_collection": {c: sum(e["collection"] == c for e in entrees) for c in COLLECTIONS},
         "par_source": {s: sum(e["source"] == s for e in entrees) for s in SOURCES},
-        "sources": {"legifrance": sha_legifrance, "bareme": sha_bareme, "notices": sha_notices},
+        "sources": {
+            "legifrance": sha_legifrance,
+            "bareme": sha_bareme,
+            "notices": sha_notices,
+            "fremtpl2": sha_fremtpl2,
+            "dossiers": sha_dossiers,
+        },
         "ecarts": ecarts,
         "sha256": sha_articles(entrees),
+        "statistiques": {
+            "lignes": len(statistiques),
+            "par_source": {"fremtpl2": len(stats_fremtpl2), "dossiers": len(stats_dossiers)},
+            "sha256": sha_articles(statistiques),
+        },
     }
-    return {"manifeste": manifeste, "entrees": entrees}
+    return {"manifeste": manifeste, "entrees": entrees, "statistiques": statistiques}
 
 
 def ecrire_jeu(jeu: Mapping[str, Any], dossier: Path) -> Path:
@@ -131,6 +180,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--bareme", type=Path)
     parser.add_argument("--notices", type=Path)
     parser.add_argument("--procedures", type=Path, default=Path("rag/corpus/procedures_internes"))
+    parser.add_argument("--fremtpl2", type=Path)
+    parser.add_argument("--dossiers-agregats", type=Path)
     parser.add_argument("--dossier", type=Path, default=Path("data/aggregated"))
     args = parser.parse_args(argv)
     try:
@@ -139,13 +190,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.bareme or _dernier("bareme-*.json"),
             args.notices or _dernier("notices-*.json"),
             args.procedures,
+            args.fremtpl2 or _dernier("fremtpl2-agregats-*.json"),
+            args.dossiers_agregats or _dernier("dossiers-agregats-*.json"),
         )
         chemin = ecrire_jeu(jeu, args.dossier)
     except (ErreurEnvoi, ErreurProcedures, OSError, KeyError, ValueError) as exc:
         print(f"✘ {exc}", file=sys.stderr)
         return 1
     m = jeu["manifeste"]
-    print(f"✔ {chemin} ({m['entrees']} entrées, {len(m['ecarts'])} écarts)")
+    print(
+        f"✔ {chemin} ({m['entrees']} entrées, {m['statistiques']['lignes']} statistiques, "
+        f"{len(m['ecarts'])} écarts)"
+    )
     return 0
 
 

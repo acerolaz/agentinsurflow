@@ -135,7 +135,32 @@ contrat d'un autre gestionnaire, le même plan ne renvoie aucune ligne (même 40
 - L'écart devient net à 20 000 vecteurs, au prix d'un rappel réduit. C'est `ef_search` qui règle ce compromis.
 - La construction de l'index est le coût visible à grand volume. Au-delà d'environ 9 700 vecteurs, PostgreSQL signale que le graphe dépasse `maintenance_work_mem` (64 Mo par défaut), ce qui ralentit la construction.
 
-**Non mesuré** : la requête hybride complète (vectoriel + plein texte + RRF) sur le corpus réel, et le plein texte seul. Il faudrait la base ingérée avec de vrais embeddings.
+### Requête hybride et vue minimisée à plusieurs volumes — mesurées le 04/11/2026
+
+**Source** : [`tools/mesure_sql.py`](../../tools/mesure_sql.py) et [`sql-hybride-2026-11-04.txt`](../../eval/preuves/sql-hybride-2026-11-04.txt), rejouables sur une base jetable. PostgreSQL 16.10, pgvector 0.8.0, schéma réel, poste local sous Docker, 50 mesures `EXPLAIN ANALYZE` par ligne (temps d'exécution côté serveur).
+
+**Données** : `SQL_HYBRIDE` du code, avec `candidats` = 20 et `k` = 5, et les questions de `eval/golden.jsonl`. Les textes sont ceux du corpus, répétés au-delà de 129 ; **vecteurs et dossiers synthétiques**. Ces mesures ne disent donc rien de la pertinence, et le plein texte trouve plus de doublons qu'un vrai corpus de cette taille.
+
+| Extraits | Index HNSW, construction | Avec index, médiane (p95) | Témoin sans index, médiane (p95) | Index utilisés |
+|---:|---:|---:|---:|---|
+| 129 | 0,0 s | 0,36 ms (0,44) | 0,34 ms (0,48) | aucun |
+| 5 000 | 1,5 s | 10,73 ms (13,03) | 11,22 ms (12,90) | clé primaire seulement |
+| 20 000 | 13,2 s | 1,82 ms (3,75) | 75,37 ms (114,99) | HNSW, GIN, clé primaire |
+
+| Contrats (20 gestionnaires) | Un contrat, médiane (p95) | Portefeuille de 20 lignes, médiane (p95) | Index du plan |
+|---:|---:|---:|---|
+| 6 | 0,02 ms (0,05) | 0,02 ms (0,03) | scan de `contrat` |
+| 1 000 | 0,03 ms (0,05) | 0,28 ms (0,32) | `ix_contrat_numero_contrat` |
+| 10 000 | 0,03 ms (0,05) | 0,15 ms (0,18) | `ix_contrat_numero_contrat` |
+
+**Interprétation.**
+
+- Au volume actuel, la requête hybride tient sous la milliseconde, avec ou sans index.
+- À 20 000 extraits, le plan prend HNSW et GIN : environ 40 fois plus rapide que le témoin en médiane.
+- **À 5 000 extraits, le planificateur n'utilise ni HNSW ni GIN**, et le temps est identique au témoin, environ 11 ms. Le gain n'est donc pas progressif ; la cause de ce choix n'a pas été instruite.
+- La vue minimisée reste stable jusqu'à 10 000 contrats : le filtre par gestionnaire et numéro passe par l'index unique. Le portefeuille n'est pas plus lent à 10 000 qu'à 1 000.
+
+**Non mesuré** : la pertinence et le rappel avec de vrais embeddings (la base ingérée n'est pas joignable depuis le poste), la charge concurrente, et les temps côté application.
 
 ## 6. Spark SQL (big data) — freMTPL2
 

@@ -27,7 +27,9 @@
 
 ## Coût par dossier et verdict
 
-Coût approximé : somme des coûts moyens de quatre agents, hors Saga complète.
+Coût approximé : somme des coûts moyens de quatre agents, sur les seules mesures réussies, hors Saga complète.
+
+Verdict : taux ≥ 0,8 et au moins une réussite par agent. Le critère « déployable » n'est pas mesuré ici : il vient de la lecture des déploiements de la ressource.
 
 | Modèle | Coût par dossier (USD) | Verdict sur les critères bloquants |
 |---|---|---|

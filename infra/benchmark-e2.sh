@@ -4,20 +4,28 @@
 #   infra/benchmark-e2.sh creer    : ajoute au .env local LLM_AUDIENCE, RAG_SEUIL, RAG_CLIENT_SECRET
 #   infra/benchmark-e2.sh retirer  : supprime ce secret dans Entra
 # Le secret expire seul le lendemain. Il n'est jamais affiché ; .env reste ignoré par Git.
+# macOS seulement (date -v). `retirer` ne touche pas au .env : le supprimer ensuite.
 set -euo pipefail
 
 NOM=benchmark-e2
+[ -f .env ] || { echo "✘ .env absent : lancer depuis la racine du worktree" >&2; exit 1; }
 APP=$(grep -E '^RAG_API_CLIENT_ID=' .env | cut -d= -f2)
+[ -n "$APP" ] || { echo "✘ RAG_API_CLIENT_ID absent du .env" >&2; exit 1; }
 
 case "${1:-}" in
 creer)
   git check-ignore -q .env
-  {
-    echo "LLM_AUDIENCE=$(gh variable get LLM_AUDIENCE)"
-    echo "RAG_SEUIL=$(gh variable get RAG_SEUIL)"
-    echo "RAG_CLIENT_SECRET=$(az ad app credential reset --id "$APP" --append \
-      --display-name "$NOM" --end-date "$(date -v+1d +%Y-%m-%d)" --query password -o tsv)"
-  } >>.env
+  if grep -q '^RAG_CLIENT_SECRET=' .env; then
+    echo "✘ RAG_CLIENT_SECRET déjà dans .env : rien créé" >&2
+    exit 1
+  fi
+  # Affectations à part : dans un echo, set -e ne verrait pas l'échec de gh ou de az.
+  audience=$(gh variable get LLM_AUDIENCE)
+  seuil=$(gh variable get RAG_SEUIL)
+  secret=$(az ad app credential reset --id "$APP" --append \
+    --display-name "$NOM" --end-date "$(date -v+1d +%Y-%m-%d)" --query password -o tsv)
+  [ -n "$secret" ] || { echo "✘ az n'a rendu aucun secret" >&2; exit 1; }
+  printf 'LLM_AUDIENCE=%s\nRAG_SEUIL=%s\nRAG_CLIENT_SECRET=%s\n' "$audience" "$seuil" "$secret" >>.env
   echo "✔ .env complété ; retirer le secret après la campagne : infra/benchmark-e2.sh retirer"
   ;;
 retirer)

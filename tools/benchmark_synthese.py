@@ -166,7 +166,14 @@ def tableaux_markdown(rag: list[dict[str, Any]], agents: Mapping[str, Any]) -> s
                 f"| {_nombre(a['tokens_sortie'], '.0f')} | {causes} |"
             )
     lignes += ["", "## Coût par dossier et verdict", ""]
-    lignes += ["Coût approximé : somme des coûts moyens de quatre agents, hors Saga complète.", ""]
+    lignes += [
+        "Coût approximé : somme des coûts moyens de quatre agents, sur les seules mesures "
+        "réussies, hors Saga complète.",
+        "",
+        "Verdict : taux ≥ 0,8 et au moins une réussite par agent. Le critère « déployable » "
+        "n'est pas mesuré ici : il vient de la lecture des déploiements de la ressource.",
+        "",
+    ]
     lignes += [
         "| Modèle | Coût par dossier (USD) | Verdict sur les critères bloquants |",
         "|---|---|---|",

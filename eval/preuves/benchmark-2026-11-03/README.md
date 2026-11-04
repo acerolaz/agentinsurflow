@@ -3,7 +3,7 @@
 Candidats, tous en Global Standard sur la ressource `swedencentral` : `gpt-4.1-mini`, `gpt-5-mini`, `Kimi-K2.5`.
 Critères fixés avant la mesure : `docs/superpowers/specs/2026-11-03-e2-rapport-design.md` §6.2.
 
-**Limites à annoncer** : jeu d'évaluation réduit, mesures depuis un poste local (latences comparables entre modèles, pas à la production), appels isolés par agent (coût par dossier approximé, sans Saga complète).
+**Limites à annoncer** : jeu d'évaluation réduit, mesures depuis un poste local (latences comparables entre modèles, pas à la production), appels isolés par agent (coût par dossier approximé, sur les seules mesures réussies, sans Saga complète), réglages de `agents.toml` non adaptés par modèle (ils ont été réglés sur `gpt-4.1-mini` : le verdict de `gpt-5-mini` vaut pour ces réglages), `llm_ko` non attribuable (modèle, limite de débit de la gateway ou Foundry : un 429 n'est distingué que par l'appel de contrôle).
 
 ## Lancer la campagne (Acerola, depuis ce worktree)
 
@@ -36,7 +36,7 @@ bash infra/benchmark-e2.sh retirer
 rm .env
 ```
 
-Ensuite, Claude écrit `benchmark.md` : `uv run python -m tools.benchmark_synthese --dossier eval/preuves/benchmark-2026-11-03`.
+Ensuite, cette commande écrit `benchmark.md` : `uv run python -m tools.benchmark_synthese --dossier eval/preuves/benchmark-2026-11-03`.
 
 `rag/llm.env` et `agents.toml` ne sont pas modifiés. Un rapport dont `manifeste.modele.observe` diffère du modèle attendu est refusé par la synthèse.
 

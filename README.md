@@ -37,7 +37,7 @@ p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané 
 (voir *Évaluer l'agent*). `e2e-staging` passe **après** les evals (sautées ou non) : même identité de CI, donc même
 quota `/api/reponses` à la gateway (#188). Le job `evals-pr` (avant merge) rejoue les jeux de la PR contre staging : voir [`docs/ci-evals.md`](docs/ci-evals.md).
 
-## État au 29/10 (release v0.6.28)
+## État au 04/11 (release v0.6.38)
 
 | Projet | Langage | Rôle | État |
 |---|---|---|---|
@@ -52,8 +52,8 @@ quota `/api/reponses` à la gateway (#188). Le job `evals-pr` (avant merge) rejo
 > **Pyramide au 03/11** : 72 % TU / 27 % TI / 1 % E2E (cible 70 / 20 / 10, seuil TI à 30 % : écart assumé, #179) ; le job `pyramide` est **bloquant**
 > en CI depuis #48.
 
-> **Production et staging** : release **`v0.6.28`** au SHA `4e8a5e6` (#195), déployée le 29/10 ; la version de la
-> solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. Depuis v0.6.26 (`d56a01e`, #193) :
+> **Production et staging** : release **`v0.6.38`** au SHA `00f6a7f` (#234), déployée le 04/11 ; la version de la
+> solution (0.6) reste fixée par Acerola, le dernier chiffre est celui de la release. Depuis v0.6.28 : `rag` sur `gpt-4.1-mini` avec un prompt durci (#224, #227), jeu unique des cinq sources (#233), délai de l'Analyste à 4 s (#234), recette et preuves du 03-04/11 (`eval/preuves/recette-c11-2026-11-03.md`, `e2e-obo-2026-11-04-staging.md`). Depuis v0.6.26 (`d56a01e`, #193) :
 > synchronisation de la doc (v0.6.27, #194) et test du rejeu d'un 401 par l'espace gestionnaire (v0.6.28, #195). **Livraison du 29/10** (v0.6.25,
 > PR groupée #185, puis #188 → #193) : pyramide bloquante (#48), `evals-pr` réactivé contre staging (#55), barème
 > citable et jeu agrégé unique (#99, #52), scraping des notices `/notices/` et extraction big data PySpark (#45, #51),
@@ -372,5 +372,5 @@ Le rollback redéploie **gateway, rag, underwriting-admin, serveur MCP et cluste
 ## Hors périmètre actuel
 
 Livrés depuis : le point d'entrée **MCP** par la gateway (#15), la Saga et les agents avec **validation humaine** (#7).
-Pas encore : l'OCR en A2A (source : dossier-conception-v1.md) et la décision `ACCEPTE` d'un dossier complet de bout en bout (#98).
+Pas encore : l'OCR en A2A (source : dossier-conception-v1.md), l'e-mail réel des relances, tracées sans envoi, et le flux SSE de l'évaluation (#123).
 Les sujets encore ouverts (découpage des agents, protocoles…) ne sont pas présumés.

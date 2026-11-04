@@ -22,7 +22,7 @@
         "content": {
          "settings": {
           "title": "Comment lire ce tableau",
-          "subtitle": "Période : 24 h, actualisation automatique",
+          "subtitle": "Période : 24 h, actualisation avec le bouton Refresh",
           "content": "Chaque tuile pose une question ; l'objectif est écrit dans son sous-titre. Valeur hors objectif ? Suivre la section correspondante de [docs/exploitation.md](https://github.com/acerolaz/agentinsurflow/blob/main/docs/exploitation.md). Environnement : $ENV."
          }
         }
@@ -163,7 +163,7 @@
         },
         {
          "name": "ControlType",
-         "value": "Chart"
+         "value": "AnalyticsGrid"
         },
         {
          "name": "SpecificChart",

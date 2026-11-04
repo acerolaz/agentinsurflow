@@ -44,7 +44,7 @@ Menu de gauche, **Investiguer › Métriques temps réel** (*Live Metrics*).
 
 ## 4. Application Map : qui appelle qui
 
-Menu de gauche, **Investiguer › Carte d'application** (*Application Map*).
+Menu de gauche, **Investiguer › Carte d'application** (*Application Map*). La vue s'ouvre sur la dernière heure : sans évaluation récente, le cluster et le MCP n'y figurent pas. Choisir **Last 24 hours** ou lancer une évaluation d'abord.
 
 - Chaque bulle est un service (son `service.name`), chaque flèche un appel avec son nombre d'appels, sa durée moyenne et son taux d'échec.
 - Le chemin attendu part de la gateway vers rag, underwriting-admin, le serveur MCP, le cluster d'agents et la Function de calcul. Le cluster rappelle la gateway, qui seule joint les autres services (D22, D106).
@@ -112,7 +112,7 @@ az monitor app-insights query --app appi-insurflow-staging -g svespuceRG \
 ## 7. Tableau de bord et alertes
 
 - **Tableau de bord** : portail Azure › **Tableaux de bord** (*Dashboard*), puis `vigie-staging` ou `vigie-production`. Une tuile par question : disponibilité, évaluations par heure, p95, revue humaine par cause, coût par agent, évaluations sans décision. La lecture de chaque tuile est dans [`exploitation.md`](exploitation.md) § 4.
-- **Alertes** : dans la ressource Application Insights › **Surveillance › Alertes**, on voit les règles AL-1 à AL-10 et celles qui sont déclenchées. Chaque alerte envoie un e-mail par le groupe d'actions `ag-insurflow-<env>`. La fiche de chaque alerte est dans [`exploitation.md`](exploitation.md) § 6.
+- **Alertes** : les règles visent l'espace Log Analytics, donc la page **Alertes de la ressource Application Insights reste vide**. Ouvrir **Monitor › Alertes › Règles d'alerte** pour voir les règles AL-1 à AL-10 ; le tableau de bord donne aussi un lien vers les alertes déclenchées. Chaque alerte envoie un e-mail par le groupe d'actions `ag-insurflow-<env>`. La fiche de chaque alerte est dans [`exploitation.md`](exploitation.md) § 6.
 
 ## 8. Si rien n'apparaît
 

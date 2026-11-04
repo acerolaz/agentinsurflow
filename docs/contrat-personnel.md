@@ -1,4 +1,4 @@
-# Contrat personnel — état au 03/11 (v0.6.36, en production)
+# Contrat personnel — état au 04/11 (v0.6.38, en production)
 
 **Rattachement : E3 : C9 API du modèle, C10 Intégration, C11 Monitoring, C12 Tests automatisés, C13 Livraison continue.**
 
@@ -159,7 +159,7 @@ Les seuils viennent de la spec O2/O3 §4 et de `infra/vigie/alertes.tsv`. Les re
 
 Les liens `docs/exploitation.md#al-n` renvoient aux fiches d'exploitation.
 Le tableau de bord `vigie-<env>` affiche une tuile par question posée à un non-développeur.
-« Alertes en cours » est une dette assumée : c'est un lien vers le portail et non une tuile d'alertes, et l'actualisation automatique du tableau est à vérifier au premier `make vigie`.
+« Alertes en cours » est une dette assumée : c'est un lien vers le portail et non une tuile d'alertes, et l'actualisation automatique du tableau est désactivée (relecture du 04/11) : la tuile d'en-tête renvoie au bouton Refresh.
 
 ## 5. Ce qui reste à faire pour clore le contrat
 

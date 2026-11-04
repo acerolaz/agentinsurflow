@@ -25,6 +25,23 @@
 
 **Ce qu'ils ne prouvent pas.** En intégration, le LLM, le serveur MCP et Entra ID sont simulés. Les tests ne disent donc rien de la qualité d'une réponse réelle ni de l'échange de jeton On-Behalf-Of. Ces points relèvent des évaluations et de la recette manuelle.
 
+### Couverture par route
+
+| Route publique | Cas nominal | Refus et échecs attendus | E2E avec jeton d'utilisateur |
+|---|---|---|---|
+| `POST /v1/souscriptions/{n}/evaluation` | `test_evaluation_en_analyse_puis_rejeu_409_puis_revue_accepte` | `test_sans_jeton_401_et_sans_role_403`, `test_jeton_d_audience_mcp_401`, `test_bola_un_autre_gestionnaire_ne_voit_ni_ne_reprend_le_dossier_en_pause`, `test_k5_llm_inactif_200_revue_humaine_score_et_message_indisponible`, `test_outil_en_429_rend_429_avec_retry_after`, `test_panne_d_outil_502` | `test_dossier_complet_en_analyse_puis_revue`, `test_observations_hostiles_revue_humaine_et_message_neutre` |
+| `POST /v1/souscriptions/{n}/pause` | `test_pause_avant_evaluation_arrete_apres_le_premier_agent` | `test_pause_autre_gestionnaire_404` | `test_pause_puis_reprise` |
+| `POST /v1/souscriptions/{n}/revue` | `test_evaluation_en_analyse_puis_rejeu_409_puis_revue_accepte` | `test_motif_avec_donnee_personnelle_422_sans_reprendre_la_revue`, `test_motif_obligatoire_1_a_500_caracteres`, `test_revue_pendant_la_pause_409` | `test_dossier_complet_en_analyse_puis_revue` |
+| `GET /health/cluster` | `test_health_200_une_fois_les_garde_fous_prets` | `test_health_503_tant_que_les_scanners_ne_sont_pas_construits` | `test_cluster_sante_anonyme_par_la_gateway` |
+| Function `POST evaluer` | `test_evaluer_seed_1` | `test_requete_invalide_400` | — |
+| Function `POST calculer` | `test_calculer_seed_1` | `test_donnee_hors_bareme_422`, `test_requete_invalide_400` | — |
+| Function `POST frequence` | `test_frequence_200` | `test_frequence_corps_invalide_400`, `test_frequence_json_invalide_400`, `test_frequence_dom_422` | — |
+| Function `GET sante` | `test_sante` | — | — |
+
+Les tests du cluster sont dans `agentic-cluster/tests/integration/test_api_cluster.py`, ceux de la Function dans `fonction-calcul/tests/unit/test_routes_calcul.py`, les E2E dans `e2e/test_cluster.py`. Les routes de la Function n'ont pas d'E2E dédié : le parcours d'évaluation les appelle par la gateway.
+
+**Échange On-Behalf-Of réel** : rejoué le 04/11 depuis un poste, sur staging, avec le compte d'un gestionnaire ([`e2e-obo-2026-11-04-staging.md`](../eval/preuves/e2e-obo-2026-11-04-staging.md)). Les 17 tests E2E passent après correction d'une variable du rejeu et espacement des évaluations ; le premier passage comptait 4 échecs, expliqués dans la preuve.
+
 ## Intégration dans l'application (C10)
 
 **Ce que ces résultats prouvent.** La logique de l'espace gestionnaire et ses appels à l'API sont testés sans navigateur, et les routes de la gateway qu'elle utilise passent leurs 174 tests.
@@ -35,7 +52,7 @@
 
 | Tests | Raison | Conséquence |
 |---|---|---|
-| 4 parcours du job `e2e-staging` | Une identité d'application (CI) ne peut pas faire l'échange On-Behalf-Of, ou le test ne vaut que dans un autre environnement | Le parcours d'évaluation réel n'est **pas** prouvé par la CI. Il se joue depuis un poste, avec le compte d'un gestionnaire |
+| 4 parcours du job `e2e-staging` | Une identité d'application (CI) ne peut pas faire l'échange On-Behalf-Of, ou le test ne vaut que dans un autre environnement | Le parcours d'évaluation réel n'est **pas** prouvé par la CI. Il se joue depuis un poste, avec le compte d'un gestionnaire (dernier rejeu : 04/11) |
 | Tests désélectionnés (marqueur `lent`, 14 en intégration) | Ils chargent les modèles de LLM Guard, trop lents pour chaque PR | Ces garde-fous sont testés hors de la CI (`make garde-fous`) |
 
 Le seul avertissement affiché vient d'une séquence d'échappement dans la bibliothèque `llm_guard`, pas de notre code.

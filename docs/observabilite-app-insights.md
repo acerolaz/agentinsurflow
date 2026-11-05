@@ -114,6 +114,16 @@ az monitor app-insights query --app appi-insurflow-staging -g svespuceRG \
 - **Tableau de bord** : portail Azure › **Tableaux de bord** (*Dashboard*), puis `vigie-staging` ou `vigie-production`. Une tuile par question : disponibilité, évaluations par heure, p95, revue humaine par cause, coût par agent, évaluations sans décision. La lecture de chaque tuile est dans [`exploitation.md`](exploitation.md) § 4.
 - **Alertes** : les règles visent l'espace Log Analytics, donc la page **Alertes de la ressource Application Insights reste vide**. Ouvrir **Monitor › Alertes › Règles d'alerte** pour voir les règles AL-1 à AL-10 ; le tableau de bord donne aussi un lien vers les alertes déclenchées. Chaque alerte envoie un e-mail par le groupe d'actions `ag-insurflow-<env>`. La fiche de chaque alerte est dans [`exploitation.md`](exploitation.md) § 6.
 
+## 7 bis. Le monitorage de la ressource Foundry
+
+La vigie voit ce qui passe par la gateway. La ressource Foundry a aussi son propre monitorage, pour ce qui la contournerait :
+
+- **Métriques** : portail Azure, ressource Foundry, **Surveillance › Métriques** (par exemple `ProcessedPromptTokens`), disponibles sans réglage.
+- **Paramètres de diagnostic** : `make foundry-diag`, à la main, envoie `AllMetrics` et `Audit` vers l'espace Log Analytics du projet. Les données arrivent sous deux heures au plus.
+- **Contrôle** : dans l'espace Log Analytics, `AzureMetrics | where ResourceProvider == "MICROSOFT.COGNITIVESERVICES" | summarize count() by MetricName`.
+
+`RequestResponse` n'est pas activé : la documentation relevée ne garantit pas son contenu, et le texte d'une question n'est jamais tracé.
+
 ## 8. Si rien n'apparaît
 
 - **Délai d'ingestion** : compter 2 à 5 minutes entre l'évaluation et son apparition dans les journaux et la recherche de transactions. Live Metrics, lui, est immédiat.

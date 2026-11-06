@@ -1,0 +1,230 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AgentInsurFlow — Function de calcul",
+    "version": "1.0.0",
+    "description": "Barème de risque, formule de prime et fréquence GLM, vus depuis la gateway. La gateway exige un jeton Entra (politique `calcul-mcp`) et applique la limite de débit `calcul` ; la Function elle-même est fermée par Easy Auth à tout autre appelant que la gateway. Corps JSON strict : exactement les champs listés, chacun du bon type ou `null` ; les décimaux sont des chaînes (`0.90`), sans exposant ni signe. Document écrit à la main, vérifié contre le code par `fonction-calcul/tests/unit/test_openapi_calcul.py`."
+  },
+  "paths": {
+    "/api/calcul/evaluer": {
+      "post": {
+        "operationId": "evaluer",
+        "summary": "Évalue le risque d'un dossier au barème",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FaitsRisque" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Classe, décision et règles déclenchées",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResultatRisque" } } }
+          },
+          "400": { "$ref": "#/components/responses/RequeteInvalide" },
+          "401": { "$ref": "#/components/responses/NonAuthentifie" },
+          "403": { "$ref": "#/components/responses/AccesRefuse" },
+          "422": { "$ref": "#/components/responses/HorsBareme" },
+          "429": { "$ref": "#/components/responses/TropDeRequetes" }
+        },
+        "security": [{ "entra": [] }]
+      }
+    },
+    "/api/calcul/calculer": {
+      "post": {
+        "operationId": "calculer",
+        "summary": "Calcule la prime d'un dossier par la formule",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FaitsPrime" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Prime HT, taxes, TTC annuelle et mensuelle, coefficients appliqués",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResultatPrime" } } }
+          },
+          "400": { "$ref": "#/components/responses/RequeteInvalide" },
+          "401": { "$ref": "#/components/responses/NonAuthentifie" },
+          "403": { "$ref": "#/components/responses/AccesRefuse" },
+          "422": { "$ref": "#/components/responses/HorsBareme" },
+          "429": { "$ref": "#/components/responses/TropDeRequetes" }
+        },
+        "security": [{ "entra": [] }]
+      }
+    },
+    "/api/calcul/frequence": {
+      "post": {
+        "operationId": "frequence",
+        "summary": "Prédit la fréquence annuelle de sinistres (GLM)",
+        "description": "Comparaison seulement, ne décide ni ne tarife (D42).",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProfilFrequence" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Version du modèle et fréquence annuelle prédite",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResultatFrequence" } } }
+          },
+          "400": { "$ref": "#/components/responses/RequeteInvalide" },
+          "401": { "$ref": "#/components/responses/NonAuthentifie" },
+          "403": { "$ref": "#/components/responses/AccesRefuse" },
+          "422": { "$ref": "#/components/responses/HorsModele" },
+          "429": { "$ref": "#/components/responses/TropDeRequetes" }
+        },
+        "security": [{ "entra": [] }]
+      }
+    },
+    "/health/calcul": {
+      "get": {
+        "operationId": "sante",
+        "summary": "Santé et versions (barème, formule, modèle de fréquence)",
+        "responses": {
+          "200": {
+            "description": "Versions servies",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Sante" } } }
+          }
+        },
+        "security": []
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "entra": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Jeton Entra porté par la gateway (politique `calcul-mcp`)." }
+    },
+    "schemas": {
+      "Decimal": { "type": ["string", "null"], "pattern": "^[0-9]+(\\.[0-9]+)?$", "examples": ["0.90"] },
+      "Entier": { "type": ["integer", "null"] },
+      "Texte": { "type": ["string", "null"] },
+      "FaitsRisque": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["suspensions", "resiliations", "crm", "nb_sinistres_responsables_trois_ans", "nb_sinistres_trois_ans", "anciennete_permis_mois", "puissance_fiscale_cv"],
+        "properties": {
+          "suspensions": { "$ref": "#/components/schemas/Entier" },
+          "resiliations": { "$ref": "#/components/schemas/Entier" },
+          "crm": { "$ref": "#/components/schemas/Decimal" },
+          "nb_sinistres_responsables_trois_ans": { "$ref": "#/components/schemas/Entier" },
+          "nb_sinistres_trois_ans": { "$ref": "#/components/schemas/Entier" },
+          "anciennete_permis_mois": { "$ref": "#/components/schemas/Entier" },
+          "puissance_fiscale_cv": { "$ref": "#/components/schemas/Entier" }
+        }
+      },
+      "FaitsPrime": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["formule", "anciennete_permis_mois", "departement", "puissance_fiscale_cv", "type_usage", "crm"],
+        "properties": {
+          "formule": { "$ref": "#/components/schemas/Texte" },
+          "anciennete_permis_mois": { "$ref": "#/components/schemas/Entier" },
+          "departement": { "$ref": "#/components/schemas/Texte" },
+          "puissance_fiscale_cv": { "$ref": "#/components/schemas/Entier" },
+          "type_usage": { "$ref": "#/components/schemas/Texte" },
+          "crm": { "$ref": "#/components/schemas/Decimal" }
+        }
+      },
+      "ProfilFrequence": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["crm", "puissance_fiscale_cv", "departement"],
+        "properties": {
+          "crm": { "$ref": "#/components/schemas/Decimal" },
+          "puissance_fiscale_cv": { "$ref": "#/components/schemas/Entier" },
+          "departement": { "$ref": "#/components/schemas/Texte" }
+        }
+      },
+      "ResultatRisque": {
+        "type": "object",
+        "required": ["version_bareme", "classe", "decision", "score", "regles"],
+        "properties": {
+          "version_bareme": { "type": "string" },
+          "classe": { "enum": ["acceptable", "refus"] },
+          "decision": { "enum": ["ACCEPTE", "REFUSE"] },
+          "score": { "type": "number" },
+          "regles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["regle_id", "motif"],
+              "properties": { "regle_id": { "type": "string" }, "motif": { "type": "string" } }
+            }
+          }
+        }
+      },
+      "ResultatPrime": {
+        "type": "object",
+        "required": ["version_formule", "prime_ht", "montant_taxes", "prime_ttc_annuelle", "prime_mensuelle", "coefficients"],
+        "properties": {
+          "version_formule": { "type": "string" },
+          "prime_ht": { "type": "string", "description": "Montant décimal en euros" },
+          "montant_taxes": { "type": "string" },
+          "prime_ttc_annuelle": { "type": "string" },
+          "prime_mensuelle": { "type": "string" },
+          "coefficients": { "type": "object", "additionalProperties": { "type": "string" } }
+        }
+      },
+      "ResultatFrequence": {
+        "type": "object",
+        "required": ["version_modele", "frequence_annuelle", "variables"],
+        "properties": {
+          "version_modele": { "type": "string" },
+          "frequence_annuelle": { "type": "number" },
+          "variables": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "Sante": {
+        "type": "object",
+        "required": ["version", "bareme", "formule", "modele_frequence"],
+        "properties": {
+          "version": { "type": "string" },
+          "bareme": { "type": "string" },
+          "formule": { "type": "string" },
+          "modele_frequence": { "type": "string" }
+        }
+      },
+      "ErreurCalcul": {
+        "type": "object",
+        "required": ["code"],
+        "properties": {
+          "code": { "enum": ["REQUETE_INVALIDE", "DONNEE_HORS_BAREME", "DONNEE_HORS_MODELE"] },
+          "champ": { "type": "string", "description": "Champ manquant ou hors bornes (422 seulement)" }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "required": ["status", "code"],
+        "properties": {
+          "type": { "type": "string" },
+          "title": { "type": "string" },
+          "status": { "type": "integer" },
+          "code": { "type": "string" }
+        }
+      }
+    },
+    "responses": {
+      "RequeteInvalide": {
+        "description": "`REQUETE_INVALIDE` : JSON invalide, champ manquant ou en trop, mauvais type",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErreurCalcul" } } }
+      },
+      "HorsBareme": {
+        "description": "`DONNEE_HORS_BAREME` : un fait requis manque ou sort du barème (`champ`)",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErreurCalcul" } } }
+      },
+      "HorsModele": {
+        "description": "`DONNEE_HORS_MODELE` : une variable sort du domaine du modèle (`champ`)",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErreurCalcul" } } }
+      },
+      "NonAuthentifie": {
+        "description": "`NON_AUTHENTIFIE` (gateway) : jeton absent ou invalide",
+        "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } }
+      },
+      "AccesRefuse": {
+        "description": "`ACCES_REFUSE` (gateway) : rôle ou audience absents (politique `calcul-mcp`)",
+        "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } }
+      },
+      "TropDeRequetes": {
+        "description": "`TROP_DE_REQUETES` (gateway) : limite de débit `calcul` atteinte",
+        "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } }
+      }
+    }
+  }
+}

@@ -25,6 +25,8 @@
 
 **Ce qu'ils ne prouvent pas.** En intégration, le LLM, le serveur MCP et Entra ID sont simulés. Les tests ne disent donc rien de la qualité d'une réponse réelle ni de l'échange de jeton On-Behalf-Of. Ces points relèvent des évaluations et de la recette manuelle.
 
+**Documentation des routes.** Les quatre services ont un document OpenAPI versionné dans `docs/openapi/`, servi sur la page Swagger de la gateway. Les trois premiers (rag, cluster, underwriting-admin) sont générés depuis le code par `make openapi`. Celui de la Function (`fonction-calcul.json`) est écrit à la main, car la Function ne publie pas d'OpenAPI. `fonction-calcul/tests/unit/test_openapi_calcul.py` le contrôle contre le code et la table de la gateway : routes, champs exigés, codes d'erreur, et un corps réel validé par le schéma.
+
 ### Couverture par route
 
 | Route publique | Cas nominal | Refus et échecs attendus | E2E avec jeton d'utilisateur |

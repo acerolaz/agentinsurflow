@@ -278,7 +278,7 @@ app.MapGet("/robots.txt", () => Results.Text("User-agent: *\nAllow: /notices/\nD
     .DisableRateLimiting()
     .ExcludeFromDescription();
 
-// Page Swagger unique, à la racine : les 4 documents OpenAPI de la solution (S3-24).
+// Page Swagger unique, à la racine : les 5 documents OpenAPI de la solution (S3-24).
 // Connexion Entra en PKCE avec un seul client public (l'application agentinsurflow-rag).
 // Placée avant l'authentification : la page est publique, les appels qu'elle fait portent le jeton.
 app.UseSwaggerUI(ui =>
@@ -288,6 +288,7 @@ app.UseSwaggerUI(ui =>
     ui.SwaggerEndpoint("/rag/openapi.json", "rag");
     ui.SwaggerEndpoint("/underwriting/openapi/v1.json", "underwriting-admin");
     ui.SwaggerEndpoint("/cluster/openapi.json", "cluster");
+    ui.SwaggerEndpoint("/calcul/openapi.json", "fonction-calcul");
     ui.SwaggerEndpoint("/openapi/v1.json", "gateway");
     ui.OAuthClientId(app.Configuration["SWAGGER_CLIENT_ID"] ?? "");
     ui.OAuthUsePkce();
@@ -305,6 +306,13 @@ app.MapGet("/health", (IConfiguration cfg) =>
     .AllowAnonymous()
     .DisableRateLimiting(); // sondes de Container Apps
 app.MapOpenApi().AllowAnonymous(); // /openapi/v1.json
+
+// La Function ne publie pas son OpenAPI (Easy Auth, aucune route de documentation) : document écrit à la main,
+// versionné dans docs/openapi/ (test de non-dérive côté Function), copié à côté de la gateway au build.
+app.MapGet("/calcul/openapi.json", () =>
+        Results.File(Path.Combine(AppContext.BaseDirectory, "openapi", "fonction-calcul.json"), "application/json"))
+    .AllowAnonymous()
+    .ExcludeFromDescription();
 
 // Configuration publique de l'espace : client public (PKCE), portées des services et UPN de connexion (loginHint).
 // Aucun secret : tout ici est visible dans le navigateur de toute façon.

@@ -47,6 +47,7 @@ public sealed class SwaggerTests : IDisposable
     [InlineData("/rag/openapi.json")]
     [InlineData("/underwriting/openapi/v1.json")]
     [InlineData("/cluster/openapi.json")]
+    [InlineData("/calcul/openapi.json")]
     public async Task Page_swagger_liste_les_documents(string document)
     {
         var page = await PageSwagger();
@@ -72,5 +73,19 @@ public sealed class SwaggerTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
         using var json = JsonDocument.Parse(await reponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         Assert.True(json.RootElement.GetProperty("paths").TryGetProperty("/health", out _));
+    }
+
+    [Fact]
+    public async Task OpenApi_de_la_function_de_calcul_est_servi_par_la_gateway()
+    {
+        var jeton = TestContext.Current.CancellationToken;
+
+        var reponse = await _client.GetAsync(new Uri("/calcul/openapi.json", UriKind.Relative), jeton);
+
+        Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
+        Assert.Equal("application/json", reponse.Content.Headers.ContentType?.MediaType);
+        using var json = JsonDocument.Parse(await reponse.Content.ReadAsStringAsync(jeton));
+        Assert.Equal("3.1.0", json.RootElement.GetProperty("openapi").GetString());
+        Assert.True(json.RootElement.GetProperty("paths").TryGetProperty("/api/calcul/evaluer", out _));
     }
 }

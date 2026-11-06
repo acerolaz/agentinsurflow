@@ -8,6 +8,7 @@
 .coverage
 tests
 docs
+!docs/openapi/fonction-calcul.json
 eval
 infra
 .claude

@@ -5,6 +5,7 @@ COPY global.json Directory.Build.props ./
 COPY gateway/src/AgentInsurFlow.Gateway.Api/AgentInsurFlow.Gateway.Api.csproj gateway/src/AgentInsurFlow.Gateway.Api/
 RUN dotnet restore gateway/src/AgentInsurFlow.Gateway.Api/AgentInsurFlow.Gateway.Api.csproj
 COPY gateway/src/ gateway/src/
+COPY docs/openapi/fonction-calcul.json docs/openapi/
 RUN dotnet publish gateway/src/AgentInsurFlow.Gateway.Api -c Release -o /app --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0

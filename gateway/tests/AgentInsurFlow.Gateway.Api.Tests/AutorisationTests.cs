@@ -204,6 +204,7 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
     [InlineData("/openapi/v1.json")]
     [InlineData("/rag/openapi.json")]
     [InlineData("/underwriting/openapi/v1.json")]
+    [InlineData("/calcul/openapi.json")]
     [InlineData("/health")]
     [InlineData("/health/rag")]
     [InlineData("/health/underwriting")]

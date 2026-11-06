@@ -31,7 +31,7 @@ Jeton **Entra ID** (Bearer) validé à l'entrée : signature (clés publiées pa
 | `/api/contrats/{**reste}` (portefeuille, dossier, pièces, état, fiche du lead, contrat, relances, sans suite), `GET /api/traces/{trace_id}` | `underwriting-gestionnaire` | `Gestionnaire` | `agentinsurflow-underwriting` |
 | `POST /v1/traces` | `underwriting-telemetrie` | `Telemetrie` | `agentinsurflow-underwriting` |
 | `/api/points-de-reprise/{**reste}` (points de reprise du graphe du cluster, D106) | `underwriting-points-de-reprise` | `PointsDeReprise`, et `azp` = `Entra:ClusterClientId` (`INSURFLOW_CLUSTER_CLIENT_ID`) | `agentinsurflow-underwriting` |
-| `/`, `/openapi/v1.json`, `GET /rag/openapi.json`, `GET /underwriting/openapi/v1.json`, `/health*` | `anonymous` | — | — |
+| `/`, `/openapi/v1.json`, `GET /rag/openapi.json`, `GET /underwriting/openapi/v1.json`, `GET /cluster/openapi.json`, `GET /calcul/openapi.json`, `/health*` | `anonymous` | — | — |
 
 Les routes de documentation n'ouvrent **que** le document OpenAPI de chaque service : tout autre chemin sous `/rag/` ou `/underwriting/` tombe dans le refus par défaut (sinon `/rag/api/reponses` atteindrait `rag` sans jeton ni limite de débit). Le « Try it out » de la page Swagger appelle les routes REST publiques (`/api/…`), donc avec leur politique.
 
@@ -107,7 +107,8 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 
 ## Swagger
 
-- **Une seule page**, à la racine de la gateway (`/` → `/index.html`), avec un menu qui donne accès aux **3 documents OpenAPI** : `rag` (`/rag/openapi.json`), `underwriting-admin` (`/underwriting/openapi/v1.json`) et la gateway (`/openapi/v1.json`).
+- **Une seule page**, à la racine de la gateway (`/` → `/index.html`), avec un menu qui donne accès aux **5 documents OpenAPI** : `rag` (`/rag/openapi.json`), `underwriting-admin` (`/underwriting/openapi/v1.json`), `cluster` (`/cluster/openapi.json`), `fonction-calcul` (`/calcul/openapi.json`) et la gateway (`/openapi/v1.json`).
+- **Document de la Function** : la Function ne publie pas d'OpenAPI. `docs/openapi/fonction-calcul.json`, écrit à la main et contrôlé contre le code (`fonction-calcul/tests/unit/test_openapi_calcul.py`), est copié à côté de la gateway au build (lien dans le `.csproj`, exception dans `.dockerignore`) et servi par une route anonyme en `GET` seul.
 - **Préfixe public transmis** : pour `GET /rag/openapi.json` et `GET /underwriting/openapi/v1.json`, la gateway retire le préfixe et l'envoie dans `X-Forwarded-Prefix`. Un `X-Forwarded-Prefix` fourni par le client est ignoré. Les documents des services ne déclarent **pas** de `servers` : le « Try it out » vise la gateway elle-même.
 - **Connexion Entra** (« Authorize ») en code d'autorisation + **PKCE**, avec un seul client public : `SWAGGER_CLIENT_ID` (l'application `agentinsurflow-rag`, qui a déjà la permission vers `underwriting` pour l'On-Behalf-Of).
 
@@ -177,7 +178,7 @@ La gateway n'a presque aucune logique isolable (routes et politiques sont décla
 | `Documentation_et_sante_sans_jeton`, `Chemin_inconnu_401_sans_jeton_404_avec_jeton`, `Toutes_les_routes_declarent_une_politique` | Exceptions publiques et refus par défaut |
 | `Au_dela_de_la_limite_globale_429_RetryAfter_ProblemDetails`, `Limite_par_utilisateur`, `Reponses_limite_plus_stricte`, `Sans_jeton_partition_par_ip`, `Sante_jamais_limitee` | Débit : 429 propre, budgets séparés, sondes épargnées |
 | `EnvoyDevant_IP_reelle_transmise`, `EnvoyDevant_partitionne_par_IP_reelle` | Derrière l'envoy, seule la dernière entrée de `X-Forwarded-For` compte |
-| `Racine_redirige_vers_la_page_swagger`, `Page_swagger_liste_les_trois_documents`, `Page_swagger_se_connecte_a_Entra_en_PKCE` | La page Swagger unique et sa connexion |
+| `Racine_redirige_vers_la_page_swagger`, `Page_swagger_liste_les_documents`, `Page_swagger_se_connecte_a_Entra_en_PKCE`, `OpenApi_de_la_function_de_calcul_est_servi_par_la_gateway` | La page Swagger unique et sa connexion |
 | `OpenApi_de_la_gateway_documente_health`, `Health_*` | Document OpenAPI et santé |
 
 ## Architecture

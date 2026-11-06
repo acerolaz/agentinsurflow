@@ -58,12 +58,13 @@ down:               ## arrête la solution et vide la base annexe
 pyramide:           ## porte S3-22, #179 : TU >= 65 %, TI <= 30 %, E2E <= 15 % (projets Python + underwriting-admin + e2e)
 	uv run python tools/pyramide.py
 
-openapi:            ## docs/openapi/{rag,agentic-cluster,underwriting-admin}.json, générés depuis le code (sans démarrer la solution)
+openapi:            ## docs/openapi/{rag,agentic-cluster,underwriting-admin}.json générés depuis le code (sans démarrer la solution) ; fonction-calcul.json (écrit à la main) contrôlé contre le code
 	uv run python -c "import json; from agentinsurflow_rag.api import app; \
 	  open('docs/openapi/rag.json', 'w').write(json.dumps(app.openapi(), ensure_ascii=False, indent=2) + '\n')"
 	uv run python -c "import json; from agentinsurflow_cluster.api import app; \
 	  open('docs/openapi/agentic-cluster.json', 'w').write(json.dumps(app.openapi(), ensure_ascii=False, indent=2) + '\n')"
 	ASPNETCORE_ENVIRONMENT=Development env -u VERSION dotnet build underwriting-admin/src/AgentInsurFlow.UnderwritingAdmin.Api -p:OpenApiGenerateDocuments=true -v q # VERSION (SHA) serait lu comme la propriété MSBuild Version ; Development : pas de mot de passe PostgreSQL exigé
+	uv run pytest fonction-calcul/tests/unit/test_openapi_calcul.py -q --no-cov # la Function ne publie pas son OpenAPI : non-dérive document ⇔ code ⇔ gateway
 
 gateway-%:          ## cibles de gateway/Makefile : make gateway-test, gateway-lint, gateway-docker-build
 	env -u VERSION $(MAKE) -C gateway $*  # VERSION (SHA git) serait lu comme la propriété MSBuild Version : restauration NuGet en échec (MSB4181)

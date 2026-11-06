@@ -76,6 +76,21 @@ Erreurs :
 
 Jamais de log du corps de la requête ni de la réponse (faits du dossier, montants).
 
+### Document OpenAPI
+
+La Function ne publie pas son propre OpenAPI (Easy Auth, aucune route de documentation). Le contrat
+est donc écrit à la main dans [`docs/openapi/fonction-calcul.json`](../docs/openapi/fonction-calcul.json)
+(OpenAPI 3.1), avec les **chemins vus depuis la gateway** (`/api/calcul/…`, `/health/calcul`). Il
+ajoute les refus de la gateway (401, 403, 429 en ProblemDetails). La gateway le sert en
+`GET /calcul/openapi.json` sur la page Swagger unique (entrée « fonction-calcul »).
+`GET /health/calcul` ne renvoie jamais 503 : aucun cas dans `sante_route`, donc aucun n'est documenté.
+
+`tests/unit/test_openapi_calcul.py` (lancé aussi par `make openapi`) échoue en cas de dérive :
+- chaque route du code (lue par `ast`) a son opération, au chemin public déduit d'`appsettings.Routes.json`, et inversement ;
+- les `required` de chaque corps sont exactement les `champs` passés à `_executer`, sans propriété en plus ;
+- les codes d'erreur du code et ceux du document sont les mêmes ;
+- un corps réellement accepté par la Function est valide pour le schéma (`jsonschema`).
+
 ## Modèle de fréquence
 
 Fiche, métriques et données : `modeles/glm-freq-20261028-v1.md`. Suivi en ligne (appels, latence, fréquences prédites) : `infra/vigie/kql/tuiles/frequence-glm.kql`. Amendement du dossier : `docs/dossier/amendements-d42.md`.

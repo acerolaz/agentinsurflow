@@ -13,6 +13,12 @@
     <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
   </ItemGroup>
 
+  <!-- Document OpenAPI de la Function (C9) : une seule source, docs/openapi/, servie par /calcul/openapi.json -->
+  <ItemGroup>
+    <Content Include="..\..\..\docs\openapi\fonction-calcul.json" Link="openapi\fonction-calcul.json"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="AgentInsurFlow.Gateway.Api.Tests" />
   </ItemGroup>

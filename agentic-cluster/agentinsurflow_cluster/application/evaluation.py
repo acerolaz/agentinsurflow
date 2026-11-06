@@ -65,6 +65,10 @@ class AucuneRevueEnAttente(Exception):
     """Aucune évaluation n'attend la revue du gestionnaire."""
 
 
+class EvaluationIntrouvable(Exception):
+    """Aucune évaluation lisible : jamais lancée, ou dossier d'un autre gestionnaire (BOLA)."""
+
+
 class AcceptationSansPrime(Exception):
     """Accepter sans prime imprimerait un contrat sans montant : un refus du barème n'en a pas."""
 

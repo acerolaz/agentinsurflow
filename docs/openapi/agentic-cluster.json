@@ -26,10 +26,86 @@
         }
       }
     },
-    "/v1/souscriptions/{numero_contrat}/evaluation": {
+    "/api/v1/souscriptions/{numero_contrat}/evaluation": {
       "post": {
         "summary": "Evaluer",
-        "operationId": "evaluer_evaluations__numero_contrat__post",
+        "description": "Lance une nouvelle tentative (201, ``Location``) ou reprend une pause (200).",
+        "operationId": "evaluer_api_v1_souscriptions__numero_contrat__evaluation_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "numero_contrat",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Numero Contrat"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Nouvelle tentative lancée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationReponse"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "description": "URI de l'évaluation",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Reprise d'une évaluation en pause"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Consulter",
+        "description": "Dernier état de l'évaluation ; 404 identique si jamais lancée ou dossier d'un autre.",
+        "operationId": "consulter_api_v1_souscriptions__numero_contrat__evaluation_get",
         "security": [
           {
             "HTTPBearer": []
@@ -66,15 +142,6 @@
           "404": {
             "description": "Not Found"
           },
-          "409": {
-            "description": "Conflict"
-          },
-          "429": {
-            "description": "Too Many Requests"
-          },
-          "502": {
-            "description": "Bad Gateway"
-          },
           "503": {
             "description": "Service Unavailable"
           },
@@ -89,13 +156,11 @@
             }
           }
         }
-      }
-    },
-    "/v1/souscriptions/{numero_contrat}/pause": {
-      "post": {
+      },
+      "patch": {
         "summary": "Demander Pause",
-        "description": "Pause au prochain passage entre deux agents ; ``POST /evaluations/{n}`` reprend.\n\n``ignoree`` : plus aucun agent à appeler (revue attendue, dossier décidé, déjà en pause).",
-        "operationId": "demander_pause_evaluations__numero_contrat__pause_post",
+        "description": "``{\"etat\": \"pause_demandee\"}`` : pause entre deux agents ; ``POST`` reprend.\n\n``ignoree`` : plus aucun agent à appeler (revue attendue, dossier décidé, déjà en pause).",
+        "operationId": "demander_pause_api_v1_souscriptions__numero_contrat__evaluation_patch",
         "security": [
           {
             "HTTPBearer": []
@@ -112,6 +177,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PauseCorps"
+              }
+            }
+          }
+        },
         "responses": {
           "202": {
             "description": "Successful Response",
@@ -132,26 +207,20 @@
           "404": {
             "description": "Not Found"
           },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
           "503": {
             "description": "Service Unavailable"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
           }
         }
       }
     },
-    "/v1/souscriptions/{numero_contrat}/revue": {
-      "post": {
+    "/api/v1/souscriptions/{numero_contrat}/evaluation/decision": {
+      "put": {
         "summary": "Reviser",
-        "operationId": "reviser_evaluations__numero_contrat__revue_post",
+        "description": "Décision du gestionnaire : 201 la première, 200 si elle en remplace une non enregistrée.\n\nPas de ``Location`` : avec ``PUT``, l'URI visée est la ressource (RFC 9110 §9.3.4) ; la décision\nse relit dans ``GET …/evaluation`` (statut ``ACCEPTE`` ou ``REFUSE``).",
+        "operationId": "reviser_api_v1_souscriptions__numero_contrat__evaluation_decision_put",
         "security": [
           {
             "HTTPBearer": []
@@ -179,7 +248,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -188,6 +257,9 @@
                 }
               }
             }
+          },
+          "200": {
+            "description": "Décision remplacée (la plus récente l'emporte)"
           },
           "401": {
             "description": "Unauthorized"
@@ -251,7 +323,9 @@
             "enum": [
               "EN_ANALYSE",
               "REVUE_HUMAINE",
-              "EN_PAUSE"
+              "EN_PAUSE",
+              "ACCEPTE",
+              "REFUSE"
             ],
             "title": "Statut"
           },
@@ -385,6 +459,22 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "PauseCorps": {
+        "properties": {
+          "etat": {
+            "type": "string",
+            "const": "pause_demandee",
+            "title": "Etat"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "etat"
+        ],
+        "title": "PauseCorps",
+        "description": "``PATCH …/evaluation`` : seul changement d'état demandable, la pause."
       },
       "PauseReponse": {
         "properties": {

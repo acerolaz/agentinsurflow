@@ -1,4 +1,4 @@
-"""Application HTTP du cluster : ``/health`` et ``/evaluations`` (port 8004, jeton Entra exigé)."""
+"""Application HTTP du cluster : ``/health`` et ``/api/v1/souscriptions/{n}/evaluation``."""
 
 from __future__ import annotations
 
@@ -81,12 +81,9 @@ async def _assembler(
 
 
 # Chemins publics de la gateway (T12) : la page Swagger unique appelle la gateway, pas le cluster.
-CHEMINS_PUBLICS = {
-    "/evaluations/{numero_contrat}": "/v1/souscriptions/{numero_contrat}/evaluation",
-    "/evaluations/{numero_contrat}/revue": "/v1/souscriptions/{numero_contrat}/revue",
-    "/evaluations/{numero_contrat}/pause": "/v1/souscriptions/{numero_contrat}/pause",
-    "/health": "/health/cluster",
-}
+# Les routes d'évaluation portent déjà leur chemin public (/api/v1/souscriptions/…, #243) ; seule la
+# sonde est renommée par la gateway.
+CHEMINS_PUBLICS = {"/health": "/health/cluster"}
 
 
 def creer_app(composition: Composition = composition_reelle) -> FastAPI:

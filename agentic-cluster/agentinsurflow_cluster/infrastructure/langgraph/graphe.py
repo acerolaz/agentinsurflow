@@ -25,6 +25,7 @@ from agentinsurflow_cluster.application.evaluation import (
     DossierDecide,
     EvaluationEnAttente,
     EvaluationEnCours,
+    EvaluationIntrouvable,
     Revue,
 )
 from agentinsurflow_cluster.application.serialisation import etat_depuis_dict, etat_vers_dict
@@ -60,6 +61,9 @@ class EtatGraphe(TypedDict, total=False):
 class Resultat:
     statut: str
     etat: EtatDossier
+    nouveau: bool = (
+        True  # tentative ou décision créée (201) ; False : reprise ou remplacement (200)
+    )
 
 
 def construire_graphe(deps: Dependances, checkpointer: Any, pauses: set[tuple[str, str]]) -> Any:
@@ -223,6 +227,16 @@ class ServiceEvaluation:
         self._pauses.add((numero, oid))
         return True
 
+    async def consulter(self, numero: str, oid: str) -> Resultat:
+        """Dernier état du point de reprise ; jamais lancée ou autre gestionnaire : même refus."""
+        try:
+            instantane = await self._controler_proprietaire(numero, oid)
+        except ErreurOutil as e:
+            raise EvaluationIntrouvable(numero) from e
+        if not instantane.values.get("etat"):  # jamais chargé : rien à relire
+            raise EvaluationIntrouvable(numero)
+        return await self._resultat(numero)
+
     async def evaluer(self, numero: str, jeton: str, oid: str) -> Resultat:
         await self._controler_proprietaire(numero, oid)  # 404 avant 409 (BOLA)
         if self._verrou(numero).locked():  # double clic : ne pas attendre la première
@@ -236,9 +250,10 @@ class ServiceEvaluation:
             debut = time.monotonic()
             statut_final, cause = "ERREUR", None  # toute autre exception : ERREUR sans cause
             try:
+                reprise = self._en_pause(instantane)
                 resultat = await self._saga(numero, jeton, oid, instantane)
                 statut_final, cause = resultat.statut, resultat.etat.cause
-                return resultat
+                return replace(resultat, nouveau=not reprise)
             except DelaiDepasse:
                 cause = "delai_depasse"
                 raise
@@ -288,6 +303,7 @@ class ServiceEvaluation:
     async def reviser(self, numero: str, revue: Revue, jeton: str, oid: str) -> Resultat:
         async with self._verrou(numero):
             instantane = await self._controler_proprietaire(numero, oid)
+            remplace = self._a_rejouer(instantane)  # une décision posée attend son enregistrement
             if self._attend_revue(instantane):
                 entree: Any = Command(resume=asdict(revue))
             elif self._a_rejouer(instantane) or self._revue_humaine_terminee(instantane):
@@ -299,4 +315,4 @@ class ServiceEvaluation:
             else:
                 raise AucuneRevueEnAttente(numero)
             await self._graphe.ainvoke(entree, self._config(numero), context=Contexte(jeton))
-            return await self._resultat(numero)
+            return replace(await self._resultat(numero), nouveau=not remplace)

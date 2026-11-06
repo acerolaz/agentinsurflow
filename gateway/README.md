@@ -48,7 +48,7 @@ Limiteur **natif** d'ASP.NET Core (aucun paquet), en fenêtre fixe de 60 s, par 
 |---|---|---|
 | Toutes les routes | 120 requêtes/min | `RateLimit__Global__PermitLimit` |
 | `POST /api/reponses` (coût LLM), en plus de la limite globale | 10 requêtes/min | `RateLimit__Reponses__PermitLimit` |
-| `/v1/souscriptions/{numero_contrat}/evaluation` et `/revue` (cluster, plusieurs appels LLM par évaluation) | 10 requêtes/min (défaut du code) | `RateLimit__Cluster__PermitLimit` |
+| `/api/v1/souscriptions/{numero_contrat}/evaluation` et `…/decision` (cluster, plusieurs appels LLM par évaluation ; le `GET` compte aussi) | 10 requêtes/min (défaut du code) | `RateLimit__Cluster__PermitLimit` |
 | `/health`, `/health/rag`, `/health/underwriting` (sondes) | jamais limitées | — |
 
 Au-delà : **429** `TROP_DE_REQUETES` en ProblemDetails, avec `Retry-After` (secondes). Le débit est compté après l'authentification et avant l'autorisation : les requêtes refusées comptent aussi. Les compteurs sont en mémoire, par réplique (la Container App n'a qu'une réplique).
@@ -103,7 +103,7 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 
 ## Routes du cluster d'agents
 
-`POST /v1/souscriptions/{numero_contrat}/evaluation` est réécrite en `POST /evaluations/{numero_contrat}`, `POST /v1/souscriptions/{numero_contrat}/revue` en `POST /evaluations/{numero_contrat}/revue` et `POST /v1/souscriptions/{numero_contrat}/pause` en `POST /evaluations/{numero_contrat}/pause` (#129), vers le cluster `cluster` (Container App interne ; compose : `http://agentic-cluster:8004`). Politique `cluster-gestionnaire` : rôle `Gestionnaire` **et** audience `Entra__Audiences__cluster__0` (`api://agentinsurflow-cluster`). Le jeton du gestionnaire est **relayé tel quel** (comme pour `/mcp`) : le cluster le revalide, puis l'échange en OBO. Débit : limite `cluster` (`RateLimit__Cluster__PermitLimit`, 10/min), par `oid` + `azp`. `GET /health/cluster` est anonyme ; le document OpenAPI du cluster est servi en `/cluster/openapi.json` (page Swagger unique). Voir [`agentic-cluster/README.md`](../agentic-cluster/README.md).
+Deux routes REST (#243 #244), **sans réécriture** (le cluster sert le chemin public) : `cluster-evaluation` (`POST`, `GET`, `PATCH /api/v1/souscriptions/{numero_contrat}/evaluation`) et `cluster-decision` (`PUT /api/v1/souscriptions/{numero_contrat}/evaluation/decision`), vers le cluster `cluster` (Container App interne ; compose : `http://agentic-cluster:8004`). Politique `cluster-gestionnaire` : rôle `Gestionnaire` **et** audience `Entra__Audiences__cluster__0` (`api://agentinsurflow-cluster`). Le jeton du gestionnaire est **relayé tel quel** (comme pour `/mcp`) : le cluster le revalide, puis l'échange en OBO. Débit : limite `cluster` (`RateLimit__Cluster__PermitLimit`, 10/min), par `oid` + `azp`. `GET /health/cluster` est anonyme ; le document OpenAPI du cluster est servi en `/cluster/openapi.json` (page Swagger unique). Voir [`agentic-cluster/README.md`](../agentic-cluster/README.md).
 
 ## Swagger
 

@@ -6,7 +6,7 @@ import { el, erreur, picto, remplir } from "./dom.js";
 import {
   LIBELLES_GARANTIES, LIBELLES_PIECES, PICTOS, STATUTS_FIGES, classableSansSuite, conditionsGenerales, dateEcheance, etatAffiche,
   boutonsRevue, frise, gabaritRelance, messageRevueHumaine, revueOuverte,
-  spansAffichables, tokensEtape,
+  reussi, spansAffichables, tokensEtape,
 } from "./logique.js";
 
 const SOUS_ONGLETS = [
@@ -109,12 +109,12 @@ export async function afficherDossier(zone, numero) {
     v.tentativeAvant = statut() === "EN_PAUSE" ? null : v.etat?.tentative ?? null;
     rendre();
     suivre();
-    const r = await appeler("POST", `/v1/souscriptions/${chemin}/evaluation`, { portee: "cluster" });
+    const r = await appeler("POST", `/api/v1/souscriptions/${chemin}/evaluation`, { portee: "cluster" });
     clearInterval(v.minuteur);
     v.enVol = false;
     v.tentativeAvant = null;
     v.ecoule = ecoule();
-    if (r.statut !== 200) v.message = erreur(r);
+    if (!reussi(r)) v.message = erreur(r); // 201 tentative lancée, 200 reprise
     else if (r.json.statut === "REVUE_HUMAINE") v.message = el("p", { role: "status" }, messageRevueHumaine(r.json));
     else if (r.json.statut === "EN_PAUSE") v.message = el("p", { role: "status" }, "Évaluation en pause : « Reprendre » repart de l'étape suivante.");
     await lireEtat();
@@ -123,16 +123,16 @@ export async function afficherDossier(zone, numero) {
   }
 
   async function pause() {
-    const r = await appeler("POST", `/v1/souscriptions/${chemin}/pause`, { portee: "cluster" });
-    if (r.statut !== 202) v.message = erreur(r);
+    const r = await appeler("PATCH", `/api/v1/souscriptions/${chemin}/evaluation`, { portee: "cluster", corps: { etat: "pause_demandee" } });
+    if (!reussi(r)) v.message = erreur(r); // 202
     else if (r.json?.pause === "ignoree") v.message = el("p", { role: "status" }, "Pause sans effet : plus aucun agent à appeler, l'évaluation se termine.");
     else v.message = el("p", { role: "status" }, "Pause demandée : l'évaluation s'arrêtera après l'étape en cours.");
     rendre();
   }
 
   async function reviser(decision, validation, motif) {
-    const r = await appeler("POST", `/v1/souscriptions/${chemin}/revue`, { portee: "cluster", corps: { decision, validation, motif } });
-    if (r.statut !== 200) {
+    const r = await appeler("PUT", `/api/v1/souscriptions/${chemin}/evaluation/decision`, { portee: "cluster", corps: { decision, validation, motif } });
+    if (!reussi(r)) { // 201 première décision, 200 remplacement
       v.message = erreur(r);
       return rendre();
     }

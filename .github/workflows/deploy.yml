@@ -489,8 +489,10 @@ jobs:
           [ "$version_mcp" = "$attendu" ] || { echo "::error::serveur-mcp : version '$version_mcp' ≠ '$attendu'"; exit 1; }
           [ "$version_calcul" = "$attendu" ] || { echo "::error::calcul (par la gateway) : version '$version_calcul' ≠ '$attendu'"; exit 1; }
           [ "$version_cluster" = "$attendu" ] || { echo "::error::cluster d'agents : version '$version_cluster' ≠ '$attendu'"; exit 1; }
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/v1/souscriptions/AIF-2026-000001/evaluation")
-          [ "$code" = 401 ] || { echo "::error::POST /v1/souscriptions/{n}/evaluation sans jeton : $code ≠ 401"; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/v1/souscriptions/AIF-2026-000001/evaluation")
+          [ "$code" = 401 ] || { echo "::error::POST /api/v1/souscriptions/{n}/evaluation sans jeton : $code ≠ 401"; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/api/v1/souscriptions/AIF-2026-000001/evaluation")
+          [ "$code" = 401 ] || { echo "::error::GET /api/v1/souscriptions/{n}/evaluation sans jeton : $code ≠ 401"; exit 1; }
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/reponses" -H 'content-type: application/json' -d '{}')
           [ "$code" = 401 ] || { echo "::error::POST /api/reponses sans jeton : $code ≠ 401"; exit 1; }
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/v1/calcul/risques" -H 'content-type: application/json' -d '{}')
@@ -502,7 +504,7 @@ jobs:
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/llm/v1/chat/completions" -H 'content-type: application/json' -d '{}')
           [ "$code" = 401 ] || { echo "::error::POST /api/llm/v1/chat/completions sans jeton : $code ≠ 401"; exit 1; }
           # Le LLM avec jeton (rôle LLM de rag) est vérifié par le job evals (staging), via /api/reponses
-          echo "✔ $URL : gateway, rag, underwriting-admin, serveur-mcp, calcul et cluster en $attendu, /api/reponses, /api/v1/calcul, /api/llm et /v1/souscriptions fermées sans jeton"
+          echo "✔ $URL : gateway, rag, underwriting-admin, serveur-mcp, calcul et cluster en $attendu, /api/reponses, /api/v1/calcul, /api/llm et /api/v1/souscriptions fermées sans jeton"
 
       - uses: astral-sh/setup-uv@v6
         with: { version: "0.11.13", enable-cache: true }

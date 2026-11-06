@@ -24,7 +24,7 @@ test("appel : une coupure réseau rend le statut 0 au lieu de bloquer la page", 
   };
   await (await import(`${APP}/auth.js`)).initialiser();
   const { appeler } = await import(`${APP}/api.js`);
-  const r = await appeler("POST", "/v1/souscriptions/AIF-2026-000001/evaluation", { portee: "cluster" });
+  const r = await appeler("POST", "/api/v1/souscriptions/AIF-2026-000001/evaluation", { portee: "cluster" });
   assert.deepEqual(r, { statut: 0, json: null, entetes: null });
 });
 
@@ -39,7 +39,7 @@ test("appel : un 401 est rejoué une fois avec un jeton renouvelé", async () =>
   };
   await (await import(`${APP}/auth.js`)).initialiser();
   const { appeler } = await import(`${APP}/api.js`);
-  const r = await appeler("GET", "/v1/souscriptions/AIF-2026-000001", { portee: "cluster" });
+  const r = await appeler("GET", "/api/v1/souscriptions/AIF-2026-000001/evaluation", { portee: "cluster" });
   assert.deepEqual(jetons, ["Bearer jeton", "Bearer renouvele"]);
   assert.deepEqual(r, { statut: 200, json: { ok: true }, entetes: null });
 });

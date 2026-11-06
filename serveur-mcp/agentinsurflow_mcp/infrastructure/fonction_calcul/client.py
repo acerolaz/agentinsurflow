@@ -31,7 +31,7 @@ DELAI = 20.0
 class ConfigCalcul(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
 
-    calcul_url: str = "http://localhost:8000/api/calcul"  # via la gateway (D22)
+    calcul_url: str = "http://localhost:8000/api/v1/calcul"  # gateway (D22), ressources (#242)
     calcul_audience: str | None = None  # api://<appId calcul> : absent = calcul indisponible
     mcp_client_secret: SecretStr | None = None  # 🔒 .env local seulement
     azure_tenant_id: str | None = None
@@ -46,10 +46,10 @@ class ClientCalcul:
         self._credential: Any = None
 
     async def evaluer(self, faits: dict[str, Any]) -> dict[str, Any]:
-        return await self._appeler("/evaluer", "version_bareme", "bareme.version", faits)
+        return await self._appeler("/risques", "version_bareme", "bareme.version", faits)
 
     async def calculer(self, faits: dict[str, Any]) -> dict[str, Any]:
-        return await self._appeler("/calculer", "version_formule", "formule.version", faits)
+        return await self._appeler("/primes", "version_formule", "formule.version", faits)
 
     async def _jeton(self) -> str:
         cfg = self._cfg

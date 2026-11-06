@@ -39,6 +39,16 @@ def appeler(
     return fn.get_user_function()(func.HttpRequest(methode, f"/api/{nom}", body=body))
 
 
+def probleme(r: func.HttpResponse) -> dict:
+    """Corps d'une erreur : ProblemDetails (RFC 9457) à ``code`` stable, comme ailleurs."""
+    assert r.mimetype == "application/problem+json"
+    corps = json.loads(r.get_body())
+    assert corps["type"] == "about:blank"
+    assert corps["status"] == r.status_code
+    assert corps["title"]
+    return {k: v for k, v in corps.items() if k not in ("type", "title", "status")}
+
+
 def _sans(faits: dict, cle: str) -> dict:
     return {k: v for k, v in faits.items() if k != cle}
 
@@ -90,7 +100,7 @@ def test_calculer_seed_1():
 def test_donnee_hors_bareme_422(nom, faits, champ):
     r = appeler(nom, faits)
     assert r.status_code == 422
-    assert json.loads(r.get_body()) == {"code": "DONNEE_HORS_BAREME", "champ": champ}
+    assert probleme(r) == {"code": "DONNEE_HORS_BAREME", "champ": champ}
 
 
 @pytest.mark.parametrize(
@@ -122,7 +132,7 @@ def test_donnee_hors_bareme_422(nom, faits, champ):
 def test_requete_invalide_400(nom, kwargs):
     r = appeler(nom, **kwargs)
     assert r.status_code == 400
-    assert json.loads(r.get_body()) == {"code": "REQUETE_INVALIDE"}
+    assert probleme(r) == {"code": "REQUETE_INVALIDE"}
 
 
 def test_sante(monkeypatch):
@@ -172,7 +182,7 @@ def test_frequence_200():
 def test_frequence_corps_invalide_400(corps):
     r = appeler("frequence", corps)
     assert r.status_code == 400
-    assert json.loads(r.get_body()) == {"code": "REQUETE_INVALIDE"}
+    assert probleme(r) == {"code": "REQUETE_INVALIDE"}
 
 
 def test_frequence_json_invalide_400():
@@ -182,13 +192,13 @@ def test_frequence_json_invalide_400():
 def test_frequence_dom_422():
     r = appeler("frequence", {**FAITS_FREQUENCE, "departement": "971"})
     assert r.status_code == 422
-    assert json.loads(r.get_body()) == {"code": "DONNEE_HORS_MODELE", "champ": "departement"}
+    assert probleme(r) == {"code": "DONNEE_HORS_MODELE", "champ": "departement"}
 
 
 def test_frequence_champ_null_422():
     r = appeler("frequence", {**FAITS_FREQUENCE, "crm": None})
     assert r.status_code == 422
-    assert json.loads(r.get_body())["champ"] == "crm"
+    assert probleme(r)["champ"] == "crm"
 
 
 def test_frequence_journal_sans_profil(caplog):

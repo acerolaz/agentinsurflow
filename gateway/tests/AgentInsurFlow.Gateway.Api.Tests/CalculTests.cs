@@ -10,7 +10,7 @@ using static AgentInsurFlow.Gateway.Api.Tests.JetonsDeTest;
 
 namespace AgentInsurFlow.Gateway.Api.Tests;
 
-/// <summary>TI de la route <c>/api/calcul/*</c> : jeton d'application (rôle <c>Calcul</c>) du serveur MCP vers la Function de calcul.</summary>
+/// <summary>TI des routes <c>/api/v1/calcul/{risques,primes,frequences}</c> : jeton d'application (rôle <c>Calcul</c>) du serveur MCP vers la Function de calcul.</summary>
 public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
 {
     private static string JetonCalcul(string[]? roles = null) => Creer(AudienceCalcul, roles ?? ["Calcul"]);
@@ -45,19 +45,23 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         (avecPortee ? backends.Gateway(("Calcul:Portee", Portee)) : backends.Gateway())
             .WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddSingleton<TokenCredential>(credential)));
 
-    [Fact]
-    public async Task Post_calcul_evaluer_arrive_en_api_evaluer_avec_le_jeton_de_la_gateway()
+    // Ressources publiques (R1, #242) → routes internes de la Function, inchangées (Easy Auth exclut /api/sante)
+    [Theory]
+    [InlineData("/api/v1/calcul/risques", "/api/evaluer")]
+    [InlineData("/api/v1/calcul/primes", "/api/calculer")]
+    [InlineData("/api/v1/calcul/frequences", "/api/frequence")]
+    public async Task Ressource_de_calcul_arrive_sur_sa_route_de_Function_avec_le_jeton_de_la_gateway(string chemin, string attendu)
     {
         var credential = new FauxCredential();
         using var usine = GatewayAvecCredential(credential);
         using var client = usine.CreateClient();
         var jeton = JetonCalcul();
 
-        var reponse = await Envoyer(client, "/api/calcul/evaluer", jeton);
+        var reponse = await Envoyer(client, chemin, jeton);
 
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
         var recu = Assert.Single(backends.Calcul.LogEntries).RequestMessage!;
-        Assert.Equal("/api/evaluer", recu.Path);
+        Assert.Equal(attendu, recu.Path);
         Assert.Equal($"Bearer {JetonGateway}", Assert.Single(recu.Headers!["Authorization"]));
         Assert.Equal(Portee, Assert.Single(Assert.Single(credential.Portees)));
         Assert.Empty(backends.Mcp.LogEntries);
@@ -70,7 +74,7 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         using var usine = GatewayAvecCredential(credential, avecPortee: false);
         using var client = usine.CreateClient();
 
-        var reponse = await Envoyer(client, "/api/calcul/evaluer", JetonCalcul());
+        var reponse = await Envoyer(client, "/api/v1/calcul/risques", JetonCalcul());
 
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
         var recu = Assert.Single(backends.Calcul.LogEntries).RequestMessage!;
@@ -86,7 +90,7 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         using var client = usine.CreateClient();
         var jeton = JetonCalcul();
 
-        var reponse = await Envoyer(client, "/api/calcul/evaluer", jeton);
+        var reponse = await Envoyer(client, "/api/v1/calcul/risques", jeton);
 
         Assert.Equal(HttpStatusCode.BadGateway, reponse.StatusCode);
         Assert.Equal("CALCUL_INDISPONIBLE", await AutorisationTests.Code(reponse));
@@ -103,7 +107,7 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         using var usine = GatewayAvecCredential(credential);
         using var client = usine.CreateClient();
 
-        var reponse = await Envoyer(client, "/api/calcul/evaluer", JetonCalcul());
+        var reponse = await Envoyer(client, "/api/v1/calcul/risques", JetonCalcul());
 
         Assert.Equal(HttpStatusCode.BadGateway, reponse.StatusCode);
         Assert.Equal("CALCUL_INDISPONIBLE", await AutorisationTests.Code(reponse));
@@ -119,8 +123,8 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         using var usine = GatewayAvecCredential(credential);
         using var client = usine.CreateClient();
 
-        var sansJeton = await Envoyer(client, "/api/calcul/evaluer", null);
-        var sansRole = await Envoyer(client, "/api/calcul/evaluer", JetonCalcul(["Gestionnaire"]));
+        var sansJeton = await Envoyer(client, "/api/v1/calcul/risques", null);
+        var sansRole = await Envoyer(client, "/api/v1/calcul/risques", JetonCalcul(["Gestionnaire"]));
 
         Assert.Equal(HttpStatusCode.Unauthorized, sansJeton.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, sansRole.StatusCode);
@@ -152,7 +156,7 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         using var usine = backends.Gateway(("Entra:Audiences:calcul:1", guid));
         using var client = usine.CreateClient();
 
-        var reponse = await Envoyer(client, "/api/calcul/evaluer", Creer(guid, ["Calcul"]));
+        var reponse = await Envoyer(client, "/api/v1/calcul/risques", Creer(guid, ["Calcul"]));
 
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
         Assert.Single(backends.Calcul.LogEntries);
@@ -164,7 +168,7 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         using var usine = backends.Gateway();
         using var client = usine.CreateClient();
 
-        var reponse = await Envoyer(client, "/api/calcul/evaluer", null);
+        var reponse = await Envoyer(client, "/api/v1/calcul/risques", null);
 
         Assert.Equal(HttpStatusCode.Unauthorized, reponse.StatusCode);
         Assert.Equal("NON_AUTHENTIFIE", await AutorisationTests.Code(reponse));
@@ -177,7 +181,7 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         using var usine = backends.Gateway();
         using var client = usine.CreateClient();
 
-        var reponse = await Envoyer(client, "/api/calcul/evaluer", JetonCalcul(["Gestionnaire"]));
+        var reponse = await Envoyer(client, "/api/v1/calcul/risques", JetonCalcul(["Gestionnaire"]));
 
         Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);
         Assert.Equal("ACCES_REFUSE", await AutorisationTests.Code(reponse));
@@ -190,7 +194,7 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         using var usine = backends.Gateway();
         using var client = usine.CreateClient();
 
-        var reponse = await Envoyer(client, "/api/calcul/evaluer", Creer(AudienceMcp, ["Calcul"]));
+        var reponse = await Envoyer(client, "/api/v1/calcul/risques", Creer(AudienceMcp, ["Calcul"]));
 
         Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);
         Assert.Empty(backends.Calcul.LogEntries);
@@ -203,13 +207,32 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         using var client = usine.CreateClient();
         var jeton = JetonCalcul();
 
-        var premiere = await Envoyer(client, "/api/calcul/evaluer", jeton);
-        var deuxieme = await Envoyer(client, "/api/calcul/evaluer", jeton);
+        var premiere = await Envoyer(client, "/api/v1/calcul/risques", jeton);
+        var deuxieme = await Envoyer(client, "/api/v1/calcul/risques", jeton);
 
         Assert.Equal(HttpStatusCode.OK, premiere.StatusCode);
         Assert.Equal(HttpStatusCode.TooManyRequests, deuxieme.StatusCode);
         Assert.Equal("TROP_DE_REQUETES", await AutorisationTests.Code(deuxieme));
         Assert.Single(backends.Calcul.LogEntries);
+    }
+
+    // Anciens chemins de style RPC (verbe dans l'URL) : plus routés, ni Function ni échange de jeton
+    [Theory]
+    [InlineData("/api/calcul/evaluer")]
+    [InlineData("/api/calcul/calculer")]
+    [InlineData("/api/calcul/frequence")]
+    [InlineData("/api/v1/calcul/evaluer")]
+    public async Task Ancien_chemin_verbe_404_sans_appel(string chemin)
+    {
+        var credential = new FauxCredential();
+        using var usine = GatewayAvecCredential(credential);
+        using var client = usine.CreateClient();
+
+        var reponse = await Envoyer(client, chemin, JetonCalcul());
+
+        Assert.Equal(HttpStatusCode.NotFound, reponse.StatusCode);
+        Assert.Empty(credential.Portees);
+        Assert.Empty(backends.Calcul.LogEntries);
     }
 
     [Fact]

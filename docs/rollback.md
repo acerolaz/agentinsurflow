@@ -22,7 +22,7 @@ On peut aussi passer par l'interface : Actions › **deploy** › *Run workflow*
    (`agentinsurflow-gateway` pour la principale, `agentinsurflow-underwriting` pour celle d'underwriting-admin, `agentinsurflow-mcp` pour la Container App du serveur MCP, `agentinsurflow-cluster` pour celle du cluster d'agents, `agentinsurflow-rag` pour celle de rag ; les cinq sont lancées ensemble après la base annexe, #172) ; l'image PostgreSQL annexe (`agentinsurflow-postgres:3`), les
    variables et les secrets des Container Apps restent identiques.
 3. Le **test de fumée**, par la gateway, vérifie que `/health`, `/health/rag`, `/health/underwriting`, `/health/mcp`, `/health/calcul` et `/health/cluster` renvoient ce SHA et que
-   `/api/reponses`, `/api/calcul/evaluer` et `/api/llm/v1/chat/completions` répondent 401 sans jeton.
+   `/api/reponses`, `/api/v1/calcul/{risques,primes,frequences}` et `/api/llm/v1/chat/completions` répondent 401 sans jeton.
 4. Le run reste dans le journal Actions : c'est la trace du rollback.
 
 Aucune reconstruction : les images sont **immuables** (tag = SHA) et déjà dans l'ACR. Le prompt et la version

@@ -35,12 +35,12 @@
 | `POST /v1/souscriptions/{n}/pause` | `test_pause_avant_evaluation_arrete_apres_le_premier_agent` | `test_pause_autre_gestionnaire_404` | `test_pause_puis_reprise` |
 | `POST /v1/souscriptions/{n}/revue` | `test_evaluation_en_analyse_puis_rejeu_409_puis_revue_accepte` | `test_motif_avec_donnee_personnelle_422_sans_reprendre_la_revue`, `test_motif_obligatoire_1_a_500_caracteres`, `test_revue_pendant_la_pause_409` | `test_dossier_complet_en_analyse_puis_revue` |
 | `GET /health/cluster` | `test_health_200_une_fois_les_garde_fous_prets` | `test_health_503_tant_que_les_scanners_ne_sont_pas_construits` | `test_cluster_sante_anonyme_par_la_gateway` |
-| Function `POST evaluer` | `test_evaluer_seed_1` | `test_requete_invalide_400` | — |
-| Function `POST calculer` | `test_calculer_seed_1` | `test_donnee_hors_bareme_422`, `test_requete_invalide_400` | — |
-| Function `POST frequence` | `test_frequence_200` | `test_frequence_corps_invalide_400`, `test_frequence_json_invalide_400`, `test_frequence_dom_422` | — |
-| Function `GET sante` | `test_sante` | — | — |
+| `POST /api/v1/calcul/risques` (Function `evaluer`) | `test_evaluer_seed_1`, `Ressource_de_calcul_arrive_sur_sa_route_de_Function_avec_le_jeton_de_la_gateway` | `test_requete_invalide_400`, `Sans_jeton_401`, `Sans_role_Calcul_403`, `Au_dela_de_la_limite_429` | — |
+| `POST /api/v1/calcul/primes` (Function `calculer`) | `test_calculer_seed_1` | `test_donnee_hors_bareme_422`, `test_requete_invalide_400` | — |
+| `POST /api/v1/calcul/frequences` (Function `frequence`) | `test_frequence_200` | `test_frequence_corps_invalide_400`, `test_frequence_json_invalide_400`, `test_frequence_dom_422` | — |
+| `GET /health/calcul` (Function `sante`) | `test_sante`, `Health_calcul_anonyme_route_vers_api_sante` | — | — |
 
-Les tests du cluster sont dans `agentic-cluster/tests/integration/test_api_cluster.py`, ceux de la Function dans `fonction-calcul/tests/unit/test_routes_calcul.py`, les E2E dans `e2e/test_cluster.py`. Les routes de la Function n'ont pas d'E2E dédié : le parcours d'évaluation les appelle par la gateway.
+Les tests du cluster sont dans `agentic-cluster/tests/integration/test_api_cluster.py`, ceux de la Function dans `fonction-calcul/tests/unit/test_routes_calcul.py` (erreurs en ProblemDetails) et `gateway/tests/…/CalculTests.cs` (routes publiques, échange de jeton, anciens chemins en 404), les E2E dans `e2e/test_cluster.py`. Les routes de la Function n'ont pas d'E2E dédié : le parcours d'évaluation les appelle par la gateway.
 
 **Échange On-Behalf-Of réel** : rejoué le 04/11 depuis un poste, sur staging, avec le compte d'un gestionnaire ([`e2e-obo-2026-11-04-staging.md`](../eval/preuves/e2e-obo-2026-11-04-staging.md)). Les 17 tests E2E passent après correction d'une variable du rejeu et espacement des évaluations ; le premier passage comptait 4 échecs, expliqués dans la preuve.
 

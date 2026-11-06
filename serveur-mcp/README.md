@@ -41,10 +41,10 @@ Les outils sont déclarés avec le SDK MCP officiel ; la docstring de chacun est
 | `update_statut_dossier` | `numero_contrat`, `statut` (ex. `REVUE_HUMAINE`, `ACCEPTE`, `REFUSE`), `validation` (`VALIDEE` ou `CORRIGEE`, exigée avec `ACCEPTE` et `REFUSE`) | `{"ecrit": true}` | Écriture, seul outil qui écrit une décision |
 | `lister_pieces` | `numero_contrat` | `{"pieces": [{"type", "date_emission"}]}` | Lecture : métadonnées seulement, sans contenu de pièce |
 | `enregistrer_etat` | `numero_contrat`, `etat` (`statut_parcours`, `tentative`, `sections`, `rapports`, `tours`) | `{"ecrit": true}` | Écriture de l'état du parcours ; `ARGUMENTS_INVALIDES` si le backend refuse (ex. section inconnue) |
-| `evaluer_risque` | faits du contrat | Score, classe et règles déclenchées, versions du barème | Calcul (Function de calcul, par la gateway : `POST /api/calcul/evaluer`) |
-| `calculer_prime` | faits du contrat et de la formule | Prime détaillée, version de la formule | Calcul (Function de calcul, par la gateway : `POST /api/calcul/calculer`) |
+| `evaluer_risque` | faits du contrat | Score, classe et règles déclenchées, versions du barème | Calcul (Function de calcul, par la gateway : `POST /api/v1/calcul/risques`) |
+| `calculer_prime` | faits du contrat et de la formule | Prime détaillée, version de la formule | Calcul (Function de calcul, par la gateway : `POST /api/v1/calcul/primes`) |
 
-Les deux outils appellent la Function de calcul **par la gateway** (`${GATEWAY_URL}/api/calcul/{evaluer,calculer}`, spec `2026-10-22-calcul-risque-prime-design.md`), avec un jeton d'application de l'inscription MCP (rôle `Calcul`). La gateway ne relaie pas ce jeton : elle l'échange contre le sien (identité managée) avant d'atteindre la Function.
+Les deux outils appellent la Function de calcul **par la gateway** (`${GATEWAY_URL}/api/v1/calcul/{risques,primes}`, spec `2026-10-22-calcul-risque-prime-design.md`), avec un jeton d'application de l'inscription MCP (rôle `Calcul`). La gateway ne relaie pas ce jeton : elle l'échange contre le sien (identité managée) avant d'atteindre la Function.
 
 ### 2.2 Codes d'erreur
 
@@ -116,7 +116,7 @@ Aucune valeur dans le dépôt : clés dans `.env.example`, déploiement dans `do
 | `RAG_API_CLIENT_ID`, `UNDERWRITING_API_CLIENT_ID` | Cibles de l'OBO | `.env` | variables GitHub |
 | `GATEWAY_URL` | Adresse par laquelle rag et underwriting sont joints | `http://gateway:8000` | `http://localhost:8000` |
 | `MCP_CLIENT_SECRET` | Secret de l'OBO, **local seulement** | `.env` | jamais |
-| `CALCUL_URL`, `CALCUL_AUDIENCE` | Gateway `…/api/calcul` (la base inclut `/api/calcul` ; l'adaptateur appelle `/evaluer`, `/calculer`) et audience `api://<appId agentinsurflow-calcul>` du jeton d'application (rôle `Calcul`) ; sans audience ou sans identité Entra : `CALCUL_INDISPONIBLE`, aucun appel | `.env` | variables GitHub par environnement (`make calcul` les affiche) |
+| `CALCUL_URL`, `CALCUL_AUDIENCE` | Gateway `…/api/v1/calcul` (la base inclut `/api/v1/calcul` ; l'adaptateur appelle `/risques`, `/primes`) et audience `api://<appId agentinsurflow-calcul>` du jeton d'application (rôle `Calcul`) ; sans audience ou sans identité Entra : `CALCUL_INDISPONIBLE`, aucun appel | `.env` | variables GitHub par environnement (`make calcul` les affiche) |
 | `TELEMETRIE_AUDIENCE` | Audience `api://<appId underwriting>` du jeton d'application (rôle `Telemetrie`) posé sur chaque export OTLP vers la gateway (Azure seulement) ; absent = export sans jeton (local : direct) | `.env` | variables GitHub |
 | `AZURE_UAMI_CLIENT_ID` | Identité managée fédérée (OBO sans secret) | — | variable GitHub |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Récepteur OTLP : direct en local, la gateway en Azure (jeton d'application si `TELEMETRIE_AUDIENCE`) | `http://underwriting-admin:8002/v1/traces` | `http://localhost:8000/v1/traces` |

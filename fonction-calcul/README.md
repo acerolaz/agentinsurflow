@@ -2,7 +2,7 @@
 
 Azure Function (Python 3.12, modèle v2) qui calcule, de façon déterministe, le risque d'un dossier
 (barème `evaluer`) et sa prime (formule `calculer`). Aucun LLM, aucune base : les mêmes faits
-donnent toujours le même résultat. La protection est Easy Auth (niveau `ANONYMOUS` côté Function) : **seule la gateway** l'appelle (`/api/calcul/*`, rôle `Calcul`, jeton échangé contre celui de son identité managée) ; le serveur MCP passe par elle.
+donnent toujours le même résultat. La protection est Easy Auth (niveau `ANONYMOUS` côté Function) : **seule la gateway** l'appelle (`/api/v1/calcul/{risques,primes,frequences}`, rôle `Calcul`, jeton échangé contre celui de son identité managée) ; le serveur MCP passe par elle.
 
 Architecture hexagonale : `agentinsurflow_calcul/domain/` (stdlib seule) porte le barème et la
 formule ; `function_app.py` n'est que l'adaptateur HTTP.
@@ -12,7 +12,7 @@ jamais le score) et la prime de D65, sous la forme décidée par **D70** : barè
 changer = redéployer. Le barème suit la matrice d'évaluation déterministe (règles **R01 → R06**, D50 amendée) et
 non plus un fichier `bareme-v1.yaml`. Elle est appelée par les outils **`evaluer_risque`** et **`calculer_prime`** du
 [serveur MCP](../serveur-mcp/README.md) (adaptateur `CalculateurPort`, `infrastructure/fonction_calcul/client.py`),
-par la gateway (`/api/calcul/evaluer`, `/api/calcul/calculer`) : `evaluer_risque` → gateway → `function_app._risque()`
+par la gateway (`POST /api/v1/calcul/risques`, `POST /api/v1/calcul/primes`) : `evaluer_risque` → gateway → `function_app._risque()`
 → `domain.bareme.evaluer()`. Conception : `docs/superpowers/specs/2026-10-22-calcul-risque-prime-design.md`.
 
 ## Barème de risque — `bareme-2026.10-v1`
@@ -49,6 +49,17 @@ Aucun coefficient par défaut : une donnée absente (`null`) ou hors grille est 
 
 ## Contrat HTTP
 
+Les routes ci-dessous sont celles **de la Function**. Le contrat public est celui de la gateway, qui nomme des ressources et pas des verbes (R1, #242) :
+
+| Gateway (public) | Function (interne) |
+|---|---|
+| `POST /api/v1/calcul/risques` | `POST /api/evaluer` |
+| `POST /api/v1/calcul/primes` | `POST /api/calculer` |
+| `POST /api/v1/calcul/frequences` | `POST /api/frequence` |
+| `GET /health/calcul` | `GET /api/sante` |
+
+Les routes internes ne changent pas, car Easy Auth exclut `/api/sante` : les renommer imposerait une écriture Azure. Chaque ressource est un calcul sans état, et `POST` renvoie le résultat en 200.
+
 - `POST /api/evaluer` : les 7 clés de `FaitsRisque` ; entiers JSON (pas de booléen) ou `null`,
   `crm` en chaîne décimale ou `null`. Réponse : `version_bareme`, `classe`, `decision`, `score`,
   `regles` (`regle_id`, `motif`).
@@ -60,19 +71,19 @@ Aucun coefficient par défaut : une donnée absente (`null`) ou hors grille est 
   (chaîne), chacun pouvant valoir `null`. Réponse : `version_modele`, `frequence_annuelle`,
   `variables` (`BonusMalus`, `VehPower`, `Region`). **Comparaison seulement** : la fréquence du GLM
   Poisson (`modeles/`) n'entre ni dans la décision, ni dans la prime, ni dans le rapport. Par la
-  gateway : `POST /api/calcul/frequence`, politique `calcul-mcp` (jeton du MCP). `crm` et puissance
+  gateway : `POST /api/v1/calcul/frequences`, politique `calcul-mcp` (jeton du MCP). `crm` et puissance
   hors des bornes d'entraînement sont bornés (jamais extrapolés) ; un champ `null` ou un DOM
   (971-976, sans région freMTPL2) renvoie 422. Le journal ne porte que
   `glm.frequence version=<v> frequence=<f>`, aucune donnée du profil.
 - `GET /api/sante` : `{"version": $APP_VERSION ou "dev", "bareme": …, "formule": …, "modele_frequence": …}`.
 
-Erreurs :
+Erreurs en ProblemDetails (RFC 9457, `application/problem+json`), comme les autres services : `type` (`about:blank`), `title`, `status`, `code` stable et, pour un 422, `champ`.
 
-| Statut | Corps | Cas |
+| Statut | `code` (et extension) | Cas |
 |---|---|---|
-| 400 | `{"code": "REQUETE_INVALIDE"}` | corps non JSON ou pas un objet, clé manquante ou en trop, mauvais type, `crm` non décimal |
-| 422 | `{"code": "DONNEE_HORS_BAREME", "champ": "<nom>"}` | donnée `null` ou hors grille ; seul le nom du champ est renvoyé |
-| 422 | `{"code": "DONNEE_HORS_MODELE", "champ": "<nom>"}` | `/api/frequence` : champ `null` ou département sans région (DOM) |
+| 400 | `REQUETE_INVALIDE` | corps non JSON ou pas un objet, clé manquante ou en trop, mauvais type, `crm` non décimal |
+| 422 | `DONNEE_HORS_BAREME`, `champ` | donnée `null` ou hors grille ; seul le nom du champ est renvoyé |
+| 422 | `DONNEE_HORS_MODELE`, `champ` | `/api/frequence` : champ `null` ou département sans région (DOM) |
 
 Jamais de log du corps de la requête ni de la réponse (faits du dossier, montants).
 
@@ -80,7 +91,7 @@ Jamais de log du corps de la requête ni de la réponse (faits du dossier, monta
 
 La Function ne publie pas son propre OpenAPI (Easy Auth, aucune route de documentation). Le contrat
 est donc écrit à la main dans [`docs/openapi/fonction-calcul.json`](../docs/openapi/fonction-calcul.json)
-(OpenAPI 3.1), avec les **chemins vus depuis la gateway** (`/api/calcul/…`, `/health/calcul`). Il
+(OpenAPI 3.1), avec les **chemins vus depuis la gateway** (`/api/v1/calcul/…`, `/health/calcul`). Il
 ajoute les refus de la gateway (401, 403, 429 en ProblemDetails). La gateway le sert en
 `GET /calcul/openapi.json` sur la page Swagger unique (entrée « fonction-calcul »).
 `GET /health/calcul` ne renvoie jamais 503 : aucun cas dans `sante_route`, donc aucun n'est documenté.

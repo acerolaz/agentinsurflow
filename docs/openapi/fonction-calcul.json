@@ -3,13 +3,13 @@
   "info": {
     "title": "AgentInsurFlow — Function de calcul",
     "version": "1.0.0",
-    "description": "Barème de risque, formule de prime et fréquence GLM, vus depuis la gateway. La gateway exige un jeton Entra (politique `calcul-mcp`) et applique la limite de débit `calcul` ; la Function elle-même est fermée par Easy Auth à tout autre appelant que la gateway. Corps JSON strict : exactement les champs listés, chacun du bon type ou `null` ; les décimaux sont des chaînes (`0.90`), sans exposant ni signe. Document écrit à la main, vérifié contre le code par `fonction-calcul/tests/unit/test_openapi_calcul.py`."
+    "description": "Barème de risque, formule de prime et fréquence GLM, vus depuis la gateway. La gateway exige un jeton Entra (politique `calcul-mcp`) et applique la limite de débit `calcul` ; la Function elle-même est fermée par Easy Auth à tout autre appelant que la gateway. Chaque ressource est un calcul sans état : `POST` renvoie le résultat en 200, rien n'est enregistré. Erreurs en ProblemDetails (RFC 9457) avec un `code` stable. Corps JSON strict : exactement les champs listés, chacun du bon type ou `null` ; les décimaux sont des chaînes (`0.90`), sans exposant ni signe. Document écrit à la main, vérifié contre le code par `fonction-calcul/tests/unit/test_openapi_calcul.py`."
   },
   "paths": {
-    "/api/calcul/evaluer": {
+    "/api/v1/calcul/risques": {
       "post": {
-        "operationId": "evaluer",
-        "summary": "Évalue le risque d'un dossier au barème",
+        "operationId": "creerEvaluationRisque",
+        "summary": "Évaluation du risque d'un dossier au barème (calcul sans état)",
         "requestBody": {
           "required": true,
           "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FaitsRisque" } } }
@@ -28,10 +28,10 @@
         "security": [{ "entra": [] }]
       }
     },
-    "/api/calcul/calculer": {
+    "/api/v1/calcul/primes": {
       "post": {
-        "operationId": "calculer",
-        "summary": "Calcule la prime d'un dossier par la formule",
+        "operationId": "creerCalculPrime",
+        "summary": "Prime d'un dossier par la formule (calcul sans état)",
         "requestBody": {
           "required": true,
           "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FaitsPrime" } } }
@@ -50,10 +50,10 @@
         "security": [{ "entra": [] }]
       }
     },
-    "/api/calcul/frequence": {
+    "/api/v1/calcul/frequences": {
       "post": {
-        "operationId": "frequence",
-        "summary": "Prédit la fréquence annuelle de sinistres (GLM)",
+        "operationId": "creerPredictionFrequence",
+        "summary": "Fréquence annuelle de sinistres prédite (GLM, calcul sans état)",
         "description": "Comparaison seulement, ne décide ni ne tarife (D42).",
         "requestBody": {
           "required": true,
@@ -183,10 +183,13 @@
       },
       "ErreurCalcul": {
         "type": "object",
-        "required": ["code"],
+        "required": ["type", "title", "status", "code"],
         "properties": {
+          "type": { "const": "about:blank" },
+          "title": { "type": "string" },
+          "status": { "enum": [400, 422] },
           "code": { "enum": ["REQUETE_INVALIDE", "DONNEE_HORS_BAREME", "DONNEE_HORS_MODELE"] },
-          "champ": { "type": "string", "description": "Champ manquant ou hors bornes (422 seulement)" }
+          "champ": { "type": "string", "description": "Champ manquant ou hors bornes (422 seulement) ; jamais sa valeur" }
         }
       },
       "ProblemDetails": {
@@ -203,15 +206,15 @@
     "responses": {
       "RequeteInvalide": {
         "description": "`REQUETE_INVALIDE` : JSON invalide, champ manquant ou en trop, mauvais type",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErreurCalcul" } } }
+        "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ErreurCalcul" } } }
       },
       "HorsBareme": {
         "description": "`DONNEE_HORS_BAREME` : un fait requis manque ou sort du barème (`champ`)",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErreurCalcul" } } }
+        "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ErreurCalcul" } } }
       },
       "HorsModele": {
         "description": "`DONNEE_HORS_MODELE` : une variable sort du domaine du modèle (`champ`)",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErreurCalcul" } } }
+        "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ErreurCalcul" } } }
       },
       "NonAuthentifie": {
         "description": "`NON_AUTHENTIFIE` (gateway) : jeton absent ou invalide",

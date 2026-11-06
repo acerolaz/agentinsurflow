@@ -37,6 +37,8 @@ from agentinsurflow_cluster.infrastructure.langgraph.graphe import ServiceEvalua
 from agentinsurflow_cluster.infrastructure.llm.fabrique import version_prompt
 
 REVUE = {"decision": "ACCEPTE", "validation": "VALIDEE", "motif": "Conforme au barème."}
+PAUSE = {"etat": "pause_demandee"}
+EVALUATION = "/api/v1/souscriptions/C-1/evaluation"
 
 
 class Banc:
@@ -78,8 +80,8 @@ import asyncio  # noqa: E402
 async def test_evaluation_en_analyse_puis_rejeu_409_puis_revue_accepte() -> None:
     banc = Banc()
     async with client(banc) as c:
-        r = await c.post("/evaluations/C-1")
-        assert r.status_code == 200, r.text
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
+        assert r.status_code == 201, r.text
         corps = r.json()
         assert corps["statut"] == "EN_ANALYSE" and corps["message"] is None
         assert corps["fiche"]["decision"] == "ACCEPTE"
@@ -88,17 +90,17 @@ async def test_evaluation_en_analyse_puis_rejeu_409_puis_revue_accepte() -> None
             "appeler_pieces", "appeler_analyste_risque", "appeler_redacteur", "appeler_actuaire"
         ]  # fmt: skip
 
-        rejeu = await c.post("/evaluations/C-1")
+        rejeu = await c.post("/api/v1/souscriptions/C-1/evaluation")
         assert rejeu.status_code == 409
         assert rejeu.headers["content-type"].startswith("application/problem+json")
         assert rejeu.json()["code"] == "EVALUATION_EN_ATTENTE"
 
-        revue = await c.post("/evaluations/C-1/revue", json=REVUE)
-        assert revue.status_code == 200 and revue.json() == {"statut": "ACCEPTE"}
+        revue = await c.put("/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE)
+        assert revue.status_code == 201 and revue.json() == {"statut": "ACCEPTE"}
         statuts = [a["statut"] for a in banc.outils.corps("update_statut_dossier")]
         assert statuts == ["EN_ANALYSE", "ACCEPTE"]
 
-        sans_attente = await c.post("/evaluations/C-1/revue", json=REVUE)
+        sans_attente = await c.put("/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE)
         assert sans_attente.status_code == 409
         assert sans_attente.json()["code"] == "AUCUNE_REVUE_EN_ATTENTE"
 
@@ -107,7 +109,7 @@ async def test_le_jeton_du_gestionnaire_descend_aux_agents_sans_entrer_dans_l_et
     banc = Banc()
     jeton = creer()
     async with client(banc, jeton) as c:
-        await c.post("/evaluations/C-1")
+        await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert {j for _, j, _ in banc.outils.appels} == {jeton}
     assert jeton not in json.dumps(banc.outils.arguments)
 
@@ -116,7 +118,7 @@ async def test_le_jeton_n_est_ecrit_dans_aucun_point_de_reprise() -> None:
     banc = Banc()
     jeton = creer()
     async with client(banc, jeton) as c:
-        await c.post("/evaluations/C-1")
+        await c.post("/api/v1/souscriptions/C-1/evaluation")
     ecrit = repr(banc.saver.storage) + repr(banc.saver.blobs) + repr(banc.saver.writes)
     assert jeton not in ecrit and "pieces" in ecrit
 
@@ -140,7 +142,7 @@ def _octets(valeur: Any) -> bytes:
 async def test_observations_jamais_dans_un_point_de_reprise_mais_recues_par_le_redacteur() -> None:
     banc = Banc(outils=FakeOutils(get_contrat={**CONTRAT, "observations": OBSERVATION}))
     async with client(banc) as c:
-        assert (await c.post("/evaluations/C-1")).status_code == 200
+        assert (await c.post("/api/v1/souscriptions/C-1/evaluation")).status_code == 201
     stockage = _octets(banc.saver.storage) + _octets(banc.saver.blobs) + _octets(banc.saver.writes)
     assert b"pieces" in stockage and OBSERVATION.encode() not in stockage
     redacteur = [vue for agent, vue, _ in banc.redaction.appels if agent == "redacteur"]
@@ -167,11 +169,13 @@ async def test_revue_non_perdue_si_l_enregistrement_echoue_puis_rejoue() -> None
     outils = SortiePanne()
     banc = Banc(outils=outils)
     async with client(banc) as c:
-        await c.post("/evaluations/C-1")
-        premiere = await c.post("/evaluations/C-1/revue", json=REVUE)
+        await c.post("/api/v1/souscriptions/C-1/evaluation")
+        premiere = await c.put("/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE)
         assert premiere.status_code == 502
-        assert (await c.post("/evaluations/C-1")).status_code == 409  # la revue attend encore
-        seconde = await c.post("/evaluations/C-1/revue", json=REVUE)
+        assert (
+            await c.post("/api/v1/souscriptions/C-1/evaluation")
+        ).status_code == 409  # la revue attend encore
+        seconde = await c.put("/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE)
         assert seconde.status_code == 200 and seconde.json() == {"statut": "ACCEPTE"}
     ecrits = [a for a in outils.corps("update_statut_dossier") if a["statut"] == "ACCEPTE"]
     assert len(ecrits) == 1
@@ -180,13 +184,13 @@ async def test_revue_non_perdue_si_l_enregistrement_echoue_puis_rejoue() -> None
 async def test_statut_fige_de_l_admin_devient_409_dossier_decide_sur_les_deux_routes() -> None:
     outils = FakeOutils(update_statut_dossier=ErreurOutil("STATUT_FIGE"))
     async with client(Banc(outils=outils)) as c:
-        r = await c.post("/evaluations/C-1")
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
         assert r.status_code == 409 and r.json()["code"] == "DOSSIER_DECIDE"
     outils = FakeOutils()
     async with client(Banc(outils=outils)) as c:
-        await c.post("/evaluations/C-1")
+        await c.post("/api/v1/souscriptions/C-1/evaluation")
         outils.reponses["update_statut_dossier"] = ErreurOutil("STATUT_FIGE")
-        r = await c.post("/evaluations/C-1/revue", json=REVUE)
+        r = await c.put("/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE)
     assert r.status_code == 409 and r.json()["code"] == "DOSSIER_DECIDE"
 
 
@@ -194,7 +198,7 @@ async def test_etat_refuse_sur_dossier_fige_409_et_statut_jamais_ecrit() -> None
     # Dossier classé SANS_SUITE (ou décidé) : l'admin refuse dès la première écriture d'état.
     outils = FakeOutils(enregistrer_etat=ErreurOutil("STATUT_FIGE"))
     async with client(Banc(outils=outils)) as c:
-        r = await c.post("/evaluations/C-1")
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert r.status_code == 409 and r.json()["code"] == "DOSSIER_DECIDE"
     assert outils.corps("update_statut_dossier") == []
 
@@ -211,20 +215,26 @@ def _points_de_reprise(banc: Banc) -> str:
 async def test_bola_un_autre_gestionnaire_ne_voit_ni_ne_reprend_le_dossier_en_pause() -> None:
     banc = Banc()
     async with client(banc) as c:
-        assert (await c.post("/evaluations/C-1")).status_code == 200  # A : en pause
+        assert (
+            await c.post("/api/v1/souscriptions/C-1/evaluation")
+        ).status_code == 201  # A : en pause
         avant = _points_de_reprise(banc)
         b = _jeton_de("oid-gestionnaire-b")
-        evaluer = await c.post("/evaluations/C-1", headers=b)
-        reviser = await c.post("/evaluations/C-1/revue", json=REVUE, headers=b)
+        evaluer = await c.post("/api/v1/souscriptions/C-1/evaluation", headers=b)
+        reviser = await c.put(
+            "/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE, headers=b
+        )
         assert _points_de_reprise(banc) == avant  # le point de reprise de A est intact
         for r in (evaluer, reviser):
             assert r.status_code == 404 and r.json()["code"] == "CONTRAT_INTROUVABLE"
-        ok = await c.post("/evaluations/C-1/revue", json=REVUE)  # A reprend toujours
-        assert ok.status_code == 200 and ok.json() == {"statut": "ACCEPTE"}
+        ok = await c.put(
+            "/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE
+        )  # A reprend toujours
+        assert ok.status_code == 201 and ok.json() == {"statut": "ACCEPTE"}
         # dossier décidé : B reçoit encore 404 (jamais 409, qui révélerait l'existence)
         for r in (
-            await c.post("/evaluations/C-1", headers=b),
-            await c.post("/evaluations/C-1/revue", json=REVUE, headers=b),
+            await c.post("/api/v1/souscriptions/C-1/evaluation", headers=b),
+            await c.put("/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE, headers=b),
         ):
             assert r.status_code == 404
     assert [a["statut"] for a in banc.outils.corps("update_statut_dossier")] == [
@@ -235,9 +245,9 @@ async def test_bola_un_autre_gestionnaire_ne_voit_ni_ne_reprend_le_dossier_en_pa
 async def test_tentative_incrementee_a_chaque_evaluation_et_trace_id_jamais_vide() -> None:
     banc = Banc(garde=FakeGarde(entree=["prompt_injection"]))  # REVUE_HUMAINE : on peut réévaluer
     async with client(banc) as c:
-        await c.post("/evaluations/C-1")
+        await c.post("/api/v1/souscriptions/C-1/evaluation")
         premiere = len(banc.outils.corps("enregistrer_etat"))
-        assert (await c.post("/evaluations/C-1")).status_code == 200
+        assert (await c.post("/api/v1/souscriptions/C-1/evaluation")).status_code == 201
     etats = [a["etat"] for a in banc.outils.corps("enregistrer_etat")]
     assert {e["tentative"] for e in etats[:premiere]} == {1}
     seconde = etats[premiere:]
@@ -270,10 +280,10 @@ async def test_budget_depasse_dans_un_agent_revue_humaine_cause_duree() -> None:
     banc = _banc_presse("lister_pieces")
     debut = time.monotonic()
     async with client(banc) as c:
-        r = await c.post("/evaluations/C-1")
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert time.monotonic() - debut < 6
     corps = r.json()
-    assert r.status_code == 200 and corps["statut"] == "REVUE_HUMAINE"
+    assert r.status_code == 201 and corps["statut"] == "REVUE_HUMAINE"
     assert corps["message"] == "Ce dossier nécessite une revue humaine." and "duree" not in r.text
     assert [a["statut"] for a in banc.outils.corps("update_statut_dossier")] == ["REVUE_HUMAINE"]
     assert banc.outils.corps("enregistrer_brouillon")  # la fiche provisoire est écrite
@@ -282,7 +292,7 @@ async def test_budget_depasse_dans_un_agent_revue_humaine_cause_duree() -> None:
 async def test_budget_depasse_avant_tout_etat_503_delai_depasse() -> None:
     banc = _banc_presse("get_contrat")
     async with client(banc) as c:
-        r = await c.post("/evaluations/C-1")
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert r.status_code == 503 and r.json()["code"] == "DELAI_DEPASSE"
     assert r.headers["content-type"].startswith("application/problem+json")
     assert banc.outils.corps("update_statut_dossier") == []
@@ -291,30 +301,38 @@ async def test_budget_depasse_avant_tout_etat_503_delai_depasse() -> None:
 async def test_motif_avec_donnee_personnelle_422_sans_reprendre_la_revue() -> None:
     banc = Banc()
     async with client(banc) as c:
-        await c.post("/evaluations/C-1")
+        await c.post("/api/v1/souscriptions/C-1/evaluation")
         avant = _points_de_reprise(banc)
-        r = await c.post(
-            "/evaluations/C-1/revue", json={**REVUE, "motif": "Voir jean.dupont@exemple.fr"}
+        r = await c.put(
+            "/api/v1/souscriptions/C-1/evaluation/decision",
+            json={**REVUE, "motif": "Voir jean.dupont@exemple.fr"},
         )
         assert r.status_code == 422 and r.json()["code"] == "REQUETE_INVALIDE"
         assert r.json()["champs"] == ["motif"] and "dupont" not in r.text
         assert _points_de_reprise(banc) == avant
-        assert (await c.post("/evaluations/C-1/revue", json=REVUE)).status_code == 200
+        assert (
+            await c.put("/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE)
+        ).status_code == 201
 
 
 async def test_deux_evaluations_concurrentes_un_seul_brouillon() -> None:
     banc = Banc()
     async with client(banc) as c:
-        a, b = await asyncio.gather(c.post("/evaluations/C-1"), c.post("/evaluations/C-1"))
-    assert sorted([a.status_code, b.status_code]) == [200, 409]
+        a, b = await asyncio.gather(
+            c.post("/api/v1/souscriptions/C-1/evaluation"),
+            c.post("/api/v1/souscriptions/C-1/evaluation"),
+        )
+    assert sorted([a.status_code, b.status_code]) == [201, 409]
     assert len(banc.outils.corps("enregistrer_brouillon")) == 1
 
 
 async def test_evaluation_d_un_dossier_decide_409_dossier_decide() -> None:
     async with client(Banc()) as c:
-        await c.post("/evaluations/C-1")
-        await c.post("/evaluations/C-1/revue", json={**REVUE, "decision": "REFUSE"})
-        r = await c.post("/evaluations/C-1")
+        await c.post("/api/v1/souscriptions/C-1/evaluation")
+        await c.put(
+            "/api/v1/souscriptions/C-1/evaluation/decision", json={**REVUE, "decision": "REFUSE"}
+        )
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert r.status_code == 409 and r.json()["code"] == "DOSSIER_DECIDE"
     assert r.headers["content-type"].startswith("application/problem+json")
 
@@ -322,7 +340,7 @@ async def test_evaluation_d_un_dossier_decide_409_dossier_decide() -> None:
 async def test_synthese_ne_porte_que_le_tour_et_l_outil() -> None:
     banc = Banc(garde=FakeGarde(entree=["prompt_injection"]))
     async with client(banc) as c:
-        r = await c.post("/evaluations/C-1")
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert all(set(e) == {"tour", "outil_appele"} for e in r.json()["synthese"])
     assert "repli" not in r.text and "precondition" not in r.text
 
@@ -330,8 +348,8 @@ async def test_synthese_ne_porte_que_le_tour_et_l_outil() -> None:
 async def test_revue_humaine_ne_revele_ni_cause_ni_detecteur() -> None:
     banc = Banc(garde=FakeGarde(entree=["prompt_injection"]))
     async with client(banc) as c:
-        r = await c.post("/evaluations/C-1")
-    assert r.status_code == 200
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
+    assert r.status_code == 201
     corps = r.json()
     assert corps["statut"] == "REVUE_HUMAINE"
     assert corps["message"] == "Ce dossier nécessite une revue humaine."
@@ -340,14 +358,14 @@ async def test_revue_humaine_ne_revele_ni_cause_ni_detecteur() -> None:
     assert banc.redaction.appels == []
 
 
-async def test_k5_llm_inactif_200_revue_humaine_score_et_message_indisponible() -> None:
+async def test_k5_llm_inactif_201_revue_humaine_score_et_message_indisponible() -> None:
     banc = Banc()
     banc.redaction.scenario = lambda agent, vue: None  # INSURFLOW_LLM_ACTIF=false : aucun modèle
     debut = time.monotonic()
     async with client(banc) as c:
-        r = await c.post("/evaluations/C-1")
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert time.monotonic() - debut < 30
-    assert r.status_code == 200
+    assert r.status_code == 201
     corps = r.json()
     assert corps["statut"] == "REVUE_HUMAINE"
     assert corps["score"] == 3 and corps["message"] == "Service temporairement indisponible"
@@ -361,7 +379,7 @@ async def test_k5_pii_en_sortie_n_est_pas_une_panne_du_llm() -> None:
         {"erreur": "garde_fou:pii"} if agent == "redacteur" else redaction_fidele(agent, vue)
     )
     async with client(banc) as c:
-        r = await c.post("/evaluations/C-1")
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     corps = r.json()
     assert corps["statut"] == "REVUE_HUMAINE" and corps["score"] == 3
     assert corps["message"] == "Ce dossier nécessite une revue humaine."
@@ -371,8 +389,8 @@ async def test_k5_pii_en_sortie_n_est_pas_une_panne_du_llm() -> None:
 async def test_revue_humaine_n_attend_aucune_revue() -> None:
     banc = Banc(garde=FakeGarde(entree=["prompt_injection"]))
     async with client(banc) as c:
-        await c.post("/evaluations/C-1")
-        r = await c.post("/evaluations/C-1/revue", json=REVUE)
+        await c.post("/api/v1/souscriptions/C-1/evaluation")
+        r = await c.put("/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE)
     assert r.status_code == 409
 
 
@@ -380,10 +398,12 @@ async def test_contrat_introuvable_404_puis_reprise_possible() -> None:
     outils = FakeOutils(get_contrat=ErreurOutil("CONTRAT_INTROUVABLE"))
     banc = Banc(outils=outils)
     async with client(banc) as c:
-        r = await c.post("/evaluations/C-9")
+        r = await c.post("/api/v1/souscriptions/C-9/evaluation")
         assert r.status_code == 404 and r.json()["code"] == "CONTRAT_INTROUVABLE"
         outils.reponses["get_contrat"] = CONTRAT
-        assert (await c.post("/evaluations/C-9")).status_code == 200  # un échec n'attend rien
+        assert (
+            await c.post("/api/v1/souscriptions/C-9/evaluation")
+        ).status_code == 201  # un échec n'attend rien
 
 
 async def test_bola_la_tentative_d_un_autre_gestionnaire_ne_s_approprie_pas_le_dossier() -> None:
@@ -392,16 +412,18 @@ async def test_bola_la_tentative_d_un_autre_gestionnaire_ne_s_approprie_pas_le_d
     outils = FakeOutils(get_contrat=ErreurOutil("CONTRAT_INTROUVABLE"))
     banc = Banc(outils=outils)
     async with client(banc) as c:
-        r = await c.post("/evaluations/C-7", headers=_jeton_de("oid-gestionnaire-b"))
+        r = await c.post(
+            "/api/v1/souscriptions/C-7/evaluation", headers=_jeton_de("oid-gestionnaire-b")
+        )
         assert r.status_code == 404 and r.json()["code"] == "CONTRAT_INTROUVABLE"
         outils.reponses["get_contrat"] = CONTRAT  # A, propriétaire, est servi par underwriting
-        assert (await c.post("/evaluations/C-7")).status_code == 200
+        assert (await c.post("/api/v1/souscriptions/C-7/evaluation")).status_code == 201
 
 
 async def test_panne_d_outil_502() -> None:
     banc = Banc(outils=FakeOutils(get_contrat=ErreurOutil("MCP_INDISPONIBLE")))
     async with client(banc) as c:
-        r = await c.post("/evaluations/C-1")
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert r.status_code == 502 and r.json()["code"] == "OUTIL_INDISPONIBLE"
 
 
@@ -412,10 +434,10 @@ def _etats(banc: Banc) -> list[dict[str, Any]]:
 async def test_pause_avant_evaluation_arrete_apres_le_premier_agent() -> None:
     banc = Banc()
     async with client(banc) as c:
-        p = await c.post("/evaluations/C-1/pause")
-        r = await c.post("/evaluations/C-1")
+        p = await c.patch("/api/v1/souscriptions/C-1/evaluation", json=PAUSE)
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert p.status_code == 202 and p.json() == {"pause": "demandee"}
-    assert r.status_code == 200, r.text
+    assert r.status_code == 201, r.text
     assert r.json()["statut"] == "EN_PAUSE" and len(r.json()["synthese"]) == 1
     assert _etats(banc)[-1]["statut_parcours"] == "EN_PAUSE"
 
@@ -423,9 +445,9 @@ async def test_pause_avant_evaluation_arrete_apres_le_premier_agent() -> None:
 async def test_reprise_va_au_bout_sans_nouvelle_tentative_et_revoit_les_observations() -> None:
     banc = Banc()
     async with client(banc) as c:
-        await c.post("/evaluations/C-1/pause")
-        await c.post("/evaluations/C-1")
-        r = await c.post("/evaluations/C-1")
+        await c.patch("/api/v1/souscriptions/C-1/evaluation", json=PAUSE)
+        await c.post("/api/v1/souscriptions/C-1/evaluation")
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert r.status_code == 200 and r.json()["statut"] == "EN_ANALYSE", r.text
     assert {e["tentative"] for e in _etats(banc)} == {1}
     redacteur = [vue for agent, vue, _ in banc.redaction.appels if agent == "redacteur"]
@@ -437,29 +459,33 @@ async def test_reprise_apres_longue_pause_ne_depasse_pas_le_budget() -> None:
     banc = Banc()
     banc.deps = replace(banc.deps, horloge=lambda: maintenant[0])
     async with client(banc) as c:
-        await c.post("/evaluations/C-1/pause")
-        await c.post("/evaluations/C-1")
+        await c.patch("/api/v1/souscriptions/C-1/evaluation", json=PAUSE)
+        await c.post("/api/v1/souscriptions/C-1/evaluation")
         maintenant[0] += 3600
-        r = await c.post("/evaluations/C-1")
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert r.json()["statut"] == "EN_ANALYSE", r.text
 
 
 async def test_revue_pendant_la_pause_409() -> None:
     async with client(Banc()) as c:
-        await c.post("/evaluations/C-1/pause")
-        await c.post("/evaluations/C-1")
-        r = await c.post("/evaluations/C-1/revue", json=REVUE)
+        await c.patch("/api/v1/souscriptions/C-1/evaluation", json=PAUSE)
+        await c.post("/api/v1/souscriptions/C-1/evaluation")
+        r = await c.put("/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE)
     assert r.status_code == 409 and r.json()["code"] == "AUCUNE_REVUE_EN_ATTENTE"
 
 
 async def test_pause_apres_proposition_oubliee() -> None:
     banc = Banc()
     async with client(banc) as c:
-        assert (await c.post("/evaluations/C-1")).json()["statut"] == "EN_ANALYSE"
-        p = await c.post("/evaluations/C-1/pause")
+        assert (await c.post("/api/v1/souscriptions/C-1/evaluation")).json()[
+            "statut"
+        ] == "EN_ANALYSE"
+        p = await c.patch("/api/v1/souscriptions/C-1/evaluation", json=PAUSE)
         assert p.status_code == 202 and p.json() == {"pause": "ignoree"}  # l'interface le dit
-        await c.post("/evaluations/C-1/revue", json={**REVUE, "decision": "REFUSE"})
-        r = await c.post("/evaluations/C-1")
+        await c.put(
+            "/api/v1/souscriptions/C-1/evaluation/decision", json={**REVUE, "decision": "REFUSE"}
+        )
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert r.status_code == 409 and r.json()["code"] == "DOSSIER_DECIDE"
     assert banc.service._pauses == set()
 
@@ -467,8 +493,12 @@ async def test_pause_apres_proposition_oubliee() -> None:
 async def test_pause_autre_gestionnaire_404() -> None:
     banc = Banc()
     async with client(banc) as c:
-        await c.post("/evaluations/C-1")
-        r = await c.post("/evaluations/C-1/pause", headers=_jeton_de("oid-gestionnaire-b"))
+        await c.post("/api/v1/souscriptions/C-1/evaluation")
+        r = await c.patch(
+            "/api/v1/souscriptions/C-1/evaluation",
+            json=PAUSE,
+            headers=_jeton_de("oid-gestionnaire-b"),
+        )
     assert r.status_code == 404 and r.json()["code"] == "CONTRAT_INTROUVABLE"
     assert banc.service._pauses == set()
 
@@ -481,8 +511,11 @@ async def test_deux_evaluations_simultanees_la_seconde_409_en_cours() -> None:
     banc = Banc()
     banc.redaction.rediger = lente  # type: ignore[method-assign]
     async with client(banc) as c:
-        a, b = await asyncio.gather(c.post("/evaluations/C-1"), c.post("/evaluations/C-1"))
-    assert sorted([a.status_code, b.status_code]) == [200, 409]
+        a, b = await asyncio.gather(
+            c.post("/api/v1/souscriptions/C-1/evaluation"),
+            c.post("/api/v1/souscriptions/C-1/evaluation"),
+        )
+    assert sorted([a.status_code, b.status_code]) == [201, 409]
     refus = a if a.status_code == 409 else b
     assert refus.json()["code"] == "EVALUATION_EN_COURS"
 
@@ -490,10 +523,10 @@ async def test_deux_evaluations_simultanees_la_seconde_409_en_cours() -> None:
 async def test_pause_restee_apres_une_evaluation_en_echec_est_oubliee() -> None:
     outils = FakeOutils(get_contrat=ErreurOutil("MCP_INDISPONIBLE"))
     async with client(Banc(outils=outils)) as c:
-        await c.post("/evaluations/C-1/pause")
-        assert (await c.post("/evaluations/C-1")).status_code == 502
+        await c.patch("/api/v1/souscriptions/C-1/evaluation", json=PAUSE)
+        assert (await c.post("/api/v1/souscriptions/C-1/evaluation")).status_code == 502
         outils.reponses["get_contrat"] = CONTRAT
-        r = await c.post("/evaluations/C-1")
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert r.json()["statut"] == "EN_ANALYSE", r.text
 
 
@@ -505,9 +538,11 @@ async def test_evaluation_en_cours_d_un_autre_gestionnaire_404_et_non_409() -> N
     banc = Banc()
     banc.redaction.rediger = lente  # type: ignore[method-assign]
     async with client(banc) as c:
-        a = asyncio.create_task(c.post("/evaluations/C-1"))
+        a = asyncio.create_task(c.post("/api/v1/souscriptions/C-1/evaluation"))
         await asyncio.sleep(0.05)
-        b = await c.post("/evaluations/C-1", headers=_jeton_de("oid-gestionnaire-b"))
+        b = await c.post(
+            "/api/v1/souscriptions/C-1/evaluation", headers=_jeton_de("oid-gestionnaire-b")
+        )
         await a
     assert b.status_code == 404 and b.json()["code"] == "CONTRAT_INTROUVABLE"
 
@@ -515,7 +550,7 @@ async def test_evaluation_en_cours_d_un_autre_gestionnaire_404_et_non_409() -> N
 async def test_outil_en_429_rend_429_avec_retry_after() -> None:
     banc = Banc(outils=FakeOutils(get_contrat=ErreurOutil("TROP_DE_REQUETES", "17")))
     async with client(banc) as c:
-        r = await c.post("/evaluations/C-1")
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert r.status_code == 429 and r.json()["code"] == "TROP_DE_REQUETES"
     assert r.headers["retry-after"] == "17"
 
@@ -525,8 +560,10 @@ async def test_une_evaluation_complete_tient_deux_fois_dans_les_limites() -> Non
     # deux évaluations par minute doivent passer.
     banc = Banc()
     async with client(banc) as c:
-        assert (await c.post("/evaluations/C-1")).status_code == 200
-        assert (await c.post("/evaluations/C-1/revue", json=REVUE)).status_code == 200
+        assert (await c.post("/api/v1/souscriptions/C-1/evaluation")).status_code == 201
+        assert (
+            await c.put("/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE)
+        ).status_code == 201
     saga = sum(1 for agent, _, _ in banc.outils.appels if agent == "saga")
     agents = len(banc.outils.appels) - saga
     assert saga <= 30 and agents <= 30, (saga, agents)
@@ -536,26 +573,38 @@ async def test_une_evaluation_complete_tient_deux_fois_dans_les_limites() -> Non
 @pytest.mark.parametrize("motif", [""])
 async def test_motif_obligatoire_1_a_500_caracteres(motif: str) -> None:
     async with client(Banc()) as c:
-        await c.post("/evaluations/C-1")
-        r = await c.post("/evaluations/C-1/revue", json={**REVUE, "motif": motif})
+        await c.post("/api/v1/souscriptions/C-1/evaluation")
+        r = await c.put(
+            "/api/v1/souscriptions/C-1/evaluation/decision", json={**REVUE, "motif": motif}
+        )
     assert r.status_code == 422 and r.json()["code"] == "REQUETE_INVALIDE"
     assert r.json()["champs"] == ["motif"] and "xxx" not in r.text
 
 
 async def test_jeton_d_audience_mcp_401() -> None:
     async with client(Banc(), creer(aud="api://agentinsurflow-mcp")) as c:
-        r = await c.post("/evaluations/C-1")
+        r = await c.post("/api/v1/souscriptions/C-1/evaluation")
     assert r.status_code == 401 and r.json()["code"] == "JETON_INVALIDE"
     assert r.headers["content-type"].startswith("application/problem+json")
 
 
-async def test_sans_jeton_401_et_sans_role_403() -> None:
+OPERATIONS = [  # les quatre opérations de la ressource évaluation (R2/R3, #243 #244)
+    ("POST", EVALUATION, None),
+    ("GET", EVALUATION, None),
+    ("PATCH", EVALUATION, PAUSE),
+    ("PUT", EVALUATION + "/decision", REVUE),
+]
+
+
+@pytest.mark.parametrize(("methode", "chemin", "corps"), OPERATIONS)
+async def test_sans_jeton_401_et_sans_role_403(methode: str, chemin: str, corps: Any) -> None:
     banc = Banc()
     async with client(banc) as c:
         c.headers.pop("Authorization")
-        assert (await c.post("/evaluations/C-1")).json()["code"] == "JETON_ABSENT"
+        r = await c.request(methode, chemin, json=corps)
+    assert r.status_code == 401 and r.json()["code"] == "JETON_ABSENT"
     async with client(banc, creer(roles=[])) as c:
-        r = await c.post("/evaluations/C-1")
+        r = await c.request(methode, chemin, json=corps)
     assert r.status_code == 403 and r.json()["code"] == "ROLE_MANQUANT"
 
 
@@ -624,7 +673,7 @@ async def test_audit_agent_un_enregistrement_par_agent_sans_donnee_personnelle(
     monkeypatch.setattr(logging.getLogger("insurflow.audit"), "propagate", True)
     with caplog.at_level(logging.INFO, logger="insurflow.audit"):
         async with client(banc) as c:
-            await c.post("/evaluations/C-1")
+            await c.post("/api/v1/souscriptions/C-1/evaluation")
     toutes = [r for r in caplog.records if r.name == "insurflow.audit"]
     registres = [r for r in toutes if r.getMessage() == "audit.agent"]
     assert toutes[-1].getMessage() == "audit.evaluation"  # une seule ligne de plus, en dernier
@@ -649,11 +698,13 @@ async def test_openapi_documente_les_chemins_publics_de_la_gateway() -> None:
     async with client(Banc()) as c:
         chemins = (await c.get("/openapi.json")).json()["paths"]
     assert set(chemins) == {
-        "/v1/souscriptions/{numero_contrat}/evaluation",
-        "/v1/souscriptions/{numero_contrat}/revue",
-        "/v1/souscriptions/{numero_contrat}/pause",
+        "/api/v1/souscriptions/{numero_contrat}/evaluation",
+        "/api/v1/souscriptions/{numero_contrat}/evaluation/decision",
         "/health/cluster",
     }
+    assert set(chemins["/api/v1/souscriptions/{numero_contrat}/evaluation"]) == {
+        "post", "get", "patch"
+    }  # fmt: skip
 
 
 def test_reglage_invalide_empeche_le_demarrage() -> None:
@@ -694,12 +745,14 @@ def test_composition_reelle_refuse_un_reglage_invalide_au_demarrage(
 async def test_dossier_refuse_accepter_409_puis_refuser_reste_possible() -> None:
     banc = Banc(outils=FakeOutils(evaluer_risque=RISQUE_REFUS))
     async with client(banc) as c:
-        assert (await c.post("/evaluations/C-1")).json()["statut"] == "EN_ANALYSE"
-        accepter = await c.post("/evaluations/C-1/revue", json=REVUE)
+        assert (await c.post("/api/v1/souscriptions/C-1/evaluation")).json()[
+            "statut"
+        ] == "EN_ANALYSE"
+        accepter = await c.put("/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE)
         assert accepter.status_code == 409
         assert accepter.json()["code"] == "ACCEPTATION_SANS_PRIME"
-        refuser = await c.post(
-            "/evaluations/C-1/revue",
+        refuser = await c.put(
+            "/api/v1/souscriptions/C-1/evaluation/decision",
             json={"decision": "REFUSE", "validation": "VALIDEE", "motif": "Suspension de permis."},
         )
         assert refuser.status_code == 200 and refuser.json() == {"statut": "REFUSE"}
@@ -712,13 +765,78 @@ async def test_revue_humaine_terminee_se_cloture_par_un_refus_jamais_par_une_acc
     banc = Banc()
     banc.redaction.scenario = lambda agent, vue: None
     async with client(banc) as c:
-        assert (await c.post("/evaluations/C-1")).json()["statut"] == "REVUE_HUMAINE"
-        accepter = await c.post("/evaluations/C-1/revue", json=REVUE)
+        assert (await c.post("/api/v1/souscriptions/C-1/evaluation")).json()[
+            "statut"
+        ] == "REVUE_HUMAINE"
+        accepter = await c.put("/api/v1/souscriptions/C-1/evaluation/decision", json=REVUE)
         assert accepter.status_code == 409
         assert accepter.json()["code"] == "ACCEPTATION_SANS_PRIME"
-        refuser = await c.post(
-            "/evaluations/C-1/revue",
+        refuser = await c.put(
+            "/api/v1/souscriptions/C-1/evaluation/decision",
             json={"decision": "REFUSE", "validation": "VALIDEE", "motif": "Hors barème."},
         )
         assert refuser.status_code == 200 and refuser.json() == {"statut": "REFUSE"}
     assert banc.outils.corps("update_statut_dossier")[-1]["statut"] == "REFUSE"
+
+
+# --- Contrat REST de la ressource évaluation (R2 #243, R3 #244) ---
+
+
+async def test_nouvelle_tentative_201_avec_location_puis_get_la_relit() -> None:
+    async with client(Banc()) as c:
+        r = await c.post(EVALUATION)
+        relu = await c.get(EVALUATION)
+    assert r.status_code == 201, r.text
+    assert r.headers["location"] == EVALUATION
+    assert relu.status_code == 200 and relu.json() == r.json()
+
+
+async def test_reprise_d_une_pause_200_sans_location() -> None:
+    async with client(Banc()) as c:
+        await c.patch(EVALUATION, json=PAUSE)
+        pause = await c.post(EVALUATION)
+        reprise = await c.post(EVALUATION)
+    assert pause.status_code == 201 and pause.json()["statut"] == "EN_PAUSE"
+    assert reprise.status_code == 200 and "location" not in reprise.headers
+
+
+async def test_get_jamais_evaluee_et_evaluation_d_un_autre_gestionnaire_meme_404() -> None:
+    async with client(Banc()) as c:
+        jamais = await c.get("/api/v1/souscriptions/C-2/evaluation")
+        await c.post(EVALUATION)
+        autre = await c.get(EVALUATION, headers=_jeton_de("oid-gestionnaire-b"))
+    for r in (jamais, autre):
+        assert r.status_code == 404
+        assert r.headers["content-type"].startswith("application/problem+json")
+    assert jamais.json() == autre.json()  # BOLA : rien ne distingue « pas à moi » de « inexistant »
+    assert jamais.json()["code"] == "EVALUATION_INTROUVABLE"
+
+
+async def test_premiere_decision_201_et_get_rend_le_statut_decide() -> None:
+    async with client(Banc()) as c:
+        await c.post(EVALUATION)
+        decision = await c.put(EVALUATION + "/decision", json=REVUE)
+        relu = await c.get(EVALUATION)
+    assert decision.status_code == 201 and decision.json() == {"statut": "ACCEPTE"}
+    assert "location" not in decision.headers  # PUT : l'URI visée est la ressource (RFC 9110)
+    assert relu.status_code == 200 and relu.json()["statut"] == "ACCEPTE"
+
+
+@pytest.mark.parametrize(
+    "corps", [{"etat": "en_cours"}, {}, {"etat": "pause_demandee", "autre": 1}, None]
+)
+async def test_patch_autre_chose_qu_une_demande_de_pause_422(corps: Any) -> None:
+    async with client(Banc()) as c:
+        r = await c.patch(EVALUATION, json=corps)
+    assert r.status_code == 422
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert r.json()["code"] == "REQUETE_INVALIDE"
+
+
+@pytest.mark.parametrize(
+    "chemin", ["/evaluations/C-1", "/evaluations/C-1/pause", "/evaluations/C-1/revue"]
+)
+async def test_anciennes_routes_rpc_404(chemin: str) -> None:
+    async with client(Banc()) as c:
+        r = await c.post(chemin, json=REVUE)
+    assert r.status_code == 404

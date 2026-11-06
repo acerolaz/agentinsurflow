@@ -207,3 +207,8 @@ export function conditionsGenerales(document) {
   }
   return { titre, sections };
 }
+
+/** Succès HTTP : 200 (reprise), 201 (évaluation ou décision créée), 202 (pause acceptée). */
+export function reussi(r) {
+  return r.statut >= 200 && r.statut < 300;
+}

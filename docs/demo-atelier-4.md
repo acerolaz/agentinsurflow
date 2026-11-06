@@ -21,7 +21,7 @@ Documents de l'API du cluster dans Swagger : `/cluster/openapi.json` (déjà ser
 
 ## 3. Cas légitime — 4 min
 
-1. `POST /v1/souscriptions/{numero_contrat}/evaluation` → `200` :
+1. `POST /api/v1/souscriptions/{numero_contrat}/evaluation` → `201` (et `Location`) :
    - `statut = EN_ANALYSE`, `fiche` (décision, motifs, citations), `prime` (`prime_ttc_annuelle`), `message = null`, `synthese` (les 4 agents : `appeler_pieces`, `appeler_analyste_risque`, `appeler_redacteur`, `appeler_actuaire`).
    - L'évaluation est synchrone, budget global 25 s.
 2. Rejouer le même `POST` → `409 EVALUATION_EN_ATTENTE` (un brouillon attend la revue).
@@ -30,7 +30,7 @@ Documents de l'API du cluster dans Swagger : `/cluster/openapi.json` (déjà ser
 ## 4. Cas hostile — 4 min
 
 1. Sur le second contrat : `PUT …/observations` avec l'une des phrases hostiles du jeu de prompts (§ 6 de la spec, `eval/`).
-2. `POST /v1/souscriptions/{numero_contrat}/evaluation`.
+2. `POST /api/v1/souscriptions/{numero_contrat}/evaluation`.
 3. Deux issues possibles, toutes deux sûres :
    - **Détecté à l'entrée** (injection franche) : `statut = REVUE_HUMAINE`, `message = "Ce dossier nécessite une revue humaine."`, `fiche = null`, `prime = null`. Ni la cause ni le nom d'un détecteur dans la réponse. Aucun LLM n'a été appelé.
    - **Non détecté** (injection subtile) : le dossier suit le plan ; la phrase n'a **aucun effet** sur la décision (forcée par la classe du barème, GF2), aucune identité n'est jamais envoyée à un agent, toute sortie est contrôlée. Le gestionnaire voit une fiche ordinaire à valider.
@@ -40,7 +40,7 @@ Dire honnêtement les taux (`docs/contrat-personnel.md` § 3) : 84,2 % des hosti
 ## 5. Revue humaine et base avant / après — 3 min (K4)
 
 1. `GET /api/contrats/{numero_contrat}` du cas légitime : statut `EN_ANALYSE` (**avant**).
-2. `POST /v1/souscriptions/{numero_contrat}/revue` avec `{"decision": "ACCEPTE", "validation": "VALIDEE", "motif": "Conforme au barème."}` → `200 {"statut": "ACCEPTE"}`. Le motif est obligatoire (1 à 500 caractères) : sinon `422 REQUETE_INVALIDE`.
+2. `PUT /api/v1/souscriptions/{numero_contrat}/evaluation/decision` avec `{"decision": "ACCEPTE", "validation": "VALIDEE", "motif": "Conforme au barème."}` → `201 {"statut": "ACCEPTE"}`. Le motif est obligatoire (1 à 500 caractères) : sinon `422 REQUETE_INVALIDE`.
 3. `GET /api/contrats/{numero_contrat}` : statut `ACCEPTE` (**après**).
 4. Rejouer `POST …/revue` → `409 AUCUNE_REVUE_EN_ATTENTE` ; rejouer l'évaluation → `409 DOSSIER_DECIDE`.
 

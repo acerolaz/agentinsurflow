@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ..domain.pii import pii_detectees
 
@@ -32,12 +32,20 @@ class EtapeDto(BaseModel):
 
 
 class EvaluationReponse(BaseModel):
-    statut: Literal["EN_ANALYSE", "REVUE_HUMAINE", "EN_PAUSE"]
+    # ACCEPTE / REFUSE : relecture (GET) d'un dossier décidé
+    statut: Literal["EN_ANALYSE", "REVUE_HUMAINE", "EN_PAUSE", "ACCEPTE", "REFUSE"]
     fiche: FicheDto | None
     prime: PrimeDto | None
     score: float | None
     message: str | None  # jamais la cause d'une revue humaine
     synthese: list[EtapeDto]
+
+
+class PauseCorps(BaseModel):
+    """``PATCH …/evaluation`` : seul changement d'état demandable, la pause."""
+
+    model_config = ConfigDict(extra="forbid")
+    etat: Literal["pause_demandee"]
 
 
 class PauseReponse(BaseModel):

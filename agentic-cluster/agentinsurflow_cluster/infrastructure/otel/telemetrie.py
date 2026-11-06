@@ -40,7 +40,7 @@ from ..entra.jetons import credential_application, source_assertion
 
 journal = logging.getLogger(__name__)
 SERVICE = "agentic-cluster"
-_NUMERO = re.compile(r"/evaluations/[^/?]+")
+_NUMERO = re.compile(r"/souscriptions/[^/?]+")  # /api/v1/souscriptions/{n}/evaluation (#243)
 # Le distro active ses instrumentations par défaut : on les coupe toutes, le cluster garde les
 # siennes (FastAPIInstrumentor manuel avec anonymisation du numéro de contrat).
 # Liste dérivée du distro (import privé accepté : version épinglée ==1.8.11), pour ne rien oublier.
@@ -127,7 +127,7 @@ def anonymiser_requete(span: Span, scope: dict[str, Any]) -> None:
     """Hook de l'instrumentation ASGI : le numéro de contrat ne reste dans aucun attribut."""
     if not span.is_recording():
         return
-    chemin = _NUMERO.sub("/evaluations/{numero_contrat}", scope.get("path", ""))
+    chemin = _NUMERO.sub("/souscriptions/{numero_contrat}", scope.get("path", ""))
     span.update_name(f"{scope.get('method', '')} {chemin}".strip())
     for cle in ("url.path", "http.target", "url.full", "http.url"):
         span.set_attribute(cle, chemin)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 
 from ..application.evaluation import (
@@ -16,6 +16,7 @@ from ..application.evaluation import (
     DossierDecide,
     EvaluationEnAttente,
     EvaluationEnCours,
+    EvaluationIntrouvable,
     Revue,
 )
 from ..domain.ports import ErreurOutil
@@ -26,6 +27,7 @@ from .schemas import (
     EtapeDto,
     EvaluationReponse,
     FicheDto,
+    PauseCorps,
     PauseReponse,
     PrimeDto,
     ReglageDto,
@@ -36,6 +38,8 @@ from .schemas import (
 from .securite import gestionnaire_courant
 
 routeur = APIRouter()
+# Chemin public = chemin interne (R5, /api/v1 dans chaque service) : la gateway ne réécrit plus rien
+EVALUATION = "/api/v1/souscriptions/{numero_contrat}/evaluation"
 _REPONSES: dict[int | str, dict[str, Any]] = {
     401: {}, 403: {}, 404: {}, 409: {}, 429: {}, 502: {}, 503: {}
 }  # fmt: skip
@@ -104,15 +108,26 @@ def _evaluation(r: Resultat) -> EvaluationReponse:
 
 
 @routeur.post(
-    "/evaluations/{numero_contrat}",
+    EVALUATION,
     response_model=EvaluationReponse,
-    responses=_REPONSES,
+    status_code=201,
+    responses={
+        201: {
+            "description": "Nouvelle tentative lancée",
+            "headers": {
+                "Location": {"description": "URI de l'évaluation", "schema": {"type": "string"}}
+            },
+        },
+        200: {"description": "Reprise d'une évaluation en pause"},
+        **_REPONSES,
+    },
 )
-async def evaluer(numero_contrat: str, request: Request, courant: Courant) -> EvaluationReponse:
+async def evaluer(
+    numero_contrat: str, request: Request, response: Response, courant: Courant
+) -> EvaluationReponse:
+    """Lance une nouvelle tentative (201, ``Location``) ou reprend une pause (200)."""
     try:
-        return _evaluation(
-            await _service(request).evaluer(numero_contrat, courant.jeton, courant.oid)
-        )
+        resultat = await _service(request).evaluer(numero_contrat, courant.jeton, courant.oid)
     except EvaluationEnAttente as e:
         raise Probleme(
             409, "EVALUATION_EN_ATTENTE", "Une revue est déjà en attente pour ce dossier"
@@ -127,16 +142,36 @@ async def evaluer(numero_contrat: str, request: Request, courant: Courant) -> Ev
         raise Probleme(503, "DELAI_DEPASSE", "Le délai d'évaluation est dépassé, réessayez") from e
     except ErreurOutil as e:
         raise _outil_en_echec(e) from e
+    if resultat.nouveau:
+        response.headers["Location"] = request.url.path
+    else:
+        response.status_code = 200
+    return _evaluation(resultat)
 
 
-@routeur.post(
-    "/evaluations/{numero_contrat}/pause",
-    response_model=PauseReponse,
-    status_code=202,
+@routeur.get(
+    EVALUATION,
+    response_model=EvaluationReponse,
     responses={401: {}, 403: {}, 404: {}, 503: {}},
 )
-async def demander_pause(numero_contrat: str, request: Request, courant: Courant) -> PauseReponse:
-    """Pause au prochain passage entre deux agents ; ``POST /evaluations/{n}`` reprend.
+async def consulter(numero_contrat: str, request: Request, courant: Courant) -> EvaluationReponse:
+    """Dernier état de l'évaluation ; 404 identique si jamais lancée ou dossier d'un autre."""
+    try:
+        return _evaluation(await _service(request).consulter(numero_contrat, courant.oid))
+    except EvaluationIntrouvable as e:
+        raise Probleme(404, "EVALUATION_INTROUVABLE", "Évaluation introuvable") from e
+
+
+@routeur.patch(
+    EVALUATION,
+    response_model=PauseReponse,
+    status_code=202,
+    responses={401: {}, 403: {}, 404: {}, 422: {}, 503: {}},
+)
+async def demander_pause(
+    numero_contrat: str, corps: PauseCorps, request: Request, courant: Courant
+) -> PauseReponse:
+    """``{"etat": "pause_demandee"}`` : pause entre deux agents ; ``POST`` reprend.
 
     ``ignoree`` : plus aucun agent à appeler (revue attendue, dossier décidé, déjà en pause).
     """
@@ -147,14 +182,20 @@ async def demander_pause(numero_contrat: str, request: Request, courant: Courant
     return PauseReponse(pause="demandee" if retenue else "ignoree")
 
 
-@routeur.post(
-    "/evaluations/{numero_contrat}/revue",
+@routeur.put(
+    EVALUATION + "/decision",
     response_model=RevueReponse,
-    responses=_REPONSES,
+    status_code=201,
+    responses={200: {"description": "Décision remplacée (la plus récente l'emporte)"}, **_REPONSES},
 )
 async def reviser(
-    numero_contrat: str, corps: RevueCorps, request: Request, courant: Courant
+    numero_contrat: str, corps: RevueCorps, request: Request, response: Response, courant: Courant
 ) -> RevueReponse:
+    """Décision du gestionnaire : 201 la première, 200 si elle en remplace une non enregistrée.
+
+    Pas de ``Location`` : avec ``PUT``, l'URI visée est la ressource (RFC 9110 §9.3.4) ; la décision
+    se relit dans ``GET …/evaluation`` (statut ``ACCEPTE`` ou ``REFUSE``).
+    """
     revue = Revue(corps.decision, corps.validation, corps.motif)
     try:
         resultat = await _service(request).reviser(
@@ -168,4 +209,6 @@ async def reviser(
         ) from e
     except ErreurOutil as e:
         raise _outil_en_echec(e) from e
+    if not resultat.nouveau:
+        response.status_code = 200
     return RevueReponse(statut=resultat.statut)  # type: ignore[arg-type]

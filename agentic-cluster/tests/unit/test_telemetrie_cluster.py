@@ -105,11 +105,19 @@ class _Span:
         self.attributs[cle] = valeur
 
 
-def test_le_numero_de_contrat_est_retire_des_attributs_http() -> None:
+@pytest.mark.parametrize(
+    ("methode", "suffixe"),
+    [("POST", "/evaluation"), ("GET", "/evaluation"), ("PATCH", "/evaluation"),
+     ("PUT", "/evaluation/decision")],
+)  # fmt: skip
+def test_le_numero_de_contrat_est_retire_des_attributs_http(methode: str, suffixe: str) -> None:
     span = _Span()
-    anonymiser_requete(span, {"method": "POST", "path": "/evaluations/C-SECRET/revue"})  # type: ignore[arg-type]
-    assert span.nom == "POST /evaluations/{numero_contrat}/revue"
-    assert set(span.attributs.values()) == {"/evaluations/{numero_contrat}/revue"}
+    chemin = f"/api/v1/souscriptions/AIF-2026-000042{suffixe}"
+    anonymiser_requete(span, {"method": methode, "path": chemin})  # type: ignore[arg-type]
+    attendu = f"/api/v1/souscriptions/{{numero_contrat}}{suffixe}"
+    assert span.nom == f"{methode} {attendu}"
+    assert set(span.attributs.values()) == {attendu}
+    assert "000042" not in span.nom + "".join(span.attributs.values())
 
 
 fournisseurs_poses: list[TracerProvider] = []

@@ -14,6 +14,7 @@ import {
   revueOuverte,
   messageProbleme,
   PICTOS,
+  reussi,
   routeDepuisHash,
   spansAffichables,
   tokensEtape,
@@ -215,4 +216,9 @@ test("revueOuverte : proposition, ou revue humaine sans pièce manquante ; jamai
   assert.equal(revueOuverte("REVUE_HUMAINE", avec("incomplet")), false); // K8 : relances, puis sans suite
   assert.equal(revueOuverte("REFUSE", avec("complet")), false);
   assert.equal(revueOuverte("EN_PAUSE", avec("complet")), false);
+});
+
+test("reussi : tout 2xx est un succès (201 évaluation lancée ou décision créée, 202 pause)", () => {
+  for (const statut of [200, 201, 202]) assert.equal(reussi({ statut }), true);
+  for (const statut of [0, 400, 401, 404, 409, 422, 429, 502, 503]) assert.equal(reussi({ statut }), false);
 });

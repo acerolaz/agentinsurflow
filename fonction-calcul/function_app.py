@@ -61,6 +61,14 @@ def _json(statut: int, corps: dict[str, Any]) -> func.HttpResponse:
     return func.HttpResponse(json.dumps(corps), status_code=statut, mimetype="application/json")
 
 
+def _probleme(statut: int, code: str, titre: str, **extra: str) -> func.HttpResponse:
+    """ProblemDetails (RFC 9457) avec ``code`` stable, comme les autres services."""
+    corps = {"type": "about:blank", "title": titre, "status": statut, "code": code, **extra}
+    return func.HttpResponse(
+        json.dumps(corps), status_code=statut, mimetype="application/problem+json"
+    )
+
+
 def _valeur(type_attendu: type, valeur: object) -> object:
     if valeur is None:
         return None
@@ -93,11 +101,11 @@ def _executer(
     try:
         return _json(200, traiter(_faits(req, champs)))
     except _RequeteInvalide:
-        return _json(400, {"code": "REQUETE_INVALIDE"})
+        return _probleme(400, "REQUETE_INVALIDE", "Requête invalide")
     except DonneeHorsBareme as e:
-        return _json(422, {"code": "DONNEE_HORS_BAREME", "champ": e.champ})
+        return _probleme(422, "DONNEE_HORS_BAREME", "Donnée hors barème", champ=e.champ)
     except DonneeHorsModele as e:
-        return _json(422, {"code": "DONNEE_HORS_MODELE", "champ": e.champ})
+        return _probleme(422, "DONNEE_HORS_MODELE", "Donnée hors du modèle", champ=e.champ)
 
 
 def _risque(faits: dict[str, object]) -> dict[str, Any]:

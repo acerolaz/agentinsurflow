@@ -32,12 +32,16 @@ builder.Configuration.Sources.Insert(0, new JsonConfigurationSource
     ReloadOnChange = true,
 });
 
-// Échange de jeton (route calcul seulement) : la Function n'accepte que le jeton de la gateway (identité
+// Échange de jeton (routes du calcul et du LLM) : la Function n'accepte que le jeton de la gateway (identité
 // managée), jamais celui du MCP. Source injectable (TokenCredential) pour que les tests la remplacent.
-// Route -> (portée, code d'erreur) ; une portée vide (local) désactive le jeton relayé.
+// Route -> (portée, code d'erreur) ; une portée vide (local) désactive le jeton relayé. Une route du calcul
+// absente d'ici relaierait le jeton du MCP (refusé par Easy Auth) : chaque ressource est listée (R1, #242).
+var echangeCalcul = (builder.Configuration["Calcul:Portee"], "CALCUL_INDISPONIBLE", "Service de calcul indisponible");
 var echanges = new Dictionary<string, (string? Portee, string Code, string Titre)>
 {
-    ["calcul"] = (builder.Configuration["Calcul:Portee"], "CALCUL_INDISPONIBLE", "Service de calcul indisponible"),
+    ["calcul-risques"] = echangeCalcul,
+    ["calcul-primes"] = echangeCalcul,
+    ["calcul-frequences"] = echangeCalcul,
     ["llm"] = (builder.Configuration["Llm:Portee"], "LLM_INDISPONIBLE", "Service LLM indisponible"),
 };
 // Local : secret d'application de la gateway ; Azure : identité managée.

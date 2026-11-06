@@ -100,14 +100,18 @@ def test_corps_documente_egal_aux_champs_de_executer(route: str) -> None:
 
 
 def test_codes_d_erreur_du_code_tous_documentes() -> None:
-    codes = set(re.findall(r'"code": "([A-Z_]+)"', SOURCE))
+    codes = set(re.findall(r'_probleme\(\s*\d+,\s*"([A-Z_]+)"', SOURCE))
     erreur = DOCUMENT["components"]["schemas"]["ErreurCalcul"]
     documentes = set(erreur["properties"]["code"]["enum"])
 
     assert codes == documentes == {"REQUETE_INVALIDE", "DONNEE_HORS_BAREME", "DONNEE_HORS_MODELE"}
+    reponses = DOCUMENT["components"]["responses"]
     for (methode, _), op in _operations().items():
         if methode == "POST":
             assert {"200", "400", "401", "403", "422", "429"} <= set(op["responses"])
+            for statut in ("400", "422"):  # ProblemDetails, comme les autres services (#242)
+                nom = op["responses"][statut]["$ref"].rsplit("/", 1)[1]
+                assert set(reponses[nom]["content"]) == {"application/problem+json"}
 
 
 def test_sante_anonyme_sans_503() -> None:

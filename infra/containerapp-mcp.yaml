@@ -34,7 +34,7 @@ properties:
           - { name: AZURE_UAMI_CLIENT_ID, value: "${AZURE_UAMI_MCP_CLIENT_ID}" }
           # rag, dossiers et calcul : TOUJOURS par la gateway (D22, plus d'exception)
           - { name: GATEWAY_URL, value: "${GATEWAY_URL}" }
-          - { name: CALCUL_URL, value: "${GATEWAY_URL}/api/calcul" }
+          - { name: CALCUL_URL, value: "${GATEWAY_URL}/api/v1/calcul" }
           - { name: CALCUL_AUDIENCE, value: "${CALCUL_AUDIENCE}" }
           # traces : par la gateway (/v1/traces), jeton d'application, rôle Telemetrie d'underwriting-admin
           - { name: TELEMETRIE_AUDIENCE, value: "api://${UNDERWRITING_API_CLIENT_ID}" }

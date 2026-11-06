@@ -49,19 +49,24 @@ def client(
     )
 
 
-@pytest.mark.parametrize("route", ["evaluer", "calculer"])
-async def test_200_renvoie_le_json_et_poste_les_faits(route: str) -> None:
+def probleme(statut: int, code: str, **extra: str) -> httpx.Response:
+    """Erreur de la Function : ProblemDetails (R1, #242)."""
+    corps = {"type": "about:blank", "title": "t", "status": statut, "code": code, **extra}
+    return httpx.Response(statut, json=corps, headers={"content-type": "application/problem+json"})
+
+
+@pytest.mark.parametrize(("methode", "ressource"), [("evaluer", "risques"), ("calculer", "primes")])
+async def test_200_renvoie_le_json_et_poste_les_faits(methode: str, ressource: str) -> None:
     vues: list[httpx.Request] = []
     calc = client(httpx.Response(200, json=RESULTAT), vues)
-    assert await getattr(calc, route)(FAITS) == RESULTAT
-    assert (vues[0].method, str(vues[0].url)) == ("POST", f"http://calcul/{route}")
+    assert await getattr(calc, methode)(FAITS) == RESULTAT
+    assert (vues[0].method, str(vues[0].url)) == ("POST", f"http://calcul/{ressource}")
     assert json.loads(vues[0].content) == FAITS
 
 
 async def test_422_hors_bareme_nomme_le_champ() -> None:
-    corps = {"code": "DONNEE_HORS_BAREME", "champ": "type_usage"}
     with pytest.raises(ErreurOutil) as exc:
-        await client(httpx.Response(422, json=corps)).evaluer(FAITS)
+        await client(probleme(422, "DONNEE_HORS_BAREME", champ="type_usage")).evaluer(FAITS)
     assert exc.value.code == "DONNEE_HORS_BAREME"
     assert "type_usage" in str(exc.value)
 
@@ -69,7 +74,7 @@ async def test_422_hors_bareme_nomme_le_champ() -> None:
 @pytest.mark.parametrize(
     "reponse",
     [
-        httpx.Response(400, json={"code": "REQUETE_INVALIDE"}),
+        probleme(400, "REQUETE_INVALIDE"),
         httpx.Response(401),
         httpx.Response(500),
         httpx.Response(200, content=b"<html>"),
@@ -85,7 +90,7 @@ async def test_autres_echecs_calcul_indisponible(reponse: httpx.Response | Excep
 
 async def test_400_est_journalise_sans_corps(caplog: pytest.LogCaptureFixture) -> None:
     with pytest.raises(ErreurOutil):
-        await client(httpx.Response(400, json={"code": "REQUETE_INVALIDE"})).evaluer(FAITS)
+        await client(probleme(400, "REQUETE_INVALIDE")).evaluer(FAITS)
     assert "requête de calcul invalide" in caplog.text
     assert "0.9" not in caplog.text
 

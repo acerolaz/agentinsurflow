@@ -28,7 +28,7 @@ async def test_span_du_client_sans_donnee_du_contrat(
     await calc.evaluer({"crm": "0.9"})
     (span,) = [s for s in spans.get_finished_spans() if s.name == "calcul.appeler"]
     attributs = dict(span.attributes or {})
-    assert attributs["calcul.route"] == "/evaluer"
+    assert attributs["calcul.route"] == "/risques"
     assert attributs["http.status_code"] == 200
     assert attributs["resultat.code"] == "OK"
     assert attributs["bareme.version"] == "bareme-2026.10-v1"

@@ -86,6 +86,6 @@ public sealed class SwaggerTests : IDisposable
         Assert.Equal("application/json", reponse.Content.Headers.ContentType?.MediaType);
         using var json = JsonDocument.Parse(await reponse.Content.ReadAsStringAsync(jeton));
         Assert.Equal("3.1.0", json.RootElement.GetProperty("openapi").GetString());
-        Assert.True(json.RootElement.GetProperty("paths").TryGetProperty("/api/calcul/evaluer", out _));
+        Assert.True(json.RootElement.GetProperty("paths").TryGetProperty("/api/v1/calcul/risques", out _));
     }
 }

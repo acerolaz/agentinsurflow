@@ -24,13 +24,16 @@ internal static class EcrituresEndpoints
             .WithSummary("Enregistre (ou remplace) la fiche et la prime en brouillon, sans changer le statut")
             .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
 
-        contrats.MapPut("/{numero_contrat}/statut", async (ClaimsPrincipal utilisateur, ChangerStatut cas, CancellationToken ct,
-                [FromRoute(Name = "numero_contrat")] string numeroContrat, StatutCorps corps) =>
+        contrats.MapPut("/{numero_contrat}/statut", async (ClaimsPrincipal utilisateur, ChangerStatut cas, ClasserSansSuite sansSuite,
+                IConfiguration config, CancellationToken ct, [FromRoute(Name = "numero_contrat")] string numeroContrat, StatutCorps corps) =>
             ContratsEndpoints.Oid(utilisateur) is not { } oid
                 ? Problemes.Creer(403, "Jeton sans identité de gestionnaire", "ACCES_REFUSE")
-                : Reponse(await cas.Executer(oid, numeroContrat, new ChangementStatut(corps.Statut ?? "", corps.Validation), ct)))
+                : corps.Statut == ReglesRelance.SansSuite
+                    ? await SansSuite(utilisateur, config, sansSuite, oid, numeroContrat, corps, ct)
+                    : Reponse(await cas.Executer(oid, numeroContrat, new ChangementStatut(corps.Statut ?? "", corps.Validation), ct)))
             .WithName("ChangerStatut")
-            .WithSummary("Change le statut ; ACCEPTE/REFUSE exigent une validation (VALIDEE ou CORRIGEE)")
+            .WithSummary("Change le statut ; ACCEPTE/REFUSE exigent une validation (VALIDEE ou CORRIGEE) ; SANS_SUITE (K8) "
+                + "seulement après la 3e relance, avant toute décision, et par le gestionnaire lui-même (jamais le serveur MCP)")
             .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
 
         contrats.MapPut("/{numero_contrat}/observations", async (ClaimsPrincipal utilisateur, EnregistrerObservations cas, CancellationToken ct,
@@ -61,21 +64,25 @@ internal static class EcrituresEndpoints
             .Produces<RelanceReponse>(201)
             .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
 
-        contrats.MapPost("/{numero_contrat}/sans-suite", async (ClaimsPrincipal utilisateur, ClasserSansSuite cas, CancellationToken ct,
-                [FromRoute(Name = "numero_contrat")] string numeroContrat) =>
-            ContratsEndpoints.Oid(utilisateur) is not { } oid
-                ? Problemes.Creer(403, "Jeton sans identité de gestionnaire", "ACCES_REFUSE")
-                : await cas.Executer(oid, numeroContrat, ct) switch
-                {
-                    { Ecrit: true } => Results.NoContent(),
-                    { CodeRefus: ReglesRelance.Decide } => Problemes.Creer(409, "Ce dossier a déjà reçu sa décision", ReglesRelance.Decide),
-                    { CodeRefus: { } code } => Problemes.Creer(409, "Les trois relances n'ont pas toutes été envoyées", code),
-                    _ => Problemes.Creer(404, "Contrat introuvable", "CONTRAT_INTROUVABLE"),
-                })
-            .WithName("ClasserSansSuite")
-            .WithSummary("Fin de parcours (K8) : classe le dossier SANS_SUITE, seulement après la 3e relance et avant toute décision")
-            .Produces(204)
-            .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
+    }
+
+    // Fin de parcours (K8) par PUT …/statut (REST, #245). Le serveur MCP agit avec le jeton OBO du gestionnaire :
+    // seul son azp le distingue ; le classement sans suite reste un geste humain (l'outil MCP ne propose déjà pas
+    // ce statut : ceci est la seconde barrière, côté service).
+    private static async Task<IResult> SansSuite(ClaimsPrincipal utilisateur, IConfiguration config, ClasserSansSuite cas,
+        string oid, string numeroContrat, StatutCorps corps, CancellationToken ct)
+    {
+        if (config["Entra:McpClientId"] is { Length: > 0 } mcp && utilisateur.FindFirst("azp")?.Value == mcp)
+            return Problemes.Creer(403, "Le classement sans suite est réservé au gestionnaire", "ACCES_REFUSE");
+        if (corps.Validation is not null)
+            return Problemes.Creer(400, "Écriture refusée", "VALIDATION_INATTENDUE");
+        return await cas.Executer(oid, numeroContrat, ct) switch
+        {
+            { Ecrit: true } => Results.NoContent(),
+            { CodeRefus: ReglesRelance.Decide } => Problemes.Creer(409, "Ce dossier a déjà reçu sa décision", ReglesRelance.Decide),
+            { CodeRefus: { } code } => Problemes.Creer(409, "Les trois relances n'ont pas toutes été envoyées", code),
+            _ => Problemes.Creer(404, "Contrat introuvable", "CONTRAT_INTROUVABLE"),
+        };
     }
 
     // Le span porte le rang et les pièces, ou le code du refus, jamais le texte (il peut contenir des données personnelles).

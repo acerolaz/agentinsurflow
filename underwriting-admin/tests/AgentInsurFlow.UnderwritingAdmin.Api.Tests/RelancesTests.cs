@@ -13,11 +13,15 @@ using OpenTelemetry.Trace;
 
 namespace AgentInsurFlow.UnderwritingAdmin.Api.Tests;
 
-/// <summary>TI : <c>POST …/relances</c> (#130), relance enregistrée et tracée sans envoi, jetons réels, port en mémoire.</summary>
+/// <summary>
+/// TI : <c>POST …/relances</c> (#130), relance enregistrée et tracée sans envoi, jetons réels, port en mémoire ;
+/// classement sans suite par <c>PUT …/statut</c> <c>{"statut": "SANS_SUITE"}</c> (REST, #245).
+/// </summary>
 public sealed class RelancesTests : IDisposable
 {
     private const string GestionnaireA = "oid-gestionnaire-a";
     private const string GestionnaireB = "oid-gestionnaire-b";
+    private const string ClientMcp = "client-serveur-mcp";
 
     private sealed class DepotEnMemoire : IDepotRelances
     {
@@ -51,7 +55,7 @@ public sealed class RelancesTests : IDisposable
     private readonly List<Activity> _activites = []; // alimentée par l'exportateur sur un autre thread : lire par ToArray()
     private readonly WebApplicationFactory<Program> _usine;
 
-    public RelancesTests() => _usine = JetonsDeTest.Usine(b => b.ConfigureTestServices(s =>
+    public RelancesTests() => _usine = JetonsDeTest.Usine(b => b.UseSetting("Entra:McpClientId", ClientMcp).ConfigureTestServices(s =>
     {
         s.RemoveAll<IDepotRelances>();
         s.AddSingleton<IDepotRelances>(_depot);
@@ -184,11 +188,15 @@ public sealed class RelancesTests : IDisposable
         return trouves;
     }
 
-    private async Task<(HttpStatusCode Statut, string? Code)> ClasserSansSuite(string numero, string oid)
+    private async Task<(HttpStatusCode Statut, string? Code)> ClasserSansSuite(
+        string numero, string oid, string azp = "client-espace", string corpsJson = """{"statut":"SANS_SUITE"}""")
     {
         using var client = _usine.CreateClient();
-        using var requete = new HttpRequestMessage(HttpMethod.Post, $"/api/contrats/{numero}/sans-suite");
-        requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JetonsDeTest.Jeton(JetonsDeTest.AudienceParDefaut, oid, "Gestionnaire"));
+        using var requete = new HttpRequestMessage(HttpMethod.Put, $"/api/contrats/{numero}/statut")
+        {
+            Content = new StringContent(corpsJson, Encoding.UTF8, "application/json"),
+        };
+        requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JetonsDeTest.JetonDe(JetonsDeTest.AudienceParDefaut, oid, azp, "Gestionnaire"));
         using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
         var corps = await reponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         return (reponse.StatusCode, corps.Length == 0 ? null : JsonDocument.Parse(corps).RootElement.GetProperty("code").GetString());
@@ -220,6 +228,41 @@ public sealed class RelancesTests : IDisposable
         for (var i = 0; i < 3; i++) await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
 
         Assert.Equal((HttpStatusCode.NotFound, "CONTRAT_INTROUVABLE"), await ClasserSansSuite("AIF-A1", GestionnaireB));
+        Assert.False(_depot.SansSuite);
+    }
+
+    [Fact]
+    public async Task Sans_suite_demande_par_le_serveur_mcp_403_sans_ecriture()
+    {
+        for (var i = 0; i < 3; i++) await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
+
+        // l'agent agit avec le jeton OBO du gestionnaire : seul l'azp le distingue ; le classement reste humain
+        Assert.Equal((HttpStatusCode.Forbidden, "ACCES_REFUSE"), await ClasserSansSuite("AIF-A1", GestionnaireA, ClientMcp));
+        Assert.False(_depot.SansSuite);
+    }
+
+    [Fact]
+    public async Task Sans_suite_avec_validation_400_VALIDATION_INATTENDUE()
+    {
+        for (var i = 0; i < 3; i++) await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
+
+        var reponse = await ClasserSansSuite("AIF-A1", GestionnaireA, corpsJson: """{"statut":"SANS_SUITE","validation":"VALIDEE"}""");
+
+        Assert.Equal((HttpStatusCode.BadRequest, "VALIDATION_INATTENDUE"), reponse);
+        Assert.False(_depot.SansSuite);
+    }
+
+    [Fact]
+    public async Task Ancienne_route_post_sans_suite_404()
+    {
+        for (var i = 0; i < 3; i++) await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
+        using var client = _usine.CreateClient();
+        using var requete = new HttpRequestMessage(HttpMethod.Post, "/api/contrats/AIF-A1/sans-suite");
+        requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JetonsDeTest.Jeton(JetonsDeTest.AudienceParDefaut, GestionnaireA, "Gestionnaire"));
+
+        using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, reponse.StatusCode);
         Assert.False(_depot.SansSuite);
     }
 }

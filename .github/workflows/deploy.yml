@@ -248,13 +248,14 @@ jobs:
           PG_HOST: ${{ vars.PG_APP_NAME }}
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           UNDERWRITING_API_CLIENT_ID: ${{ vars.UNDERWRITING_API_CLIENT_ID }}
+          MCP_API_CLIENT_ID: ${{ vars.MCP_API_CLIENT_ID }} # azp du serveur MCP : il ne classe jamais sans suite (#245)
           SEED_GESTIONNAIRE_A: ${{ vars.SEED_GESTIONNAIRE_A }}
           SEED_GESTIONNAIRE_B: ${{ vars.SEED_GESTIONNAIRE_B }}
           SEED_GESTIONNAIRE_C: ${{ vars.SEED_GESTIONNAIRE_C }} # facultative : sans elle, pas de dossier pour C
           DEPLOIEMENT: ${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           # shellcheck disable=SC2016 # envsubst reçoit les noms des variables, pas leurs valeurs
-          envsubst '$DEPLOIEMENT $IMAGE_UNDERWRITING $PG_HOST $AZURE_TENANT_ID $UNDERWRITING_API_CLIENT_ID $SEED_GESTIONNAIRE_A $SEED_GESTIONNAIRE_B $SEED_GESTIONNAIRE_C' \
+          envsubst '$DEPLOIEMENT $IMAGE_UNDERWRITING $PG_HOST $AZURE_TENANT_ID $UNDERWRITING_API_CLIENT_ID $MCP_API_CLIENT_ID $SEED_GESTIONNAIRE_A $SEED_GESTIONNAIRE_B $SEED_GESTIONNAIRE_C' \
             < infra/containerapp-underwriting.yaml > "$RUNNER_TEMP/containerapp-underwriting.yaml"
           python3 tools/az_reessayer.py az containerapp update -n "$UW_APP" -g "$RG" --yaml "$RUNNER_TEMP/containerapp-underwriting.yaml" --no-wait -o none
           fqdn=$(az containerapp show -n "$UW_APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)

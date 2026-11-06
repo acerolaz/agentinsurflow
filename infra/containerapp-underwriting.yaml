@@ -24,6 +24,7 @@ properties:
           - { name: AzureAd__ClientId, value: "${UNDERWRITING_API_CLIENT_ID}" }
           # même liste que la gateway (Entra__Audiences__underwriting__0 et __1)
           - { name: Entra__Audiences__underwriting__0, value: "api://agentinsurflow-underwriting,${UNDERWRITING_API_CLIENT_ID}" }
+          - { name: Entra__McpClientId, value: "${MCP_API_CLIENT_ID}" } # azp du serveur MCP : SANS_SUITE lui est refusé (#245)
           # schémas et seed au démarrage (migrateur) ; Otlp__SourcesSansJeton : défaut, loopback seule
           - { name: Migrations__AuDemarrage, value: "true" }
           - { name: PG_HOST, value: "${PG_HOST}" } # nom de la Container App postgres (TCP interne 5432)

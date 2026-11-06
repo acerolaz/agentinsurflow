@@ -37,13 +37,16 @@ internal static class JetonsDeTest
             plus?.Invoke(b);
         });
 
-    public static string Jeton(string audience, string oid, params string[] roles) =>
+    public static string Jeton(string audience, string oid, params string[] roles) => JetonDe(audience, oid, "client-espace", roles);
+
+    /// <summary>Jeton v2 avec son <c>azp</c> (application cliente) : l'espace, le serveur MCP…</summary>
+    public static string JetonDe(string audience, string oid, string azp, params string[] roles) =>
         new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
             Issuer = Emetteur,
             Audience = audience,
             Expires = DateTime.UtcNow.AddMinutes(5),
-            Claims = new Dictionary<string, object> { ["oid"] = oid, ["roles"] = roles },
+            Claims = new Dictionary<string, object> { ["oid"] = oid, ["roles"] = roles, ["azp"] = azp },
             SigningCredentials = new SigningCredentials(Cle, SecurityAlgorithms.RsaSha256),
         });
 }

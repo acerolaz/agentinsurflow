@@ -250,10 +250,11 @@ export async function afficherDossier(zone, numero) {
     if (!window.confirm("Classer ce dossier sans suite ? La décision est définitive.")) return;
     v.relanceEnVol = true;
     rendre();
-    const r = await appeler("POST", `/api/contrats/${chemin}/sans-suite`, { portee: "underwriting" });
+    // REST (#245) : le classement sans suite est un changement de statut
+    const r = await appeler("PUT", `/api/contrats/${chemin}/statut`, { portee: "underwriting", corps: { statut: "SANS_SUITE" } });
     v.relanceEnVol = false;
-    v.relance = { message: r.statut === 204 ? el("p", { role: "status" }, "Dossier classé sans suite.") : erreur(r), texte: null };
-    if (r.statut === 204) await lireEtat();
+    v.relance = { message: reussi(r) ? el("p", { role: "status" }, "Dossier classé sans suite.") : erreur(r), texte: null };
+    if (reussi(r)) await lireEtat();
     rendre();
   }
 

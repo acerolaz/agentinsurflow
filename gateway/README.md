@@ -71,7 +71,7 @@ En Azure, la gateway est derrière l'**envoy** de Container Apps, qui ajoute l'I
 | `GET /api/contrats/{numero_contrat}/pieces`, `/etat` | `underwriting-admin` | 200 · 404 | Pièces déclarées ; progression du dossier (rapports des agents, sections lisibles) |
 | `GET /api/contrats/{numero_contrat}/souscripteur` | `underwriting-admin` | 200 · 404 | Fiche du lead pour l'espace gestionnaire (exception à la minimisation, jamais vers le cluster ni un LLM) |
 | `GET /v1/souscriptions/{numero_contrat}/contrat` | `underwriting-admin` (réécrit en `/api/contrats/{numero_contrat}/contrat`) | 200 · 404 · 409 | Contrat imprimé après `ACCEPTE` |
-| `POST /api/contrats/{numero_contrat}/relances`, `/sans-suite` | `underwriting-admin` | 201 · 204 · 400 · 404 · 409 | Relance de pièces (3 au plus) ; classement `SANS_SUITE` après la 3e relance |
+| `POST /api/contrats/{numero_contrat}/relances` ; `PUT …/statut` `{"statut": "SANS_SUITE"}` | `underwriting-admin` | 201 · 204 · 400 · 403 · 404 · 409 | Relance de pièces (3 au plus) ; classement `SANS_SUITE` après la 3e relance, refusé au serveur MCP (#245) |
 | `GET /api/traces/{trace_id}` | `underwriting-admin` | 200 · 404 | Trace OpenTelemetry, tous services confondus |
 | `POST /v1/traces` | `underwriting-admin` | 200 | **Exception** : chemin imposé par la norme OTLP (récepteur de spans), pas une API métier |
 | `GET /health`, `/health/rag`, `/health/underwriting` | gateway, services | 200 | Santé et versions |

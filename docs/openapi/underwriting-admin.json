@@ -771,7 +771,7 @@
         "tags": [
           "Contrats"
         ],
-        "summary": "Change le statut ; ACCEPTE/REFUSE exigent une validation (VALIDEE ou CORRIGEE)",
+        "summary": "Change le statut ; ACCEPTE/REFUSE exigent une validation (VALIDEE ou CORRIGEE) ; SANS_SUITE (K8) seulement après la 3e relance, avant toute décision, et par le gestionnaire lui-même (jamais le serveur MCP)",
         "operationId": "ChangerStatut",
         "parameters": [
           {
@@ -975,70 +975,6 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/contrats/{numero_contrat}/sans-suite": {
-      "post": {
-        "tags": [
-          "Contrats"
-        ],
-        "summary": "Fin de parcours (K8) : classe le dossier SANS_SUITE, seulement après la 3e relance et avant toute décision",
-        "operationId": "ClasserSansSuite",
-        "parameters": [
-          {
-            "name": "numero_contrat",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
           },
           "401": {
             "description": "Unauthorized",

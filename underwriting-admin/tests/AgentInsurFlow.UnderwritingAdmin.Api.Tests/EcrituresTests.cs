@@ -146,4 +146,29 @@ public sealed class EcrituresTests : IDisposable
     [InlineData("statut")]
     public async Task Sans_role_Gestionnaire_403(string route) =>
         Assert.Equal(HttpStatusCode.Forbidden, (await Put($"/api/contrats/AIF-A1/{route}", "{}", GestionnaireA, "Telemetrie")).Statut);
+
+    [Theory]
+    [InlineData("""{"statut":"EN_ANALYSE"}""")]
+    [InlineData("""{"statut":"ACCEPTE","validation":"VALIDEE"}""")]
+    public async Task Le_serveur_mcp_pose_toujours_les_autres_statuts(string json)
+    {
+        // la garde du classement sans suite (#245) ne touche que SANS_SUITE : l'agent écrit ses statuts
+        using var usine = JetonsDeTest.Usine(b => b.UseSetting("Entra:McpClientId", "client-serveur-mcp").ConfigureTestServices(s =>
+        {
+            s.RemoveAll<IDepotEcritures>();
+            s.AddSingleton<IDepotEcritures, DepotEnMemoire>();
+        }));
+        using var client = usine.CreateClient();
+        using var requete = new HttpRequestMessage(HttpMethod.Put, "/api/contrats/AIF-A1/statut")
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json"),
+        };
+        requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer",
+            JetonsDeTest.JetonDe(JetonsDeTest.AudienceParDefaut, GestionnaireA, "client-serveur-mcp", "Gestionnaire"));
+
+        using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NoContent, reponse.StatusCode);
+        Assert.Single(DepotEnMemoire.Appels);
+    }
 }

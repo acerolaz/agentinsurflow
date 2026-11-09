@@ -32,6 +32,12 @@ if (audiences.Length == 0)
 {
     throw new InvalidOperationException("Entra:Audiences:underwriting manquant");
 }
+// Garde du classement sans suite (#245) : sans l'identifiant client du serveur MCP, elle serait ouverte en silence.
+// Hors Development (compose, Azure), on refuse de démarrer ; les TI de l'API (Development) la configurent elles-mêmes.
+if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(builder.Configuration["Entra:McpClientId"]))
+{
+    throw new InvalidOperationException("Entra:McpClientId manquant");
+}
 builder.Services.AddMicrosoftIdentityWebApiAuthentication(builder.Configuration);
 // PostConfigure : passe après Identity.Web, qui fixerait sinon sa propre audience (ClientId).
 builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>

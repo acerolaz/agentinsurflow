@@ -73,9 +73,22 @@ public sealed class ApiTests : IDisposable
     public void Hors_Development_un_mot_de_passe_PostgreSQL_absent_arrete_le_demarrage()
     {
         using var usine = new WebApplicationFactory<Program>().WithWebHostBuilder(b => b
-            .UseEnvironment("Production").UseSetting("PG_DOSSIERS_PASSWORD", ""));
+            .UseEnvironment("Production").UseSetting("Entra:McpClientId", "client-serveur-mcp").UseSetting("PG_DOSSIERS_PASSWORD", ""));
 
         var erreur = Assert.Throws<InvalidOperationException>(() => usine.CreateClient());
         Assert.Contains("PG_DOSSIERS_PASSWORD manquant", erreur.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Hors_Development_sans_identifiant_du_serveur_mcp_le_demarrage_s_arrete(string valeur)
+    {
+        // sans lui, la garde du classement sans suite (#245) serait ouverte en silence
+        using var usine = new WebApplicationFactory<Program>().WithWebHostBuilder(b => b
+            .UseEnvironment("Production").UseSetting("Entra:McpClientId", valeur));
+
+        var erreur = Assert.Throws<InvalidOperationException>(() => usine.CreateClient());
+        Assert.Contains("Entra:McpClientId manquant", erreur.Message, StringComparison.Ordinal);
     }
 }

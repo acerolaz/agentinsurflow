@@ -72,7 +72,9 @@ internal static class EcrituresEndpoints
     private static async Task<IResult> SansSuite(ClaimsPrincipal utilisateur, IConfiguration config, ClasserSansSuite cas,
         string oid, string numeroContrat, StatutCorps corps, CancellationToken ct)
     {
-        if (config["Entra:McpClientId"] is { Length: > 0 } mcp && utilisateur.FindFirst("azp")?.Value == mcp)
+        // azp (jeton v2), appid (v1) ; GUID comparés sans la casse. Configuration vide : refusée au démarrage hors Development.
+        var appelant = utilisateur.FindFirst("azp")?.Value ?? utilisateur.FindFirst("appid")?.Value;
+        if (config["Entra:McpClientId"]?.Trim() is { Length: > 0 } mcp && string.Equals(appelant, mcp, StringComparison.OrdinalIgnoreCase))
             return Problemes.Creer(403, "Le classement sans suite est réservé au gestionnaire", "ACCES_REFUSE");
         if (corps.Validation is not null)
             return Problemes.Creer(400, "Écriture refusée", "VALIDATION_INATTENDUE");

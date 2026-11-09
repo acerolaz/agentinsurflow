@@ -189,14 +189,17 @@ public sealed class RelancesTests : IDisposable
     }
 
     private async Task<(HttpStatusCode Statut, string? Code)> ClasserSansSuite(
-        string numero, string oid, string azp = "client-espace", string corpsJson = """{"statut":"SANS_SUITE"}""")
+        string numero, string oid, string azp = "client-espace", string corpsJson = """{"statut":"SANS_SUITE"}""", bool v1 = false)
     {
         using var client = _usine.CreateClient();
         using var requete = new HttpRequestMessage(HttpMethod.Put, $"/api/contrats/{numero}/statut")
         {
             Content = new StringContent(corpsJson, Encoding.UTF8, "application/json"),
         };
-        requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JetonsDeTest.JetonDe(JetonsDeTest.AudienceParDefaut, oid, azp, "Gestionnaire"));
+        var jeton = v1
+            ? JetonsDeTest.JetonV1(JetonsDeTest.AudienceParDefaut, oid, azp, "Gestionnaire")
+            : JetonsDeTest.JetonDe(JetonsDeTest.AudienceParDefaut, oid, azp, "Gestionnaire");
+        requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jeton);
         using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
         var corps = await reponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         return (reponse.StatusCode, corps.Length == 0 ? null : JsonDocument.Parse(corps).RootElement.GetProperty("code").GetString());
@@ -264,5 +267,37 @@ public sealed class RelancesTests : IDisposable
 
         Assert.Equal(HttpStatusCode.NotFound, reponse.StatusCode);
         Assert.False(_depot.SansSuite);
+    }
+
+    [Fact]
+    public async Task Sans_suite_par_le_mcp_sur_le_dossier_d_un_autre_gestionnaire_403_et_non_404()
+    {
+        for (var i = 0; i < 3; i++) await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
+
+        // la garde passe avant le dépôt : le MCP n'apprend rien de l'existence du dossier
+        Assert.Equal((HttpStatusCode.Forbidden, "ACCES_REFUSE"), await ClasserSansSuite("AIF-A1", GestionnaireB, ClientMcp));
+        Assert.Equal((HttpStatusCode.Forbidden, "ACCES_REFUSE"), await ClasserSansSuite("AIF-INEXISTANT", GestionnaireA, ClientMcp));
+        Assert.False(_depot.SansSuite);
+    }
+
+    [Fact]
+    public async Task Sans_suite_mcp_reconnu_quelle_que_soit_la_casse_de_l_azp()
+    {
+        for (var i = 0; i < 3; i++) await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
+
+        Assert.Equal((HttpStatusCode.Forbidden, "ACCES_REFUSE"),
+            await ClasserSansSuite("AIF-A1", GestionnaireA, ClientMcp.ToUpperInvariant()));
+        Assert.False(_depot.SansSuite);
+    }
+
+    [Fact]
+    public async Task Jeton_v1_sans_azp_appid_du_mcp_403_appid_humain_204()
+    {
+        for (var i = 0; i < 3; i++) await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
+
+        Assert.Equal((HttpStatusCode.Forbidden, "ACCES_REFUSE"), await ClasserSansSuite("AIF-A1", GestionnaireA, ClientMcp, v1: true));
+        Assert.False(_depot.SansSuite);
+        Assert.Equal((HttpStatusCode.NoContent, null), await ClasserSansSuite("AIF-A1", GestionnaireA, "client-espace", v1: true));
+        Assert.True(_depot.SansSuite);
     }
 }

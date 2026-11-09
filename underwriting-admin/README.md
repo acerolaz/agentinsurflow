@@ -41,6 +41,7 @@ Service C# (.NET 10, Clean Architecture), port **8002**, **sa propre Container A
 |---|---|
 | `AzureAd__TenantId`, `AzureAd__ClientId` | Inscription Entra `agentinsurflow-underwriting` |
 | `Entra__Audiences__underwriting__0` | Liste « a, b » des audiences acceptées (la même que la gateway) |
+| `Entra__McpClientId` | Identifiant client du serveur MCP (`MCP_API_CLIENT_ID`) : son `azp` (ou `appid`), comparé sans la casse, ne peut pas classer un dossier sans suite (#245). **Obligatoire hors Development** : vide, le service refuse de démarrer |
 | `PG_HOST`, `PG_PORT`, `PG_*_PASSWORD` | Comptes `migrateur`, `dossiers`, `traces_writer`, `traces_reader`, `points_reprise` (schéma `points_reprise`, mot de passe `PG_POINTS_REPRISE_PASSWORD`, secret `pg-points-reprise-password` ; tables créées par la migration EF avec `migrateur`, stockage opaque des points de reprise du cluster, D106). Hors Development, un mot de passe absent ou un `PG_PORT` invalide arrête le démarrage en nommant la clé |
 | `Migrations__AuDemarrage` | `true` : migrations et seed au démarrage (compte `migrateur`, attente de PostgreSQL ≤ 60 s) |
 | `SEED_GESTIONNAIRE_A`, `SEED_GESTIONNAIRE_B`, `SEED_GESTIONNAIRE_C` | `oid` Entra des gestionnaires du seed (jamais commités) : `AIF-2026-000001` à `000003` et `000010` (refusé par le barème, R01) → A, `000004` à `000006` → B (A et B : comptes humains de la démo), `000007` à `000009` → C (identité de la CI, migration `SeedGestionnaireC`, facultative). Une valeur qui n'est pas un GUID fait échouer la migration du seed |

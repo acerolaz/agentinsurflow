@@ -43,7 +43,7 @@ internal static class TracesEndpoints
             .Produces(200, contentType: Protobuf)
             .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(415);
 
-        app.MapGet("/api/traces/{trace_id}", async (LireTrace cas, CancellationToken ct, [FromRoute(Name = "trace_id")] string traceId) =>
+        app.MapGet("/api/v1/traces/{trace_id}", async (LireTrace cas, CancellationToken ct, [FromRoute(Name = "trace_id")] string traceId) =>
             {
                 if (!ReglesTraces.EstTraceIdValide(traceId))
                 {

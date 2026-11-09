@@ -8,15 +8,15 @@ Serveur MCP (Python, architecture hexagonale) qui donne au cluster d'agents un a
 flowchart LR
     CL["Cluster d'agents<br/>(Saga, Pièces, Analyste, Rédacteur, Actuaire)"] -->|"POST/GET /mcp<br/>jeton OBO (azp = agent)"| GW["Gateway YARP"]
     GW -->|"rôle + audience + débit<br/>sans tampon (SSE)"| MCP["Serveur MCP (Python)"]
-    MCP -->|"OBO → rag<br/>/api/extraits"| GW
-    MCP -->|"OBO → underwriting<br/>/api/contrats, écritures"| GW
+    MCP -->|"OBO → rag<br/>/api/v1/extraits"| GW
+    MCP -->|"OBO → underwriting<br/>/api/v1/contrats, écritures"| GW
     GW --> RAG["rag"]
     GW --> UW["underwriting-admin"]
     MCP -. "OTLP /v1/traces<br/>(Azure : jeton d'application, rôle Telemetrie)" .-> GW
-    MCP -->|"/api/calcul<br/>(jeton d'application, rôle Calcul)"| GW
+    MCP -->|"/api/v1/calcul<br/>(jeton d'application, rôle Calcul)"| GW
 ```
 
-**Texte alternatif du diagramme.** Le cluster d'agents (Saga, Pièces, Analyste, Rédacteur, Actuaire) envoie ses requêtes `POST` ou `GET` sur `/mcp` à la gateway, avec un jeton dont l'`azp` est celui de l'agent. La gateway contrôle le rôle, l'audience et le débit, puis transmet sans tampon (SSE) au serveur MCP. Le serveur MCP appelle `rag` (`/api/extraits`) et `underwriting-admin` (`/api/contrats` et les écritures) **en repassant par la gateway**, avec un jeton obtenu en On-Behalf-Of. En Azure, il exporte ses traces en OTLP par la gateway (`/v1/traces`, jeton d'application, rôle `Telemetrie` ; en local, export direct vers underwriting-admin) et appelle la Function de calcul par la gateway (`/api/calcul`, rôle `Calcul`) : aucun appel direct.
+**Texte alternatif du diagramme.** Le cluster d'agents (Saga, Pièces, Analyste, Rédacteur, Actuaire) envoie ses requêtes `POST` ou `GET` sur `/mcp` à la gateway, avec un jeton dont l'`azp` est celui de l'agent. La gateway contrôle le rôle, l'audience et le débit, puis transmet sans tampon (SSE) au serveur MCP. Le serveur MCP appelle `rag` (`/api/v1/extraits`) et `underwriting-admin` (`/api/v1/contrats` et les écritures) **en repassant par la gateway**, avec un jeton obtenu en On-Behalf-Of. En Azure, il exporte ses traces en OTLP par la gateway (`/v1/traces`, jeton d'application, rôle `Telemetrie` ; en local, export direct vers underwriting-admin) et appelle la Function de calcul par la gateway (`/api/calcul`, rôle `Calcul`) : aucun appel direct.
 
 ### 1.1 Organisation du code
 
@@ -35,8 +35,8 @@ Les outils sont déclarés avec le SDK MCP officiel ; la docstring de chacun est
 
 | Outil | Paramètres | Sortie | Nature |
 |---|---|---|---|
-| `search_rag` | `question` (texte), `top_k` (1 à 20, facultatif) | Extraits cités (article, version, source, score) tels que rendus par `GET /api/extraits` de rag | Lecture |
-| `get_contrat` | `numero_contrat` | Contrat : profil du conducteur, historique, formule (`GET /api/contrats/{numero}`) | Lecture |
+| `search_rag` | `question` (texte), `top_k` (1 à 20, facultatif) | Extraits cités (article, version, source, score) tels que rendus par `GET /api/v1/extraits` de rag | Lecture |
+| `get_contrat` | `numero_contrat` | Contrat : profil du conducteur, historique, formule (`GET /api/v1/contrats/{numero}`) | Lecture |
 | `enregistrer_brouillon` | `numero_contrat`, `fiche` (`decision`, `contrat_type`, `score`, `version_bareme`, `regle_ids`, `motifs`, `citations`), `prime` facultative (`prime_ttc`, `periodicite`, `date_effet` AAAA-MM-JJ) | `{"ecrit": true}` | Écriture, brouillon seulement, idempotente |
 | `update_statut_dossier` | `numero_contrat`, `statut` (ex. `REVUE_HUMAINE`, `ACCEPTE`, `REFUSE`), `validation` (`VALIDEE` ou `CORRIGEE`, exigée avec `ACCEPTE` et `REFUSE`) | `{"ecrit": true}` | Écriture, seul outil qui écrit une décision |
 | `lister_pieces` | `numero_contrat` | `{"pieces": [{"type", "date_emission"}]}` | Lecture : métadonnées seulement, sans contenu de pièce |
@@ -86,7 +86,7 @@ La matrice est un dictionnaire du domaine (`domain/matrice.py`), versionné par 
 
 ## 5. Traces
 
-Export OTLP/HTTP (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) : en local, **direct** vers `http://underwriting-admin:8002/v1/traces` (comme rag, sans jeton) ; en Azure, par la gateway `/v1/traces` (jeton d'application, rôle `Telemetrie`, jamais journalisé). Le `traceparent` entrant est repris et propagé vers la gateway : une trace par dossier, relue par `GET /api/traces/{trace_id}`. `OTEL_SDK_DISABLED=true` coupe tout.
+Export OTLP/HTTP (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) : en local, **direct** vers `http://underwriting-admin:8002/v1/traces` (comme rag, sans jeton) ; en Azure, par la gateway `/v1/traces` (jeton d'application, rôle `Telemetrie`, jamais journalisé). Le `traceparent` entrant est repris et propagé vers la gateway : une trace par dossier, relue par `GET /api/v1/traces/{trace_id}`. `OTEL_SDK_DISABLED=true` coupe tout.
 
 | Span | Attributs |
 |---|---|
@@ -99,7 +99,7 @@ Export OTLP/HTTP (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) : en local, **direct** v
 
 **Jamais tracé** (vérifié par les tests) : jeton, `numero_contrat`, identité du gestionnaire, texte de la question (seulement `question.sha256` et `question.longueur`), contenu de contrat (observations comprises), de fiche, de prime ou d'état de parcours, message d'une exception.
 
-**Limite connue** : les spans HTTP de la gateway et d'underwriting-admin (instrumentation ASP.NET Core) contiennent `url.path`, donc le `numero_contrat` des routes `/api/contrats/{numero_contrat}…` ; antérieur au serveur MCP, à traiter dans une issue dédiée.
+**Limite connue** : les spans HTTP de la gateway et d'underwriting-admin (instrumentation ASP.NET Core) contiennent `url.path`, donc le `numero_contrat` des routes `/api/v1/contrats/{numero_contrat}…` ; antérieur au serveur MCP, à traiter dans une issue dédiée.
 
 ## 6. Exploitation
 

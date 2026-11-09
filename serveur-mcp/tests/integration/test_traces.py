@@ -35,7 +35,7 @@ class Gateway:
 
     def __call__(self, requete: httpx.Request) -> httpx.Response:
         self.requetes.append(requete)
-        if requete.url.path == "/api/extraits":
+        if requete.url.path == "/api/v1/extraits":
             return httpx.Response(200, json={"statut": "OK", "resultats": []})
         if requete.method == "GET":
             return httpx.Response(200, json={"numero_contrat": CONTRAT})
@@ -100,7 +100,10 @@ async def test_search_rag_trace_la_question_par_son_empreinte(spans: InMemorySpa
     assert attributs["question.sha256"] == hashlib.sha256(QUESTION.encode()).hexdigest()
     assert attributs["question.longueur"] == len(QUESTION)
     assert _un(spans, "obo.echanger") == {"obo.cible": "rag", "obo.reussi": True}
-    assert _un(spans, "gateway.appel") == {"http.route": "/api/extraits", "http.status_code": 200}
+    assert _un(spans, "gateway.appel") == {
+        "http.route": "/api/v1/extraits",
+        "http.status_code": 200,
+    }
 
 
 async def test_get_contrat_trace_le_gabarit_de_la_route(spans: InMemorySpanExporter) -> None:
@@ -109,7 +112,7 @@ async def test_get_contrat_trace_le_gabarit_de_la_route(spans: InMemorySpanExpor
     assert _un(spans, "mcp.outil")["contrat.present"] is True
     assert _un(spans, "obo.echanger")["obo.cible"] == "underwriting"
     assert _un(spans, "gateway.appel") == {
-        "http.route": "/api/contrats/{numero_contrat}",
+        "http.route": "/api/v1/contrats/{numero_contrat}",
         "http.status_code": 200,
     }
 
@@ -120,7 +123,7 @@ async def test_ecritures_tracent_le_statut_cible(spans: InMemorySpanExporter) ->
         await s.call_tool("update_statut_dossier", args)
     attributs = _un(spans, "mcp.outil")
     assert (attributs["statut.cible"], attributs["contrat.present"]) == ("REVUE_HUMAINE", True)
-    assert _un(spans, "gateway.appel")["http.route"] == "/api/contrats/{numero_contrat}/statut"
+    assert _un(spans, "gateway.appel")["http.route"] == "/api/v1/contrats/{numero_contrat}/statut"
 
 
 async def test_refus_trace_la_decision_deny_sans_appel_sortant(

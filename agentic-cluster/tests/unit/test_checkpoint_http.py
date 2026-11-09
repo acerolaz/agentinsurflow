@@ -22,7 +22,7 @@ from agentinsurflow_cluster.infrastructure.langgraph.checkpoint import checkpoin
 from agentinsurflow_cluster.infrastructure.langgraph.checkpoint_http import CheckpointerHttp
 from agentinsurflow_cluster.infrastructure.langgraph.graphe import ServiceEvaluation
 
-RACINE = "/api/points-de-reprise/"
+RACINE = "/api/v1/points-de-reprise/"
 
 
 class FauxUnderwriting:

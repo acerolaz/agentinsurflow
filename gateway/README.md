@@ -26,18 +26,18 @@ Jeton **Entra ID** (Bearer) validé à l'entrée : signature (clés publiées pa
 
 | Route | Politique | Rôle d'app | Audience |
 |---|---|---|---|
-| `POST /api/reponses`, `GET /api/extraits`, `GET /api/documents/{doc_id}`, `GET /api/documents/{doc_id}/attribution` | `rag-gestionnaire` | `Gestionnaire` | `agentinsurflow-rag` |
-| `POST`/`GET /api/ingestions[/{id}]` | `rag-ingestion` | `Ingestion` | `agentinsurflow-rag` |
-| `/api/contrats/{**reste}` (portefeuille, dossier, pièces, état, fiche du lead, contrat, relances, sans suite), `GET /api/traces/{trace_id}` | `underwriting-gestionnaire` | `Gestionnaire` | `agentinsurflow-underwriting` |
+| `POST /api/v1/reponses`, `GET /api/v1/extraits`, `GET /api/v1/documents/{doc_id}`, `GET /api/v1/documents/{doc_id}/attribution` | `rag-gestionnaire` | `Gestionnaire` | `agentinsurflow-rag` |
+| `POST`/`GET /api/v1/ingestions[/{id}]` | `rag-ingestion` | `Ingestion` | `agentinsurflow-rag` |
+| `/api/v1/contrats/{**reste}` (portefeuille, dossier, pièces, état, fiche du lead, contrat, relances, sans suite), `GET /api/v1/traces/{trace_id}` | `underwriting-gestionnaire` | `Gestionnaire` | `agentinsurflow-underwriting` |
 | `POST /v1/traces` | `underwriting-telemetrie` | `Telemetrie` | `agentinsurflow-underwriting` |
-| `/api/points-de-reprise/{**reste}` (points de reprise du graphe du cluster, D106) | `underwriting-points-de-reprise` | `PointsDeReprise`, et `azp` = `Entra:ClusterClientId` (`INSURFLOW_CLUSTER_CLIENT_ID`) | `agentinsurflow-underwriting` |
+| `/api/v1/points-de-reprise/{**reste}` (points de reprise du graphe du cluster, D106) | `underwriting-points-de-reprise` | `PointsDeReprise`, et `azp` = `Entra:ClusterClientId` (`INSURFLOW_CLUSTER_CLIENT_ID`) | `agentinsurflow-underwriting` |
 | `/`, `/openapi/v1.json`, `GET /rag/openapi.json`, `GET /underwriting/openapi/v1.json`, `GET /cluster/openapi.json`, `GET /calcul/openapi.json`, `/health*` | `anonymous` | — | — |
 
-Les routes de documentation n'ouvrent **que** le document OpenAPI de chaque service : tout autre chemin sous `/rag/` ou `/underwriting/` tombe dans le refus par défaut (sinon `/rag/api/reponses` atteindrait `rag` sans jeton ni limite de débit). Le « Try it out » de la page Swagger appelle les routes REST publiques (`/api/…`), donc avec leur politique.
+Les routes de documentation n'ouvrent **que** le document OpenAPI de chaque service : tout autre chemin sous `/rag/` ou `/underwriting/` tombe dans le refus par défaut (sinon `/rag/api/v1/reponses` atteindrait `rag` sans jeton ni limite de débit). Le « Try it out » de la page Swagger appelle les routes REST publiques (`/api/…`), donc avec leur politique.
 
 - **Refus par défaut** : tout le reste exige au moins un jeton valide (un chemin inconnu répond 401 sans jeton, 404 avec).
 - Erreurs en ProblemDetails : **401** `NON_AUTHENTIFIE` (+ `WWW-Authenticate: Bearer`), **403** `ACCES_REFUSE` ; aucun appel n'est transmis.
-- Appelants : les humains (Swagger en PKCE, `az login`), la CI (identité fédérée OIDC de GitHub Actions). `rag` lit les dossiers d'`underwriting-admin` en On-Behalf-Of **par la gateway** (`/api/contrats`, politique `underwriting-gestionnaire`), comme tout appelant (D22). Seul l'export OTLP des spans reste sur la boucle locale (S3-21).
+- Appelants : les humains (Swagger en PKCE, `az login`), la CI (identité fédérée OIDC de GitHub Actions). `rag` lit les dossiers d'`underwriting-admin` en On-Behalf-Of **par la gateway** (`/api/v1/contrats`, politique `underwriting-gestionnaire`), comme tout appelant (D22). Seul l'export OTLP des spans reste sur la boucle locale (S3-21).
 - Sans `Entra__TenantId` ou sans audiences, la gateway **refuse de démarrer** plutôt que de s'ouvrir.
 
 ## Limitation de débit (S3-27, issue #13)
@@ -47,7 +47,7 @@ Limiteur **natif** d'ASP.NET Core (aucun paquet), en fenêtre fixe de 60 s, par 
 | Portée | Limite par défaut | Réglage |
 |---|---|---|
 | Toutes les routes | 120 requêtes/min | `RateLimit__Global__PermitLimit` |
-| `POST /api/reponses` (coût LLM), en plus de la limite globale | 10 requêtes/min | `RateLimit__Reponses__PermitLimit` |
+| `POST /api/v1/reponses` (coût LLM), en plus de la limite globale | 10 requêtes/min | `RateLimit__Reponses__PermitLimit` |
 | `/api/v1/souscriptions/{numero_contrat}/evaluation` et `…/decision` (cluster, plusieurs appels LLM par évaluation ; le `GET` compte aussi) | 10 requêtes/min (défaut du code) | `RateLimit__Cluster__PermitLimit` |
 | `/health`, `/health/rag`, `/health/underwriting` (sondes) | jamais limitées | — |
 
@@ -61,22 +61,22 @@ En Azure, la gateway est derrière l'**envoy** de Container Apps, qui ajoute l'I
 
 | Méthode · URI publique | Service | Succès | Ressource |
 |---|---|---|---|
-| `POST /api/reponses` | `rag` | 200 | Réponse citée de l'agent à une question (calculée, non conservée : RGPD) |
-| `POST /api/ingestions` | `rag` | 201 + `Location` | Ingestion d'un lot d'articles |
-| `GET /api/ingestions`, `GET /api/ingestions/{id}` | `rag` | 200 | Rapports d'ingestion journalisés |
-| `GET /api/extraits?question=…&top_k=5` | `rag` | 200 | Extraits du corpus passant la porte de pertinence (`NOT_FOUND_IN_CORPUS` sinon) |
-| `GET /api/documents/{doc_id}` | `rag` | 200 · 404 | Document source, ses versions et ses chunks (traçabilité) |
-| `GET /api/documents/{doc_id}/attribution?version=` | `rag` | 200 · 404 | Mentions Etalab 2.0 d'un article cité |
-| `GET /api/contrats?limit&offset`, `GET /api/contrats/{numero_contrat}` | `underwriting-admin` | 200 · 404 | Portefeuille du gestionnaire, vue minimisée (BOLA : 404 hors portefeuille) |
-| `GET /api/contrats/{numero_contrat}/pieces`, `/etat` | `underwriting-admin` | 200 · 404 | Pièces déclarées ; progression du dossier (rapports des agents, sections lisibles) |
-| `GET /api/contrats/{numero_contrat}/souscripteur` | `underwriting-admin` | 200 · 404 | Fiche du lead pour l'espace gestionnaire (exception à la minimisation, jamais vers le cluster ni un LLM) |
-| `GET /v1/souscriptions/{numero_contrat}/contrat` | `underwriting-admin` (réécrit en `/api/contrats/{numero_contrat}/contrat`) | 200 · 404 · 409 | Contrat imprimé après `ACCEPTE` |
-| `POST /api/contrats/{numero_contrat}/relances` ; `PUT …/statut` `{"statut": "SANS_SUITE"}` | `underwriting-admin` | 201 · 204 · 400 · 403 · 404 · 409 | Relance de pièces (3 au plus) ; classement `SANS_SUITE` après la 3e relance, refusé au serveur MCP (#245) |
-| `GET /api/traces/{trace_id}` | `underwriting-admin` | 200 · 404 | Trace OpenTelemetry, tous services confondus |
+| `POST /api/v1/reponses` | `rag` | 200 | Réponse citée de l'agent à une question (calculée, non conservée : RGPD) |
+| `POST /api/v1/ingestions` | `rag` | 201 + `Location` | Ingestion d'un lot d'articles |
+| `GET /api/v1/ingestions`, `GET /api/v1/ingestions/{id}` | `rag` | 200 | Rapports d'ingestion journalisés |
+| `GET /api/v1/extraits?question=…&top_k=5` | `rag` | 200 | Extraits du corpus passant la porte de pertinence (`NOT_FOUND_IN_CORPUS` sinon) |
+| `GET /api/v1/documents/{doc_id}` | `rag` | 200 · 404 | Document source, ses versions et ses chunks (traçabilité) |
+| `GET /api/v1/documents/{doc_id}/attribution?version=` | `rag` | 200 · 404 | Mentions Etalab 2.0 d'un article cité |
+| `GET /api/v1/contrats?limit&offset`, `GET /api/v1/contrats/{numero_contrat}` | `underwriting-admin` | 200 · 404 | Portefeuille du gestionnaire, vue minimisée (BOLA : 404 hors portefeuille) |
+| `GET /api/v1/contrats/{numero_contrat}/pieces`, `/etat` | `underwriting-admin` | 200 · 404 | Pièces déclarées ; progression du dossier (rapports des agents, sections lisibles) |
+| `GET /api/v1/contrats/{numero_contrat}/souscripteur` | `underwriting-admin` | 200 · 404 | Fiche du lead pour l'espace gestionnaire (exception à la minimisation, jamais vers le cluster ni un LLM) |
+| `POST /api/v1/contrats/{numero_contrat}/relances` ; `PUT …/statut` `{"statut": "SANS_SUITE"}` | `underwriting-admin` | 201 · 204 · 400 · 403 · 404 · 409 | Relance de pièces (3 au plus) ; classement `SANS_SUITE` après la 3e relance, refusé au serveur MCP (#245) |
+| `GET /api/v1/contrats/{numero_contrat}/contrat` | `underwriting-admin` | 200 · 404 · 409 | Contrat imprimé après `ACCEPTE` (l'alias `GET /v1/souscriptions/{n}/contrat` est retiré, #246) |
+| `GET /api/v1/traces/{trace_id}` | `underwriting-admin` | 200 · 404 | Trace OpenTelemetry, tous services confondus |
 | `POST /v1/traces` | `underwriting-admin` | 200 | **Exception** : chemin imposé par la norme OTLP (récepteur de spans), pas une API métier |
 | `GET /health`, `/health/rag`, `/health/underwriting` | gateway, services | 200 | Santé et versions |
 
-Règles communes : ressources au pluriel ; `GET` sans effet de bord ; `POST` pour créer ou calculer ; `201` + `Location` à la création ; erreurs au format **ProblemDetails** (RFC 9457) avec un champ `code` (`CONTRAT_INTROUVABLE`…) ; pagination `limit`/`offset`. Tout chemin non listé : **404** (401 sans jeton, refus par défaut), sans appel transmis.
+Règles communes : **toute API métier est versionnée en `/api/v1/…`**, dans chaque service (#246) : la gateway transmet le chemin public tel quel, sauf vers la Function de calcul (routes internes inchangées, Easy Auth). **Exceptions**, hors versionnement : `/v1/traces` (norme OTLP), `/health*`, `/mcp` (transport JSON-RPC), `/api/llm/*` (chemin dicté par le SDK compatible OpenAI) et les documents OpenAPI. Ressources au pluriel ; `GET` sans effet de bord ; `POST` pour créer ou calculer ; `201` + `Location` à la création ; erreurs au format **ProblemDetails** (RFC 9457) avec un champ `code` (`CONTRAT_INTROUVABLE`…) ; pagination `limit`/`offset`. Tout chemin non listé : **404** (401 sans jeton, refus par défaut), sans appel transmis.
 
 ### Correspondance avec les noms du brief (livrable L9)
 
@@ -84,12 +84,12 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 
 | Nom dans le brief / dossier | Endpoint REST |
 |---|---|
-| `POST /api/agent` (sprint 2) | `POST /api/reponses` |
-| `/v1/ingestion` | `POST /api/ingestions` (+ `GET /api/ingestions[/{id}]`) |
-| `/internal/rag/search` | `GET /api/extraits?question=…` |
-| `/internal/rag/documents/{doc_id}` | `GET /api/documents/{doc_id}` |
-| `/internal/sql/…` (contrats) | `GET /api/contrats[/{numero_contrat}]` |
-| `/internal/traces/{trace_id}` | `GET /api/traces/{trace_id}` |
+| `POST /api/agent` (sprint 2) | `POST /api/v1/reponses` |
+| `/v1/ingestion` | `POST /api/v1/ingestions` (+ `GET /api/v1/ingestions[/{id}]`) |
+| `/internal/rag/search` | `GET /api/v1/extraits?question=…` |
+| `/internal/rag/documents/{doc_id}` | `GET /api/v1/documents/{doc_id}` |
+| `/internal/sql/…` (contrats) | `GET /api/v1/contrats[/{numero_contrat}]` |
+| `/internal/traces/{trace_id}` | `GET /api/v1/traces/{trace_id}` |
 
 ## Exception JSON-RPC : `/mcp`
 
@@ -99,7 +99,7 @@ Le brief et le dossier de conception nomment les endpoints de données en style 
 - **Flux sans tampon** : YARP relaie les événements SSE au fil de l'eau (testé) ; `ActivityTimeout` de 5 min sur le cluster `mcp`. `traceparent` est relayé.
 - **Débit** : `RateLimit__Mcp__PermitLimit` (60 requêtes/min par utilisateur et application), en plus de la limite globale.
 - Outils, codes d'erreur : voir `serveur-mcp/README.md`.
-- Les écritures `PUT /api/contrats/{numéro}/brouillon` et `/statut` passent par la route `underwriting-contrats` existante. `PUT /api/contrats/{numéro}/etat` (mémoire du dossier) a sa propre route `underwriting-etat`, déclarée avant : elle exige, en plus du rôle `Gestionnaire` et de l'audience underwriting, `azp` = `Entra:McpClientId` (`MCP_API_CLIENT_ID`, le client OBO du serveur MCP) ; un gestionnaire en direct reçoit `403`, et sans `Entra:McpClientId` la route est fermée.
+- Les écritures `PUT /api/v1/contrats/{numéro}/brouillon` et `/statut` passent par la route `underwriting-contrats` existante. `PUT /api/v1/contrats/{numéro}/etat` (mémoire du dossier) a sa propre route `underwriting-etat`, déclarée avant : elle exige, en plus du rôle `Gestionnaire` et de l'audience underwriting, `azp` = `Entra:McpClientId` (`MCP_API_CLIENT_ID`, le client OBO du serveur MCP) ; un gestionnaire en direct reçoit `403`, et sans `Entra:McpClientId` la route est fermée.
 
 ## Routes du cluster d'agents
 
@@ -199,7 +199,7 @@ gateway/
 
 **Une fois, à la main (Acerola), avant le premier déploiement** : `make annexe` (image annexe + secrets PostgreSQL), `make entra DOMAINE=aibrokerflow.fr` (inscriptions `agentinsurflow-rag` et `agentinsurflow-underwriting`, rôles, redirections Swagger), `make llm` (canal LLM : inscriptions `agentinsurflow-llm` et `agentinsurflow-gateway-local`, Foundry sans clé), puis les variables GitHub affichées (`RAG_API_CLIENT_ID`, `UNDERWRITING_API_CLIENT_ID`, `LLM_AUDIENCE`, `LLM_API_CLIENT_ID`, `FOUNDRY_ENDPOINT`, `AZURE_UAMI_RAG_CLIENT_ID`…, voir `docs/secrets.md`).
 
-**Fumée (porte bloquante)**, par la gateway : `/health` et `/health/rag` donnent le SHA déployé ; `POST /api/reponses` sans jeton → 401.
+**Fumée (porte bloquante)**, par la gateway : `/health` et `/health/rag` donnent le SHA déployé ; `POST /api/v1/reponses` sans jeton → 401.
 
 **IP publique (#10)** : IP statique entrante de l'environnement `cae-insurflow` : `4.225.231.167` (`az containerapp env show --query properties.staticIp`). Seule la gateway a une entrée externe ; derrière l'envoy d'Azure, elle reprend l'IP réelle du client (`Proxy__EnvoyDevant=true`).
 

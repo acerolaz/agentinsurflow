@@ -80,7 +80,7 @@
         }
       }
     },
-    "/api/traces/{trace_id}": {
+    "/api/v1/traces/{trace_id}": {
       "get": {
         "tags": [
           "Traces"
@@ -154,7 +154,7 @@
         }
       }
     },
-    "/api/contrats": {
+    "/api/v1/contrats": {
       "get": {
         "tags": [
           "Contrats"
@@ -226,7 +226,7 @@
         }
       }
     },
-    "/api/contrats/{numero_contrat}": {
+    "/api/v1/contrats/{numero_contrat}": {
       "get": {
         "tags": [
           "Contrats"
@@ -287,7 +287,7 @@
         }
       }
     },
-    "/api/contrats/{numero_contrat}/pieces": {
+    "/api/v1/contrats/{numero_contrat}/pieces": {
       "get": {
         "tags": [
           "Contrats"
@@ -351,7 +351,7 @@
         }
       }
     },
-    "/api/contrats/{numero_contrat}/pieces/{type}/fichier": {
+    "/api/v1/contrats/{numero_contrat}/pieces/{type}/fichier": {
       "get": {
         "tags": [
           "Contrats"
@@ -413,7 +413,7 @@
         }
       }
     },
-    "/api/contrats/{numero_contrat}/etat": {
+    "/api/v1/contrats/{numero_contrat}/etat": {
       "get": {
         "tags": [
           "Contrats"
@@ -553,7 +553,7 @@
         }
       }
     },
-    "/api/contrats/{numero_contrat}/contrat": {
+    "/api/v1/contrats/{numero_contrat}/contrat": {
       "get": {
         "tags": [
           "Contrats"
@@ -624,7 +624,7 @@
         }
       }
     },
-    "/api/contrats/{numero_contrat}/souscripteur": {
+    "/api/v1/contrats/{numero_contrat}/souscripteur": {
       "get": {
         "tags": [
           "Contrats"
@@ -685,7 +685,7 @@
         }
       }
     },
-    "/api/contrats/{numero_contrat}/brouillon": {
+    "/api/v1/contrats/{numero_contrat}/brouillon": {
       "put": {
         "tags": [
           "Contrats"
@@ -766,7 +766,7 @@
         }
       }
     },
-    "/api/contrats/{numero_contrat}/statut": {
+    "/api/v1/contrats/{numero_contrat}/statut": {
       "put": {
         "tags": [
           "Contrats"
@@ -847,7 +847,7 @@
         }
       }
     },
-    "/api/contrats/{numero_contrat}/observations": {
+    "/api/v1/contrats/{numero_contrat}/observations": {
       "put": {
         "tags": [
           "Contrats"
@@ -928,7 +928,7 @@
         }
       }
     },
-    "/api/contrats/{numero_contrat}/relances": {
+    "/api/v1/contrats/{numero_contrat}/relances": {
       "post": {
         "tags": [
           "Contrats"
@@ -1019,7 +1019,7 @@
         }
       }
     },
-    "/api/points-de-reprise/{thread_id}": {
+    "/api/v1/points-de-reprise/{thread_id}": {
       "get": {
         "tags": [
           "PointsDeReprise"
@@ -1198,7 +1198,7 @@
         }
       }
     },
-    "/api/points-de-reprise/{thread_id}/liste": {
+    "/api/v1/points-de-reprise/{thread_id}/liste": {
       "get": {
         "tags": [
           "PointsDeReprise"
@@ -1285,7 +1285,7 @@
         }
       }
     },
-    "/api/points-de-reprise/{thread_id}/ecritures": {
+    "/api/v1/points-de-reprise/{thread_id}/ecritures": {
       "put": {
         "tags": [
           "PointsDeReprise"

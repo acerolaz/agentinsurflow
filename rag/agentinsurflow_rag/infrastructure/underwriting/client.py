@@ -1,4 +1,4 @@
-"""Adaptateur HTTP du port ``DepotDossiers`` : ``GET /api/contrats/{numero_contrat}`` chez
+"""Adaptateur HTTP du port ``DepotDossiers`` : ``GET /api/v1/contrats/{numero_contrat}`` chez
 underwriting-admin, avec le jeton On-Behalf-Of du gestionnaire et le ``traceparent`` courant.
 """
 
@@ -24,7 +24,7 @@ class ClientUnderwriting:
     async def lire_contrat(self, numero_contrat: str) -> VueContrat | None:
         entetes = {"Authorization": f"Bearer {await self._jeton_obo()}"}
         propagate.inject(entetes)  # une seule trace : rag → underwriting-admin
-        url = f"{self._base}/api/contrats/{quote(numero_contrat, safe='')}"
+        url = f"{self._base}/api/v1/contrats/{quote(numero_contrat, safe='')}"
         try:
             reponse = await self._http.get(url, headers=entetes)
         except httpx.HTTPError as exc:

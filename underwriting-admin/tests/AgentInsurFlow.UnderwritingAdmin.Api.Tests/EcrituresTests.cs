@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AgentInsurFlow.UnderwritingAdmin.Api.Tests;
 
-/// <summary>TI : routes d'écriture <c>/api/contrats/{numero}/brouillon|statut</c>, jetons réels, port <see cref="IDepotEcritures"/> en mémoire.</summary>
+/// <summary>TI : routes d'écriture <c>/api/v1/contrats/{numero}/brouillon|statut</c>, jetons réels, port <see cref="IDepotEcritures"/> en mémoire.</summary>
 public sealed class EcrituresTests : IDisposable
 {
     private const string GestionnaireA = "oid-gestionnaire-a";
@@ -74,7 +74,7 @@ public sealed class EcrituresTests : IDisposable
     [Fact]
     public async Task Brouillon_nominal_204_et_corps_snake_case_lu_par_le_port()
     {
-        var (statut, corps) = await Put("/api/contrats/AIF-A1/brouillon", Brouillon, GestionnaireA, "Gestionnaire");
+        var (statut, corps) = await Put("/api/v1/contrats/AIF-A1/brouillon", Brouillon, GestionnaireA, "Gestionnaire");
 
         Assert.Equal(HttpStatusCode.NoContent, statut);
         Assert.Null(corps);
@@ -84,7 +84,7 @@ public sealed class EcrituresTests : IDisposable
     [Fact]
     public async Task Brouillon_sans_prime_204()
     {
-        var (statut, _) = await Put("/api/contrats/AIF-A1/brouillon",
+        var (statut, _) = await Put("/api/v1/contrats/AIF-A1/brouillon",
             """{"fiche":{"decision":"REFUSE","contrat_type":"t","score":1,"version_bareme":"v","regle_ids":["R9"],"motifs":[],"citations":[]},"prime":null}""",
             GestionnaireA, "Gestionnaire");
 
@@ -94,7 +94,7 @@ public sealed class EcrituresTests : IDisposable
     [Fact]
     public async Task Brouillon_decision_inconnue_400_avec_le_code()
     {
-        var (statut, corps) = await Put("/api/contrats/AIF-A1/brouillon", Brouillon.Replace("ACCEPTE", "PEUTETRE", StringComparison.Ordinal),
+        var (statut, corps) = await Put("/api/v1/contrats/AIF-A1/brouillon", Brouillon.Replace("ACCEPTE", "PEUTETRE", StringComparison.Ordinal),
             GestionnaireA, "Gestionnaire");
 
         Assert.Equal(HttpStatusCode.BadRequest, statut);
@@ -105,8 +105,8 @@ public sealed class EcrituresTests : IDisposable
     [Fact]
     public async Task Brouillon_absent_et_autre_gestionnaire_meme_404()
     {
-        var (statutAbsent, absent) = await Put("/api/contrats/AIF-ZZZ/brouillon", Brouillon, GestionnaireA, "Gestionnaire");
-        var (statutAutre, autre) = await Put("/api/contrats/AIF-A1/brouillon", Brouillon, "oid-gestionnaire-b", "Gestionnaire");
+        var (statutAbsent, absent) = await Put("/api/v1/contrats/AIF-ZZZ/brouillon", Brouillon, GestionnaireA, "Gestionnaire");
+        var (statutAutre, autre) = await Put("/api/v1/contrats/AIF-A1/brouillon", Brouillon, "oid-gestionnaire-b", "Gestionnaire");
 
         Assert.Equal(HttpStatusCode.NotFound, statutAbsent);
         Assert.Equal(statutAbsent, statutAutre);
@@ -120,7 +120,7 @@ public sealed class EcrituresTests : IDisposable
     [Fact]
     public async Task Statut_nominal_204_et_le_port_recoit_le_gestionnaire_du_jeton()
     {
-        var (statut, _) = await Put("/api/contrats/AIF-A1/statut", """{"statut":"REFUSE","validation":"CORRIGEE"}""", GestionnaireA, "Gestionnaire");
+        var (statut, _) = await Put("/api/v1/contrats/AIF-A1/statut", """{"statut":"REFUSE","validation":"CORRIGEE"}""", GestionnaireA, "Gestionnaire");
 
         Assert.Equal(HttpStatusCode.NoContent, statut);
         Assert.Equal(["statut oid-gestionnaire-a AIF-A1 REFUSE CORRIGEE"], DepotEnMemoire.Appels);
@@ -129,7 +129,7 @@ public sealed class EcrituresTests : IDisposable
     [Fact]
     public async Task Statut_absent_404()
     {
-        var (statut, corps) = await Put("/api/contrats/AIF-ZZZ/statut", """{"statut":"EN_ANALYSE"}""", GestionnaireA, "Gestionnaire");
+        var (statut, corps) = await Put("/api/v1/contrats/AIF-ZZZ/statut", """{"statut":"EN_ANALYSE"}""", GestionnaireA, "Gestionnaire");
 
         Assert.Equal(HttpStatusCode.NotFound, statut);
         Assert.Equal("CONTRAT_INTROUVABLE", corps!.Value.GetProperty("code").GetString());
@@ -139,13 +139,13 @@ public sealed class EcrituresTests : IDisposable
     [InlineData("brouillon")]
     [InlineData("statut")]
     public async Task Sans_jeton_401(string route) =>
-        Assert.Equal(HttpStatusCode.Unauthorized, (await Put($"/api/contrats/AIF-A1/{route}", "{}", null)).Statut);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Put($"/api/v1/contrats/AIF-A1/{route}", "{}", null)).Statut);
 
     [Theory]
     [InlineData("brouillon")]
     [InlineData("statut")]
     public async Task Sans_role_Gestionnaire_403(string route) =>
-        Assert.Equal(HttpStatusCode.Forbidden, (await Put($"/api/contrats/AIF-A1/{route}", "{}", GestionnaireA, "Telemetrie")).Statut);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Put($"/api/v1/contrats/AIF-A1/{route}", "{}", GestionnaireA, "Telemetrie")).Statut);
 
     [Theory]
     [InlineData("""{"statut":"EN_ANALYSE"}""")]
@@ -159,7 +159,7 @@ public sealed class EcrituresTests : IDisposable
             s.AddSingleton<IDepotEcritures, DepotEnMemoire>();
         }));
         using var client = usine.CreateClient();
-        using var requete = new HttpRequestMessage(HttpMethod.Put, "/api/contrats/AIF-A1/statut")
+        using var requete = new HttpRequestMessage(HttpMethod.Put, "/api/v1/contrats/AIF-A1/statut")
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json"),
         };

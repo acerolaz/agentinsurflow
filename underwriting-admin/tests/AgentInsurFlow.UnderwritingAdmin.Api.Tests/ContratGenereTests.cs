@@ -48,7 +48,7 @@ public sealed class ContratGenereTests : IDisposable
     private async Task<(HttpStatusCode Statut, JsonElement Corps, string Brut)> Get(string numero, string oid)
     {
         using var client = _usine.CreateClient();
-        using var requete = new HttpRequestMessage(HttpMethod.Get, $"/api/contrats/{numero}/contrat");
+        using var requete = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/contrats/{numero}/contrat");
         requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JetonsDeTest.Jeton(JetonsDeTest.AudienceParDefaut, oid, "Gestionnaire"));
         using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
         var brut = await reponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);

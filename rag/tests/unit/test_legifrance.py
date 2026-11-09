@@ -238,7 +238,7 @@ def test_envoi_par_lots_de_50() -> None:
     tracer = TracerProvider().get_tracer("test")
     rapport = envoyer(_api(recu), "http://gw", "jeton", _articles(120), "f" * 64, JOUR, tracer)
     assert [len(json.loads(r.content)["articles"]) for r in recu] == [50, 50, 20]
-    assert recu[0].url.path == "/api/ingestions"
+    assert recu[0].url.path == "/api/v1/ingestions"
     assert recu[0].headers["authorization"] == "Bearer jeton"
     assert (rapport["lus"], rapport["inseres"], rapport["ingestions"]) == (120, 120, [1, 2, 3])
 

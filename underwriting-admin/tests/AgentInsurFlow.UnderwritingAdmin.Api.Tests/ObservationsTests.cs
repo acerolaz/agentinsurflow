@@ -72,10 +72,10 @@ public sealed class ObservationsTests : IDisposable
     private async Task<(HttpStatusCode Statut, JsonElement? Corps)> Appeler(HttpMethod methode, string numero, string oid, string? json = null)
     {
         using var client = _usine.CreateClient();
-        using var requete = new HttpRequestMessage(methode, $"/api/contrats/{numero}");
+        using var requete = new HttpRequestMessage(methode, $"/api/v1/contrats/{numero}");
         if (json is not null)
         {
-            requete.RequestUri = new Uri($"/api/contrats/{numero}/observations", UriKind.Relative);
+            requete.RequestUri = new Uri($"/api/v1/contrats/{numero}/observations", UriKind.Relative);
             requete.Content = new StringContent(json, Encoding.UTF8, "application/json");
         }
         requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JetonsDeTest.Jeton(JetonsDeTest.AudienceParDefaut, oid, "Gestionnaire"));

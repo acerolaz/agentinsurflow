@@ -5,7 +5,7 @@ namespace AgentInsurFlow.Gateway.Api.Tests;
 
 /// <summary>
 /// TI de la limitation de débit (S3-27, issue #13) : fenêtre fixe par utilisateur (<c>oid</c>) ou par IP,
-/// limite plus stricte sur <c>POST /api/reponses</c>, sondes jamais limitées. Limites réduites par réglage.
+/// limite plus stricte sur <c>POST /api/v1/reponses</c>, sondes jamais limitées. Limites réduites par réglage.
 /// </summary>
 public sealed class DebitTests(Backends backends) : IClassFixture<Backends>
 {
@@ -22,9 +22,9 @@ public sealed class DebitTests(Backends backends) : IClassFixture<Backends>
         using var client = usine.CreateClient();
         var jeton = Creer(AudienceUnderwriting, ["Gestionnaire"]);
 
-        await Envoyer(client, "GET", "/api/contrats", jeton);
-        await Envoyer(client, "GET", "/api/contrats", jeton);
-        var reponse = await Envoyer(client, "GET", "/api/contrats", jeton);
+        await Envoyer(client, "GET", "/api/v1/contrats", jeton);
+        await Envoyer(client, "GET", "/api/v1/contrats", jeton);
+        var reponse = await Envoyer(client, "GET", "/api/v1/contrats", jeton);
 
         Assert.Equal(HttpStatusCode.TooManyRequests, reponse.StatusCode);
         Assert.Equal("TROP_DE_REQUETES", await AutorisationTests.Code(reponse));
@@ -38,9 +38,9 @@ public sealed class DebitTests(Backends backends) : IClassFixture<Backends>
         using var usine = backends.Gateway(("RateLimit:Global:PermitLimit", "1"));
         using var client = usine.CreateClient();
 
-        await Envoyer(client, "GET", "/api/contrats", Creer(AudienceUnderwriting, ["Gestionnaire"], oid: "oid-a"));
-        var encoreA = await Envoyer(client, "GET", "/api/contrats", Creer(AudienceUnderwriting, ["Gestionnaire"], oid: "oid-a"));
-        var b = await Envoyer(client, "GET", "/api/contrats", Creer(AudienceUnderwriting, ["Gestionnaire"], oid: "oid-b"));
+        await Envoyer(client, "GET", "/api/v1/contrats", Creer(AudienceUnderwriting, ["Gestionnaire"], oid: "oid-a"));
+        var encoreA = await Envoyer(client, "GET", "/api/v1/contrats", Creer(AudienceUnderwriting, ["Gestionnaire"], oid: "oid-a"));
+        var b = await Envoyer(client, "GET", "/api/v1/contrats", Creer(AudienceUnderwriting, ["Gestionnaire"], oid: "oid-b"));
 
         Assert.Equal(HttpStatusCode.TooManyRequests, encoreA.StatusCode);
         Assert.Equal(HttpStatusCode.OK, b.StatusCode);
@@ -70,9 +70,9 @@ public sealed class DebitTests(Backends backends) : IClassFixture<Backends>
         using var client = usine.CreateClient();
         var jeton = Creer(AudienceRag, ["Gestionnaire"]);
 
-        await Envoyer(client, "POST", "/api/reponses", jeton);
-        var deuxieme = await Envoyer(client, "POST", "/api/reponses", jeton);
-        var extraits = await Envoyer(client, "GET", "/api/extraits?question=bonus", jeton);
+        await Envoyer(client, "POST", "/api/v1/reponses", jeton);
+        var deuxieme = await Envoyer(client, "POST", "/api/v1/reponses", jeton);
+        var extraits = await Envoyer(client, "GET", "/api/v1/extraits?question=bonus", jeton);
 
         Assert.Equal(HttpStatusCode.TooManyRequests, deuxieme.StatusCode);
         Assert.Equal(HttpStatusCode.OK, extraits.StatusCode);

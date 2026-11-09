@@ -107,9 +107,9 @@ var audiencesMcp = Audiences("mcp");
 var audiencesCalcul = Audiences("calcul");
 var audiencesLlm = Audiences("llm");
 var audiencesCluster = Audiences("cluster");
-// Client id du serveur MCP (azp de ses jetons OBO) : seul appelant de PUT /api/contrats/{n}/etat. Vide : route fermée.
+// Client id du serveur MCP (azp de ses jetons OBO) : seul appelant de PUT /api/v1/contrats/{n}/etat. Vide : route fermée.
 var clientMcp = builder.Configuration["Entra:McpClientId"];
-// Client id du cluster d'agents (azp de ses jetons) : seul appelant de /api/points-de-reprise/** (D106). Vide : route fermée.
+// Client id du cluster d'agents (azp de ses jetons) : seul appelant de /api/v1/points-de-reprise/** (D106). Vide : route fermée.
 var clientCluster = builder.Configuration["Entra:ClusterClientId"];
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -172,7 +172,7 @@ var limiteReponses = Limite("Reponses", 10);
 var limiteMcp = Limite("Mcp", 60);
 var limiteCalcul = Limite("Calcul", 60);
 var limiteLlm = Limite("Llm", 30);
-var limiteCluster = Limite("Cluster", 10); // une évaluation = plusieurs appels LLM : comme /api/reponses
+var limiteCluster = Limite("Cluster", 10); // une évaluation = plusieurs appels LLM : comme /api/v1/reponses
 builder.Services.AddRateLimiter(o =>
 {
     o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
@@ -238,7 +238,7 @@ if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_
     builder.Services.AddOpenTelemetry().UseAzureMonitor(o => { o.SamplingRatio = 1; o.TracesPerSecond = null; })
         // après UseAzureMonitor : son détecteur Container Apps poserait service.name = nom de l'app (la dernière ressource l'emporte)
         .ConfigureResource(NomDeService);
-    // UseAzureMonitor exporte aussi les journaux : « Request starting … /api/contrats/AIF-… » (Information) porte le numéro
+    // UseAzureMonitor exporte aussi les journaux : « Request starting … /api/v1/contrats/AIF-… » (Information) porte le numéro
     foreach (var categorie in new[] { "Microsoft", "System", "Yarp" })
     {
         builder.Logging.AddFilter<OpenTelemetry.Logs.OpenTelemetryLoggerProvider>(categorie, LogLevel.Warning);

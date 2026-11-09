@@ -6,6 +6,7 @@ using Azure.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Yarp.ReverseProxy.Configuration;
 using static AgentInsurFlow.Gateway.Api.Tests.JetonsDeTest;
 
 namespace AgentInsurFlow.Gateway.Api.Tests;
@@ -65,6 +66,32 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         Assert.Equal($"Bearer {JetonGateway}", Assert.Single(recu.Headers!["Authorization"]));
         Assert.Equal(Portee, Assert.Single(Assert.Single(credential.Portees)));
         Assert.Empty(backends.Mcp.LogEntries);
+    }
+
+    // Une route vers la Function oubliée dans `echanges` relaierait le jeton du MCP, refusé par Easy Auth :
+    // toute route protégée du cluster `calcul` déclarée dans la configuration doit arriver avec le jeton de la gateway.
+    [Fact]
+    public async Task Toute_route_protegee_vers_la_Function_echange_le_jeton()
+    {
+        var credential = new FauxCredential();
+        using var usine = GatewayAvecCredential(credential);
+        using var client = usine.CreateClient();
+        var routes = usine.Services.GetRequiredService<IProxyConfigProvider>().GetConfig().Routes
+            .Where(r => r.ClusterId == "calcul" && r.AuthorizationPolicy != "anonymous").ToList();
+        Assert.True(routes.Count >= 3, $"{routes.Count} route(s) de calcul protégée(s)");
+
+        foreach (var route in routes)
+        {
+            Assert.DoesNotContain("{", route.Match.Path, StringComparison.Ordinal);
+            using var requete = Requete(Assert.Single(route.Match.Methods!), route.Match.Path!, JetonCalcul());
+            requete.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+            using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
+        }
+
+        Assert.Equal(routes.Count, backends.Calcul.LogEntries.Count);
+        Assert.All(backends.Calcul.LogEntries,
+            e => Assert.Equal($"Bearer {JetonGateway}", Assert.Single(e.RequestMessage!.Headers!["Authorization"])));
     }
 
     [Fact]

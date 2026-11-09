@@ -115,7 +115,7 @@ def test_observations_hostiles_revue_humaine_et_message_neutre(
 ):
     contrat = _contrat("E2E_CONTRAT_HOSTILE", manque)
     ecrit = client.put(
-        f"/api/contrats/{contrat}/observations",
+        f"/api/v1/contrats/{contrat}/observations",
         headers=bearer(jeton_gestionnaire_underwriting),
         json={"observations": OBSERVATION_HOSTILE},
     )

@@ -60,7 +60,7 @@ public sealed class TelemetrieTests(Backends backends) : IClassFixture<Backends>
             }));
         // un avertissement d'une catégorie filtrée à Warning qui porte le numéro (ex. « Request failed » de YARP)
         usine.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Yarp.ReverseProxy").Log(
-            LogLevel.Warning, default, "Échec du renvoi vers /api/contrats/AIF-2026-000001", null, (message, _) => message);
+            LogLevel.Warning, default, "Échec du renvoi vers /api/v1/contrats/AIF-2026-000001", null, (message, _) => message);
         using var client = usine.CreateClient();
         // trace propre à la requête : les fournisseurs reçoivent aussi les spans des tests parallèles
         var trace = ActivityTraceId.CreateRandom().ToString();
@@ -88,7 +88,7 @@ public sealed class TelemetrieTests(Backends backends) : IClassFixture<Backends>
     [InlineData(AppInsights)]
     public async Task Spans_sans_numero_de_contrat(string? chaineAppInsights)
     {
-        var (spans, _) = await Executer(chaineAppInsights, "/api/contrats/AIF-2026-000001");
+        var (spans, _) = await Executer(chaineAppInsights, "/api/v1/contrats/AIF-2026-000001");
 
         Assert.Contains(spans, a => a.Kind == ActivityKind.Server);
         Assert.Contains(spans, a => a.Kind == ActivityKind.Client); // le renvoi YARP vers le backend
@@ -102,7 +102,7 @@ public sealed class TelemetrieTests(Backends backends) : IClassFixture<Backends>
     [Fact]
     public async Task Avec_chaine_app_insights_un_seul_span_serveur_par_requete()
     {
-        var (spans, _) = await Executer(AppInsights, "/api/contrats/AIF-2026-000001");
+        var (spans, _) = await Executer(AppInsights, "/api/v1/contrats/AIF-2026-000001");
 
         // le backend WireMock tourne dans ce processus et trace aussi sa réception : seul le span fils du traceparent est la gateway
         Assert.Single(spans, a => a.Kind == ActivityKind.Server && a.ParentSpanId.ToString() == "0123456789abcdef");
@@ -119,7 +119,7 @@ public sealed class TelemetrieTests(Backends backends) : IClassFixture<Backends>
     [Fact]
     public async Task Avec_chaine_app_insights_journaux_sans_numero_de_contrat()
     {
-        var (_, journaux) = await Executer(AppInsights, "/api/contrats/AIF-2026-000001");
+        var (_, journaux) = await Executer(AppInsights, "/api/v1/contrats/AIF-2026-000001");
 
         Assert.Contains(journaux, j => j.Contains("{numero_contrat}", StringComparison.Ordinal));
         Assert.All(journaux, j => Assert.DoesNotContain("AIF-", j));

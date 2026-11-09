@@ -86,8 +86,21 @@ def test_artefact_tolere_le_bruit_blas_pas_un_autre_modele():
     assert not ns["proche"](base, _bruite(base, 1e-2))
 
 
+def _appels_fermes_sans_jeton() -> set[str]:
+    """Les « VERBE chemin » de la boucle de fumée, qui exige un 401 pour chacun."""
+    liste = DEPLOY.split("for appel in ", 1)[1].split("; do", 1)[0]
+    assert '"$URL$2"' in DEPLOY and "sans jeton : $code ≠ 401" in DEPLOY
+    return set(liste.replace("\\\n", " ").split('"')[1::2])
+
+
 def test_fumee_ressources_de_calcul_fermees_sans_jeton():
+    appels = _appels_fermes_sans_jeton()
     for ressource in ("risques", "primes", "frequences"):  # R1, #242
-        assert f"$URL/api/v1/calcul/{ressource}" in DEPLOY
-        assert f"POST /api/v1/calcul/{ressource} sans jeton" in DEPLOY
-    assert "$URL/api/calcul/" not in DEPLOY  # anciens chemins (verbes) : plus routés
+        assert f"POST /api/v1/calcul/{ressource}" in appels
+    assert "/api/calcul/" not in DEPLOY  # anciens chemins (verbes) : plus routés
+
+
+def test_fumee_evaluation_fermee_sans_jeton_pour_chaque_operation():
+    evaluation = "/api/v1/souscriptions/$n/evaluation"  # R2, R3 (#243, #244)
+    attendus = {f"{v} {evaluation}" for v in ("POST", "GET", "PATCH")}
+    assert attendus | {f"PUT {evaluation}/decision"} <= _appels_fermes_sans_jeton()

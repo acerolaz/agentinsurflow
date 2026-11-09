@@ -13,7 +13,7 @@ internal static class EcrituresEndpoints
 {
     public static void MapEcritures(this IEndpointRouteBuilder app)
     {
-        var contrats = app.MapGroup("/api/contrats").RequireAuthorization("Gestionnaire").WithTags("Contrats");
+        var contrats = app.MapGroup("/api/v1/contrats").RequireAuthorization("Gestionnaire").WithTags("Contrats");
 
         contrats.MapPut("/{numero_contrat}/brouillon", async (ClaimsPrincipal utilisateur, EnregistrerBrouillon cas, CancellationToken ct,
                 [FromRoute(Name = "numero_contrat")] string numeroContrat, BrouillonCorps corps) =>

@@ -51,15 +51,15 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
 
     // Contrat REST (S3-24) : une route par ressource, au pluriel
     [Theory]
-    [InlineData("/api/reponses", "rag", "/api/reponses")]
-    [InlineData("/api/ingestions", "rag", "/api/ingestions")]
-    [InlineData("/api/ingestions/42", "rag", "/api/ingestions/42")]
-    [InlineData("/api/extraits?question=bonus", "rag", "/api/extraits")]
-    [InlineData("/api/documents/LEGIARTI000006800836", "rag", "/api/documents/LEGIARTI000006800836")]
+    [InlineData("/api/v1/reponses", "rag", "/api/v1/reponses")]
+    [InlineData("/api/v1/ingestions", "rag", "/api/v1/ingestions")]
+    [InlineData("/api/v1/ingestions/42", "rag", "/api/v1/ingestions/42")]
+    [InlineData("/api/v1/extraits?question=bonus", "rag", "/api/v1/extraits")]
+    [InlineData("/api/v1/documents/LEGIARTI000006800836", "rag", "/api/v1/documents/LEGIARTI000006800836")]
     [InlineData("/rag/openapi.json", "rag", "/openapi.json")]
-    [InlineData("/api/contrats", "underwriting", "/api/contrats")]
-    [InlineData("/api/contrats/AIF-2026-0001", "underwriting", "/api/contrats/AIF-2026-0001")]
-    [InlineData("/api/traces/0af7651916cd43dd8448eb211c80319c", "underwriting", "/api/traces/0af7651916cd43dd8448eb211c80319c")]
+    [InlineData("/api/v1/contrats", "underwriting", "/api/v1/contrats")]
+    [InlineData("/api/v1/contrats/AIF-2026-0001", "underwriting", "/api/v1/contrats/AIF-2026-0001")]
+    [InlineData("/api/v1/traces/0af7651916cd43dd8448eb211c80319c", "underwriting", "/api/v1/traces/0af7651916cd43dd8448eb211c80319c")]
     [InlineData("/v1/traces", "underwriting", "/v1/traces")]
     [InlineData("/underwriting/openapi/v1.json", "underwriting", "/openapi/v1.json")]
     public async Task Route_vers_le_bon_backend(string chemin, string backend, string cheminRecu)
@@ -83,6 +83,14 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     [InlineData("/v1/ingestion")]
     [InlineData("/internal/rag/search")]
     [InlineData("/internal/sql/contrats")]
+    // non versionnées et alias d'avant #246 : le chemin public est /api/v1/…
+    [InlineData("/api/reponses/x")]
+    [InlineData("/api/extraits/x")]
+    [InlineData("/api/documents/x")]
+    [InlineData("/api/contrats/AIF-2026-0001")]
+    [InlineData("/api/traces/abc")]
+    [InlineData("/api/points-de-reprise/x")]
+    [InlineData("/v1/souscriptions/AIF-2026-0001/contrat")]
     public async Task Chemin_non_route_404_sans_appel_backend(string chemin)
     {
         using var requete = Requete("GET", chemin, JetonComplet("rag"));
@@ -110,19 +118,19 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     public async Task Contrat_genere_route_vers_underwriting_avec_le_jeton()
     {
         var jeton = JetonComplet("underwriting");
-        using var requete = Requete("GET", "/v1/souscriptions/AIF-2026-0001/contrat", jeton);
+        using var requete = Requete("GET", "/api/v1/contrats/AIF-2026-0001/contrat", jeton);
 
         await Envoyer(requete);
 
         var recue = Assert.Single(_backends.Underwriting.LogEntries).RequestMessage!;
-        Assert.Equal("/api/contrats/AIF-2026-0001/contrat", recue.Path);
+        Assert.Equal("/api/v1/contrats/AIF-2026-0001/contrat", recue.Path);
         Assert.Equal($"Bearer {jeton}", Assert.Single(recue.Headers!["Authorization"]));
     }
 
     [Fact]
     public async Task XForwardedPrefix_du_client_ne_passe_pas()
     {
-        using var requete = Requete("GET", "/api/contrats", JetonComplet("underwriting"));
+        using var requete = Requete("GET", "/api/v1/contrats", JetonComplet("underwriting"));
         requete.Headers.Add("X-Forwarded-Prefix", "/pirate");
 
         await Envoyer(requete);
@@ -150,7 +158,7 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     {
         const string traceparent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
         var jeton = Creer(AudienceUnderwriting, ["Gestionnaire"]);
-        using var requete = Requete("GET", "/api/contrats", jeton);
+        using var requete = Requete("GET", "/api/v1/contrats", jeton);
         requete.Headers.Add("traceparent", traceparent);
 
         await Envoyer(requete);

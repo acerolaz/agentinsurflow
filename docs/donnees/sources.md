@@ -16,4 +16,4 @@
 | **Jeu agrégé** | Non : passe par l'instantané | **Oui** (`legifrance`) | **Exclue** : agrégats statistiques, et dossiers lus seulement par la vue minimisée | **Oui** (procédures, `bareme`) | **Oui** (`bareme`) | **Oui** (`scraping`) | **Exclue** : statistiques, pas des textes à citer |
 
 **Attribution Etalab** : chaque article cité expose son attribution (concédant DILA, licence, lien vers
-l'original, date d'extraction, mention des modifications) via `GET /api/documents/{doc_id}/attribution`.
+l'original, date d'extraction, mention des modifications) via `GET /api/v1/documents/{doc_id}/attribution`.

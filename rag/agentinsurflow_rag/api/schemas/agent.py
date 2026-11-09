@@ -36,7 +36,7 @@ class ReponseDTO(BaseModel):
     modele: str | None = None
     statut: Literal["OK", "NOT_FOUND_IN_CORPUS", "REVUE_HUMAINE"]
     citations: list[CitationRagDTO | CitationSqlDTO]
-    trace_id: str | None = Field(description="Trace OpenTelemetry : GET /api/traces/{trace_id}")
+    trace_id: str | None = Field(description="Trace OpenTelemetry : GET /api/v1/traces/{trace_id}")
 
     @classmethod
     def depuis(cls, reponse: Reponse, trace_id: str | None) -> ReponseDTO:

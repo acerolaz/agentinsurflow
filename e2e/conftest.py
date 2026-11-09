@@ -56,13 +56,13 @@ def local(url: str) -> bool:
 
 @pytest.fixture(scope="session")
 def jeton_gestionnaire() -> str:
-    """Rôle Gestionnaire, audience de rag (``POST /api/reponses``)."""
+    """Rôle Gestionnaire, audience de rag (``POST /api/v1/reponses``)."""
     return _jeton("E2E_JETON_GESTIONNAIRE", "agentinsurflow-rag")
 
 
 @pytest.fixture(scope="session")
 def jeton_gestionnaire_underwriting() -> str:
-    """Rôle Gestionnaire, audience d'underwriting-admin (``/api/contrats``, ``/api/traces``)."""
+    """Rôle Gestionnaire, audience d'underwriting-admin (``/api/v1/contrats``, ``…/traces``)."""
     return _jeton("E2E_JETON_GESTIONNAIRE_UNDERWRITING", "agentinsurflow-underwriting")
 
 

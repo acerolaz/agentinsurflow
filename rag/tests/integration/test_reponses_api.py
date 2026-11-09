@@ -1,4 +1,4 @@
-"""Intégration — ``POST /api/reponses`` de bout en bout dans le processus : recherche sur
+"""Intégration — ``POST /api/v1/reponses`` de bout en bout dans le processus : recherche sur
 PostgreSQL, agent (FakeLLM), underwriting-admin simulé (httpx.MockTransport), OBO simulé,
 traces OTel relevées en mémoire.
 """
@@ -54,18 +54,20 @@ def brancher(
 
 
 async def _poser(api: httpx.AsyncClient, **corps: Any) -> httpx.Response:
-    return await api.post("/api/reponses", json={"texte": QUESTION} | corps, headers=GESTIONNAIRE)
+    return await api.post(
+        "/api/v1/reponses", json={"texte": QUESTION} | corps, headers=GESTIONNAIRE
+    )
 
 
 async def test_sans_jeton_401(api: httpx.AsyncClient) -> None:
-    reponse = await api.post("/api/reponses", json={"texte": QUESTION})
+    reponse = await api.post("/api/v1/reponses", json={"texte": QUESTION})
     assert (reponse.status_code, reponse.json()["code"]) == (401, "JETON_ABSENT")
 
 
 async def test_reponses_exige_le_role_gestionnaire(api: httpx.AsyncClient) -> None:
     brancher()
     reponse = await api.post(
-        "/api/reponses", json={"texte": QUESTION}, headers=entetes("Ingestion")
+        "/api/v1/reponses", json={"texte": QUESTION}, headers=entetes("Ingestion")
     )
     assert reponse.status_code == 403
 
@@ -162,7 +164,7 @@ async def test_spans_exportes_sans_la_question(
     question = "Jean Dupont, 12 rue des Lilas : le bonus malus s'applique-t-il à la prime ?"
     await _poser(corpus, texte=question, numero_contrat="AIF-2026-0001")
     par_nom = {s.name: s for s in spans.get_finished_spans()}
-    assert {"POST /api/reponses", "agent.repondre", "rag.recherche"} <= set(par_nom)
+    assert {"POST /api/v1/reponses", "agent.repondre", "rag.recherche"} <= set(par_nom)
     agent = dict(par_nom["agent.repondre"].attributes or {})
     assert agent["question.longueur"] == len(question)
     assert len(str(agent["question.sha256"])) == 64
@@ -195,7 +197,7 @@ async def test_extraits_sans_la_question_dans_les_traces(
     corpus: httpx.AsyncClient, spans: InMemorySpanExporter
 ) -> None:
     reponse = await corpus.get(
-        "/api/extraits", params={"question": "Jean Dupont bonus malus"}, headers=GESTIONNAIRE
+        "/api/v1/extraits", params={"question": "Jean Dupont bonus malus"}, headers=GESTIONNAIRE
     )
     assert reponse.status_code == 200
     assert "Dupont" not in _texte_des_spans(spans)

@@ -13,19 +13,19 @@ avec le rôle `Gestionnaire`. Questions : `eval/questions-demo.jsonl`.*
 ## 1. Sources licites — 4 min
 
 1. Ouvrir [`docs/donnees/sources.md`](donnees/sources.md) : 3 sources, licence Etalab 2.0, CGU Légifrance.
-2. `GET /api/documents/{doc_id}/attribution` sur un article cité : concédant, licence, lien, date d'extraction.
-3. `GET /api/contrats/{numero_contrat}` (un contrat du gestionnaire connecté) : la vue ne contient ni nom,
+2. `GET /api/v1/documents/{doc_id}/attribution` sur un article cité : concédant, licence, lien, date d'extraction.
+3. `GET /api/v1/contrats/{numero_contrat}` (un contrat du gestionnaire connecté) : la vue ne contient ni nom,
    ni adresse, ni numéro de permis. Puis le numéro d'un contrat d'un autre gestionnaire → **404**, même corps
    qu'un contrat inexistant (BOLA).
 4. [`docs/donnees/rgpd.md`](donnees/rgpd.md) : non-applicabilité au corpus, minimisation, registre.
 
 ## 2. Traçabilité — 4 min
 
-1. `POST /api/reponses` avec une question couverte du jeu de démo → `citations[]` (article, version, date,
+1. `POST /api/v1/reponses` avec une question couverte du jeu de démo → `citations[]` (article, version, date,
    `url_source`) et `trace_id`.
-2. Cliquer sur `url_source` (legifrance.gouv.fr) ; `GET /api/documents/{doc_id}` : versions, hash, date
+2. Cliquer sur `url_source` (legifrance.gouv.fr) ; `GET /api/v1/documents/{doc_id}` : versions, hash, date
    d'ingestion.
-3. `GET /api/traces/{trace_id}` : le chemin complet sur 3 services (gateway → rag → underwriting-admin),
+3. `GET /api/v1/traces/{trace_id}` : le chemin complet sur 3 services (gateway → rag → underwriting-admin),
    sans le texte de la question (sha256 seulement).
 
 ## 3. Refus hors corpus — 4 min

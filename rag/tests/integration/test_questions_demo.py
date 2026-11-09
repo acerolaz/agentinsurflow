@@ -53,7 +53,7 @@ async def test_rejeu_questions_ci_sur_instantane_reel(api: httpx.AsyncClient) ->
             "instantane_date": contenu["manifeste"]["date"],
             "articles": articles[debut : debut + 50],
         }
-        reponse = await api.post("/api/ingestions", json=lot, headers=entetes("Ingestion"))
+        reponse = await api.post("/api/v1/ingestions", json=lot, headers=entetes("Ingestion"))
         assert reponse.status_code == 201, reponse.text
     # underwriting-admin simulé : tout contrat demandé appartient à un autre gestionnaire (BOLA)
     brancher(LLMQuiCiteLePremierExtrait(), lambda requete: httpx.Response(404))  # type: ignore[arg-type]
@@ -61,7 +61,7 @@ async def test_rejeu_questions_ci_sur_instantane_reel(api: httpx.AsyncClient) ->
     echecs = {}
     for cas in (c for c in QUESTIONS if c["ci"]):
         corps = {"texte": cas["question"], "numero_contrat": cas.get("numero_contrat")}
-        reponse = await api.post("/api/reponses", json=corps, headers=entetes("Gestionnaire"))
+        reponse = await api.post("/api/v1/reponses", json=corps, headers=entetes("Gestionnaire"))
         if raisons := evals.verifier(cas, reponse.json(), reponse.status_code):
             echecs[cas["id"]] = raisons
     assert echecs == {}

@@ -4,10 +4,10 @@ using static AgentInsurFlow.Gateway.Api.Tests.JetonsDeTest;
 
 namespace AgentInsurFlow.Gateway.Api.Tests;
 
-/// <summary>TI de <c>/api/points-de-reprise/**</c> (D106) : relayé à underwriting-admin pour le seul cluster.</summary>
+/// <summary>TI de <c>/api/v1/points-de-reprise/**</c> (D106) : relayé à underwriting-admin pour le seul cluster.</summary>
 public sealed class PointsDeRepriseTests(Backends backends) : IClassFixture<Backends>
 {
-    private const string Chemin = "/api/points-de-reprise/AIF-2026-0001/ecritures";
+    private const string Chemin = "/api/v1/points-de-reprise/AIF-2026-0001/ecritures";
     private const string Corps = """{"ecritures":[{"idx":-1}]}""";
 
     private static async Task<HttpResponseMessage> Put(HttpClient client, string jeton, string query = "")

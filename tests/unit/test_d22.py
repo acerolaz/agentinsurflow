@@ -36,6 +36,6 @@ def test_compose_vise_la_gateway():
 def test_la_gateway_route_les_contrats_vers_underwriting_admin():
     routes = next((RACINE / "gateway/src").glob("*/appsettings.Routes.json"))
     route = json.loads(routes.read_text())["ReverseProxy"]["Routes"]["underwriting-contrats"]
-    assert route["Match"]["Path"] == "/api/contrats/{**reste}"
+    assert route["Match"]["Path"] == "/api/v1/contrats/{**reste}"
     assert route["ClusterId"] == "underwriting"
     assert route["AuthorizationPolicy"] == "underwriting-gestionnaire"

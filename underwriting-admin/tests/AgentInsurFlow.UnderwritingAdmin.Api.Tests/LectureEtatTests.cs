@@ -48,7 +48,7 @@ public sealed class LectureEtatTests : IDisposable
     private async Task<(HttpStatusCode Statut, JsonElement Corps)> Get(string numero, string oid)
     {
         using var client = _usine.CreateClient();
-        using var requete = new HttpRequestMessage(HttpMethod.Get, $"/api/contrats/{numero}/etat");
+        using var requete = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/contrats/{numero}/etat");
         requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JetonsDeTest.Jeton(JetonsDeTest.AudienceParDefaut, oid, "Gestionnaire"));
         using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
         var corps = JsonDocument.Parse(await reponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).RootElement.Clone();

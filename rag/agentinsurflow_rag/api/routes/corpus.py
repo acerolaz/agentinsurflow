@@ -55,7 +55,7 @@ Embeddings = Annotated[ClientEmbeddings, Depends(obtenir_embeddings)]
 
 
 @router.post(
-    "/api/ingestions",
+    "/api/v1/ingestions",
     status_code=201,
     summary="Ingérer un lot d'articles (au plus 50) ; rapport journalisé",
     responses=reponses(401, 403, 409, 503),
@@ -90,12 +90,12 @@ async def creer_ingestion(
                 "rag.quasi_doublons": len(rapport.quasi_doublons),
             }
         )
-    response.headers["Location"] = f"/api/ingestions/{rapport.id}"
+    response.headers["Location"] = f"/api/v1/ingestions/{rapport.id}"
     return RapportIngestionDTO.model_validate(rapport)
 
 
 @router.get(
-    "/api/ingestions",
+    "/api/v1/ingestions",
     summary="Rapports d'ingestion, du plus récent au plus ancien",
     responses=reponses(401, 403, 503),
 )
@@ -110,7 +110,7 @@ async def lister_les_ingestions(
 
 
 @router.get(
-    "/api/ingestions/{ingestion_id}",
+    "/api/v1/ingestions/{ingestion_id}",
     summary="Un rapport d'ingestion",
     responses=reponses(401, 403, 404, 503),
 )
@@ -124,7 +124,7 @@ async def lire_une_ingestion(
 
 
 @router.get(
-    "/api/extraits",
+    "/api/v1/extraits",
     summary="Extraits du corpus qui passent la porte de pertinence (NOT_FOUND_IN_CORPUS sinon)",
     responses=reponses(401, 403, 503),
 )
@@ -141,7 +141,7 @@ async def lister_les_extraits(
 
 
 @router.get(
-    "/api/documents/{doc_id}",
+    "/api/v1/documents/{doc_id}",
     summary="Traçabilité d'un article : ses versions et ses chunks (sans les vecteurs)",
     responses=reponses(401, 403, 404, 503),
 )
@@ -153,7 +153,7 @@ async def lire_un_document(doc_id: str, appelant: Gestionnaire, conn: Lecture) -
 
 
 @router.get(
-    "/api/documents/{doc_id}/attribution",
+    "/api/v1/documents/{doc_id}/attribution",
     summary="Mentions d'attribution Etalab 2.0 d'un article (version courante par défaut)",
     responses=reponses(401, 403, 404, 503),
 )

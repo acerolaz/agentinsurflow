@@ -1,4 +1,4 @@
-"""Intégration — recherche hybride (``/api/extraits``) et traçabilité (``/api/documents``) sur
+"""Intégration — recherche hybride (``/api/v1/extraits``) et traçabilité (``/api/v1/documents``) sur
 PostgreSQL : SQL RRF réel, porte de pertinence, références exactes, versions obsolètes.
 """
 
@@ -28,7 +28,7 @@ RACINE = Path(__file__).resolve().parents[2]  # rag/
 
 async def _extraits(api: httpx.AsyncClient, question: str, **parametres: Any) -> dict[str, Any]:
     reponse = await api.get(
-        "/api/extraits", params={"question": question, **parametres}, headers=GESTIONNAIRE
+        "/api/v1/extraits", params={"question": question, **parametres}, headers=GESTIONNAIRE
     )
     assert reponse.status_code == 200, reponse.text
     resultat: dict[str, Any] = reponse.json()
@@ -73,7 +73,7 @@ async def test_version_obsolete_exclue(corpus: httpx.AsyncClient) -> None:
         "instantane_date": DATE_ISO,
         "articles": [modifie],
     }
-    await corpus.post("/api/ingestions", json=corps, headers=entetes("Ingestion"))
+    await corpus.post("/api/v1/ingestions", json=corps, headers=entetes("Ingestion"))
     resultat = await _extraits(corpus, "A121-1")
     textes = [e["texte"] for e in resultat["resultats"] if e["citation"]["article"] == "A121-1"]
     assert textes == ["Nouvelle rédaction de la clause de réduction majoration."]
@@ -95,13 +95,13 @@ async def test_top_k_respecte(corpus: httpx.AsyncClient) -> None:
 
 @pytest.mark.parametrize("parametres", [{"question": ""}, {"question": "x", "top_k": 21}, {}])
 async def test_requete_invalide_422(api: httpx.AsyncClient, parametres: dict[str, Any]) -> None:
-    reponse = await api.get("/api/extraits", params=parametres, headers=GESTIONNAIRE)
+    reponse = await api.get("/api/v1/extraits", params=parametres, headers=GESTIONNAIRE)
     assert reponse.status_code == 422
 
 
 async def test_recherche_exige_le_role_gestionnaire(api: httpx.AsyncClient) -> None:
     reponse = await api.get(
-        "/api/extraits", params={"question": "L211-1"}, headers=entetes("Ingestion")
+        "/api/v1/extraits", params={"question": "L211-1"}, headers=entetes("Ingestion")
     )
     assert reponse.status_code == 403
 
@@ -116,13 +116,13 @@ async def test_recherche_et_documents_utilisent_le_compte_reader(
         yield conn_writer
 
     app.dependency_overrides[connexion_reader] = _reader
-    await api.get("/api/extraits", params={"question": "L211-1"}, headers=GESTIONNAIRE)
-    await api.get("/api/documents/LEGIARTI000006800836", headers=GESTIONNAIRE)
+    await api.get("/api/v1/extraits", params={"question": "L211-1"}, headers=GESTIONNAIRE)
+    await api.get("/api/v1/documents/LEGIARTI000006800836", headers=GESTIONNAIRE)
     assert appels == ["reader", "reader"]
 
 
 async def test_document_trace_versions_et_chunks(corpus: httpx.AsyncClient) -> None:
-    reponse = await corpus.get("/api/documents/LEGIARTI000006800836", headers=GESTIONNAIRE)
+    reponse = await corpus.get("/api/v1/documents/LEGIARTI000006800836", headers=GESTIONNAIRE)
     assert reponse.status_code == 200
     document = reponse.json()
     assert document["collection"] == "textes_reglementaires"
@@ -132,12 +132,12 @@ async def test_document_trace_versions_et_chunks(corpus: httpx.AsyncClient) -> N
 
 
 async def test_document_expose_extrait_le(corpus: httpx.AsyncClient) -> None:
-    reponse = await corpus.get("/api/documents/LEGIARTI000006800836", headers=GESTIONNAIRE)
+    reponse = await corpus.get("/api/v1/documents/LEGIARTI000006800836", headers=GESTIONNAIRE)
     assert reponse.json()["versions"][0]["extrait_le"] == DATE_ISO
 
 
 async def test_document_inconnu_404(api: httpx.AsyncClient) -> None:
-    reponse = await api.get("/api/documents/LEGIARTI_INCONNU", headers=GESTIONNAIRE)
+    reponse = await api.get("/api/v1/documents/LEGIARTI_INCONNU", headers=GESTIONNAIRE)
     assert reponse.status_code == 404
     assert reponse.json()["code"] == "DOCUMENT_INTROUVABLE"
 
@@ -149,7 +149,7 @@ async def test_base_injoignable_503_problem_details(api: httpx.AsyncClient) -> N
     )
     try:
         reponse = await api.get(
-            "/api/extraits", params={"question": "bonus malus"}, headers=GESTIONNAIRE
+            "/api/v1/extraits", params={"question": "bonus malus"}, headers=GESTIONNAIRE
         )
     finally:
         await app.state.moteurs.fermer()
@@ -169,7 +169,7 @@ async def test_erreur_sql_503_sans_la_question_dans_les_traces(
     app.state.moteurs = creer_moteurs(config_bd())
     try:
         reponse = await api.get(
-            "/api/extraits", params={"question": "Jean Dupont bonus malus"}, headers=GESTIONNAIRE
+            "/api/v1/extraits", params={"question": "Jean Dupont bonus malus"}, headers=GESTIONNAIRE
         )
     finally:
         await app.state.moteurs.fermer()
@@ -205,7 +205,7 @@ PROCEDURE = article(
 async def _ingerer(api: httpx.AsyncClient, collection: str, *articles: dict[str, Any]) -> None:
     corps = {"collection": collection, "instantane_sha256": SHA, "instantane_date": DATE_ISO,
              "articles": list(articles)}  # fmt: skip
-    reponse = await api.post("/api/ingestions", json=corps, headers=entetes("Ingestion"))
+    reponse = await api.post("/api/v1/ingestions", json=corps, headers=entetes("Ingestion"))
     assert reponse.status_code == 201, reponse.text
 
 
@@ -235,7 +235,7 @@ async def test_texte_legifrance_regle_id_null(corpus: httpx.AsyncClient) -> None
 async def test_role_ingestion_seul_ne_lit_pas_les_notices(api: httpx.AsyncClient) -> None:
     await _ingerer(api, "notices_produits", NOTICE)
     reponse = await api.get(
-        "/api/extraits", params={"question": "formule tiers"}, headers=entetes("Ingestion")
+        "/api/v1/extraits", params={"question": "formule tiers"}, headers=entetes("Ingestion")
     )
     assert reponse.status_code == 403
 
@@ -245,7 +245,9 @@ async def test_meme_version_regle_id_change_conflit(api: httpx.AsyncClient) -> N
     autre_regle = PROCEDURE | {"regle_id": "R02_RESILIATIONS"}
     corps = {"collection": "procedures_internes", "instantane_sha256": SHA,
              "instantane_date": DATE_ISO, "articles": [autre_regle]}  # fmt: skip
-    rapport = (await api.post("/api/ingestions", json=corps, headers=entetes("Ingestion"))).json()
+    rapport = (
+        await api.post("/api/v1/ingestions", json=corps, headers=entetes("Ingestion"))
+    ).json()
     assert [r["raison"] for r in rapport["rejets"]] == ["conflit_version"]
 
 

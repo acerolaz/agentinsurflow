@@ -62,14 +62,14 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
     // Table route → rôle → service (S3-25)
     public static TheoryData<string, string, string, string> RoutesProtegees => new()
     {
-        { "POST", "/api/reponses", "rag", "Gestionnaire" },
-        { "POST", "/api/ingestions", "rag", "Ingestion" },
-        { "GET", "/api/ingestions/42", "rag", "Ingestion" },
-        { "GET", "/api/extraits?question=bonus", "rag", "Gestionnaire" },
-        { "GET", "/api/documents/LEGIARTI000006800836", "rag", "Gestionnaire" },
-        { "GET", "/api/contrats", "underwriting", "Gestionnaire" },
-        { "GET", "/api/contrats/AIF-2026-0001", "underwriting", "Gestionnaire" },
-        { "GET", "/api/traces/0af7651916cd43dd8448eb211c80319c", "underwriting", "Gestionnaire" },
+        { "POST", "/api/v1/reponses", "rag", "Gestionnaire" },
+        { "POST", "/api/v1/ingestions", "rag", "Ingestion" },
+        { "GET", "/api/v1/ingestions/42", "rag", "Ingestion" },
+        { "GET", "/api/v1/extraits?question=bonus", "rag", "Gestionnaire" },
+        { "GET", "/api/v1/documents/LEGIARTI000006800836", "rag", "Gestionnaire" },
+        { "GET", "/api/v1/contrats", "underwriting", "Gestionnaire" },
+        { "GET", "/api/v1/contrats/AIF-2026-0001", "underwriting", "Gestionnaire" },
+        { "GET", "/api/v1/traces/0af7651916cd43dd8448eb211c80319c", "underwriting", "Gestionnaire" },
         { "POST", "/v1/traces", "underwriting", "Telemetrie" },
     };
 
@@ -92,7 +92,7 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
     {
         var jeton = Creer(AudienceRag, ["Gestionnaire"], cle: NouvelleCle("cle-pirate"));
 
-        var reponse = await Envoyer("POST", "/api/reponses", jeton);
+        var reponse = await Envoyer("POST", "/api/v1/reponses", jeton);
 
         Assert.Equal(HttpStatusCode.Unauthorized, reponse.StatusCode);
         AucunAppelTransmis();
@@ -103,7 +103,7 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
     {
         var jeton = Creer(AudienceRag, ["Gestionnaire"], expire: DateTime.UtcNow.AddMinutes(-10));
 
-        var reponse = await Envoyer("POST", "/api/reponses", jeton);
+        var reponse = await Envoyer("POST", "/api/v1/reponses", jeton);
 
         Assert.Equal(HttpStatusCode.Unauthorized, reponse.StatusCode);
         AucunAppelTransmis();
@@ -114,7 +114,7 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
     {
         var jeton = Creer(AudienceRag, ["Gestionnaire"], emetteur: "https://login.microsoftonline.com/autre-tenant/v2.0");
 
-        var reponse = await Envoyer("POST", "/api/reponses", jeton);
+        var reponse = await Envoyer("POST", "/api/v1/reponses", jeton);
 
         Assert.Equal(HttpStatusCode.Unauthorized, reponse.StatusCode);
         AucunAppelTransmis();
@@ -125,7 +125,7 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
     {
         var jeton = Creer(AudienceRag, ["Gestionnaire"]);
 
-        var reponse = await Envoyer("POST", "/api/ingestions", jeton);
+        var reponse = await Envoyer("POST", "/api/v1/ingestions", jeton);
 
         Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);
         Assert.Equal("ACCES_REFUSE", await Code(reponse));
@@ -137,7 +137,7 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
     {
         var jeton = Creer(AudienceUnderwriting, ["Gestionnaire"]);
 
-        var reponse = await Envoyer("POST", "/api/reponses", jeton);
+        var reponse = await Envoyer("POST", "/api/v1/reponses", jeton);
 
         Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);
         AucunAppelTransmis();
@@ -148,7 +148,7 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
     {
         var jeton = Creer(AudienceUnderwriting, ["Telemetrie"]);
 
-        var reponse = await Envoyer("GET", "/api/contrats", jeton);
+        var reponse = await Envoyer("GET", "/api/v1/contrats", jeton);
 
         Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);
         AucunAppelTransmis();
@@ -178,7 +178,7 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
     {
         var jeton = Creer(AudienceRag, ["Gestionnaire"], emetteur: version == "v1" ? EmetteurV1 : EmetteurV2);
 
-        var reponse = await Envoyer("POST", "/api/reponses", jeton);
+        var reponse = await Envoyer("POST", "/api/v1/reponses", jeton);
 
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
     }
@@ -192,7 +192,7 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
 
         foreach (var audience in new[] { "id-client-rag", "api://id-client-rag" })
         {
-            using var requete = Requete("POST", "/api/reponses", Creer(audience, ["Gestionnaire"]));
+            using var requete = Requete("POST", "/api/v1/reponses", Creer(audience, ["Gestionnaire"]));
             var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
             Assert.True(reponse.StatusCode == HttpStatusCode.OK, $"{audience} → {reponse.StatusCode}");
         }
@@ -218,12 +218,12 @@ public sealed class AutorisationTests : IClassFixture<Backends>, IDisposable
     }
 
     // Les routes de documentation sont anonymes : elles ne doivent ouvrir QUE le document OpenAPI,
-    // sinon /rag/api/reponses atteindrait rag sans jeton ni limite de débit.
+    // sinon /rag/api/v1/reponses atteindrait rag sans jeton ni limite de débit.
     [Theory]
-    [InlineData("POST", "/rag/api/reponses")]
-    [InlineData("GET", "/rag/api/documents/LEGIARTI000006800836")]
+    [InlineData("POST", "/rag/api/v1/reponses")]
+    [InlineData("GET", "/rag/api/v1/documents/LEGIARTI000006800836")]
     [InlineData("GET", "/rag/")]
-    [InlineData("GET", "/underwriting/api/contrats")]
+    [InlineData("GET", "/underwriting/api/v1/contrats")]
     [InlineData("POST", "/underwriting/v1/traces")]
     public async Task Documentation_n_ouvre_que_le_document_OpenAPI(string verbe, string chemin)
     {

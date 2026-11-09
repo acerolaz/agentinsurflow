@@ -1,7 +1,7 @@
 """API REST de rag ; Swagger UI sur ``/``.
 
-Ressources : ``/health``, ``/api/reponses``, ``/api/ingestions``, ``/api/extraits``,
-``/api/documents/{doc_id}``. Routes minces : HTTP → cas d'usage → DTO Pydantic.
+Ressources : ``/health``, ``/api/v1/reponses``, ``/api/v1/ingestions``, ``/api/v1/extraits``,
+``/api/v1/documents/{doc_id}``. Routes minces : HTTP → cas d'usage → DTO Pydantic.
 Derrière la gateway, le document est servi en ``/rag/openapi.json`` dans la page Swagger unique ;
 il ne déclare pas de ``servers`` : le « Try it out » vise les routes publiques de la gateway.
 """

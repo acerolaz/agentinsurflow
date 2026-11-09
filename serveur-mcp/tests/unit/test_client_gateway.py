@@ -29,7 +29,7 @@ async def test_lire_contrat_url_encodee_et_bearer() -> None:
     vues: list[httpx.Request] = []
     gw = client(httpx.Response(200, json={"numero_contrat": "AIF/1"}), vues)
     assert await gw.lire_contrat("obo-u", "AIF/1") == {"numero_contrat": "AIF/1"}
-    assert vues[0].url.raw_path == b"/api/contrats/AIF%2F1"
+    assert vues[0].url.raw_path == b"/api/v1/contrats/AIF%2F1"
     assert vues[0].headers["authorization"] == "Bearer obo-u"
 
 
@@ -37,7 +37,7 @@ async def test_chercher_envoie_question_et_top_k() -> None:
     vues: list[httpx.Request] = []
     gw = client(httpx.Response(200, json={"statut": "OK", "resultats": []}), vues)
     await gw.chercher("obo-r", "franchise ?", 3)
-    assert vues[0].url.path == "/api/extraits"
+    assert vues[0].url.path == "/api/v1/extraits"
     assert dict(vues[0].url.params) == {"question": "franchise ?", "top_k": "3"}
 
 
@@ -60,8 +60,8 @@ async def test_ecritures_put_brouillon_et_statut() -> None:
     await gw.enregistrer_brouillon("j", "AIF/1", {"a": 1})
     await gw.changer_statut("j", "AIF/1", {"statut": "x"})
     assert [(v.method, v.url.raw_path) for v in vues] == [
-        ("PUT", b"/api/contrats/AIF%2F1/brouillon"),
-        ("PUT", b"/api/contrats/AIF%2F1/statut"),
+        ("PUT", b"/api/v1/contrats/AIF%2F1/brouillon"),
+        ("PUT", b"/api/v1/contrats/AIF%2F1/statut"),
     ]
     assert json.loads(vues[0].content) == {"a": 1}
 
@@ -123,13 +123,13 @@ async def test_lister_pieces_get_et_liste_telle_quelle() -> None:
     pieces = [{"type": "releve_information", "date_emission": "2026-09-01"}]
     gw = client(httpx.Response(200, json=pieces), vues)
     assert await gw.lister_pieces("obo-u", "AIF/1") == pieces
-    assert (vues[0].method, vues[0].url.raw_path) == ("GET", b"/api/contrats/AIF%2F1/pieces")
+    assert (vues[0].method, vues[0].url.raw_path) == ("GET", b"/api/v1/contrats/AIF%2F1/pieces")
 
 
 async def test_enregistrer_etat_put_du_corps() -> None:
     vues: list[httpx.Request] = []
     await client(httpx.Response(204), vues).enregistrer_etat("j", "AIF/1", {"tentative": 1})
-    assert (vues[0].method, vues[0].url.raw_path) == ("PUT", b"/api/contrats/AIF%2F1/etat")
+    assert (vues[0].method, vues[0].url.raw_path) == ("PUT", b"/api/v1/contrats/AIF%2F1/etat")
     assert json.loads(vues[0].content) == {"tentative": 1}
 
 

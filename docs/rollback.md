@@ -22,7 +22,7 @@ On peut aussi passer par l'interface : Actions › **deploy** › *Run workflow*
    (`agentinsurflow-gateway` pour la principale, `agentinsurflow-underwriting` pour celle d'underwriting-admin, `agentinsurflow-mcp` pour la Container App du serveur MCP, `agentinsurflow-cluster` pour celle du cluster d'agents, `agentinsurflow-rag` pour celle de rag ; les cinq sont lancées ensemble après la base annexe, #172) ; l'image PostgreSQL annexe (`agentinsurflow-postgres:3`), les
    variables et les secrets des Container Apps restent identiques.
 3. Le **test de fumée**, par la gateway, vérifie que `/health`, `/health/rag`, `/health/underwriting`, `/health/mcp`, `/health/calcul` et `/health/cluster` renvoient ce SHA et que
-   `/api/reponses`, `/api/v1/calcul/{risques,primes,frequences}` et `/api/llm/v1/chat/completions` répondent 401 sans jeton.
+   `/api/v1/reponses`, `/api/v1/calcul/{risques,primes,frequences}` et `/api/llm/v1/chat/completions` répondent 401 sans jeton.
 4. Le run reste dans le journal Actions : c'est la trace du rollback.
 
 Aucune reconstruction : les images sont **immuables** (tag = SHA) et déjà dans l'ACR. Le prompt et la version
@@ -62,7 +62,7 @@ Durée mesurée : `🔴 À MESURER` à la répétition. Ne pas annoncer de chiff
 
 ## Le cluster d'agents
 
-`agentinsurflow-cluster:<SHA>` (≈ 9 Go) est une cinquième image au même SHA, dans sa Container App (entrée interne, une réplique). Ordre : base annexe d'abord, puis underwriting-admin, MCP, cluster, gateway et rag lancés ensemble. Un rollback vers un SHA antérieur à son introduction est **refusé** (l'image n'existe pas). La base annexe repart vide : les points de reprise du graphe, qui vivent dans le schéma `points_reprise` d'underwriting-admin (D106), sont toujours perdus, et un dossier en attente de revue doit être réévalué. Rollback vers un SHA d'avant D106 (ou retour à D106) : pendant la courte fenêtre où le nouveau cluster tourne derrière l'ancienne gateway, la route `/api/points-de-reprise` n'existe pas encore, donc les évaluations et les reprises échouent en erreur visible (404 non métier), jamais silencieusement. C'est accepté ; la reprise consiste à relancer l'évaluation une fois le déploiement terminé. Pendant un déploiement, deux révisions du cluster peuvent coexister brièvement (R17). Fumée : `/health/cluster`.
+`agentinsurflow-cluster:<SHA>` (≈ 9 Go) est une cinquième image au même SHA, dans sa Container App (entrée interne, une réplique). Ordre : base annexe d'abord, puis underwriting-admin, MCP, cluster, gateway et rag lancés ensemble. Un rollback vers un SHA antérieur à son introduction est **refusé** (l'image n'existe pas). La base annexe repart vide : les points de reprise du graphe, qui vivent dans le schéma `points_reprise` d'underwriting-admin (D106), sont toujours perdus, et un dossier en attente de revue doit être réévalué. Rollback vers un SHA d'avant D106 (ou retour à D106) : pendant la courte fenêtre où le nouveau cluster tourne derrière l'ancienne gateway, la route `/api/v1/points-de-reprise` n'existe pas encore, donc les évaluations et les reprises échouent en erreur visible (404 non métier), jamais silencieusement. C'est accepté ; la reprise consiste à relancer l'évaluation une fois le déploiement terminé. Pendant un déploiement, deux révisions du cluster peuvent coexister brièvement (R17). Fumée : `/health/cluster`.
 
 ## Limite : les cinq images du SHA
 

@@ -44,7 +44,7 @@ def _manque_si_indisponible(r: httpx.Response, manque) -> None:
 
 
 def _poser(client, manque, jeton: str, corps: dict) -> httpx.Response:
-    r = client.post("/api/reponses", json=corps, headers=bearer(jeton))
+    r = client.post("/api/v1/reponses", json=corps, headers=bearer(jeton))
     _manque_si_indisponible(r, manque)
     return r
 
@@ -90,7 +90,7 @@ def test_question_couverte_citee_et_tracable(
     services: set[str] = set()
     for _ in range(20):
         t = client.get(
-            f"/api/traces/{corps['trace_id']}", headers=bearer(jeton_gestionnaire_underwriting)
+            f"/api/v1/traces/{corps['trace_id']}", headers=bearer(jeton_gestionnaire_underwriting)
         )
         if t.status_code == 200:
             services = {s["service_name"].lower() for s in t.json()}
@@ -113,10 +113,10 @@ def test_question_hors_corpus_refusee(client, manque, jeton_gestionnaire):
 def test_contrat_d_un_autre_gestionnaire_404(
     client, contrat_propre, jeton_gestionnaire_underwriting
 ):
-    # via /api/contrats : un contrat d'un autre gestionnaire est indiscernable d'un contrat inconnu
+    # via /api/v1/contrats : le contrat d'un autre gestionnaire = un contrat inconnu (même 404)
     h = bearer(jeton_gestionnaire_underwriting)
-    autre = client.get(f"/api/contrats/{CONTRAT_AUTRE}", headers=h)
-    inconnu = client.get(f"/api/contrats/{CONTRAT_INCONNU}", headers=h)
+    autre = client.get(f"/api/v1/contrats/{CONTRAT_AUTRE}", headers=h)
+    inconnu = client.get(f"/api/v1/contrats/{CONTRAT_INCONNU}", headers=h)
     assert autre.status_code == inconnu.status_code == 404
     assert autre.json() == inconnu.json()
     assert autre.json()["code"] == "CONTRAT_INTROUVABLE"
@@ -124,8 +124,8 @@ def test_contrat_d_un_autre_gestionnaire_404(
     # témoin positif : le gestionnaire connecté voit son propre contrat, et seulement le sien
     # ponytail: sans E2E_CONTRAT_PROPRE (local seulement), ce témoin est omis
     if contrat_propre:
-        assert client.get(f"/api/contrats/{contrat_propre}", headers=h).status_code == 200
-        liste = client.get("/api/contrats?limit=100", headers=h)
+        assert client.get(f"/api/v1/contrats/{contrat_propre}", headers=h).status_code == 200
+        liste = client.get("/api/v1/contrats?limit=100", headers=h)
         assert liste.status_code == 200
         numeros = {c["numero_contrat"] for c in liste.json()}
         assert contrat_propre in numeros and CONTRAT_AUTRE not in numeros
@@ -170,7 +170,8 @@ def test_ip_client_reelle_dans_les_spans(
     spans: list[dict] = []
     for _ in range(20):
         t = client.get(
-            f"/api/traces/{r.json()['trace_id']}", headers=bearer(jeton_gestionnaire_underwriting)
+            f"/api/v1/traces/{r.json()['trace_id']}",
+            headers=bearer(jeton_gestionnaire_underwriting),
         )
         spans = t.json() if t.status_code == 200 else []
         if any("gateway" in s["service_name"].lower() for s in spans):

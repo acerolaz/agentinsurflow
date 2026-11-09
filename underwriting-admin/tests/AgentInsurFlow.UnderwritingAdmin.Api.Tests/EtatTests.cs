@@ -64,7 +64,7 @@ public sealed class EtatTests : IDisposable
     private async Task<(HttpStatusCode Statut, JsonElement? Corps)> Put(string numero, string oid, string json)
     {
         using var client = _usine.CreateClient();
-        using var requete = new HttpRequestMessage(HttpMethod.Put, $"/api/contrats/{numero}/etat")
+        using var requete = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/contrats/{numero}/etat")
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json"),
         };

@@ -25,7 +25,7 @@ public sealed class IpClientTests(Backends backends) : IClassFixture<Backends>
         using var usine = backends.Gateway(("Proxy:EnvoyDevant", "true"));
         using var client = usine.CreateClient();
 
-        await Envoyer(client, "/api/contrats", "10.0.0.1, 203.0.113.7", Creer(AudienceUnderwriting, ["Gestionnaire"]));
+        await Envoyer(client, "/api/v1/contrats", "10.0.0.1, 203.0.113.7", Creer(AudienceUnderwriting, ["Gestionnaire"]));
 
         var entetes = Assert.Single(backends.Underwriting.LogEntries).RequestMessage!.Headers!;
         Assert.Equal("203.0.113.7", string.Join(",", entetes["X-Forwarded-For"]));

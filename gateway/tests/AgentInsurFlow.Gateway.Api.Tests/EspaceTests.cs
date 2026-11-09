@@ -91,13 +91,13 @@ public sealed class EspaceTests(Backends backends) : IClassFixture<Backends>
         using var usine = backends.Gateway(Reglages);
         using var client = usine.CreateClient();
 
-        using var get = Requete("GET", "/api/contrats/AIF-2026-0001/etat", Creer(AudienceUnderwriting, ["Gestionnaire"]));
+        using var get = Requete("GET", "/api/v1/contrats/AIF-2026-0001/etat", Creer(AudienceUnderwriting, ["Gestionnaire"]));
         using var lu = await client.SendAsync(get, Ct);
-        using var put = Requete("PUT", "/api/contrats/AIF-2026-0001/etat", Creer(AudienceUnderwriting, ["Gestionnaire"]));
+        using var put = Requete("PUT", "/api/v1/contrats/AIF-2026-0001/etat", Creer(AudienceUnderwriting, ["Gestionnaire"]));
         using var ecrit = await client.SendAsync(put, Ct);
 
         Assert.Equal(HttpStatusCode.OK, lu.StatusCode);
-        Assert.Equal("/api/contrats/AIF-2026-0001/etat", Assert.Single(backends.Underwriting.LogEntries).RequestMessage!.Path);
+        Assert.Equal("/api/v1/contrats/AIF-2026-0001/etat", Assert.Single(backends.Underwriting.LogEntries).RequestMessage!.Path);
         Assert.Equal(HttpStatusCode.Forbidden, ecrit.StatusCode);
     }
 }

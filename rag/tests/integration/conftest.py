@@ -126,7 +126,7 @@ async def corpus(api: httpx.AsyncClient) -> httpx.AsyncClient:
         "instantane_date": DATE_ISO,
         "articles": CORPUS,
     }
-    reponse = await api.post("/api/ingestions", json=corps, headers=entetes("Ingestion"))
+    reponse = await api.post("/api/v1/ingestions", json=corps, headers=entetes("Ingestion"))
     assert reponse.status_code == 201
     return api
 

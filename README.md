@@ -35,15 +35,15 @@ flowchart LR
 Un merge sur `main` relance `lint`, `test` et `gateway` avant `build`. Les evals (portes : réussite ≥ 80 % et latence
 p95 ≤ 30 s) ne tournent que si le prompt, un jeu d'évaluation, l'instantané du corpus ou la version du LLM changent
 (voir *Évaluer l'agent*). `e2e-staging` passe **après** les evals (sautées ou non) : même identité de CI, donc même
-quota `/api/reponses` à la gateway (#188). Le job `evals-pr` (avant merge) rejoue les jeux de la PR contre staging : voir [`docs/ci-evals.md`](docs/ci-evals.md).
+quota `/api/v1/reponses` à la gateway (#188). Le job `evals-pr` (avant merge) rejoue les jeux de la PR contre staging : voir [`docs/ci-evals.md`](docs/ci-evals.md).
 
 ## État au 04/11 (release v0.6.38)
 
 | Projet | Langage | Rôle | État |
 |---|---|---|---|
-| [`gateway/`](gateway/README.md) | C# · YARP · .NET 10 | **Seule entrée publique** : routage, jeton Entra + rôle par route, limitation de débit, Swagger unique ; échange de jeton vers la Function de calcul (`/api/calcul`) et Foundry (`/api/llm`, tokens mesurés) | ✅ déployée (staging, production), seule dans la Container App principale ; domaine personnalisé en production |
+| [`gateway/`](gateway/README.md) | C# · YARP · .NET 10 | **Seule entrée publique** : routage, jeton Entra + rôle par route, limitation de débit, Swagger unique ; échange de jeton vers la Function de calcul (`/api/v1/calcul`) et Foundry (`/api/llm`, tokens mesurés) | ✅ déployée (staging, production), seule dans la Container App principale ; domaine personnalisé en production |
 | [`rag/`](rag/README.md) | Python · hexagonal | Corpus Légifrance (ingestion, dédup, versions), recherche hybride, agent à 3 verrous, attribution Etalab 2.0 | ✅ déployé ; jeu agrégé `data/aggregated/corpus-2026-10-27.json` (Code des assurances : 119 articles lus, 107 insérés, 12 abrogés rejetés ; 4 notices produits ; 6 procédures internes citant le barème) réingéré à chaque déploiement (#52, #99, [preuves](eval/preuves/)) ; `make ingest` refuse un instantané hors périmètre (#189) |
-| [`underwriting-admin/`](underwriting-admin/README.md) | C# · Clean Architecture · .NET 10 | Dossiers (vue minimisée, BOLA) et référentiel SQL des traces OpenTelemetry (`/v1/traces`, `/api/traces/{trace_id}`) ; relances et classement sans suite (#136) ; contrat imprimé et fiche du lead (exceptions à la minimisation, #139) ; stockage opaque des points de reprise du cluster (schéma `points_reprise`, D106, #167) | ✅ déployé dans sa Container App (entrée interne) ; écritures brouillon/statut pour le serveur MCP (#66) ; OBO pré-autorisé (#47) |
+| [`underwriting-admin/`](underwriting-admin/README.md) | C# · Clean Architecture · .NET 10 | Dossiers (vue minimisée, BOLA) et référentiel SQL des traces OpenTelemetry (`/v1/traces`, `/api/v1/traces/{trace_id}`) ; relances et classement sans suite (#136) ; contrat imprimé et fiche du lead (exceptions à la minimisation, #139) ; stockage opaque des points de reprise du cluster (schéma `points_reprise`, D106, #167) | ✅ déployé dans sa Container App (entrée interne) ; écritures brouillon/statut pour le serveur MCP (#66) ; OBO pré-autorisé (#47) |
 | [`serveur-mcp/`](serveur-mcp/README.md) | Python · hexagonal | Outils MCP du cluster d'agents (`search_rag`, `get_contrat`, `evaluer_risque`, `calculer_prime`, `enregistrer_brouillon`, `update_statut_dossier`), matrice `azp` × outil | ✅ déployé dans sa Container App (entrée interne, identité propre), v0.6.0 (#15, #66) |
 | [`agentic-cluster/`](agentic-cluster/README.md) | Python · hexagonal · LangGraph | Cluster d'agents (la Saga, automate déterministe sans LLM, puis Pièces, Analyste, Rédacteur, Actuaire) : évalue un dossier, écrit un brouillon, attend la revue du gestionnaire ; garde-fous LLM Guard ; joint MCP et LLM par la gateway | ✅ déployé (staging, production) dans sa Container App (entrée interne, `infra/containerapp-cluster.yaml`) depuis le 24/10 (#116) ; réglage par agent dans `agents.toml` (#117) ; recette des K jouée en staging depuis l'espace gestionnaire (27/10, [preuves](eval/preuves/recette-k-2026-10-27-staging.md)) ; état du contrat : [`docs/contrat-personnel.md`](docs/contrat-personnel.md) ; points de reprise par la gateway, plus d'accès PostgreSQL (D106, #167) |
 | [`fonction-calcul/`](fonction-calcul/README.md) | Python · Azure Functions | Risque (`bareme-2026.10-v1`) et prime (`formule-2026.10-v1`) déterministes ; n'accepte que la gateway | ✅ déployée (Flex Consumption, staging et production), v0.6.0 (#64, #74) ; une instance toujours prête depuis le 28/10 (`infra/calcul.sh` ①b, #146) : plus de démarrage à froid ; fréquence du GLM Poisson freMTPL2 en comparaison (`/api/frequence`, porte de qualité en CI, #168) |
@@ -100,7 +100,7 @@ La Function de calcul (Azure Functions) n'accepte que la gateway :
 |---|---|---|
 | `gateway` | 8000 | **seul exposé** (entrée de la Container App) ; valide jeton et rôle, puis transmet |
 | `rag` | 8001 | **sa propre Container App** (interne) : API du corpus et de l'agent ; revalide le jeton ; migrations de la base au démarrage (`rag/demarrer.sh`) ; joint la base annexe (sa Container App, TCP interne 5432), le modèle et les dossiers par la gateway |
-| `underwriting-admin` | 8002 | **sa propre Container App** (interne, sans identité managée utilisateur) : dossiers (`/api/contrats`, BOLA) et traces (`/v1/traces`, `/api/traces/{trace_id}`) ; revalide le jeton ; migrations EF Core au démarrage |
+| `underwriting-admin` | 8002 | **sa propre Container App** (interne, sans identité managée utilisateur) : dossiers (`/api/v1/contrats`, BOLA) et traces (`/v1/traces`, `/api/v1/traces/{trace_id}`) ; revalide le jeton ; migrations EF Core au démarrage |
 | `postgres` | 5432 | **sa propre Container App** (TCP interne) : **base annexe éphémère** (pgvector) : bases `vecteurs`, `dossiers`, `traces` ; une réplique, sans volume |
 
 Documentation des données : [`docs/donnees/`](docs/donnees/) — [sources](docs/donnees/sources.md),
@@ -192,14 +192,14 @@ jeton, rôle (`Gestionnaire`, `Ingestion`) et limite de débit.
 make extraire                                    # Légifrance (bac à sable PISTE) → data/raw/code-assurances-<date>.json
 make bareme                                      # instantané du barème → data/raw/bareme-<version>.json
 make agreger                                     # Légifrance + barème + documents rédigés → data/aggregated/corpus-<date>.json (#52)
-make ingest JEU=data/aggregated/corpus-<date>.json   # jeu agrégé unique → POST /api/ingestions
+make ingest JEU=data/aggregated/corpus-<date>.json   # jeu agrégé unique → POST /api/v1/ingestions
 make ingest INSTANTANE=data/raw/code-assurances-<date>.json   # ou rejeu d'un seul instantané Légifrance
 make calibrer URL=http://localhost:8000          # intervalle où choisir RAG_SEUIL (porte de pertinence)
 ```
 
-`POST /api/reponses` rend une **réponse citée** (`statut`, `texte`, `citations`, `trace_id`) ou un refus
+`POST /api/v1/reponses` rend une **réponse citée** (`statut`, `texte`, `citations`, `trace_id`) ou un refus
 `NOT_FOUND_IN_CORPUS` ; LLM injoignable ou trop lent (30 s, `LLM_DELAI_S`) : `statut = REVUE_HUMAINE` (mode dégradé,
-dossier-conception-v1.md, K5). Pour un article cité, `GET /api/documents/{doc_id}/attribution` donne ses mentions
+dossier-conception-v1.md, K5). Pour un article cité, `GET /api/v1/documents/{doc_id}/attribution` donne ses mentions
 **Etalab 2.0** (concédant DILA, licence, date de l'instantané). Détails : [`rag/README.md`](rag/README.md).
 
 **Authentification au LLM** : **aucune clé**. rag appelle le LLM **par la gateway** (`AZURE_OPENAI_ENDPOINT` =
@@ -230,7 +230,7 @@ make eval URL=https://<staging>         # contre un environnement déployé
 ```
 
 `tools/evals.py` rejoue `eval/golden.jsonl` et `eval/questions-demo.jsonl` en boîte noire : seuls
-`POST /api/reponses`, `GET /api/extraits` et `/health` sont appelés, avec un jeton Entra de rôle `Gestionnaire`.
+`POST /api/v1/reponses`, `GET /api/v1/extraits` et `/health` sont appelés, avec un jeton Entra de rôle `Gestionnaire`.
 Chaque cas passe des contrôles déterministes, et la latence est mesurée :
 
 | Contrôle | Vérifie |
@@ -327,7 +327,7 @@ depuis `feat/mcp`, release v0.6.0 ; `rag/pyproject.toml` reste en 0.4.0).
   taguée `manifeste-…` quand les evals passent ; sinon, celle du dernier manifeste validé.
 
 La **fumée** (bloquante, par la gateway) attend que gateway, rag **et** underwriting-admin servent le SHA attendu (rag démarre après
-ses migrations), puis vérifie que `/api/reponses` répond 401 sans jeton ; le LLM est vérifié par les evals de staging.
+ses migrations), puis vérifie que `/api/v1/reponses` répond 401 sans jeton ; le LLM est vérifié par les evals de staging.
 
 ### Ressources Azure actuelles
 

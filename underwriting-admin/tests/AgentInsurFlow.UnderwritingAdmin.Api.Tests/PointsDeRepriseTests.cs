@@ -116,7 +116,7 @@ public sealed class PointsDeRepriseTests : IDisposable
     public async Task Aller_retour_point_et_ecritures()
     {
         var octets = Convert.ToBase64String([1, 2, 3, 255]);
-        var (ecrit, _) = await Appeler(HttpMethod.Put, $"/api/points-de-reprise/{Fil}", Cluster(), new
+        var (ecrit, _) = await Appeler(HttpMethod.Put, $"/api/v1/points-de-reprise/{Fil}", Cluster(), new
         {
             ns = "",
             checkpoint_id = "cp-1",
@@ -126,7 +126,7 @@ public sealed class PointsDeRepriseTests : IDisposable
             type_metadata = "json",
             metadata = octets,
         });
-        var (ecritures, _) = await Appeler(HttpMethod.Put, $"/api/points-de-reprise/{Fil}/ecritures", Cluster(), new
+        var (ecritures, _) = await Appeler(HttpMethod.Put, $"/api/v1/points-de-reprise/{Fil}/ecritures", Cluster(), new
         {
             ns = "",
             checkpoint_id = "cp-1",
@@ -134,7 +134,7 @@ public sealed class PointsDeRepriseTests : IDisposable
             task_path = "p",
             ecritures = new[] { new { idx = 0, canal = "messages", type = "msgpack", valeur = octets } },
         });
-        var (lu, corps) = await Appeler(HttpMethod.Get, $"/api/points-de-reprise/{Fil}?ns=&id=cp-1", Cluster());
+        var (lu, corps) = await Appeler(HttpMethod.Get, $"/api/v1/points-de-reprise/{Fil}?ns=&id=cp-1", Cluster());
 
         Assert.Equal(HttpStatusCode.NoContent, ecrit);
         Assert.Equal(HttpStatusCode.NoContent, ecritures);
@@ -152,11 +152,11 @@ public sealed class PointsDeRepriseTests : IDisposable
     [Fact]
     public async Task Lecture_du_dernier_point_sans_id()
     {
-        await Appeler(HttpMethod.Put, $"/api/points-de-reprise/{Fil}", Cluster(), Point("cp-1"));
-        await Appeler(HttpMethod.Put, $"/api/points-de-reprise/{Fil}", Cluster(), Point("cp-2"));
+        await Appeler(HttpMethod.Put, $"/api/v1/points-de-reprise/{Fil}", Cluster(), Point("cp-1"));
+        await Appeler(HttpMethod.Put, $"/api/v1/points-de-reprise/{Fil}", Cluster(), Point("cp-2"));
 
-        var (statut, corps) = await Appeler(HttpMethod.Get, $"/api/points-de-reprise/{Fil}", Cluster());
-        var (_, liste) = await Appeler(HttpMethod.Get, $"/api/points-de-reprise/{Fil}/liste?limite=5", Cluster());
+        var (statut, corps) = await Appeler(HttpMethod.Get, $"/api/v1/points-de-reprise/{Fil}", Cluster());
+        var (_, liste) = await Appeler(HttpMethod.Get, $"/api/v1/points-de-reprise/{Fil}/liste?limite=5", Cluster());
 
         Assert.Equal(HttpStatusCode.OK, statut);
         Assert.Equal("cp-2", corps.GetProperty("checkpoint_id").GetString());
@@ -166,7 +166,7 @@ public sealed class PointsDeRepriseTests : IDisposable
     [Fact]
     public async Task Point_absent_404_avec_code()
     {
-        var (statut, corps) = await Appeler(HttpMethod.Get, $"/api/points-de-reprise/{Fil}", Cluster());
+        var (statut, corps) = await Appeler(HttpMethod.Get, $"/api/v1/points-de-reprise/{Fil}", Cluster());
 
         Assert.Equal(HttpStatusCode.NotFound, statut);
         Assert.Equal("POINT_DE_REPRISE_INTROUVABLE", corps.GetProperty("code").GetString());
@@ -175,10 +175,10 @@ public sealed class PointsDeRepriseTests : IDisposable
     [Fact]
     public async Task Suppression_du_fil()
     {
-        await Appeler(HttpMethod.Put, $"/api/points-de-reprise/{Fil}", Cluster(), Point("cp-1"));
+        await Appeler(HttpMethod.Put, $"/api/v1/points-de-reprise/{Fil}", Cluster(), Point("cp-1"));
 
-        var (statut, _) = await Appeler(HttpMethod.Delete, $"/api/points-de-reprise/{Fil}", Cluster());
-        var (apres, _) = await Appeler(HttpMethod.Get, $"/api/points-de-reprise/{Fil}", Cluster());
+        var (statut, _) = await Appeler(HttpMethod.Delete, $"/api/v1/points-de-reprise/{Fil}", Cluster());
+        var (apres, _) = await Appeler(HttpMethod.Get, $"/api/v1/points-de-reprise/{Fil}", Cluster());
 
         Assert.Equal(HttpStatusCode.NoContent, statut);
         Assert.Equal(HttpStatusCode.NotFound, apres);
@@ -187,7 +187,7 @@ public sealed class PointsDeRepriseTests : IDisposable
     [Fact]
     public async Task Corps_incomplet_400_avec_code()
     {
-        var (statut, corps) = await Appeler(HttpMethod.Put, $"/api/points-de-reprise/{Fil}", Cluster(), new { ns = "" });
+        var (statut, corps) = await Appeler(HttpMethod.Put, $"/api/v1/points-de-reprise/{Fil}", Cluster(), new { ns = "" });
 
         Assert.Equal(HttpStatusCode.BadRequest, statut);
         Assert.Equal("CORPS_INVALIDE", corps.GetProperty("code").GetString());
@@ -198,7 +198,7 @@ public sealed class PointsDeRepriseTests : IDisposable
     [InlineData(-1)]
     public async Task Liste_avec_limite_non_positive_400_avec_code(int limite)
     {
-        var (statut, corps) = await Appeler(HttpMethod.Get, $"/api/points-de-reprise/{Fil}/liste?limite={limite}", Cluster());
+        var (statut, corps) = await Appeler(HttpMethod.Get, $"/api/v1/points-de-reprise/{Fil}/liste?limite={limite}", Cluster());
 
         Assert.Equal(HttpStatusCode.BadRequest, statut);
         Assert.Equal("CORPS_INVALIDE", corps.GetProperty("code").GetString());
@@ -213,11 +213,11 @@ public sealed class PointsDeRepriseTests : IDisposable
         var vide = new { ns = "", checkpoint_id = "c", type = "t", checkpoint = "", type_metadata = "t", metadata = "", task_id = "t", ecritures = Array.Empty<object>() };
         (HttpMethod, string)[] routes =
         [
-            (HttpMethod.Get, $"/api/points-de-reprise/{Fil}"),
-            (HttpMethod.Get, $"/api/points-de-reprise/{Fil}/liste"),
-            (HttpMethod.Put, $"/api/points-de-reprise/{Fil}"),
-            (HttpMethod.Put, $"/api/points-de-reprise/{Fil}/ecritures"),
-            (HttpMethod.Delete, $"/api/points-de-reprise/{Fil}"),
+            (HttpMethod.Get, $"/api/v1/points-de-reprise/{Fil}"),
+            (HttpMethod.Get, $"/api/v1/points-de-reprise/{Fil}/liste"),
+            (HttpMethod.Put, $"/api/v1/points-de-reprise/{Fil}"),
+            (HttpMethod.Put, $"/api/v1/points-de-reprise/{Fil}/ecritures"),
+            (HttpMethod.Delete, $"/api/v1/points-de-reprise/{Fil}"),
         ];
         foreach (var (methode, chemin) in routes)
         {
@@ -231,7 +231,7 @@ public sealed class PointsDeRepriseTests : IDisposable
     [Fact]
     public async Task Sans_jeton_401()
     {
-        var (statut, corps) = await Appeler(HttpMethod.Get, $"/api/points-de-reprise/{Fil}", null);
+        var (statut, corps) = await Appeler(HttpMethod.Get, $"/api/v1/points-de-reprise/{Fil}", null);
 
         Assert.Equal(HttpStatusCode.Unauthorized, statut);
         Assert.Equal("NON_AUTHENTIFIE", corps.GetProperty("code").GetString());
@@ -240,11 +240,11 @@ public sealed class PointsDeRepriseTests : IDisposable
     [Fact]
     public async Task Span_points_de_reprise_sans_numero()
     {
-        await Appeler(HttpMethod.Get, $"/api/points-de-reprise/{Fil}?ns=&id=cp-1", Cluster());
+        await Appeler(HttpMethod.Get, $"/api/v1/points-de-reprise/{Fil}?ns=&id=cp-1", Cluster());
         var spans = await SpansAttendus();
 
         var serveur = Assert.Single(spans);
-        Assert.Contains("/api/points-de-reprise/{thread_id}", serveur.DisplayName, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/points-de-reprise/{thread_id}", serveur.DisplayName, StringComparison.Ordinal);
         var textes = spans.SelectMany(a => a.TagObjects.Select(t => t.Value?.ToString() ?? "").Append(a.DisplayName));
         Assert.DoesNotContain(textes, t => t.Contains("AIF-", StringComparison.Ordinal));
     }
@@ -252,7 +252,7 @@ public sealed class PointsDeRepriseTests : IDisposable
     [Fact]
     public async Task Corps_jamais_dans_un_span()
     {
-        await Appeler(HttpMethod.Put, $"/api/points-de-reprise/{Fil}", Cluster(), Point("cp-1", Secret));
+        await Appeler(HttpMethod.Put, $"/api/v1/points-de-reprise/{Fil}", Cluster(), Point("cp-1", Secret));
         var spans = await SpansAttendus();
 
         Assert.NotEmpty(spans);

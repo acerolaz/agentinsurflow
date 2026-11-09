@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AgentInsurFlow.UnderwritingAdmin.Api.Tests;
 
-/// <summary>TI : routes <c>/api/contrats</c>, jetons réels, contrôle BOLA ; le port <see cref="IDepotDossiers"/> est en mémoire.</summary>
+/// <summary>TI : routes <c>/api/v1/contrats</c>, jetons réels, contrôle BOLA ; le port <see cref="IDepotDossiers"/> est en mémoire.</summary>
 public sealed class ContratsTests : IDisposable
 {
     private const string GestionnaireA = "oid-gestionnaire-a";
@@ -62,7 +62,7 @@ public sealed class ContratsTests : IDisposable
     [Fact]
     public async Task Portefeuille_ne_liste_que_mes_contrats()
     {
-        var (statut, corps) = await Get("/api/contrats", GestionnaireA, "Gestionnaire");
+        var (statut, corps) = await Get("/api/v1/contrats", GestionnaireA, "Gestionnaire");
 
         Assert.Equal(HttpStatusCode.OK, statut);
         Assert.Equal(["AIF-A1", "AIF-A2"], corps.EnumerateArray().Select(c => c.GetProperty("numero_contrat").GetString()));
@@ -71,7 +71,7 @@ public sealed class ContratsTests : IDisposable
     [Fact]
     public async Task Portefeuille_pagine_par_limit_et_offset()
     {
-        var (_, corps) = await Get("/api/contrats?limit=1&offset=1", GestionnaireA, "Gestionnaire");
+        var (_, corps) = await Get("/api/v1/contrats?limit=1&offset=1", GestionnaireA, "Gestionnaire");
 
         Assert.Equal(["AIF-A2"], corps.EnumerateArray().Select(c => c.GetProperty("numero_contrat").GetString()));
     }
@@ -79,7 +79,7 @@ public sealed class ContratsTests : IDisposable
     [Fact]
     public async Task Contrat_porte_exactement_les_dix_huit_champs_dont_les_faits_du_calcul()
     {
-        var (statut, corps) = await Get("/api/contrats/AIF-A1", GestionnaireA, "Gestionnaire");
+        var (statut, corps) = await Get("/api/v1/contrats/AIF-A1", GestionnaireA, "Gestionnaire");
 
         Assert.Equal(HttpStatusCode.OK, statut);
         Assert.Equal(
@@ -94,8 +94,8 @@ public sealed class ContratsTests : IDisposable
     [Fact]
     public async Task Contrat_autre_gestionnaire_et_inexistant_meme_reponse()
     {
-        var (statutAutre, autre) = await Get("/api/contrats/AIF-B1", GestionnaireA, "Gestionnaire");
-        var (statutInexistant, inexistant) = await Get("/api/contrats/AIF-ZZZ", GestionnaireA, "Gestionnaire");
+        var (statutAutre, autre) = await Get("/api/v1/contrats/AIF-B1", GestionnaireA, "Gestionnaire");
+        var (statutInexistant, inexistant) = await Get("/api/v1/contrats/AIF-ZZZ", GestionnaireA, "Gestionnaire");
 
         Assert.Equal(HttpStatusCode.NotFound, statutAutre);
         Assert.Equal(statutAutre, statutInexistant);
@@ -110,7 +110,7 @@ public sealed class ContratsTests : IDisposable
     [Fact]
     public async Task Contrat_sans_role_Gestionnaire_403()
     {
-        var (statut, corps) = await Get("/api/contrats/AIF-A1", GestionnaireA, "Telemetrie");
+        var (statut, corps) = await Get("/api/v1/contrats/AIF-A1", GestionnaireA, "Telemetrie");
 
         Assert.Equal(HttpStatusCode.Forbidden, statut);
         Assert.Equal("ACCES_REFUSE", corps.GetProperty("code").GetString());
@@ -118,7 +118,7 @@ public sealed class ContratsTests : IDisposable
 
     [Fact]
     public async Task Portefeuille_sans_role_Gestionnaire_403() =>
-        Assert.Equal(HttpStatusCode.Forbidden, (await Get("/api/contrats", GestionnaireA, "Telemetrie")).Statut);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Get("/api/v1/contrats", GestionnaireA, "Telemetrie")).Statut);
 
     [Fact]
     public async Task OpenApi_declare_les_deux_routes_et_leurs_erreurs()
@@ -127,8 +127,8 @@ public sealed class ContratsTests : IDisposable
         var doc = JsonDocument.Parse(await client.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken)).RootElement;
         var chemins = doc.GetProperty("paths");
 
-        var liste = chemins.GetProperty("/api/contrats").GetProperty("get").GetProperty("responses");
-        var unitaire = chemins.GetProperty("/api/contrats/{numero_contrat}").GetProperty("get").GetProperty("responses");
+        var liste = chemins.GetProperty("/api/v1/contrats").GetProperty("get").GetProperty("responses");
+        var unitaire = chemins.GetProperty("/api/v1/contrats/{numero_contrat}").GetProperty("get").GetProperty("responses");
 
         Assert.Equal(["200", "401", "403"], liste.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
         Assert.Equal(["200", "401", "403", "404"], unitaire.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));

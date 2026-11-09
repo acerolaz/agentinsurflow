@@ -1,4 +1,4 @@
-"""Ressource REST de l'agent (S3-24) : ``POST /api/reponses``.
+"""Ressource REST de l'agent (S3-24) : ``POST /api/v1/reponses``.
 
 Ordre : jeton et rôle → dossier (si ``numero_contrat`` : OBO puis BOLA chez underwriting-admin)
 → recherche (porte) → agent (verrous ② et ③). Le dossier passe avant la recherche : un contrat
@@ -62,7 +62,7 @@ async def obtenir_dossiers(jeton: Jeton) -> AsyncIterator[DepotDossiers | None]:
 
 
 @router.post(
-    "/api/reponses",
+    "/api/v1/reponses",
     summary="Réponse citée de l'agent, ou refus hors corpus (NOT_FOUND_IN_CORPUS)",
     responses=reponses(401, 403, 404, 503),
 )

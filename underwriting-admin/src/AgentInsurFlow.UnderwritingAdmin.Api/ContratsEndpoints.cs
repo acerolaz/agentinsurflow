@@ -11,7 +11,7 @@ internal static class ContratsEndpoints
 {
     public static void MapContrats(this IEndpointRouteBuilder app)
     {
-        var contrats = app.MapGroup("/api/contrats").RequireAuthorization("Gestionnaire").WithTags("Contrats");
+        var contrats = app.MapGroup("/api/v1/contrats").RequireAuthorization("Gestionnaire").WithTags("Contrats");
 
         contrats.MapGet("/", async (ClaimsPrincipal utilisateur, ListerPortefeuille cas, CancellationToken ct,
                 [FromQuery] int limit = 20, [FromQuery] int offset = 0) =>

@@ -3,6 +3,9 @@
 # Lancé À LA MAIN par Acerola, jamais par un agent ni par la CI. Prérequis : az login, droit d'écrire les
 # paramètres de diagnostic sur la ressource Foundry.
 # Envoie AllMetrics (requêtes, tokens, latence, erreurs) et Audit vers l'espace Log Analytics du projet.
+# Ressources PARTAGÉES : la ressource Foundry et l'espace Log Analytics servent staging ET production (une seule
+# FOUNDRY_NAME, un seul LOG_ANALYTICS_WORKSPACE) ; ces métriques additionnent donc les deux environnements, sans
+# les distinguer. Pour séparer, lire App Insights (appi-insurflow-<env>), propre à chaque environnement.
 # RequestResponse n'est PAS activé : la documentation relevée ne garantit pas son contenu, et le texte d'une
 # question n'est jamais tracé (rag/CLAUDE.md). À n'ajouter qu'après avoir vérifié ce que cette catégorie enregistre.
 set -euo pipefail

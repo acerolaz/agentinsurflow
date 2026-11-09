@@ -116,7 +116,7 @@ services:
       AzureAd__ClientId: ${UNDERWRITING_API_CLIENT_ID:-00000000-0000-0000-0000-000000000000}
       # liste « a, b » : la même que celle lue par la gateway
       Entra__Audiences__underwriting__0: ${UNDERWRITING_API_AUDIENCES:-api://agentinsurflow-underwriting}
-      Entra__McpClientId: ${MCP_API_CLIENT_ID:-}  # azp du serveur MCP : SANS_SUITE lui est refusé (#245)
+      Entra__McpClientId: ${MCP_API_CLIENT_ID:?MCP_API_CLIENT_ID manquant (.env)}  # azp du serveur MCP : SANS_SUITE lui est refusé (#245) ; vide, le service refuse de démarrer
       # base dossiers : migrations au démarrage (migrateur), lecture de la vue (dossiers)
       Migrations__AuDemarrage: "true"
       PG_HOST: postgres

@@ -39,14 +39,14 @@ Apps** (`pg-*-password`), posés à la main par `make annexe` (`infra/postgres-a
 | `RAG_APP_STAGING` / `RAG_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `RAG_APP_NAME` | `deploy.yml` : Container App de rag (entrée interne), lancée après la base annexe, en même temps que les autres Container Apps (#172) ; affiché par `make infra`. Son FQDN interne est lu par le workflow (`RAG_APP_FQDN`, cluster `rag` de la gateway) |
 | `MCP_APP_STAGING` / `MCP_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `MCP_APP_NAME` | `deploy.yml` : Container App du serveur MCP (entrée interne) ; affiché par `make infra`. Son FQDN interne (`<app>.internal.<domaine>`) est lu par le workflow, rien à reporter (`MCP_APP_FQDN`) |
 | `CALCUL_APP_STAGING` / `CALCUL_APP_PRODUCTION` | Variable de l'env. `staging` / `production` | `CALCUL_APP_NAME` | `deploy.yml` : déploiement de la Function de calcul ; affiché par `make calcul` |
-| (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_URL` | `deploy.yml` : fumée de la Function ; → `infra/containerapp.yaml` (cluster `calcul` de la gateway). Le serveur MCP n'appelle plus la Function : `CALCUL_URL` = `<gateway>/api/calcul` |
+| (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_URL` | `deploy.yml` : fumée de la Function ; → `infra/containerapp.yaml` (cluster `calcul` de la gateway). Le serveur MCP n'appelle plus la Function : `CALCUL_URL` = `<gateway>/api/v1/calcul` |
 | (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_AUDIENCE` | `deploy.yml` → gateway (`Entra__Audiences__calcul__0`, portée `Calcul__Portee` = `<audience>/.default`) et serveur MCP (`CALCUL_AUDIENCE`) ; `api://<appId agentinsurflow-calcul>` |
 | (sortie de `make calcul`) | Variable de l'env. `staging` / `production` | `CALCUL_API_CLIENT_ID` | `deploy.yml` (liste `envsubst`) → `infra/containerapp.yaml` (`Entra__Audiences__calcul__1`, GUID de l'application : `aud` des jetons v2) |
 | `AZURE_OPENAI_ENDPOINT` | Variable de **repo** | `AZURE_OPENAI_ENDPOINT` | **La gateway** : `https://<FQDN de la gateway>/api/llm` (jamais Foundry). `deploy.yml` ne la lit plus (il pose `${GATEWAY_URL}/api/llm` dans `infra/containerapp-rag.yaml`) ; aucun workflow ne la lit plus (`evals-pr` évalue l'API de staging, `STAGING_URL`) |
 | `LLM_AUDIENCE` | Variable de **repo** | `LLM_AUDIENCE` | `deploy.yml` (liste `envsubst`) → gateway (`Entra__Audiences__llm__0`) et rag (audience du jeton d'application) ; `api://<appId agentinsurflow-llm>`, affiché par `make llm` |
 | `LLM_API_CLIENT_ID` | Variable de **repo** | `LLM_API_CLIENT_ID` | `deploy.yml` → gateway (`Entra__Audiences__llm__1`, GUID : `aud` des jetons v2) ; affiché par `make llm` |
 | `FOUNDRY_ENDPOINT` | Variable de **repo** | `FOUNDRY_ENDPOINT` | `deploy.yml` → gateway : cluster `llm` (`https://<ressource>.openai.azure.com`, sans `/openai`) ; lu aussi, en lecture seule, pour vérifier que les modèles de `agentic-cluster/agents.toml` existent ; affiché par `make llm` |
-| `RAG_SEUIL` | Variable de **repo** | `RAG_SEUIL` | `deploy.yml` → conteneur rag (porte de pertinence ; vide → `/api/extraits` en 503) |
+| `RAG_SEUIL` | Variable de **repo** | `RAG_SEUIL` | `deploy.yml` → conteneur rag (porte de pertinence ; vide → `/api/v1/extraits` en 503) |
 | `RAG_API_CLIENT_ID` | Variable de **repo** | `RAG_API_CLIENT_ID` | `deploy.yml` → audiences de la gateway et de rag, connexion de la page Swagger |
 | `UNDERWRITING_API_CLIENT_ID` | Variable de **repo** | `UNDERWRITING_API_CLIENT_ID` | `deploy.yml` → audiences de la gateway et d'underwriting-admin, `Telemetrie__Audience` de la gateway (`api://<appId>`) |
 | `MCP_API_CLIENT_ID` | Variable de **repo** | `MCP_API_CLIENT_ID` | `deploy.yml` (liste `envsubst`) → audiences de la gateway et du serveur MCP ; affiché par `make entra` |
@@ -124,7 +124,7 @@ flowchart LR
 | rag (local) | secret `RAG_CLIENT_SECRET` de `agentinsurflow-rag` | idem |
 | Gateway (Azure) | identité managée `uami-insurflow-rag` (nom conservé, voir ci-dessous) | *Cognitive Services OpenAI User* sur `svespuce-971` |
 | Gateway (local) | `agentinsurflow-gateway-local` + `GATEWAY_CLIENT_SECRET` du `.env` | *Cognitive Services OpenAI User* sur `svespuce-971` |
-| CI, Container Apps autres que la gateway, comptes humains | — | **retiré** par `make llm` ; les evals passent par `/api/reponses` (donc par la gateway) |
+| CI, Container Apps autres que la gateway, comptes humains | — | **retiré** par `make llm` ; les evals passent par `/api/v1/reponses` (donc par la gateway) |
 
 `make llm` (`infra/llm.sh`, lancé à la main par Acerola) inscrit `agentinsurflow-llm` et `agentinsurflow-gateway-local`,
 désactive les clés de Foundry et réserve le rôle à la gateway. Limite de gouvernance : le propriétaire de la ressource
@@ -190,6 +190,6 @@ gh secret list -R acerolaz/agentinsurflow -e production   # noms seulement, jama
 **Reconstruire depuis le repo seul** : `git clone` → `cp .env.example .env` → remplir → `make infra` →
 `make entra` (après `make infra`, qui crée les Container Apps du serveur MCP ; avant le premier déploiement : il crée l'API du serveur MCP dont `MCP_API_CLIENT_ID` vient, et l'identité managée du MCP) → `make calcul` (Function de calcul ; après `make entra`, il lit `MCP_API_CLIENT_ID`) → `make annexe` → `make domaine DOMAINE=…` → reporter dans GitHub (§2 ; les variables `CALCUL_*`, par environnement, avant le prochain déploiement : sinon `deploy.yml` échoue) → `git push`.
 
-⚠️ `make entra` **remplace le credential fédéré du MCP** : déployer sans attendre. La première migration (MCP dans sa propre Container App) a une courte fenêtre où `/mcp` ou `/api/calcul` répondent en erreur.
+⚠️ `make entra` **remplace le credential fédéré du MCP** : déployer sans attendre. La première migration (MCP dans sa propre Container App) a une courte fenêtre où `/mcp` ou `/api/v1/calcul` répondent en erreur.
 
-**Vérification manuelle en staging, après chaque déploiement** : la fumée de la CI n'est pas authentifiée (elle n'a volontairement pas le rôle `Calcul`). Faire un appel réel `evaluer_risque` (agent ou client MCP) sur un contrat seed, puis vérifier qu'une trace est visible (`GET /api/traces/{trace_id}`).
+**Vérification manuelle en staging, après chaque déploiement** : la fumée de la CI n'est pas authentifiée (elle n'a volontairement pas le rôle `Calcul`). Faire un appel réel `evaluer_risque` (agent ou client MCP) sur un contrat seed, puis vérifier qu'une trace est visible (`GET /api/v1/traces/{trace_id}`).

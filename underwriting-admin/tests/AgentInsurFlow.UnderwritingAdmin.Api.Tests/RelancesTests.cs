@@ -67,7 +67,7 @@ public sealed class RelancesTests : IDisposable
     private async Task<(HttpStatusCode Statut, JsonElement Corps)> Poster(string numero, string oid, string texte, params string[] pieces)
     {
         using var client = _usine.CreateClient();
-        using var requete = new HttpRequestMessage(HttpMethod.Post, $"/api/contrats/{numero}/relances")
+        using var requete = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/contrats/{numero}/relances")
         {
             Content = new StringContent(JsonSerializer.Serialize(new { texte, pieces }), Encoding.UTF8, "application/json"),
         };
@@ -192,7 +192,7 @@ public sealed class RelancesTests : IDisposable
         string numero, string oid, string azp = "client-espace", string corpsJson = """{"statut":"SANS_SUITE"}""", bool v1 = false)
     {
         using var client = _usine.CreateClient();
-        using var requete = new HttpRequestMessage(HttpMethod.Put, $"/api/contrats/{numero}/statut")
+        using var requete = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/contrats/{numero}/statut")
         {
             Content = new StringContent(corpsJson, Encoding.UTF8, "application/json"),
         };
@@ -260,7 +260,7 @@ public sealed class RelancesTests : IDisposable
     {
         for (var i = 0; i < 3; i++) await Poster("AIF-A1", GestionnaireA, "Bonjour", "permis");
         using var client = _usine.CreateClient();
-        using var requete = new HttpRequestMessage(HttpMethod.Post, "/api/contrats/AIF-A1/sans-suite");
+        using var requete = new HttpRequestMessage(HttpMethod.Post, "/api/v1/contrats/AIF-A1/sans-suite");
         requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JetonsDeTest.Jeton(JetonsDeTest.AudienceParDefaut, GestionnaireA, "Gestionnaire"));
 
         using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);

@@ -1,7 +1,7 @@
 # Solution en local : make up (tout) · make test-integration (postgres seul).
 # Mots de passe et identifiants lus dans .env (jamais versionné ; clés dans .env.example).
 # Swagger unique : http://localhost:8000/ (gateway) ; rag seul : http://localhost:8001/
-# serveur-mcp (:8003) : joignable par la gateway (/mcp). underwriting-admin (:8002) : joignable par la gateway (/api/contrats, /api/traces, /v1/traces).
+# serveur-mcp (:8003) : joignable par la gateway (/mcp). underwriting-admin (:8002) : joignable par la gateway (/api/v1/contrats, /api/v1/traces, /v1/traces).
 name: agentinsurflow
 
 x-mots-de-passe: &mots-de-passe
@@ -42,7 +42,7 @@ services:
       RAG_API_CLIENT_ID: ${RAG_API_CLIENT_ID:-}
       # même liste que la gateway (Entra__Audiences__rag__0), même défaut
       RAG_API_AUDIENCES: ${RAG_API_AUDIENCES:-api://agentinsurflow-rag}
-      RAG_SEUIL: ${RAG_SEUIL:-} # à calibrer (make calibrer) ; vide → /api/extraits en 503
+      RAG_SEUIL: ${RAG_SEUIL:-} # à calibrer (make calibrer) ; vide → /api/v1/extraits en 503
       # dossiers en On-Behalf-Of, par la gateway (D22) ; secret : .env local seulement
       UNDERWRITING_API_CLIENT_ID: ${UNDERWRITING_API_CLIENT_ID:-}
       UNDERWRITING_URL: http://gateway:8000
@@ -153,7 +153,7 @@ services:
       Entra__McpClientId: ${MCP_API_CLIENT_ID:-}  # azp des jetons OBO du MCP (vide : PUT …/etat refusé)
       Entra__Audiences__cluster__0: ${CLUSTER_API_AUDIENCES:-api://agentinsurflow-cluster}
       Entra__Audiences__cluster__1: ${INSURFLOW_CLUSTER_CLIENT_ID:-}
-      Entra__ClusterClientId: ${INSURFLOW_CLUSTER_CLIENT_ID:-}  # azp des jetons du cluster (vide : /api/points-de-reprise refusé)
+      Entra__ClusterClientId: ${INSURFLOW_CLUSTER_CLIENT_ID:-}  # azp des jetons du cluster (vide : /api/v1/points-de-reprise refusé)
       Entra__Audiences__calcul__0: ${CALCUL_API_AUDIENCES:-api://agentinsurflow-calcul}
       Entra__Audiences__calcul__1: ${CALCUL_API_CLIENT_ID:-}
       Entra__Audiences__llm__0: ${LLM_API_AUDIENCES:-api://agentinsurflow-llm}

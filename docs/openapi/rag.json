@@ -24,13 +24,13 @@
         }
       }
     },
-    "/api/reponses": {
+    "/api/v1/reponses": {
       "post": {
         "tags": [
           "agent"
         ],
         "summary": "Réponse citée de l'agent, ou refus hors corpus (NOT_FOUND_IN_CORPUS)",
-        "operationId": "creer_reponse_api_reponses_post",
+        "operationId": "creer_reponse_api_v1_reponses_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -114,13 +114,13 @@
         ]
       }
     },
-    "/api/ingestions": {
+    "/api/v1/ingestions": {
       "post": {
         "tags": [
           "corpus"
         ],
         "summary": "Ingérer un lot d'articles (au plus 50) ; rapport journalisé",
-        "operationId": "creer_ingestion_api_ingestions_post",
+        "operationId": "creer_ingestion_api_v1_ingestions_post",
         "security": [
           {
             "entra": []
@@ -208,7 +208,7 @@
           "corpus"
         ],
         "summary": "Rapports d'ingestion, du plus récent au plus ancien",
-        "operationId": "lister_les_ingestions_api_ingestions_get",
+        "operationId": "lister_les_ingestions_api_v1_ingestions_get",
         "security": [
           {
             "entra": []
@@ -249,7 +249,7 @@
                   "items": {
                     "$ref": "#/components/schemas/IngestionDTO"
                   },
-                  "title": "Response Lister Les Ingestions Api Ingestions Get"
+                  "title": "Response Lister Les Ingestions Api V1 Ingestions Get"
                 }
               }
             }
@@ -300,13 +300,13 @@
         }
       }
     },
-    "/api/ingestions/{ingestion_id}": {
+    "/api/v1/ingestions/{ingestion_id}": {
       "get": {
         "tags": [
           "corpus"
         ],
         "summary": "Un rapport d'ingestion",
-        "operationId": "lire_une_ingestion_api_ingestions__ingestion_id__get",
+        "operationId": "lire_une_ingestion_api_v1_ingestions__ingestion_id__get",
         "security": [
           {
             "entra": []
@@ -392,13 +392,13 @@
         }
       }
     },
-    "/api/extraits": {
+    "/api/v1/extraits": {
       "get": {
         "tags": [
           "corpus"
         ],
         "summary": "Extraits du corpus qui passent la porte de pertinence (NOT_FOUND_IN_CORPUS sinon)",
-        "operationId": "lister_les_extraits_api_extraits_get",
+        "operationId": "lister_les_extraits_api_v1_extraits_get",
         "security": [
           {
             "entra": []
@@ -492,13 +492,13 @@
         }
       }
     },
-    "/api/documents/{doc_id}": {
+    "/api/v1/documents/{doc_id}": {
       "get": {
         "tags": [
           "corpus"
         ],
         "summary": "Traçabilité d'un article : ses versions et ses chunks (sans les vecteurs)",
-        "operationId": "lire_un_document_api_documents__doc_id__get",
+        "operationId": "lire_un_document_api_v1_documents__doc_id__get",
         "security": [
           {
             "entra": []
@@ -583,13 +583,13 @@
         }
       }
     },
-    "/api/documents/{doc_id}/attribution": {
+    "/api/v1/documents/{doc_id}/attribution": {
       "get": {
         "tags": [
           "corpus"
         ],
         "summary": "Mentions d'attribution Etalab 2.0 d'un article (version courante par défaut)",
-        "operationId": "lire_l_attribution_api_documents__doc_id__attribution_get",
+        "operationId": "lire_l_attribution_api_v1_documents__doc_id__attribution_get",
         "security": [
           {
             "entra": []
@@ -1421,7 +1421,7 @@
               }
             ],
             "title": "Trace Id",
-            "description": "Trace OpenTelemetry : GET /api/traces/{trace_id}"
+            "description": "Trace OpenTelemetry : GET /api/v1/traces/{trace_id}"
           }
         },
         "type": "object",

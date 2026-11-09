@@ -11,7 +11,7 @@ flowchart LR
     P -->|"proposer / revue humaine"| PR[proposer]
     PR -->|"EN_ANALYSE"| V["valider (interrupt)"]
     PR -->|"REVUE_HUMAINE"| F([fin])
-    V -->|"POST .../revue"| E[enregistrer] --> F
+    V -->|"PUT .../evaluation/decision"| E[enregistrer] --> F
 ```
 
 **Texte alternatif.** `charger` lit le dossier et passe les observations au garde d'entrée ; `pas` boucle sur les agents tant que le plan en demande un ; `proposer` écrit le brouillon et le statut `EN_ANALYSE` (ou `REVUE_HUMAINE` : fin du graphe) ; `valider` met le graphe en pause jusqu'à `PUT /api/v1/souscriptions/{numero}/evaluation/decision`, puis `enregistrer` écrit la décision. `thread_id` = numéro de contrat.
@@ -40,10 +40,10 @@ Erreurs : `application/problem+json` avec un `code` stable. Le message de `REVUE
 
 - Un `asyncio.Lock` par numéro de contrat sérialise `evaluer` et `reviser` : il ne vaut que pour **une réplique** (`maxReplicas: 1` en T12) ; plusieurs répliques demanderaient un verrou en base. **Limite (R17)** : pendant un déploiement, l'ancienne et la nouvelle révision peuvent coexister brièvement (même avec `maxReplicas: 1`) ; le verrou par dossier n'est pas garanti pendant cette fenêtre.
 - Un dossier `ACCEPTE` ou `REFUSE` ne se réévalue pas : `409 DOSSIER_DECIDE`. L'administration le fige aussi (`409 STATUT_FIGE` sur `PUT …/statut` et `…/brouillon`, code d'outil `STATUT_FIGE` côté MCP) : le cluster le traduit en `409 DOSSIER_DECIDE`, la décision humaine n'est pas réversible.
-- **Décider un dossier en `REVUE_HUMAINE` (7a).** Il n'y a pas de pause : le graphe est terminé et `PUT …/evaluation/decision` répond `409 AUCUNE_REVUE_EN_ATTENTE`. Le gestionnaire décide lui-même par `PUT /api/contrats/{numero}/statut` (`{"statut": "ACCEPTE"|"REFUSE", "validation": "VALIDEE"|"CORRIGEE"}`) sur la gateway, avec son propre jeton ; la fiche provisoire est le brouillon à valider. Une réévaluation (`POST …/evaluation`) reste possible tant que le dossier n'est pas décidé.
+- **Décider un dossier en `REVUE_HUMAINE` (7a).** Il n'y a pas de pause : le graphe est terminé et `PUT …/evaluation/decision` répond `409 AUCUNE_REVUE_EN_ATTENTE`. Le gestionnaire décide lui-même par `PUT /api/v1/contrats/{numero}/statut` (`{"statut": "ACCEPTE"|"REFUSE", "validation": "VALIDEE"|"CORRIGEE"}`) sur la gateway, avec son propre jeton ; la fiche provisoire est le brouillon à valider. Une réévaluation (`POST …/evaluation`) reste possible tant que le dossier n'est pas décidé.
 - Si l'écriture de la décision échoue (`502`), la revue reste posée : un second `PUT …/decision` rejoue `enregistrer` (la décision la plus récente l'emporte, `200`) ; `POST …/evaluation` répond `409 EVALUATION_EN_ATTENTE` entre-temps.
 - **Propriétaire du dossier (BOLA).** L'`oid` du gestionnaire est posé dans l'état du graphe au premier `charger` ; un autre `oid` reçoit `404 CONTRAT_INTROUVABLE` en écriture et `404 EVALUATION_INTROUVABLE` en lecture, avant tout `409`, sans toucher au point de reprise. `tentative` croît de 1 à chaque évaluation (lue dans le point de reprise) : les tours et rapports d'une réévaluation ne sont pas ignorés par l'administration.
-- **Points de reprise (D106).** Stockés par la gateway dans underwriting-admin (`/api/points-de-reprise`, rôle `PointsDeReprise`), plus d'accès PostgreSQL depuis le cluster (`infrastructure/langgraph/checkpoint_http.py`). Une erreur de jeton ou HTTP remonte : jamais de point vide ni de repli.
+- **Points de reprise (D106).** Stockés par la gateway dans underwriting-admin (`/api/v1/points-de-reprise`, rôle `PointsDeReprise`), plus d'accès PostgreSQL depuis le cluster (`infrastructure/langgraph/checkpoint_http.py`). Une erreur de jeton ou HTTP remonte : jamais de point vide ni de repli.
 - Les observations du dossier ne sont jamais dans l'état du graphe ni dans un point de reprise : elles passent par le contexte d'exécution (en mémoire).
 
 ## Réglage des agents (`agents.toml`)

@@ -29,7 +29,7 @@ from langgraph.checkpoint.base import (
     writes_sort_key,
 )
 
-RACINE = "/api/points-de-reprise/"
+RACINE = "/api/v1/points-de-reprise/"
 
 
 def _config(fil: str, ns: str, checkpoint_id: str) -> RunnableConfig:

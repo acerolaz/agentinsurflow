@@ -21,7 +21,7 @@ from ...domain.models import (
 )
 from ..otel.telemetrie import echec, tracer
 
-GABARIT = "/api/contrats/{numero_contrat}"  # la route dans les traces : jamais le numéro réel
+GABARIT = "/api/v1/contrats/{numero_contrat}"  # la route dans les traces : jamais le numéro réel
 
 
 class ClientGateway:
@@ -33,7 +33,12 @@ class ClientGateway:
         if top_k is not None:
             params["top_k"] = top_k
         resultat = await self._appeler(
-            "GET", "/api/extraits", "/api/extraits", jeton, DOSSIERS_INDISPONIBLES, params=params
+            "GET",
+            "/api/v1/extraits",
+            "/api/v1/extraits",
+            jeton,
+            DOSSIERS_INDISPONIBLES,
+            params=params,
         )
         if resultat.get("statut") == NOT_FOUND_IN_CORPUS:
             raise ErreurOutil(NOT_FOUND_IN_CORPUS, "Aucun extrait pertinent dans le corpus")
@@ -77,7 +82,7 @@ class ClientGateway:
 
     @staticmethod
     def _contrat(numero_contrat: str) -> str:
-        return f"/api/contrats/{quote(numero_contrat, safe='')}"
+        return f"/api/v1/contrats/{quote(numero_contrat, safe='')}"
 
     async def _appeler(
         self,

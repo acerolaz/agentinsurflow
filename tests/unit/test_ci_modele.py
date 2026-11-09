@@ -86,8 +86,14 @@ def test_artefact_tolere_le_bruit_blas_pas_un_autre_modele():
     assert not ns["proche"](base, _bruite(base, 1e-2))
 
 
-def test_fumee_ressources_de_calcul_fermees_sans_jeton():
-    for ressource in ("risques", "primes", "frequences"):  # R1, #242
-        assert f"$URL/api/v1/calcul/{ressource}" in DEPLOY
-        assert f"POST /api/v1/calcul/{ressource} sans jeton" in DEPLOY
-    assert "$URL/api/calcul/" not in DEPLOY  # anciens chemins (verbes) : plus routés
+def test_fumee_ressources_fermees_sans_jeton():
+    # chaque « VERBE chemin » de la boucle de fumée doit répondre 401 (R1 à R5)
+    assert "sans jeton : $code ≠ 401" in DEPLOY
+    evaluation = "/api/v1/souscriptions/$n/evaluation"
+    for appel in (
+        *(f"POST /api/v1/calcul/{r}" for r in ("risques", "primes", "frequences")),
+        *(f"{v} {evaluation}" for v in ("POST", "GET", "PATCH")),
+        f"PUT {evaluation}/decision",
+    ):
+        assert f'"{appel}"' in DEPLOY, appel
+    assert "/api/calcul/" not in DEPLOY  # anciens chemins (verbes) : plus routés

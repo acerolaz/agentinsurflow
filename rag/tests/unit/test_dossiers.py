@@ -49,7 +49,7 @@ async def test_contrat_lu_avec_le_jeton_obo() -> None:
 
     contrat = await _client(repondre).lire_contrat("AIF-2026-0001")
     assert isinstance(contrat, VueContrat) and contrat.crm_bonus_malus == 0.85
-    assert recu[0].url.path == "/api/contrats/AIF-2026-0001"
+    assert recu[0].url.path == "/api/v1/contrats/AIF-2026-0001"
     assert recu[0].headers["authorization"] == "Bearer jeton-obo"
 
 
@@ -84,7 +84,7 @@ async def test_numero_echappe_dans_l_url() -> None:
         return httpx.Response(404)
 
     await _client(repondre).lire_contrat("../traces")
-    assert recu[0].url.raw_path == b"/api/contrats/..%2Ftraces"
+    assert recu[0].url.raw_path == b"/api/v1/contrats/..%2Ftraces"
 
 
 # ---------------------------------------------------------------- cas d'usage

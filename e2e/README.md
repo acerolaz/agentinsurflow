@@ -20,4 +20,4 @@ make test-e2e URL=http://localhost:8000      # staging : URL=https://<domaine>
 
 - Un manque d'environnement (jeton introuvable, instantané absent, 503 `EMBEDDINGS_INDISPONIBLES` ou `DOSSIERS_INDISPONIBLES`) est **sauté en local seulement**. Il devient un **échec** si `E2E_URL` n'est pas local ou si `E2E_STRICT=1` : un staging cassé ne peut pas rester vert.
 - Seuls ces deux codes 503 comptent comme manque ; tout autre 503, ou un corps non JSON, est un échec.
-- `E2E_CONTRAT_PROPRE` : un contrat du gestionnaire connecté (témoin positif du test BOLA : `GET /api/contrats/{propre}` = 200, listé par `GET /api/contrats`, sans `E2E_CONTRAT_AUTRE`). Exigée hors local ou en mode strict ; facultative en local (seul ce témoin est alors omis).
+- `E2E_CONTRAT_PROPRE` : un contrat du gestionnaire connecté (témoin positif du test BOLA : `GET /api/v1/contrats/{propre}` = 200, listé par `GET /api/v1/contrats`, sans `E2E_CONTRAT_AUTRE`). Exigée hors local ou en mode strict ; facultative en local (seul ce témoin est alors omis).

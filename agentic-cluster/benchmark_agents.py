@@ -4,7 +4,7 @@
 Seul ``modele`` change d'un candidat à l'autre : les réglages de ``agents.toml`` ne sont pas
 adaptés, un refus du modèle est un résultat. À lancer après ``make up`` (procédure :
 ``eval/preuves/benchmark-2026-11-03/README.md``). Jetons : celui de ``rag`` (rôle ``LLM``) pour
-``/api/llm``, ``EVALS_JETON`` (rôle ``Gestionnaire``) pour ``/api/extraits``.
+``/api/llm``, ``EVALS_JETON`` (rôle ``Gestionnaire``) pour ``/api/v1/extraits``.
 """
 
 from __future__ import annotations
@@ -92,10 +92,13 @@ def preflight(client: OpenAI, modele: str) -> dict[str, Any]:
 
 
 class OutilsLocaux:
-    """``search_rag`` du Rédacteur, servi par ``GET /api/extraits`` de la gateway locale."""
+    """``search_rag`` du Rédacteur, servi par ``GET /api/v1/extraits`` de la gateway locale."""
 
     def __init__(self, gateway: str, jeton: str) -> None:
-        self._url, self._entetes = f"{gateway}/api/extraits", {"Authorization": f"Bearer {jeton}"}
+        self._url, self._entetes = (
+            f"{gateway}/api/v1/extraits",
+            {"Authorization": f"Bearer {jeton}"},
+        )
 
     async def appeler(
         self, agent: str, jeton: str, outil: str, arguments: dict[str, Any]

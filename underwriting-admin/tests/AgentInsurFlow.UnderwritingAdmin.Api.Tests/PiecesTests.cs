@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AgentInsurFlow.UnderwritingAdmin.Api.Tests;
 
-/// <summary>TI : <c>GET /api/contrats/{numero}/pieces</c>, jetons réels, BOLA ; le port <see cref="IDepotDossiers"/> est en mémoire.</summary>
+/// <summary>TI : <c>GET /api/v1/contrats/{numero}/pieces</c>, jetons réels, BOLA ; le port <see cref="IDepotDossiers"/> est en mémoire.</summary>
 public sealed class PiecesTests : IDisposable
 {
     private const string GestionnaireA = "oid-gestionnaire-a";
@@ -42,7 +42,7 @@ public sealed class PiecesTests : IDisposable
     private async Task<(HttpStatusCode Statut, JsonElement Corps)> Get(string numero, string oid)
     {
         using var client = _usine.CreateClient();
-        using var requete = new HttpRequestMessage(HttpMethod.Get, $"/api/contrats/{numero}/pieces");
+        using var requete = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/contrats/{numero}/pieces");
         requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer",
             JetonsDeTest.Jeton(JetonsDeTest.AudienceParDefaut, oid, "Gestionnaire"));
         using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
@@ -82,7 +82,7 @@ public sealed class PiecesTests : IDisposable
     private async Task<HttpResponseMessage> GetFichier(string numero, string type, string oid)
     {
         using var client = _usine.CreateClient();
-        using var requete = new HttpRequestMessage(HttpMethod.Get, $"/api/contrats/{numero}/pieces/{type}/fichier");
+        using var requete = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/contrats/{numero}/pieces/{type}/fichier");
         requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer",
             JetonsDeTest.Jeton(JetonsDeTest.AudienceParDefaut, oid, "Gestionnaire"));
         return await client.SendAsync(requete, TestContext.Current.CancellationToken);

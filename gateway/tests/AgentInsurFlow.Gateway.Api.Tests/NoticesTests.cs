@@ -53,7 +53,7 @@ public sealed class NoticesTests(Backends backends) : IClassFixture<Backends>
         using var usine = backends.Gateway();
         using var client = usine.CreateClient();
 
-        using var reponse = await client.GetAsync(new Uri("/api/contrats", UriKind.Relative), Ct);
+        using var reponse = await client.GetAsync(new Uri("/api/v1/contrats", UriKind.Relative), Ct);
 
         Assert.Equal(HttpStatusCode.Unauthorized, reponse.StatusCode);
     }

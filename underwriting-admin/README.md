@@ -12,19 +12,19 @@ Service C# (.NET 10, Clean Architecture), port **8002**, **sa propre Container A
 
 | Route | Rôle | Réponses |
 |---|---|---|
-| `GET /api/contrats?limit&offset` | `Gestionnaire` | 200 (portefeuille du gestionnaire, `limit` ≤ 100) · 401 · 403 |
-| `GET /api/contrats/{numero_contrat}` | `Gestionnaire` | 200 (vue minimisée, 10 champs en snake_case) · 404 `CONTRAT_INTROUVABLE` (inexistant **ou** à un autre gestionnaire) |
-| `GET /api/contrats/{numero_contrat}/pieces` | `Gestionnaire` | 200 (pièces déclarées : type et date d'émission seulement) · 404 |
-| `GET /api/contrats/{numero_contrat}/etat` | `Gestionnaire` | 200 (tentative courante : rapports des agents, sections lisibles, relances) · 404 |
-| `GET /api/contrats/{numero_contrat}/contrat` | `Gestionnaire` | 200 (contrat imprimé : décision, prime, souscripteur avec coordonnées, véhicule, garanties ; `vue_contrat_accepte`) · 404 · 409 `CONTRAT_NON_ACCEPTE` |
-| `GET /api/contrats/{numero_contrat}/souscripteur` | `Gestionnaire` | 200 (fiche du lead : civilité, identité, adresse, mobile, e-mail, véhicule ; `vue_fiche_souscripteur`) · 404 |
-| `PUT /api/contrats/{numero_contrat}/brouillon` · `/statut` · `/observations` · `/etat` | `Gestionnaire` (écritures du cluster en OBO) | 204 · 400 (écriture refusée, avec `code`) · 404 · 409 `STATUT_FIGE` |
-| `POST /api/contrats/{numero_contrat}/relances` | `Gestionnaire` | 201 (relance n/3) · 400 · 404 · 409 `RELANCES_EPUISEES`, `DOSSIER_DECIDE`, `RELANCE_CONCURRENTE` |
-| `PUT /api/contrats/{numero_contrat}/statut` `{"statut": "SANS_SUITE"}` | `Gestionnaire`, **jamais le serveur MCP** | 204 (après la 3e relance et avant toute décision, K8) · 400 `VALIDATION_INATTENDUE` · 403 `ACCES_REFUSE` si l'`azp` du jeton est celui du serveur MCP (`Entra__McpClientId`) · 404 · 409 `DOSSIER_DECIDE`, `RELANCES_NON_EPUISEES`. Remplace `POST …/sans-suite` (action dans l'URL, #245) |
+| `GET /api/v1/contrats?limit&offset` | `Gestionnaire` | 200 (portefeuille du gestionnaire, `limit` ≤ 100) · 401 · 403 |
+| `GET /api/v1/contrats/{numero_contrat}` | `Gestionnaire` | 200 (vue minimisée, 10 champs en snake_case) · 404 `CONTRAT_INTROUVABLE` (inexistant **ou** à un autre gestionnaire) |
+| `GET /api/v1/contrats/{numero_contrat}/pieces` | `Gestionnaire` | 200 (pièces déclarées : type et date d'émission seulement) · 404 |
+| `GET /api/v1/contrats/{numero_contrat}/etat` | `Gestionnaire` | 200 (tentative courante : rapports des agents, sections lisibles, relances) · 404 |
+| `GET /api/v1/contrats/{numero_contrat}/contrat` | `Gestionnaire` | 200 (contrat imprimé : décision, prime, souscripteur avec coordonnées, véhicule, garanties ; `vue_contrat_accepte`) · 404 · 409 `CONTRAT_NON_ACCEPTE` |
+| `GET /api/v1/contrats/{numero_contrat}/souscripteur` | `Gestionnaire` | 200 (fiche du lead : civilité, identité, adresse, mobile, e-mail, véhicule ; `vue_fiche_souscripteur`) · 404 |
+| `PUT /api/v1/contrats/{numero_contrat}/brouillon` · `/statut` · `/observations` · `/etat` | `Gestionnaire` (écritures du cluster en OBO) | 204 · 400 (écriture refusée, avec `code`) · 404 · 409 `STATUT_FIGE` |
+| `POST /api/v1/contrats/{numero_contrat}/relances` | `Gestionnaire` | 201 (relance n/3) · 400 · 404 · 409 `RELANCES_EPUISEES`, `DOSSIER_DECIDE`, `RELANCE_CONCURRENTE` |
+| `PUT /api/v1/contrats/{numero_contrat}/statut` `{"statut": "SANS_SUITE"}` | `Gestionnaire`, **jamais le serveur MCP** | 204 (après la 3e relance et avant toute décision, K8) · 400 `VALIDATION_INATTENDUE` · 403 `ACCES_REFUSE` si l'`azp` du jeton est celui du serveur MCP (`Entra__McpClientId`) · 404 · 409 `DOSSIER_DECIDE`, `RELANCES_NON_EPUISEES`. Remplace `POST …/sans-suite` (action dans l'URL, #245) |
 | `POST /v1/traces` | sans jeton depuis `Otlp:SourcesSansJeton` sans `X-Forwarded-For`, sinon `Telemetrie` | 200 (protobuf) · 400 `OTLP_INVALIDE` (protobuf illisible, identifiant de mauvaise longueur, horodatage > `long.MaxValue`) · 401 · 403 · 415 |
-| `GET /api/traces/{trace_id}` | `Gestionnaire` | 200 (spans dans l'ordre) · 400 `TRACE_ID_INVALIDE` · 404 `TRACE_INTROUVABLE` |
-| `GET /api/points-de-reprise/{thread_id}?ns&id` · `GET …/{thread_id}/liste?ns&avant&limite` | `PointsDeReprise` (cluster seul) | 200 (dernier point si `id` absent) · 404 · 401 · 403 |
-| `PUT /api/points-de-reprise/{thread_id}` · `PUT …/{thread_id}/ecritures` · `DELETE …/{thread_id}` | `PointsDeReprise` (cluster seul) | 204 · 400 · 401 · 403 |
+| `GET /api/v1/traces/{trace_id}` | `Gestionnaire` | 200 (spans dans l'ordre) · 400 `TRACE_ID_INVALIDE` · 404 `TRACE_INTROUVABLE` |
+| `GET /api/v1/points-de-reprise/{thread_id}?ns&id` · `GET …/{thread_id}/liste?ns&avant&limite` | `PointsDeReprise` (cluster seul) | 200 (dernier point si `id` absent) · 404 · 401 · 403 |
+| `PUT /api/v1/points-de-reprise/{thread_id}` · `PUT …/{thread_id}/ecritures` · `DELETE …/{thread_id}` | `PointsDeReprise` (cluster seul) | 204 · 400 · 401 · 403 |
 | `GET /health` | aucun | `statut`, `version` (SHA), `release` |
 | `GET /openapi/v1.json` | aucun | Document affiché dans la page Swagger unique de la gateway (pas de Swagger UI propre) |
 

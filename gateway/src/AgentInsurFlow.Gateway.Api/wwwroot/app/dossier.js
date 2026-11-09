@@ -25,7 +25,7 @@ export async function afficherDossier(zone, numero) {
 
   // Une erreur de lecture de l'état s'efface à la lecture réussie suivante (un 429 ponctuel ne reste pas affiché).
   async function lireEtat() {
-    const r = await appeler("GET", `/api/contrats/${chemin}/etat`, { portee: "underwriting" });
+    const r = await appeler("GET", `/api/v1/contrats/${chemin}/etat`, { portee: "underwriting" });
     if (r.statut === 200) {
       v.etat = r.json;
       if (v.erreurEtat) v.message = null;
@@ -54,18 +54,18 @@ export async function afficherDossier(zone, numero) {
 
   // Fiche du lead (exception du 27/10) : lue une fois, affichée seulement ici, jamais envoyée au cluster.
   async function lireFiche() {
-    const r = await appeler("GET", `/api/contrats/${chemin}/souscripteur`, { portee: "underwriting" });
+    const r = await appeler("GET", `/api/v1/contrats/${chemin}/souscripteur`, { portee: "underwriting" });
     v.fiche = r.statut === 200 ? r.json : null;
   }
 
   // Pièces du lead (#141) : réservées au gestionnaire, jamais envoyées au cluster ni à un LLM.
   async function lirePieces() {
-    const r = await appeler("GET", `/api/contrats/${chemin}/pieces`, { portee: "underwriting" });
+    const r = await appeler("GET", `/api/v1/contrats/${chemin}/pieces`, { portee: "underwriting" });
     v.pieces = r.statut === 200 ? r.json : null;
   }
 
   async function ouvrirPiece(type) {
-    const r = await telecharger(`/api/contrats/${chemin}/pieces/${encodeURIComponent(type)}/fichier`, { portee: "underwriting" });
+    const r = await telecharger(`/api/v1/contrats/${chemin}/pieces/${encodeURIComponent(type)}/fichier`, { portee: "underwriting" });
     if (r.statut === 200) {
       const url = URL.createObjectURL(r.fichier);
       const lien = el("a", { href: url, download: `${type}.pdf` });
@@ -91,11 +91,11 @@ export async function afficherDossier(zone, numero) {
   }
 
   async function lireContrat() {
-    const r = await appeler("GET", `/v1/souscriptions/${chemin}/contrat`, { portee: "underwriting" });
+    const r = await appeler("GET", `/api/v1/contrats/${chemin}/contrat`, { portee: "underwriting" });
     v.contrat = r.statut === 200 ? r.json : null;
     // Conditions générales : la notice du contrat type, lue au corpus (rag) ; absente, le contrat s'imprime sans elles.
     if (!v.contrat) return;
-    const n = await appeler("GET", `/api/documents/${encodeURIComponent(v.contrat.contrat_type)}`, { portee: "rag" });
+    const n = await appeler("GET", `/api/v1/documents/${encodeURIComponent(v.contrat.contrat_type)}`, { portee: "rag" });
     v.conditions = n.statut === 200 ? conditionsGenerales(n.json) : null;
   }
 
@@ -144,7 +144,7 @@ export async function afficherDossier(zone, numero) {
 
   async function afficherTraces(etape, cible) {
     remplir(cible, el("p", { "aria-busy": "true" }, "Lecture de la trace…"));
-    const r = await appeler("GET", `/api/traces/${encodeURIComponent(etape.rapport.trace_id)}`, { portee: "underwriting" });
+    const r = await appeler("GET", `/api/v1/traces/${encodeURIComponent(etape.rapport.trace_id)}`, { portee: "underwriting" });
     if (r.statut !== 200) return remplir(cible, erreur(r));
     const spans = spansAffichables(r.json);
     remplir(cible, spans.length
@@ -157,7 +157,7 @@ export async function afficherDossier(zone, numero) {
     const cle = `${e.rapport.trace_id}:${e.agent}`;
     if (cle in v.tokens) return;
     v.tokens[cle] = undefined;
-    const r = await appeler("GET", `/api/traces/${encodeURIComponent(e.rapport.trace_id)}`, { portee: "underwriting" });
+    const r = await appeler("GET", `/api/v1/traces/${encodeURIComponent(e.rapport.trace_id)}`, { portee: "underwriting" });
     v.tokens[cle] = r.statut === 200 ? tokensEtape(r.json, e.agent) : "indisponible";
     rendre();
   }
@@ -235,7 +235,7 @@ export async function afficherDossier(zone, numero) {
   async function envoyerRelance(texte, pieces) {
     v.relanceEnVol = true;
     rendre();
-    const r = await appeler("POST", `/api/contrats/${chemin}/relances`, { portee: "underwriting", corps: { texte, pieces } });
+    const r = await appeler("POST", `/api/v1/contrats/${chemin}/relances`, { portee: "underwriting", corps: { texte, pieces } });
     v.relanceEnVol = false;
     if (r.statut === 201) {
       v.relance = { message: el("p", { role: "status" }, `Relance ${r.json.rang}/${r.json.max} enregistrée (envoi par e-mail à partir du 15/11)`), texte };
@@ -251,7 +251,7 @@ export async function afficherDossier(zone, numero) {
     v.relanceEnVol = true;
     rendre();
     // REST (#245) : le classement sans suite est un changement de statut
-    const r = await appeler("PUT", `/api/contrats/${chemin}/statut`, { portee: "underwriting", corps: { statut: "SANS_SUITE" } });
+    const r = await appeler("PUT", `/api/v1/contrats/${chemin}/statut`, { portee: "underwriting", corps: { statut: "SANS_SUITE" } });
     v.relanceEnVol = false;
     v.relance = { message: reussi(r) ? el("p", { role: "status" }, "Dossier classé sans suite.") : erreur(r), texte: null };
     if (reussi(r)) await lireEtat();

@@ -155,7 +155,7 @@ if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_
     builder.Services.AddOpenTelemetry().UseAzureMonitor(o => { o.SamplingRatio = 1; o.TracesPerSecond = null; })
         // après UseAzureMonitor : son détecteur Container Apps poserait service.name = nom de l'app (la dernière ressource l'emporte)
         .ConfigureResource(NomDeService);
-    // UseAzureMonitor exporte aussi les journaux : « Request starting … /api/contrats/AIF-… » (Information) porte le numéro
+    // UseAzureMonitor exporte aussi les journaux : « Request starting … /api/v1/contrats/AIF-… » (Information) porte le numéro
     foreach (var categorie in new[] { "Microsoft", "System" })
     {
         builder.Logging.AddFilter<OpenTelemetry.Logs.OpenTelemetryLoggerProvider>(categorie, LogLevel.Warning);

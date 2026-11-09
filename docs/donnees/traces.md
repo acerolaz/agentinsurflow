@@ -20,7 +20,7 @@ La conformité OpenTelemetry repose sur le **protocole** OTLP/HTTP protobuf (tou
 
 D-V2 disait : référentiel SQL des traces en local seulement. Cette décision est amendée (spec `docs/superpowers/specs/2026-10-28-o1-instrumentation-app-insights-design.md` §7, §8, §8 bis).
 
-- L'espace gestionnaire lit `GET /api/traces/{trace_id}` en staging. L'E2E de la CI aussi.
+- L'espace gestionnaire lit `GET /api/v1/traces/{trace_id}` en staging. L'E2E de la CI aussi.
 - Le référentiel SQL reste donc alimenté en Azure.
 - Les cinq services (gateway, underwriting-admin, agentic-cluster, rag, serveur-mcp) exportent aussi vers Application Insights. Un service n'exporte que si `APPLICATIONINSIGHTS_CONNECTION_STRING` est posée.
 - Rôles : le SQL sert l'espace gestionnaire, l'E2E et le local (exigence C20 « au minimum en local »). Application Insights sert la vigie.
@@ -41,7 +41,7 @@ flowchart LR
     RX --> CONV(["OtlpVersSpans<br/>protobuf → Span"]) --> TR[("🗄️ traces.span<br/>traces_writer")]
     CL(["🤖 agentic-cluster"])
     GW & RAG & UA & MCP & CL -. "si APPLICATIONINSIGHTS_CONNECTION_STRING (Azure)" .-> AI[("☁️ Application Insights<br/>vigie")]
-    TR --> Q(["🔎 GET /api/traces/{trace_id}<br/>traces_reader · rôle Gestionnaire"])
+    TR --> Q(["🔎 GET /api/v1/traces/{trace_id}<br/>traces_reader · rôle Gestionnaire"])
 ```
 
 *Lecture : underwriting-admin exporte sur sa boucle locale (`localhost:8002`, sans jeton) ; **en Azure** (Container Apps séparées, #70) la gateway exporte directement vers l'adresse interne d'underwriting-admin avec un jeton d'application (`Telemetrie__Audience`, rôle `Telemetrie`), et rag passe par la gateway (`/v1/traces`) comme le MCP ; **en local (compose)** rag et la gateway exportent directement sans jeton ; le serveur MCP exporte **en local directement** sur `underwriting-admin:8002` (comme rag) ; **en Azure** (sa propre Container App) il passe par la gateway (`/v1/traces`) avec un jeton d'application, rôle `Telemetrie`. La CLI passe toujours par la gateway (jeton d'application ou utilisateur).
@@ -98,7 +98,7 @@ par `contrat.present = true`.
 
 ## Une trace sur trois services
 
-`POST /api/reponses` (via la gateway) renvoie un `trace_id`. `GET /api/traces/{trace_id}` rend, dans l'ordre de
+`POST /api/v1/reponses` (via la gateway) renvoie un `trace_id`. `GET /api/v1/traces/{trace_id}` rend, dans l'ordre de
 début, le span HTTP de la gateway, ceux de `rag` (`agent.repondre`, `rag.recherche`, `llm.completer`) et, si un
 `numero_contrat` est fourni, l'appel OBO reçu par `underwriting-admin` (le `traceparent` est propagé). Vérifié
 localement le 20/10 : la table reçoit des spans `gateway`, `rag` et `agentinsurflow-underwriting` ; test E2E

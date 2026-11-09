@@ -102,7 +102,7 @@ jobs:
           FOUNDRY_ENDPOINT: ${{ vars.FOUNDRY_ENDPOINT }}
         run: |
           manque=0
-          # facultatives (non contrôlées) : RAG_SEUIL (vide : /api/extraits en 503), PROD_URL
+          # facultatives (non contrôlées) : RAG_SEUIL (vide : /api/v1/extraits en 503), PROD_URL
           for v in ACR_NAME AZURE_RESOURCE_GROUP CONTAINER_APP_NAME AZURE_TENANT_ID RAG_API_CLIENT_ID UNDERWRITING_API_CLIENT_ID MCP_API_CLIENT_ID SEED_GESTIONNAIRE_A SEED_GESTIONNAIRE_B CALCUL_APP_NAME CALCUL_URL CALCUL_AUDIENCE CALCUL_API_CLIENT_ID UW_APP_NAME MCP_APP_NAME RAG_APP_NAME PG_APP_NAME AZURE_UAMI_CLIENT_ID AZURE_UAMI_MCP_CLIENT_ID AZURE_UAMI_RAG_CLIENT_ID LLM_AUDIENCE LLM_API_CLIENT_ID FOUNDRY_ENDPOINT CLUSTER_APP_NAME INSURFLOW_CLUSTER_CLIENT_ID INSURFLOW_AGENT_ORCHESTRATEUR_CLIENT_ID INSURFLOW_AGENT_PIECES_CLIENT_ID INSURFLOW_AGENT_ANALYSTE_CLIENT_ID INSURFLOW_AGENT_REDACTEUR_CLIENT_ID INSURFLOW_AGENT_ACTUAIRE_CLIENT_ID AZURE_UAMI_CLUSTER_CLIENT_ID MCP_AZP_ORCHESTRATEUR MCP_AZP_REDACTEUR MCP_AZP_ACTUAIRE MCP_AZP_PIECES MCP_AZP_ANALYSTE; do
             [ -n "${!v}" ] || { echo "::error::variable $v vide pour cet environnement (docs/secrets.md) : aucune mise à jour lancée"; manque=1; }
           done
@@ -490,22 +490,18 @@ jobs:
           [ "$version_mcp" = "$attendu" ] || { echo "::error::serveur-mcp : version '$version_mcp' ≠ '$attendu'"; exit 1; }
           [ "$version_calcul" = "$attendu" ] || { echo "::error::calcul (par la gateway) : version '$version_calcul' ≠ '$attendu'"; exit 1; }
           [ "$version_cluster" = "$attendu" ] || { echo "::error::cluster d'agents : version '$version_cluster' ≠ '$attendu'"; exit 1; }
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/v1/souscriptions/AIF-2026-000001/evaluation")
-          [ "$code" = 401 ] || { echo "::error::POST /api/v1/souscriptions/{n}/evaluation sans jeton : $code ≠ 401"; exit 1; }
-          code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/api/v1/souscriptions/AIF-2026-000001/evaluation")
-          [ "$code" = 401 ] || { echo "::error::GET /api/v1/souscriptions/{n}/evaluation sans jeton : $code ≠ 401"; exit 1; }
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/reponses" -H 'content-type: application/json' -d '{}')
-          [ "$code" = 401 ] || { echo "::error::POST /api/reponses sans jeton : $code ≠ 401"; exit 1; }
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/v1/calcul/risques" -H 'content-type: application/json' -d '{}')
-          [ "$code" = 401 ] || { echo "::error::POST /api/v1/calcul/risques sans jeton : $code ≠ 401"; exit 1; }
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/v1/calcul/primes" -H 'content-type: application/json' -d '{}')
-          [ "$code" = 401 ] || { echo "::error::POST /api/v1/calcul/primes sans jeton : $code ≠ 401"; exit 1; }
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/v1/calcul/frequences" -H 'content-type: application/json' -d '{}')
-          [ "$code" = 401 ] || { echo "::error::POST /api/v1/calcul/frequences sans jeton : $code ≠ 401"; exit 1; }
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/llm/v1/chat/completions" -H 'content-type: application/json' -d '{}')
-          [ "$code" = 401 ] || { echo "::error::POST /api/llm/v1/chat/completions sans jeton : $code ≠ 401"; exit 1; }
-          # Le LLM avec jeton (rôle LLM de rag) est vérifié par le job evals (staging), via /api/reponses
-          echo "✔ $URL : gateway, rag, underwriting-admin, serveur-mcp, calcul et cluster en $attendu, /api/reponses, /api/v1/calcul, /api/llm et /api/v1/souscriptions fermées sans jeton"
+          # Toute ressource protégée : 401 à la gateway, avant tout service (sans corps : un GET avec corps peut être rejeté par l'envoy)
+          n=AIF-2026-000001
+          for appel in "POST /api/v1/souscriptions/$n/evaluation" "GET /api/v1/souscriptions/$n/evaluation" \
+              "PATCH /api/v1/souscriptions/$n/evaluation" "PUT /api/v1/souscriptions/$n/evaluation/decision" \
+              "GET /api/v1/contrats/$n" "POST /api/v1/reponses" "POST /api/v1/calcul/risques" "POST /api/v1/calcul/primes" \
+              "POST /api/v1/calcul/frequences" "POST /api/llm/v1/chat/completions"; do
+            set -- $appel
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X "$1" "$URL$2")
+            [ "$code" = 401 ] || { echo "::error::$1 $2 sans jeton : $code ≠ 401"; exit 1; }
+          done
+          # Le LLM avec jeton (rôle LLM de rag) est vérifié par le job evals (staging), via /api/v1/reponses
+          echo "✔ $URL : gateway, rag, underwriting-admin, serveur-mcp, calcul et cluster en $attendu, /api/v1/{souscriptions,contrats,reponses,calcul} et /api/llm fermées sans jeton"
 
       - uses: astral-sh/setup-uv@v6
         with: { version: "0.11.13", enable-cache: true }

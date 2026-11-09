@@ -79,7 +79,7 @@ function entete(vueActive) {
 // --- portefeuille --------------------------------------------------------------------------------
 async function vueDossiers(zone) {
   remplir(zone, el("h1", {}, "Mes dossiers"), el("p", { "aria-busy": "true" }, "Chargement…"));
-  const r = await appeler("GET", "/api/contrats", { portee: "underwriting" });
+  const r = await appeler("GET", "/api/v1/contrats", { portee: "underwriting" });
   if (r.statut !== 200) return remplir(zone, el("h1", {}, picto(PICTOS.dossiers), "Mes dossiers"), erreur(r));
   const lignes = r.json.map((c) =>
     el("tr", {},
@@ -119,7 +119,7 @@ function vueTchat(zone) {
       const bouton = e.currentTarget.querySelector("button");
       bouton.disabled = true;
       fil.append(el("li", { class: "question" }, texte));
-      const r = await appeler("POST", "/api/reponses", { portee: "rag", corps: { texte } });
+      const r = await appeler("POST", "/api/v1/reponses", { portee: "rag", corps: { texte } });
       bouton.disabled = false;
       if (r.statut !== 200) {
         fil.append(el("li", { class: "reponse" }, erreur(r)));

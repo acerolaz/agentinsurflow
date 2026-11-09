@@ -1,4 +1,4 @@
-"""Intégration — ``GET /api/documents/{doc_id}/attribution`` (Etalab 2.0) sur PostgreSQL."""
+"""Intégration — ``GET /api/v1/documents/{doc_id}/attribution`` (Etalab 2.0) sur PostgreSQL."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from corpus_de_test import CORPUS, DATE_ISO
 
 GESTIONNAIRE = entetes("Gestionnaire")
 DOC = CORPUS[0]["doc_id"]
-URL = f"/api/documents/{DOC}/attribution"
+URL = f"/api/v1/documents/{DOC}/attribution"
 
 
 async def test_attribution_200_champs_de_la_spec(corpus: httpx.AsyncClient) -> None:
@@ -51,7 +51,7 @@ async def test_attribution_sans_role_gestionnaire_403(api: httpx.AsyncClient) ->
 
 
 async def test_article_inconnu_404_document_introuvable(api: httpx.AsyncClient) -> None:
-    r = await api.get("/api/documents/LEGIARTI_INCONNU/attribution", headers=GESTIONNAIRE)
+    r = await api.get("/api/v1/documents/LEGIARTI_INCONNU/attribution", headers=GESTIONNAIRE)
     assert (r.status_code, r.json()["code"]) == (404, "DOCUMENT_INTROUVABLE")
 
 

@@ -57,7 +57,7 @@ Menu de gauche, **Investiguer › Recherche de transactions** (*Transaction sear
 
 1. Coller le `trace_id` noté au § 2 dans la zone de recherche, puis valider.
 2. Ouvrir un des résultats : la vue **Détails de transaction de bout en bout** (*Transaction Diagnostics*) s'ouvre.
-3. Elle montre l'arbre des appels de cette évaluation : gateway, cluster, chaque agent (span `invoke_agent`), appels au serveur MCP, à la Function de calcul, aux points de reprise (`/api/points-de-reprise/…`) et au modèle de langage. Chaque appel porte sa durée et son code de réponse.
+3. Elle montre l'arbre des appels de cette évaluation : gateway, cluster, chaque agent (span `invoke_agent`), appels au serveur MCP, à la Function de calcul, aux points de reprise (`/api/v1/points-de-reprise/…`) et au modèle de langage. Chaque appel porte sa durée et son code de réponse.
 4. Cliquer un élément pour voir ses propriétés : agent, mode, cause, réglage, tokens. Le contenu n'y figure que par son empreinte SHA-256 ; le seul lien vers une personne est le numéro de contrat des lignes `audit.*`, un pseudonyme ([`rgpd.md`](donnees/rgpd.md)).
 
 Sans `trace_id`, on part du menu **Investiguer › Échecs** ou **Performances**, puis on ouvre une requête dans la liste.

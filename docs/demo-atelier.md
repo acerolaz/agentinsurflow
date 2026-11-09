@@ -3,7 +3,7 @@
 **Rattachement : E3 : C13 Livraison continue.**
 
 > 🗄️ **Document du sprint 2** (atelier croisé n°2), conservé tel quel : il décrit le socle d'alors (une seule app,
-> `POST /api/agent`, `evals-pr` actif). L'état actuel (gateway + rag, `POST /api/reponses`, `evals-pr`
+> `POST /api/agent`, `evals-pr` actif). L'état actuel (gateway + rag, `POST /api/v1/reponses`, `evals-pr`
 > réactivé contre staging, #55) est dans le [README](../README.md).
 
 On note **du démontré, jamais du déclaré** (source : grille-atelier-2-socle-chaine.pdf). Chaque minute

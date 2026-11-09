@@ -2,7 +2,7 @@
 le jeu de démo ``eval/questions-demo.jsonl``) contre une API déployée. Python 3 seul, sans
 dépendance (le job « changements » de la CI l'importe tel quel).
 
-Boîte noire : seuls ``POST /api/reponses``, ``GET /api/extraits`` et ``/health`` sont appelés,
+Boîte noire : seuls ``POST /api/v1/reponses``, ``GET /api/v1/extraits`` et ``/health`` sont appelés,
 avec le jeton de ``EVALS_JETON`` (rôle ``Gestionnaire``) ; aucun secret Azure n'est nécessaire.
 Chaque cas passe ses contrôles déterministes (``verifier`` : contrat RAG ``statut``, ``articles``,
 ``http`` ; réponse non vide, trois phrases au plus) et sa latence est mesurée. Un 429, un délai
@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import Any
 
 LONGUEUR_MAX = 600  # « trois phrases au plus » (prompt système de l'agent)
-# ponytail: fenêtre fixe de la gateway (RateLimit:FenetreSecondes, 10 POST /api/reponses par
+# ponytail: fenêtre fixe de la gateway (RateLimit:FenetreSecondes, 10 POST /api/v1/reponses par
 # minute) ; lire Retry-After si la fenêtre devient configurable par environnement
 ATTENTE_429_S = 60.0
 
@@ -182,12 +182,12 @@ def _appeler(
 
 def interroger(url: str, cas: dict[str, Any], jeton: str | None) -> tuple[int, dict[str, Any]]:
     corps = {"texte": cas["question"], "numero_contrat": cas.get("numero_contrat")}
-    return _appeler(url, "/api/reponses", jeton, corps)
+    return _appeler(url, "/api/v1/reponses", jeton, corps)
 
 
 def extraits(url: str, question: str, jeton: str | None) -> dict[str, Any]:
     parametres = urllib.parse.urlencode({"question": question})
-    return _appeler(url, f"/api/extraits?{parametres}", jeton)[1]
+    return _appeler(url, f"/api/v1/extraits?{parametres}", jeton)[1]
 
 
 def corpus(url: str) -> dict[str, Any] | None:

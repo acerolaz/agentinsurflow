@@ -16,8 +16,8 @@ Documents de l'API du cluster dans Swagger : `/cluster/openapi.json` (déjà ser
 
 ## 2. Observations du gestionnaire — 3 min
 
-1. `GET /api/contrats/{numero_contrat}` : la vue ne contient ni nom, ni adresse, ni permis ; noter `statut`.
-2. `PUT /api/contrats/{numero_contrat}/observations` (acceptée tant que le dossier n'est pas décidé, #105) avec `{"observations": "Client fidèle, relevé fourni le 12/10."}` → `204` (sans corps). La valeur est **écrasée** à chaque appel ; plus de 2000 caractères → `400` avec un `code` ; statut figé → `409` ; contrat d'un autre gestionnaire → `404`.
+1. `GET /api/v1/contrats/{numero_contrat}` : la vue ne contient ni nom, ni adresse, ni permis ; noter `statut`.
+2. `PUT /api/v1/contrats/{numero_contrat}/observations` (acceptée tant que le dossier n'est pas décidé, #105) avec `{"observations": "Client fidèle, relevé fourni le 12/10."}` → `204` (sans corps). La valeur est **écrasée** à chaque appel ; plus de 2000 caractères → `400` avec un `code` ; statut figé → `409` ; contrat d'un autre gestionnaire → `404`.
 
 ## 3. Cas légitime — 4 min
 
@@ -25,7 +25,7 @@ Documents de l'API du cluster dans Swagger : `/cluster/openapi.json` (déjà ser
    - `statut = EN_ANALYSE`, `fiche` (décision, motifs, citations), `prime` (`prime_ttc_annuelle`), `message = null`, `synthese` (les 4 agents : `appeler_pieces`, `appeler_analyste_risque`, `appeler_redacteur`, `appeler_actuaire`).
    - L'évaluation est synchrone, budget global 25 s.
 2. Rejouer le même `POST` → `409 EVALUATION_EN_ATTENTE` (un brouillon attend la revue).
-3. `GET /api/contrats/{numero_contrat}` : statut `EN_ANALYSE`, brouillon présent, **jamais `ACCEPTE`** (K4, A4).
+3. `GET /api/v1/contrats/{numero_contrat}` : statut `EN_ANALYSE`, brouillon présent, **jamais `ACCEPTE`** (K4, A4).
 
 ## 4. Cas hostile — 4 min
 
@@ -39,20 +39,20 @@ Dire honnêtement les taux (`docs/contrat-personnel.md` § 3) : 84,2 % des hosti
 
 ## 5. Revue humaine et base avant / après — 3 min (K4)
 
-1. `GET /api/contrats/{numero_contrat}` du cas légitime : statut `EN_ANALYSE` (**avant**).
+1. `GET /api/v1/contrats/{numero_contrat}` du cas légitime : statut `EN_ANALYSE` (**avant**).
 2. `PUT /api/v1/souscriptions/{numero_contrat}/evaluation/decision` avec `{"decision": "ACCEPTE", "validation": "VALIDEE", "motif": "Conforme au barème."}` → `201 {"statut": "ACCEPTE"}`. Le motif est obligatoire (1 à 500 caractères) : sinon `422 REQUETE_INVALIDE`.
-3. `GET /api/contrats/{numero_contrat}` : statut `ACCEPTE` (**après**).
-4. Rejouer `POST …/revue` → `409 AUCUNE_REVUE_EN_ATTENTE` ; rejouer l'évaluation → `409 DOSSIER_DECIDE`.
+3. `GET /api/v1/contrats/{numero_contrat}` : statut `ACCEPTE` (**après**).
+4. Rejouer `PUT …/evaluation/decision` → `409 AUCUNE_REVUE_EN_ATTENTE` ; rejouer l'évaluation → `409 DOSSIER_DECIDE`.
 
 ## 6. Traces et absence de PII — 3 min (K2)
 
-1. `GET /api/traces/{trace_id}` (le `trace_id` figure dans le journal `audit.agent` du cluster) : un span `invoke_agent` par agent, attributs `gen_ai.agent.name`, `insurflow.mode`, `insurflow.cause`, `insurflow.signal_injection` ; **aucun** nom, adresse, jeton ni texte d'observation (empreintes SHA-256 seulement).
+1. `GET /api/v1/traces/{trace_id}` (le `trace_id` figure dans le journal `audit.agent` du cluster) : un span `invoke_agent` par agent, attributs `gen_ai.agent.name`, `insurflow.mode`, `insurflow.cause`, `insurflow.signal_injection` ; **aucun** nom, adresse, jeton ni texte d'observation (empreintes SHA-256 seulement).
 2. Pour le cas hostile détecté : `insurflow.cause = garde_fou:entree:<scanner>` (côté trace, jamais côté réponse).
 3. Application Insights et KQL : `🔴 à brancher (#54)` (requêtes dans `docs/contrat-personnel.md` § 4).
 
 ## 7. Jetons des agents et gestionnaire B — 3 min (K3)
 
-- **Gestionnaire B** (contrats `AIF-2026-000004` à `000006`) : avec son jeton, `PUT …/observations` ou `GET /api/contrats/{n}` sur un contrat du gestionnaire A (`AIF-2026-000001` à `000003`) → `404` (même corps qu'un contrat inexistant, BOLA).
+- **Gestionnaire B** (contrats `AIF-2026-000004` à `000006`) : avec son jeton, `PUT …/observations` ou `GET /api/v1/contrats/{n}` sur un contrat du gestionnaire A (`AIF-2026-000001` à `000003`) → `404` (même corps qu'un contrat inexistant, BOLA).
 - **Actuaire et Rédacteur** : leurs jetons ne sont délivrés qu'au cluster (OBO). Les refus `UNAUTHORIZED_TOOL` se montrent par les tests :
   `uv run pytest serveur-mcp/tests/integration/test_protocole.py serveur-mcp/tests/integration/test_outils_calcul.py serveur-mcp/tests/integration/test_outils_ecriture.py --no-cov`
   (Rédacteur → `update_statut_dossier` / `calculer_prime`, Actuaire → `enregistrer_etat`, refus **avant** tout appel de backend).

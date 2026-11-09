@@ -43,7 +43,7 @@ migrate:            ## migrations Alembic de la base vecteurs (compte migrateur,
 agreger:            ## Légifrance + barème + documents rédigés → data/aggregated/corpus-<date>.json
 	uv run python -m agentinsurflow_rag.cli.agreger
 
-ingest:             ## make ingest [URL=<gateway>] [INSTANTANE=data/raw/…] [COLLECTION=… SOURCE=rag/corpus/…] [JEU=data/aggregated/…] : Légifrance, rejeu, Markdown ou jeu agrégé → /api/ingestions
+ingest:             ## make ingest [URL=<gateway>] [INSTANTANE=data/raw/…] [COLLECTION=… SOURCE=rag/corpus/…] [JEU=data/aggregated/…] : Légifrance, rejeu, Markdown ou jeu agrégé → /api/v1/ingestions
 	uv run python -m agentinsurflow_rag.cli.ingest --url $(URL) $(if $(INSTANTANE),--instantane $(INSTANTANE)) $(if $(JEU),--jeu $(JEU)) $(if $(COLLECTION),--collection $(COLLECTION)) $(if $(SOURCE),--source $(SOURCE))
 
 extraire:           ## extraction Légifrance seule → data/raw/ (identifiants PISTE du .env, bac à sable)

@@ -1,4 +1,4 @@
-"""Recherche tracée (span ``rag.recherche``) pour ``/api/extraits`` et ``/api/reponses``."""
+"""Recherche tracée (span ``rag.recherche``) pour ``/api/v1/extraits`` et ``/api/v1/reponses``."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""CLI d'ingestion (spec §3.2, ① à ④) : Légifrance → instantané versionné → ``/api/ingestions``.
+"""CLI d'ingestion (spec §3.2, ① à ④) : Légifrance → instantané versionné → ``/api/v1/ingestions``.
 
     make ingest [URL=https://<gateway>] [INSTANTANE=data/raw/code-assurances-<date>.json]
     make ingest [URL=…] COLLECTION=<collection> SOURCE=<dossier de .md>
@@ -197,7 +197,7 @@ def envoyer(
             }
             try:
                 reponse = client.post(
-                    f"{url.rstrip('/')}/api/ingestions", json=corps, headers=entetes
+                    f"{url.rstrip('/')}/api/v1/ingestions", json=corps, headers=entetes
                 )
             except httpx.HTTPError as exc:
                 raise ErreurEnvoi(f"API injoignable : {exc!r}") from exc

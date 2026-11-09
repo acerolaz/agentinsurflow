@@ -16,5 +16,5 @@ if [ -n "${PG_MIGRATEUR_PASSWORD:-}" ]; then
 fi
 unset PG_MIGRATEUR_PASSWORD
 
-# pas de journal d'accès : il écrirait la query string (/api/extraits?question=…, RGPD)
+# pas de journal d'accès : il écrirait la query string (/api/v1/extraits?question=…, RGPD)
 exec uvicorn agentinsurflow_rag.api:app --host 0.0.0.0 --port 8001 --no-access-log

@@ -54,7 +54,7 @@ et registre de suivi de l'implémentation.*
 | S3-24 | API RESTful, page Swagger unique sur la gateway | 19/10 |
 | S3-25 | La gateway valide le JWT et le rôle par route ; chaque service revalide | 19/10 |
 | S3-26 | IP réelle du client derrière l'envoy (`Proxy__EnvoyDevant`) | 19/10 |
-| S3-27 | Limitation de débit native (120/min global, 10/min sur `/api/reponses`) | 19/10 |
+| S3-27 | Limitation de débit native (120/min global, 10/min sur `/api/v1/reponses`) | 19/10 |
 | S3-28 | Domaine personnalisé en production, certificat managé | 19/10 |
 | S3-29 | La gateway, passage unique du serveur MCP (S4) | 19/10 |
 | S3-30 | Déploiement de la gateway avancé (voie B) | 19/10 |
@@ -63,7 +63,7 @@ et registre de suivi de l'implémentation.*
 
 | Sujet | Décision | Raison |
 |---|---|---|
-| Noms des routes | `/api/contrats`, `/api/traces/{trace_id}` (au lieu de `/internal/…`) | Contrat REST S3-24, déjà routé par la gateway |
+| Noms des routes | `/api/v1/contrats`, `/api/v1/traces/{trace_id}` (au lieu de `/internal/…`) | Contrat REST S3-24, déjà routé par la gateway |
 | Format JSON | snake_case | Les clés que lit `rag` (`numero_contrat`, `tranche_age`…) |
 | `rag` → `underwriting-admin` | **Par la gateway** (`UNDERWRITING_URL` = :8000), jeton OBO de l'utilisateur | D22 du dossier (« tout passe par la gateway ») : rôle par route, débit, journal ; remplace l'appel direct sur localhost (C15), le 21/10 à la demande d'Acerola |
 | `/v1/traces` en local | `Otlp:SourcesSansJeton` (CIDR) en plus de la boucle locale | Les conteneurs du compose ne partagent pas `localhost` ; Azure garde la boucle seule |

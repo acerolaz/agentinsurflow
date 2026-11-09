@@ -26,7 +26,7 @@ properties:
           - { name: RAG_API_CLIENT_ID, value: "${RAG_API_CLIENT_ID}" }
           # même liste que la gateway (Entra__Audiences__rag__0 et __1)
           - { name: RAG_API_AUDIENCES, value: "api://agentinsurflow-rag,${RAG_API_CLIENT_ID}" }
-          - { name: RAG_SEUIL, value: "${RAG_SEUIL}" } # vide → avertissement, /api/extraits en 503
+          - { name: RAG_SEUIL, value: "${RAG_SEUIL}" } # vide → avertissement, /api/v1/extraits en 503
           # base annexe : Container App postgres (infra/containerapp-postgres.yaml), TCP interne 5432
           - { name: PG_HOST, value: "${PG_HOST}" }
           # migrateur : au démarrage seulement (demarrer.sh), retiré avant uvicorn

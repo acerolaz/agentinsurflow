@@ -186,7 +186,7 @@ function recoller(precedent, suivant) {
 }
 
 /**
- * Conditions générales du contrat imprimé : la notice du contrat type (GET /api/documents/{doc_id}), version en vigueur,
+ * Conditions générales du contrat imprimé : la notice du contrat type (GET /api/v1/documents/{doc_id}), version en vigueur,
  * chunks recollés dans l'ordre, découpée en sections (« ## ») et lignes (« - » = puce). null si rien à afficher.
  */
 export function conditionsGenerales(document) {

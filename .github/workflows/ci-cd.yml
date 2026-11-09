@@ -419,7 +419,7 @@ jobs:
 
   e2e-staging:
     # Parcours bout en bout via la gateway de staging ; manque d'environnement = échec (E2E_STRICT)
-    # Après evals (sautées ou non) : même identité de CI, donc même quota /api/reponses (10/min) à la gateway
+    # Après evals (sautées ou non) : même identité de CI, donc même quota /api/v1/reponses (10/min) à la gateway
     needs: [staging, evals]
     if: ${{ !cancelled() && needs.staging.result == 'success' }}
     runs-on: ubuntu-latest

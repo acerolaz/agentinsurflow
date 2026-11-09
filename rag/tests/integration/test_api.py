@@ -1,6 +1,6 @@
 """Intégration — contrat HTTP de l'API rag : santé, Swagger, ressources REST et leurs erreurs.
 
-Le parcours de l'agent (``POST /api/reponses``) est dans ``test_reponses_api.py``.
+Le parcours de l'agent (``POST /api/v1/reponses``) est dans ``test_reponses_api.py``.
 """
 
 from __future__ import annotations
@@ -78,17 +78,17 @@ async def test_rag_seuil_absent_ou_invalide_signale_au_demarrage(
 
 def test_l_interface_swagger_est_servie_a_la_racine() -> None:
     assert "swagger-ui" in client.get("/").text
-    assert "/api/reponses" in client.get("/openapi.json").json()["paths"]
+    assert "/api/v1/reponses" in client.get("/openapi.json").json()["paths"]
 
 
 ROUTES_REST = {
     "/health",
-    "/api/reponses",
-    "/api/ingestions",
-    "/api/ingestions/{ingestion_id}",
-    "/api/extraits",
-    "/api/documents/{doc_id}",
-    "/api/documents/{doc_id}/attribution",
+    "/api/v1/reponses",
+    "/api/v1/ingestions",
+    "/api/v1/ingestions/{ingestion_id}",
+    "/api/v1/extraits",
+    "/api/v1/documents/{doc_id}",
+    "/api/v1/documents/{doc_id}/attribution",
 }
 
 
@@ -102,13 +102,17 @@ def test_contrat_rest_plus_de_route_rpc() -> None:
 @pytest.mark.parametrize(
     ("chemin", "methode", "codes"),
     [
-        ("/api/reponses", "post", {"200", "401", "403", "404", "422", "503"}),
-        ("/api/ingestions", "post", {"201", "401", "403", "422", "503"}),
-        ("/api/ingestions", "get", {"200", "401", "403"}),
-        ("/api/ingestions/{ingestion_id}", "get", {"200", "401", "403", "404"}),
-        ("/api/extraits", "get", {"200", "401", "403", "422", "503"}),
-        ("/api/documents/{doc_id}", "get", {"200", "401", "403", "404"}),
-        ("/api/documents/{doc_id}/attribution", "get", {"200", "401", "403", "404", "422", "503"}),
+        ("/api/v1/reponses", "post", {"200", "401", "403", "404", "422", "503"}),
+        ("/api/v1/ingestions", "post", {"201", "401", "403", "422", "503"}),
+        ("/api/v1/ingestions", "get", {"200", "401", "403"}),
+        ("/api/v1/ingestions/{ingestion_id}", "get", {"200", "401", "403", "404"}),
+        ("/api/v1/extraits", "get", {"200", "401", "403", "422", "503"}),
+        ("/api/v1/documents/{doc_id}", "get", {"200", "401", "403", "404"}),
+        (
+            "/api/v1/documents/{doc_id}/attribution",
+            "get",
+            {"200", "401", "403", "404", "422", "503"},
+        ),
     ],
 )
 def test_chaque_route_documente_ses_erreurs(chemin: str, methode: str, codes: set[str]) -> None:
@@ -119,6 +123,6 @@ def test_chaque_route_documente_ses_erreurs(chemin: str, methode: str, codes: se
 
 def test_openapi_sans_servers_pour_la_page_swagger_de_la_gateway() -> None:
     # Servi par la gateway en /rag/openapi.json : sans « servers », le « Try it out » vise la
-    # gateway elle-même (/api/reponses, avec jeton, rôle et limite de débit), pas /rag/…
+    # gateway elle-même (/api/v1/reponses, avec jeton, rôle et limite de débit), pas /rag/…
     document = client.get("/openapi.json", headers={"X-Forwarded-Prefix": "/rag"}).json()
     assert "servers" not in document

@@ -9,7 +9,7 @@ namespace AgentInsurFlow.Gateway.Api.Tests;
 
 /// <summary>
 /// TI de la route <c>/mcp</c> (Streamable HTTP, issue #58) et des écritures d'underwriting
-/// (<c>PUT /api/contrats/{n}/brouillon|statut</c>, déjà couvertes par <c>underwriting-contrats</c>).
+/// (<c>PUT /api/v1/contrats/{n}/brouillon|statut</c>, déjà couvertes par <c>underwriting-contrats</c>).
 /// </summary>
 public sealed class McpTests(Backends backends) : IClassFixture<Backends>
 {
@@ -144,7 +144,7 @@ public sealed class McpTests(Backends backends) : IClassFixture<Backends>
     {
         using var usine = backends.Gateway();
         using var client = usine.CreateClient();
-        var chemin = $"/api/contrats/AIF-2026-0001/{suffixe}";
+        var chemin = $"/api/v1/contrats/AIF-2026-0001/{suffixe}";
 
         var reponse = await Envoyer(client, "PUT", chemin, Creer(AudienceUnderwriting, ["Gestionnaire"]),
             new StringContent("{}", Encoding.UTF8, "application/json"));
@@ -164,7 +164,7 @@ public sealed class McpTests(Backends backends) : IClassFixture<Backends>
     {
         using var usine = backends.Gateway();
         using var client = usine.CreateClient();
-        const string chemin = "/api/contrats/AIF-2026-0001/etat";
+        const string chemin = "/api/v1/contrats/AIF-2026-0001/etat";
         var corps = () => new StringContent("{}", Encoding.UTF8, "application/json");
 
         // le gestionnaire appelle directement : rôle et audience valides, mais pas l'appelant MCP
@@ -186,7 +186,7 @@ public sealed class McpTests(Backends backends) : IClassFixture<Backends>
         using var usine = backends.Gateway(("Entra:McpClientId", ""));
         using var client = usine.CreateClient();
 
-        var reponse = await Envoyer(client, "PUT", "/api/contrats/AIF-2026-0001/etat",
+        var reponse = await Envoyer(client, "PUT", "/api/v1/contrats/AIF-2026-0001/etat",
             Creer(AudienceUnderwriting, ["Gestionnaire"], azp: ""), new StringContent("{}", Encoding.UTF8, "application/json"));
 
         Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);

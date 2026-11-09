@@ -22,7 +22,7 @@ using OtlpSpan = OpenTelemetry.Proto.Trace.V1.Span;
 
 namespace AgentInsurFlow.UnderwritingAdmin.Api.Tests;
 
-/// <summary>TI : <c>POST /v1/traces</c> (règle S3-21) et <c>GET /api/traces/{trace_id}</c>, jetons réels, dépôt en mémoire.</summary>
+/// <summary>TI : <c>POST /v1/traces</c> (règle S3-21) et <c>GET /api/v1/traces/{trace_id}</c>, jetons réels, dépôt en mémoire.</summary>
 public sealed class TracesTests : IDisposable
 {
     private const string TraceId = "0af7651916cd43dd8448eb211c80319c";
@@ -232,7 +232,7 @@ public sealed class TracesTests : IDisposable
         (await Poster(Otlp("0000000000000001", 1_000), "127.0.0.1")).Dispose();
         (await Poster(Otlp("0000000000000001", 1_000), "127.0.0.1")).Dispose();
 
-        var (statut, corps) = await Lire($"/api/traces/{TraceId.ToUpperInvariant()}", "Gestionnaire");
+        var (statut, corps) = await Lire($"/api/v1/traces/{TraceId.ToUpperInvariant()}", "Gestionnaire");
 
         Assert.Equal(HttpStatusCode.OK, statut);
         Assert.Equal(["0000000000000001", "0000000000000002"], corps.EnumerateArray().Select(s => s.GetProperty("span_id").GetString()));
@@ -243,8 +243,8 @@ public sealed class TracesTests : IDisposable
     [Fact]
     public async Task Trace_inconnue_404_identifiant_invalide_400()
     {
-        var (inconnue, probleme) = await Lire("/api/traces/" + new string('a', 32), "Gestionnaire");
-        var (invalide, autre) = await Lire("/api/traces/pas-un-identifiant", "Gestionnaire");
+        var (inconnue, probleme) = await Lire("/api/v1/traces/" + new string('a', 32), "Gestionnaire");
+        var (invalide, autre) = await Lire("/api/v1/traces/pas-un-identifiant", "Gestionnaire");
 
         Assert.Equal(HttpStatusCode.NotFound, inconnue);
         Assert.Equal("TRACE_INTROUVABLE", probleme.GetProperty("code").GetString());
@@ -255,21 +255,21 @@ public sealed class TracesTests : IDisposable
     [Fact]
     public async Task Trace_sans_jeton_401_et_sans_role_Gestionnaire_403()
     {
-        Assert.Equal(HttpStatusCode.Unauthorized, (await Lire($"/api/traces/{TraceId}")).Statut);
-        Assert.Equal(HttpStatusCode.Forbidden, (await Lire($"/api/traces/{TraceId}", "Telemetrie")).Statut);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Lire($"/api/v1/traces/{TraceId}")).Statut);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Lire($"/api/v1/traces/{TraceId}", "Telemetrie")).Statut);
     }
 
     [Fact]
     public async Task V1Traces_ne_se_trace_pas_lui_meme()
     {
         (await Poster(Otlp(), "127.0.0.1")).Dispose();
-        await Lire($"/api/traces/{TraceId}", "Gestionnaire"); // témoin : cette route-là est bien tracée
+        await Lire($"/api/v1/traces/{TraceId}", "Gestionnaire"); // témoin : cette route-là est bien tracée
 
-        for (var i = 0; i < 40 && !_activites.ToArray().Any(a => Chemin(a).StartsWith("/api/traces", StringComparison.Ordinal)); i++)
+        for (var i = 0; i < 40 && !_activites.ToArray().Any(a => Chemin(a).StartsWith("/api/v1/traces", StringComparison.Ordinal)); i++)
         {
             await Task.Delay(50, TestContext.Current.CancellationToken);
         }
-        Assert.Contains(_activites.ToArray(), a => Chemin(a).StartsWith("/api/traces", StringComparison.Ordinal));
+        Assert.Contains(_activites.ToArray(), a => Chemin(a).StartsWith("/api/v1/traces", StringComparison.Ordinal));
         Assert.DoesNotContain(_activites.ToArray(), a => Chemin(a).StartsWith("/v1/traces", StringComparison.Ordinal));
     }
 
@@ -310,7 +310,7 @@ public sealed class TracesTests : IDisposable
         });
         // un avertissement d'une catégorie filtrée à Warning qui porte le numéro (ex. « Request failed » de YARP)
         usine.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Yarp.ReverseProxy").Log(
-            LogLevel.Warning, default, "Échec du renvoi vers /api/contrats/AIF-2026-000001", null, (message, _) => message);
+            LogLevel.Warning, default, "Échec du renvoi vers /api/v1/contrats/AIF-2026-000001", null, (message, _) => message);
         using var client = usine.CreateClient();
         using var requete = new HttpRequestMessage(HttpMethod.Get, chemin);
         requete.Headers.Add("traceparent", $"00-{trace}-0123456789abcdef-01");
@@ -332,7 +332,7 @@ public sealed class TracesTests : IDisposable
     [InlineData(AppInsights)]
     public async Task Spans_sans_numero_de_contrat(string? chaineAppInsights)
     {
-        var (spans, _) = await Executer(chaineAppInsights, "/api/contrats/AIF-2026-000001");
+        var (spans, _) = await Executer(chaineAppInsights, "/api/v1/contrats/AIF-2026-000001");
 
         Assert.Contains(spans, a => a.Kind == ActivityKind.Server);
         Assert.All(spans, a =>
@@ -345,7 +345,7 @@ public sealed class TracesTests : IDisposable
     [Fact]
     public async Task Avec_chaine_app_insights_un_seul_span_serveur_par_requete()
     {
-        var (spans, _) = await Executer(AppInsights, "/api/contrats/AIF-2026-000001");
+        var (spans, _) = await Executer(AppInsights, "/api/v1/contrats/AIF-2026-000001");
 
         Assert.Single(spans, a => a.Kind == ActivityKind.Server);
     }
@@ -361,7 +361,7 @@ public sealed class TracesTests : IDisposable
     [Fact]
     public async Task Avec_chaine_app_insights_journaux_sans_numero_de_contrat()
     {
-        var (_, journaux) = await Executer(AppInsights, "/api/contrats/AIF-2026-000001");
+        var (_, journaux) = await Executer(AppInsights, "/api/v1/contrats/AIF-2026-000001");
 
         Assert.Contains(journaux, j => j.Contains("{numero_contrat}", StringComparison.Ordinal));
         Assert.All(journaux, j => Assert.DoesNotContain("AIF-", j));
@@ -374,7 +374,7 @@ public sealed class TracesTests : IDisposable
         var doc = JsonDocument.Parse(await client.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken)).RootElement;
         var chemins = doc.GetProperty("paths");
 
-        var lecture = chemins.GetProperty("/api/traces/{trace_id}").GetProperty("get").GetProperty("responses");
+        var lecture = chemins.GetProperty("/api/v1/traces/{trace_id}").GetProperty("get").GetProperty("responses");
         var reception = chemins.GetProperty("/v1/traces").GetProperty("post").GetProperty("responses");
 
         Assert.Equal(["200", "400", "401", "403", "404"], lecture.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));

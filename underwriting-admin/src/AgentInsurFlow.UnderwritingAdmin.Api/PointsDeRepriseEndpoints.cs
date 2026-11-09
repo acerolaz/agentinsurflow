@@ -11,7 +11,7 @@ internal static class PointsDeRepriseEndpoints
 {
     public static void MapPointsDeReprise(this IEndpointRouteBuilder app)
     {
-        var points = app.MapGroup("/api/points-de-reprise").RequireAuthorization("PointsDeReprise").WithTags("PointsDeReprise");
+        var points = app.MapGroup("/api/v1/points-de-reprise").RequireAuthorization("PointsDeReprise").WithTags("PointsDeReprise");
 
         points.MapGet("/{thread_id}", async (IDepotPointsDeReprise depot, CancellationToken ct,
                 [FromRoute(Name = "thread_id")] string threadId, string? ns, string? id) =>

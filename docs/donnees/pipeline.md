@@ -22,7 +22,7 @@
 | ① | Lancement | CLI | Configuration + jeton ; un 401 donne « identifiants PISTE invalides » et un code de sortie non nul |
 | ② | Extraction | CLI | Plan du code → filtre du périmètre → `getArticle` séquentiel ; 3 nouvelles tentatives à délai croissant sur 429 et 5xx |
 | ③ | Sauvegarde brute | CLI | Fichier temporaire puis renommage (jamais d'instantané partiel) ; manifeste versionné |
-| ④ | Envoi | CLI | Lots de 50 vers `POST /api/ingestions` par la gateway (rôle `Ingestion`) ; `--instantane <fichier>` saute ① à ③ |
+| ④ | Envoi | CLI | Lots de 50 vers `POST /api/v1/ingestions` par la gateway (rôle `Ingestion`) ; `--instantane <fichier>` saute ① à ③ |
 | ⑤ | Validation | `rag` | Structure du lot validée (422 sinon) ; chaque article contrôlé un par un : un article partiel est **rejeté avec sa raison**, le lot continue |
 | ⑥ | Nettoyage | `rag` | HTML → texte, NFC, espaces, dates ISO, numéro homogène (`L. 211-1` → `L211-1`) ; rejet des articles vides, trop courts ou non en vigueur, avec leur raison. Montants et durées tels que la loi les écrit |
 | ⑦ | Dédoublonnage | `rag` | Même (`doc_id`, hash) → inchangé ; nouveau hash → nouvelle version, l'ancienne passe `obsolete` ; quasi-doublon > 0,95 → **signalé, pas rejeté** |

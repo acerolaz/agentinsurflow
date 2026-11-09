@@ -41,6 +41,14 @@ version qu'on vient de quitter, ce qui sert à revenir en avant. Pour une versio
 Le rollback est la **seule** façon de servir une release inférieure : la chaîne, elle, refuse avant la production
 toute release sous celle en service (`tools/version.py --verifier`).
 
+⛔ **Pas de rollback par-dessus le passage en `/api/v1` (#241→#246, première release : v0.6.40).** Le rollback
+reprend les images et le code de la Function du SHA visé, mais les modèles `infra/containerapp-*.yaml` et la fumée
+viennent de `main`. Vers une release antérieure (v0.6.38 ou moins), le serveur MCP restauré recevrait
+`CALCUL_URL=…/api/v1/calcul` et appellerait `…/evaluer` (404, calcul indisponible), et la fumée exigerait des 401 sur
+des chemins `/api/v1/…` que l'ancienne gateway ne route pas : run rouge **après** le déploiement. Plan B : une PR
+qui annule (`git revert`) les fusions en cause sur `main`, puis la chaîne normale, qui produit une release
+supérieure. Les rollbacks entre releases ≥ v0.6.40 restent pris en charge.
+
 ## Scénario de répétition
 
 | # | Geste | Vérification |

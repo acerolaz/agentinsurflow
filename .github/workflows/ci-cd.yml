@@ -107,11 +107,13 @@ jobs:
       - run: make test-integration # démarre le postgres du compose, puis TU + TI de rag
         env:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }} # lu par le compose (services non démarrés ici)
+          MCP_API_CLIENT_ID: ${{ vars.MCP_API_CLIENT_ID }} # idem (underwriting l'exige, #245)
       - run: make -C underwriting-admin test # TI contre le postgres déjà démarré (PG_* de l'environnement)
       - if: always()
         run: docker compose down -v
         env:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          MCP_API_CLIENT_ID: ${{ vars.MCP_API_CLIENT_ID }}
 
   pyramide:
     needs: lint
@@ -259,6 +261,7 @@ jobs:
     env:
       STAGING_URL: ${{ vars.STAGING_URL }}
       AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }} # docker compose valide tout le fichier, même pour la seule base
+      MCP_API_CLIENT_ID: ${{ vars.MCP_API_CLIENT_ID }} # idem (underwriting l'exige, #245)
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

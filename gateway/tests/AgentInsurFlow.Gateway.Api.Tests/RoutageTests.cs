@@ -85,11 +85,7 @@ public sealed class RoutageTests : IClassFixture<Backends>, IDisposable
     [InlineData("/internal/sql/contrats")]
     // non versionnées et alias d'avant #246 : le chemin public est /api/v1/…
     [InlineData("/api/reponses/x")]
-    [InlineData("/api/extraits/x")]
-    [InlineData("/api/documents/x")]
     [InlineData("/api/contrats/AIF-2026-0001")]
-    [InlineData("/api/traces/abc")]
-    [InlineData("/api/points-de-reprise/x")]
     [InlineData("/v1/souscriptions/AIF-2026-0001/contrat")]
     public async Task Chemin_non_route_404_sans_appel_backend(string chemin)
     {

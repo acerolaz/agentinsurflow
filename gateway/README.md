@@ -71,12 +71,12 @@ En Azure, la gateway est derrière l'**envoy** de Container Apps, qui ajoute l'I
 | `GET /api/v1/contrats/{numero_contrat}/pieces`, `/etat` | `underwriting-admin` | 200 · 404 | Pièces déclarées ; progression du dossier (rapports des agents, sections lisibles) |
 | `GET /api/v1/contrats/{numero_contrat}/souscripteur` | `underwriting-admin` | 200 · 404 | Fiche du lead pour l'espace gestionnaire (exception à la minimisation, jamais vers le cluster ni un LLM) |
 | `POST /api/v1/contrats/{numero_contrat}/relances` ; `PUT …/statut` `{"statut": "SANS_SUITE"}` | `underwriting-admin` | 201 · 204 · 400 · 403 · 404 · 409 | Relance de pièces (3 au plus) ; classement `SANS_SUITE` après la 3e relance, refusé au serveur MCP (#245) |
-| `GET /api/v1/contrats/{numero_contrat}/contrat` | `underwriting-admin` | 200 · 404 · 409 | Contrat imprimé après `ACCEPTE` (l'alias `GET /v1/souscriptions/{n}/contrat` est retiré, #246) |
+| `GET /api/v1/contrats/{numero_contrat}/contrat` | `underwriting-admin` | 200 · 404 · 409 | Contrat imprimé après `ACCEPTE` |
 | `GET /api/v1/traces/{trace_id}` | `underwriting-admin` | 200 · 404 | Trace OpenTelemetry, tous services confondus |
 | `POST /v1/traces` | `underwriting-admin` | 200 | **Exception** : chemin imposé par la norme OTLP (récepteur de spans), pas une API métier |
 | `GET /health`, `/health/rag`, `/health/underwriting` | gateway, services | 200 | Santé et versions |
 
-Règles communes : **toute API métier est versionnée en `/api/v1/…`**, dans chaque service (#246) : la gateway transmet le chemin public tel quel, sauf vers la Function de calcul (routes internes inchangées, Easy Auth). **Exceptions**, hors versionnement : `/v1/traces` (norme OTLP), `/health*`, `/mcp` (transport JSON-RPC), `/api/llm/*` (chemin dicté par le SDK compatible OpenAI) et les documents OpenAPI. Ressources au pluriel ; `GET` sans effet de bord ; `POST` pour créer ou calculer ; `201` + `Location` à la création ; erreurs au format **ProblemDetails** (RFC 9457) avec un champ `code` (`CONTRAT_INTROUVABLE`…) ; pagination `limit`/`offset`. Tout chemin non listé : **404** (401 sans jeton, refus par défaut), sans appel transmis.
+Règles communes : **toute API métier est versionnée en `/api/v1/…`**, dans chaque service (#246), sauf OTLP (`/v1/traces`), santé, `/mcp`, `/api/llm/*` et documents OpenAPI ; la gateway transmet le chemin tel quel, sauf vers la Function (routes internes, Easy Auth). Ressources au pluriel ; `GET` sans effet de bord ; `POST` pour créer ou calculer ; `201` + `Location` à la création ; erreurs au format **ProblemDetails** (RFC 9457) avec un champ `code` (`CONTRAT_INTROUVABLE`…) ; pagination `limit`/`offset`. Tout chemin non listé : **404** (401 sans jeton, refus par défaut), sans appel transmis.
 
 ### Correspondance avec les noms du brief (livrable L9)
 
@@ -168,7 +168,7 @@ La gateway n'a presque aucune logique isolable (routes et politiques sont décla
 | Test | Ce qu'il prouve |
 |---|---|
 | `Route_vers_le_bon_backend` (11 cas) | Chaque ressource REST atteint le bon service, avec le bon chemin, et pas l'autre |
-| `Chemin_non_route_404_sans_appel_backend` (6 cas) | Ni route fourre-tout, ni anciennes routes RPC (`/api/agent`, `/v1/ingestion`, `/internal/…`) |
+| `Chemin_non_route_404_sans_appel_backend` (9 cas) | Ni route fourre-tout, ni anciennes routes RPC (`/api/agent`, `/v1/ingestion`, `/internal/…`), ni chemins non versionnés (`/api/reponses`, `/api/contrats`), ni l'alias `/v1/souscriptions/{n}/contrat` (#246) |
 | `Transmet_XForwardedFor_reecrit`, `XForwardedPrefix_du_client_ne_passe_pas` | Les en-têtes `X-Forwarded-*` du client n'atteignent pas les services (règle S3-21) |
 | `Documentation_recoit_son_prefixe_public` | `/rag` et `/underwriting` transmis en `X-Forwarded-Prefix` |
 | `Transmet_Authorization_et_traceparent_sans_les_modifier` | Jeton et contexte de trace transmis intacts |

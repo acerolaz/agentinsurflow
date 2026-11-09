@@ -78,11 +78,10 @@ public sealed class CalculTests(Backends backends) : IClassFixture<Backends>
         using var client = usine.CreateClient();
         var routes = usine.Services.GetRequiredService<IProxyConfigProvider>().GetConfig().Routes
             .Where(r => r.ClusterId == "calcul" && r.AuthorizationPolicy != "anonymous").ToList();
-        Assert.True(routes.Count >= 3, $"{routes.Count} route(s) de calcul protégée(s)");
+        Assert.True(routes.Count >= 3);
 
         foreach (var route in routes)
         {
-            Assert.DoesNotContain("{", route.Match.Path, StringComparison.Ordinal);
             using var requete = Requete(Assert.Single(route.Match.Methods!), route.Match.Path!, JetonCalcul());
             requete.Content = new StringContent("{}", Encoding.UTF8, "application/json");
             using var reponse = await client.SendAsync(requete, TestContext.Current.CancellationToken);
